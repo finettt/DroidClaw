@@ -1,0 +1,11 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.DroidClaw" parent="Theme.Material3.DayNight">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    </style>
+
+    <style name="Theme.DroidClaw" parent="Base.Theme.DroidClaw" />
+</resources>
