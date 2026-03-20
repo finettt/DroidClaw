@@ -2,14 +2,23 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+configurations.all {
+    resolutionStrategy {
+        // Force consistent test core version
+        force("androidx.test:core:1.6.1")
+        force("androidx.test:runner:1.6.1")
+        force("androidx.test:rules:1.6.1")
+    }
+}
+
 android {
     namespace = "io.finett.droidclaw"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "io.finett.droidclaw"
         minSdk = 22
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -42,6 +51,13 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.gson)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    androidTestImplementation("androidx.test.espresso:espresso-contrib:3.6.1")
+    androidTestImplementation(libs.test.core)
+    androidTestImplementation(libs.test.runner)
+    androidTestImplementation(libs.navigation.testing)
+    debugImplementation(libs.fragment.testing)
+    androidTestImplementation(libs.fragment.testing)
 }
