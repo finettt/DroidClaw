@@ -3,6 +3,12 @@
     <style name="Base.Theme.DroidClaw" parent="Theme.Material3.DayNight">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+        <!-- Disable edge-to-edge enforcement for Android 15+ -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
+        <!-- Status bar color - gray/secondary -->
+        <item name="android:statusBarColor">?android:attr/colorBackground</item>
+        <!-- Use dark icons on light status bar background -->
+        <item name="android:windowLightStatusBar">true</item>
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>

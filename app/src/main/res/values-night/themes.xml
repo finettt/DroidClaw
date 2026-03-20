@@ -1,6 +1,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.DroidClaw" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Disable edge-to-edge enforcement for Android 15+ -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
+        <!-- Status bar color - gray/secondary -->
+        <item name="android:statusBarColor">?attr/colorSurfaceVariant</item>
+        <!-- Use light icons on dark status bar background -->
+        <item name="android:windowLightStatusBar">false</item>
         <!-- Customize your dark theme here. -->
         <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
     </style>
