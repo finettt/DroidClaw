@@ -30,10 +30,15 @@ public class PathValidator {
             throw new IllegalArgumentException("Path cannot be null or empty");
         }
 
+        // Normalize path separators - convert backslashes to forward slashes
+        // This ensures consistent behavior across platforms and prevents
+        // path traversal attacks using backslashes on Unix-like systems
+        String normalizedPath = relativePath.replace('\\', '/');
+
         // Remove leading slash if present (all paths are relative)
-        String cleanPath = relativePath.startsWith("/") || relativePath.startsWith("\\") 
-            ? relativePath.substring(1) 
-            : relativePath;
+        String cleanPath = normalizedPath.startsWith("/")
+            ? normalizedPath.substring(1)
+            : normalizedPath;
 
         // Create file relative to workspace root
         File targetFile = new File(workspaceRoot, cleanPath);
