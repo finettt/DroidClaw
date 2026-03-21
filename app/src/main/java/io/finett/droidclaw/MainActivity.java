@@ -24,6 +24,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -194,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (updatedTitle != null) {
-            chatSessions.sort((s1, s2) -> Long.compare(s2.getUpdatedAt(), s1.getUpdatedAt()));
+            Collections.sort(chatSessions, (s1, s2) -> Long.compare(s2.getUpdatedAt(), s1.getUpdatedAt()));
             chatRepository.saveSessions(chatSessions);
             chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
             Log.d(TAG, "Updated session metadata for: " + sessionId + ", title=" + updatedTitle);
@@ -253,7 +254,7 @@ public class MainActivity extends AppCompatActivity {
 
         session.setTitle(newTitle.trim());
         session.setUpdatedAt(System.currentTimeMillis());
-        chatSessions.sort((s1, s2) -> Long.compare(s2.getUpdatedAt(), s1.getUpdatedAt()));
+        Collections.sort(chatSessions, (s1, s2) -> Long.compare(s2.getUpdatedAt(), s1.getUpdatedAt()));
         chatRepository.saveSessions(chatSessions);
         chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
         Log.d(TAG, "Renamed chat session: " + session.getId() + " to " + newTitle);

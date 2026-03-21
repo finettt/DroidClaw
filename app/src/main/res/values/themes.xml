@@ -8,7 +8,7 @@
         <!-- Status bar color - gray/secondary -->
         <item name="android:statusBarColor">?android:attr/colorBackground</item>
         <!-- Use dark icons on light status bar background -->
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
