@@ -246,4 +246,148 @@ public class VirtualFileSystemTest {
     public void testPathTraversalInDelete() throws Exception {
         vfs.deleteFile("../../etc/passwd");
     }
+
+    @Test(expected = IOException.class)
+    public void testReadFileTooLarge() throws Exception {
+        // Create a file larger than MAX_FILE_SIZE (10MB)
+        String path = "large.txt";
+        StringBuilder largeContent = new StringBuilder();
+        // Create content > 10MB
+        for (int i = 0; i < 11 * 1024 * 1024; i++) {
+            largeContent.append("a");
+        }
+        
+        vfs.writeFile(path, largeContent.toString(), false);
+        vfs.readFile(path, null, null);
+    }
+
+    @Test(expected = IOException.class)
+    public void testWriteFileTooLarge() throws Exception {
+        // Try to write content larger than MAX_FILE_SIZE
+        StringBuilder largeContent = new StringBuilder();
+        for (int i = 0; i < 11 * 1024 * 1024; i++) {
+            largeContent.append("a");
+        }
+        
+        vfs.writeFile("large.txt", largeContent.toString(), false);
+    }
+
+    @Test
+    public void testDeleteEmptyDirectory() throws Exception {
+        // Create an empty directory by creating and then deleting a file
+        vfs.writeFile("emptydir/temp.txt", "temp", false);
+        vfs.deleteFile("emptydir/temp.txt");
+        
+        // Now delete the empty directory
+        assertTrue(vfs.deleteFile("emptydir"));
+    }
+
+    @Test(expected = IOException.class)
+    public void testReadDirectory() throws Exception {
+        vfs.writeFile("dir/file.txt", "content", false);
+        vfs.readFile("dir", null, null);
+    }
+
+    @Test(expected = IOException.class)
+    public void testListFilesOnFile() throws Exception {
+        vfs.writeFile("file.txt", "content", false);
+        vfs.listFiles("file.txt", false);
+    }
+
+    @Test(expected = IOException.class)
+    public void testListNonexistentDirectory() throws Exception {
+        vfs.listFiles("nonexistent", false);
+    }
+
+    @Test(expected = IOException.class)
+    public void testSearchNonexistentDirectory() throws Exception {
+        vfs.searchFiles("nonexistent", "pattern", null);
+    }
+
+    @Test(expected = IOException.class)
+    public void testSearchOnFile() throws Exception {
+        vfs.writeFile("file.txt", "content", false);
+        vfs.searchFiles("file.txt", "pattern", null);
+    }
+
+    @Test
+    public void testSearchWithInvalidRegex() {
+        try {
+            vfs.writeFile("test.txt", "content", false);
+            vfs.searchFiles(".", "[invalid(", null);
+            fail("Should have thrown exception for invalid regex");
+        } catch (Exception e) {
+            // Expected - invalid regex pattern
+            assertTrue(e.getMessage() != null);
+        }
+    }
+
+    @Test
+    public void testGlobPatternMatching() throws Exception {
+        vfs.writeFile("test.txt", "match", false);
+        vfs.writeFile("test.log", "match", false);
+        vfs.writeFile("data.txt", "match", false);
+
+        // Search only .txt files
+        VirtualFileSystem.FileSearchResult result = vfs.searchFiles(".", "match", "*.txt");
+        
+        assertEquals(2, result.getMatches().size());
+        for (VirtualFileSystem.SearchMatch match : result.getMatches()) {
+            assertTrue(match.getFile().endsWith(".txt"));
+        }
+    }
+
+    @Test
+    public void testGlobPatternWithQuestionMark() throws Exception {
+        vfs.writeFile("test1.txt", "match", false);
+        vfs.writeFile("test2.txt", "match", false);
+        vfs.writeFile("test10.txt", "match", false);
+
+        // Search with ? wildcard (single character)
+        VirtualFileSystem.FileSearchResult result = vfs.searchFiles(".", "match", "test?.txt");
+        
+        assertEquals(2, result.getMatches().size());
+    }
+
+    @Test
+    public void testReadFileWithOffsetBeyondEnd() throws Exception {
+        vfs.writeFile("small.txt", "Line 1\nLine 2", false);
+
+        VirtualFileSystem.FileReadResult result = vfs.readFile("small.txt", 100, null);
+        
+        assertEquals("", result.getContent());
+        assertEquals(2, result.getTotalLines());
+        assertEquals(0, result.getLinesRead());
+        assertFalse(result.isTruncated());
+    }
+
+    @Test
+    public void testReadFileWithZeroLimit() throws Exception {
+        vfs.writeFile("test.txt", "Line 1\nLine 2\nLine 3", false);
+
+        VirtualFileSystem.FileReadResult result = vfs.readFile("test.txt", 0, 0);
+        
+        assertEquals("", result.getContent());
+        assertEquals(3, result.getTotalLines());
+        assertEquals(0, result.getLinesRead());
+        assertTrue(result.isTruncated());
+    }
+
+    @Test
+    public void testListFilesNullPath() throws Exception {
+        // Null path should default to current directory
+        VirtualFileSystem.FileListResult result = vfs.listFiles(null, false);
+        assertNotNull(result);
+        assertNotNull(result.getFiles());
+    }
+
+    @Test
+    public void testSearchFilesNullPath() throws Exception {
+        vfs.writeFile("test.txt", "content", false);
+        
+        // Null path should default to current directory
+        VirtualFileSystem.FileSearchResult result = vfs.searchFiles(null, "content", null);
+        assertNotNull(result);
+        assertTrue(result.getMatches().size() >= 1);
+    }
 }

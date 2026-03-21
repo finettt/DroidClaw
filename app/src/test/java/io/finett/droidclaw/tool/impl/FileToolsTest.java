@@ -316,4 +316,281 @@ public class FileToolsTest {
         ToolResult deleteResult = fileDeleteTool.execute(maliciousArgs);
         assertFalse(deleteResult.isSuccess());
     }
+
+    @Test
+    public void testFileWriteToolMissingContent() {
+        JsonObject args = new JsonObject();
+        args.addProperty("path", "test.txt");
+
+        ToolResult result = fileWriteTool.execute(args);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument: content"));
+    }
+
+    @Test
+    public void testFileWriteToolWithAppend() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "append.txt");
+        writeArgs.addProperty("content", "First line");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject appendArgs = new JsonObject();
+        appendArgs.addProperty("path", "append.txt");
+        appendArgs.addProperty("content", "\nSecond line");
+        appendArgs.addProperty("append", true);
+
+        ToolResult result = fileWriteTool.execute(appendArgs);
+
+        assertTrue(result.isSuccess());
+        assertTrue(result.getContent().contains("\"appended\":true"));
+    }
+
+    @Test
+    public void testFileReadToolMissingPath() {
+        JsonObject args = new JsonObject();
+
+        ToolResult result = fileReadTool.execute(args);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument: path"));
+    }
+
+    @Test
+    public void testFileReadToolNonexistentFile() {
+        JsonObject args = new JsonObject();
+        args.addProperty("path", "nonexistent.txt");
+
+        ToolResult result = fileReadTool.execute(args);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("not found") || result.getError().contains("Failed"));
+    }
+
+    @Test
+    public void testFileDeleteToolMissingPath() {
+        JsonObject args = new JsonObject();
+
+        ToolResult result = fileDeleteTool.execute(args);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument: path"));
+    }
+
+    @Test
+    public void testFileDeleteToolNonexistentFile() {
+        JsonObject args = new JsonObject();
+        args.addProperty("path", "nonexistent.txt");
+
+        ToolResult result = fileDeleteTool.execute(args);
+
+        assertFalse(result.isSuccess());
+    }
+
+    @Test
+    public void testFileSearchToolMissingPattern() {
+        JsonObject args = new JsonObject();
+        args.addProperty("path", ".");
+
+        ToolResult result = fileSearchTool.execute(args);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument: pattern"));
+    }
+
+    @Test
+    public void testFileSearchToolWithoutFilePattern() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "test.txt");
+        writeArgs.addProperty("content", "searchable content");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject searchArgs = new JsonObject();
+        searchArgs.addProperty("pattern", "searchable");
+
+        ToolResult result = fileSearchTool.execute(searchArgs);
+
+        assertTrue(result.isSuccess());
+        assertTrue(result.getContent().contains("searchable"));
+    }
+
+    @Test
+    public void testFileEditToolMissingPath() {
+        JsonObject args = new JsonObject();
+        args.addProperty("operation", "replace");
+
+        ToolResult result = fileEditTool.execute(args);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument: path"));
+    }
+
+    @Test
+    public void testFileEditToolMissingOperation() {
+        JsonObject args = new JsonObject();
+        args.addProperty("path", "test.txt");
+
+        ToolResult result = fileEditTool.execute(args);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument: operation"));
+    }
+
+    @Test
+    public void testFileEditToolInvalidOperation() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "test.txt");
+        writeArgs.addProperty("content", "Test");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject editArgs = new JsonObject();
+        editArgs.addProperty("path", "test.txt");
+        editArgs.addProperty("operation", "invalid_op");
+
+        ToolResult result = fileEditTool.execute(editArgs);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Invalid operation"));
+    }
+
+    @Test
+    public void testFileEditToolReplaceMissingSearch() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "test.txt");
+        writeArgs.addProperty("content", "Test");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject editArgs = new JsonObject();
+        editArgs.addProperty("path", "test.txt");
+        editArgs.addProperty("operation", "replace");
+        editArgs.addProperty("replacement", "New");
+
+        ToolResult result = fileEditTool.execute(editArgs);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument") || result.getError().contains("search"));
+    }
+
+    @Test
+    public void testFileEditToolInsertMissingLineNumber() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "test.txt");
+        writeArgs.addProperty("content", "Line 1");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject editArgs = new JsonObject();
+        editArgs.addProperty("path", "test.txt");
+        editArgs.addProperty("operation", "insert");
+        editArgs.addProperty("content", "New line");
+
+        ToolResult result = fileEditTool.execute(editArgs);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument") || result.getError().contains("line_number"));
+    }
+
+    @Test
+    public void testFileEditToolDeleteLinesMissingLineNumber() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "test.txt");
+        writeArgs.addProperty("content", "Line 1\nLine 2");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject editArgs = new JsonObject();
+        editArgs.addProperty("path", "test.txt");
+        editArgs.addProperty("operation", "delete_lines");
+
+        ToolResult result = fileEditTool.execute(editArgs);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument") || result.getError().contains("line_number"));
+    }
+
+    @Test
+    public void testFileEditToolNonexistentFile() {
+        JsonObject editArgs = new JsonObject();
+        editArgs.addProperty("path", "nonexistent.txt");
+        editArgs.addProperty("operation", "replace");
+        editArgs.addProperty("search", "old");
+        editArgs.addProperty("replacement", "new");
+
+        ToolResult result = fileEditTool.execute(editArgs);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("not found") || result.getError().contains("Failed"));
+    }
+
+    @Test
+    public void testFileInfoToolMissingPath() {
+        JsonObject args = new JsonObject();
+
+        ToolResult result = fileInfoTool.execute(args);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getError().contains("Missing required argument: path"));
+    }
+
+    @Test
+    public void testFileInfoToolNonexistentFile() {
+        JsonObject args = new JsonObject();
+        args.addProperty("path", "nonexistent.txt");
+
+        ToolResult result = fileInfoTool.execute(args);
+
+        assertFalse(result.isSuccess());
+    }
+
+    @Test
+    public void testFileInfoToolForDirectory() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "testdir/file.txt");
+        writeArgs.addProperty("content", "content");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject infoArgs = new JsonObject();
+        infoArgs.addProperty("path", "testdir");
+
+        ToolResult result = fileInfoTool.execute(infoArgs);
+
+        assertTrue(result.isSuccess());
+        assertTrue(result.getContent().contains("\"type\":\"directory\""));
+    }
+
+    @Test
+    public void testFileEditToolInsertAtEnd() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "test.txt");
+        writeArgs.addProperty("content", "Line 1\nLine 2");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject editArgs = new JsonObject();
+        editArgs.addProperty("path", "test.txt");
+        editArgs.addProperty("operation", "insert");
+        editArgs.addProperty("line_number", 3);
+        editArgs.addProperty("content", "Line 3");
+
+        ToolResult result = fileEditTool.execute(editArgs);
+
+        assertTrue(result.isSuccess());
+    }
+
+    @Test
+    public void testFileEditToolDeleteMultipleLines() {
+        JsonObject writeArgs = new JsonObject();
+        writeArgs.addProperty("path", "test.txt");
+        writeArgs.addProperty("content", "Line 1\nLine 2\nLine 3\nLine 4\nLine 5");
+        fileWriteTool.execute(writeArgs);
+
+        JsonObject editArgs = new JsonObject();
+        editArgs.addProperty("path", "test.txt");
+        editArgs.addProperty("operation", "delete_lines");
+        editArgs.addProperty("line_number", 2);
+        editArgs.addProperty("count", 3);
+
+        ToolResult result = fileEditTool.execute(editArgs);
+
+        assertTrue(result.isSuccess());
+        JsonObject resultJson = JsonParser.parseString(result.getContent()).getAsJsonObject();
+        assertEquals(3, resultJson.get("changes_made").getAsInt());
+    }
 }
