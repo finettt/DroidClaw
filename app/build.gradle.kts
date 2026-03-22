@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.chaquo.python")
 }
 
 configurations.all {
@@ -23,6 +24,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Chaquopy configuration - ABI filters
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     buildTypes {
@@ -37,6 +43,20 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.11"
+
+        pip {
+            // Common packages installed at build time
+            // Note: lxml removed due to native dependency requirements
+            install("requests")
+            install("beautifulsoup4")
+            install("python-dateutil")
+        }
     }
 }
 
