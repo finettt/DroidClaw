@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -17,14 +18,17 @@ import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.adapter.ChatAdapter;
+import io.finett.droidclaw.agent.AgentLoop;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.ChatRepository;
+import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class ChatFragment extends Fragment {
@@ -34,11 +38,15 @@ public class ChatFragment extends Fragment {
     private RecyclerView recyclerView;
     private EditText messageInput;
     private ImageButton sendButton;
+    private View statusContainer;
     private ProgressBar progressBar;
+    private TextView statusText;
     private ChatAdapter chatAdapter;
     private LlmApiService apiService;
     private SettingsManager settingsManager;
     private ChatRepository chatRepository;
+    private ToolRegistry toolRegistry;
+    private AgentLoop agentLoop;
     private String currentSessionId;
 
     @Override
@@ -48,6 +56,8 @@ public class ChatFragment extends Fragment {
         settingsManager = new SettingsManager(requireContext());
         apiService = new LlmApiService(settingsManager);
         chatRepository = new ChatRepository(requireContext());
+        toolRegistry = new ToolRegistry(requireContext());
+        agentLoop = new AgentLoop(apiService, toolRegistry);
         
         // Get session ID from arguments
         Bundle args = getArguments();
@@ -78,7 +88,9 @@ public class ChatFragment extends Fragment {
         recyclerView = view.findViewById(R.id.recyclerView);
         messageInput = view.findViewById(R.id.messageInput);
         sendButton = view.findViewById(R.id.sendButton);
+        statusContainer = view.findViewById(R.id.statusContainer);
         progressBar = view.findViewById(R.id.progressBar);
+        statusText = view.findViewById(R.id.statusText);
     }
 
     private void setupRecyclerView() {
@@ -165,18 +177,38 @@ public class ChatFragment extends Fragment {
 
         setLoading(true);
 
-        apiService.sendMessage(chatAdapter.getMessages(), new LlmApiService.ChatCallback() {
+        // Use agent loop for tool-enabled conversation
+        List<ChatMessage> conversationHistory = new ArrayList<>(chatAdapter.getMessages());
+        
+        agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
             @Override
-            public void onSuccess(String response) {
+            public void onProgress(String status) {
+                updateStatus(status);
+            }
+
+            @Override
+            public void onToolCall(String toolName, String arguments) {
+                Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
+                updateStatus("Executing: " + toolName);
+            }
+
+            @Override
+            public void onToolResult(String toolName, String result) {
+                Log.d(TAG, "Tool result: " + toolName + " -> " + result.substring(0, Math.min(100, result.length())));
+            }
+
+            @Override
+            public void onComplete(String finalResponse, List<ChatMessage> updatedHistory) {
                 setLoading(false);
-                ChatMessage assistantMessage = new ChatMessage(response, ChatMessage.TYPE_ASSISTANT);
-                chatAdapter.addMessage(assistantMessage);
+                
+                // Update adapter with the full conversation history from the agent
+                chatAdapter.setMessages(updatedHistory);
                 scrollToBottom();
                 
                 // Save after adding assistant message
                 saveMessages();
                 updateSessionMetadata(null);
-                Log.d(TAG, "onSuccess: Added and saved assistant message. Total: " + chatAdapter.getItemCount());
+                Log.d(TAG, "onComplete: Agent completed. Total messages: " + chatAdapter.getItemCount());
             }
 
             @Override
@@ -188,9 +220,20 @@ public class ChatFragment extends Fragment {
     }
 
     private void setLoading(boolean loading) {
-        progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
+        if (statusContainer != null) {
+            statusContainer.setVisibility(loading ? View.VISIBLE : View.GONE);
+        }
         sendButton.setEnabled(!loading);
         messageInput.setEnabled(!loading);
+    }
+
+    private void updateStatus(String status) {
+        if (statusText != null) {
+            statusText.setText(status);
+        }
+        if (statusContainer != null) {
+            statusContainer.setVisibility(View.VISIBLE);
+        }
     }
 
     private void scrollToBottom() {
