@@ -4,6 +4,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
+
+import io.finett.droidclaw.filesystem.PathValidator;
 
 import static org.junit.Assert.*;
 
@@ -13,10 +16,15 @@ import static org.junit.Assert.*;
 public class ShellExecutorTest {
     private ShellExecutor executor;
     private ShellConfig config;
+    private File workspaceRoot;
+    private PathValidator pathValidator;
 
     @Before
-    public void setUp() {
+    public void setUp() throws IOException {
         config = ShellConfig.createDefault();
+        workspaceRoot = new File(System.getProperty("java.io.tmpdir"), "shell_executor_test_" + System.currentTimeMillis());
+        workspaceRoot.mkdirs();
+        pathValidator = new PathValidator(workspaceRoot);
         executor = new ShellExecutor(config);
     }
 
@@ -70,14 +78,19 @@ public class ShellExecutorTest {
 
     @Test
     public void testWorkingDirectory() {
-        // Create a temporary directory structure
-        File tempDir = new File(System.getProperty("java.io.tmpdir"));
+        // Create a subdirectory in workspace
+        File subDir = new File(workspaceRoot, "subdir");
+        subDir.mkdirs();
         
-        ShellResult result = executor.execute("pwd", tempDir);
-        
-        if (result.isSuccess()) {
-            assertTrue(result.getStdout().contains(tempDir.getName()) || 
-                      result.getStdout().contains("tmp"));
+        try {
+            ShellResult result = executor.execute("pwd", subDir);
+            
+            assertTrue("Command should succeed", result.isSuccess());
+            assertTrue("Output should contain directory name",
+                       result.getStdout().contains("subdir") ||
+                       result.getStdout().contains(workspaceRoot.getName()));
+        } finally {
+            subDir.delete();
         }
     }
 
@@ -204,5 +217,146 @@ public class ShellExecutorTest {
         
         assertTrue(result.isSuccess());
         assertFalse(result.isTimedOut());
+    }
+
+    // === Tests for PathValidator integration ===
+
+    @Test
+    public void testExecutorWithPathValidator() {
+        // Create executor with PathValidator
+        ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
+        
+        ShellResult result = vfsExecutor.execute("echo test");
+        assertTrue("Command should succeed with PathValidator", result.isSuccess());
+    }
+
+    @Test
+    public void testWorkingDirectoryValidationWithinWorkspace() throws IOException {
+        // Create executor with PathValidator
+        ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
+        
+        // Create a subdirectory within workspace
+        File validDir = new File(workspaceRoot, "valid_dir");
+        validDir.mkdirs();
+        
+        try {
+            ShellResult result = vfsExecutor.execute("pwd", validDir);
+            assertTrue("Command should succeed within workspace", result.isSuccess());
+        } finally {
+            validDir.delete();
+        }
+    }
+
+    @Test
+    public void testWorkingDirectoryValidationOutsideWorkspace() throws IOException {
+        // Create executor with PathValidator
+        ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
+        
+        // Create a directory outside workspace
+        File outsideDir = new File(System.getProperty("java.io.tmpdir"), "outside_workspace_" + System.currentTimeMillis());
+        outsideDir.mkdirs();
+        
+        try {
+            // This should throw SecurityException because directory is outside workspace
+            try {
+                vfsExecutor.execute("pwd", outsideDir);
+                fail("Should have thrown SecurityException for directory outside workspace");
+            } catch (SecurityException e) {
+                assertTrue("Error should mention sandbox or workspace",
+                           e.getMessage().contains("sandbox") ||
+                           e.getMessage().contains("workspace") ||
+                           e.getMessage().contains("outside"));
+            }
+        } finally {
+            outsideDir.delete();
+        }
+    }
+
+    @Test
+    public void testExecuteWithRelativeDir() throws IOException {
+        // Create executor with PathValidator
+        ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
+        
+        // Create a subdirectory
+        File subDir = new File(workspaceRoot, "relative_test_dir");
+        subDir.mkdirs();
+        
+        try {
+            // Test the new executeWithRelativeDir method
+            ShellResult result = vfsExecutor.executeWithRelativeDir("pwd", "relative_test_dir");
+            assertTrue("Command should succeed with relative path", result.isSuccess());
+        } finally {
+            subDir.delete();
+        }
+    }
+
+    @Test
+    public void testExecuteWithRelativeDirNoPathValidator() {
+        // Create executor without PathValidator
+        ShellExecutor noVfsExecutor = new ShellExecutor(config);
+        
+        try {
+            noVfsExecutor.executeWithRelativeDir("pwd", "some_dir");
+            fail("Should have thrown IllegalStateException");
+        } catch (IllegalStateException e) {
+            assertTrue("Error should mention PathValidator",
+                       e.getMessage().contains("PathValidator"));
+        }
+    }
+
+    @Test
+    public void testExecuteWithRelativeDirPathTraversal() throws IOException {
+        // Create executor with PathValidator
+        ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
+        
+        // Try path traversal
+        try {
+            vfsExecutor.executeWithRelativeDir("pwd", "../../../tmp");
+            fail("Should have thrown SecurityException for path traversal");
+        } catch (SecurityException e) {
+            assertTrue("Error should mention security or path",
+                       e.getMessage().contains("Security") ||
+                       e.getMessage().contains("Invalid") ||
+                       e.getMessage().contains("outside"));
+        }
+    }
+
+    @Test
+    public void testNullWorkingDirectoryWithNullPathValidator() {
+        // Executor without PathValidator should work with null working directory
+        ShellExecutor noVfsExecutor = new ShellExecutor(config);
+        
+        ShellResult result = noVfsExecutor.execute("echo test", null);
+        assertTrue("Should work with null working directory", result.isSuccess());
+    }
+
+    @Test
+    public void testNullWorkingDirectoryWithPathValidator() {
+        // Executor with PathValidator should work with null working directory
+        // (uses process's default working directory)
+        ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
+        
+        ShellResult result = vfsExecutor.execute("echo test", null);
+        assertTrue("Should work with null working directory", result.isSuccess());
+    }
+
+    @Test
+    public void testNestedDirectoryInWorkspace() throws IOException {
+        // Create executor with PathValidator
+        ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
+        
+        // Create nested directory structure
+        File nestedDir = new File(workspaceRoot, "level1/level2/level3");
+        nestedDir.mkdirs();
+        
+        try {
+            ShellResult result = vfsExecutor.execute("pwd", nestedDir);
+            assertTrue("Should work with nested directory within workspace", result.isSuccess());
+        } finally {
+            // Cleanup
+            nestedDir.delete();
+            new File(workspaceRoot, "level1/level2").delete();
+            new File(workspaceRoot, "level1").delete();
+        }
     }
 }

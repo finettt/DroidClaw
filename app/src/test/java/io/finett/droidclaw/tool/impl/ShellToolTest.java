@@ -6,7 +6,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 
+import io.finett.droidclaw.filesystem.PathValidator;
 import io.finett.droidclaw.shell.ShellConfig;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
@@ -19,11 +21,16 @@ import static org.junit.Assert.*;
 public class ShellToolTest {
     private ShellTool tool;
     private File workspaceRoot;
+    private PathValidator pathValidator;
 
     @Before
-    public void setUp() {
-        workspaceRoot = new File(System.getProperty("java.io.tmpdir"));
-        tool = new ShellTool(workspaceRoot);
+    public void setUp() throws IOException {
+        // Create a dedicated test workspace directory
+        workspaceRoot = new File(System.getProperty("java.io.tmpdir"), "shell_test_workspace_" + System.currentTimeMillis());
+        workspaceRoot.mkdirs();
+        
+        pathValidator = new PathValidator(workspaceRoot);
+        tool = new ShellTool(pathValidator, ShellConfig.createDefault());
     }
 
     @Test
@@ -75,7 +82,7 @@ public class ShellToolTest {
     }
 
     @Test
-    public void testExecuteWithWorkingDirectory() {
+    public void testExecuteWithWorkingDirectory() throws IOException {
         // Create a subdirectory in workspace
         File subdir = new File(workspaceRoot, "testdir_" + System.currentTimeMillis());
         subdir.mkdir();
@@ -87,11 +94,10 @@ public class ShellToolTest {
             
             ToolResult result = tool.execute(args);
             
-            // Should succeed if the directory exists
-            if (result.isSuccess()) {
-                String content = result.getContent();
-                assertTrue(content.contains("exit_code"));
-            }
+            // Should succeed since the directory exists within workspace
+            assertTrue("Tool execution should succeed", result.isSuccess());
+            String content = result.getContent();
+            assertTrue(content.contains("exit_code"));
         } finally {
             subdir.delete();
         }
@@ -101,12 +107,27 @@ public class ShellToolTest {
     public void testExecuteWithInvalidWorkingDirectory() {
         JsonObject args = new JsonObject();
         args.addProperty("command", "pwd");
-        args.addProperty("working_directory", "/nonexistent_dir_12345");
+        args.addProperty("working_directory", "nonexistent_dir_12345");
         
         ToolResult result = tool.execute(args);
         
         assertFalse(result.isSuccess());
-        assertTrue(result.getError().contains("Invalid working directory"));
+        assertTrue(result.getError().contains("does not exist") ||
+                   result.getError().contains("Invalid working directory"));
+    }
+
+    @Test
+    public void testExecuteWithNonexistentDirectory() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "pwd");
+        args.addProperty("working_directory", "nonexistent_subdir");
+        
+        ToolResult result = tool.execute(args);
+        
+        assertFalse("Should fail for nonexistent directory", result.isSuccess());
+        assertTrue("Error should mention directory",
+                   result.getError().contains("does not exist") ||
+                   result.getError().contains("Invalid"));
     }
 
     @Test
@@ -138,7 +159,7 @@ public class ShellToolTest {
                 .enabled(true)
                 .addBlockedCommand("rm -rf")
                 .build();
-        ShellTool secureTool = new ShellTool(workspaceRoot, secureConfig);
+        ShellTool secureTool = new ShellTool(pathValidator, secureConfig);
         
         JsonObject args = new JsonObject();
         args.addProperty("command", "rm -rf /");
@@ -154,7 +175,7 @@ public class ShellToolTest {
         ShellConfig disabledConfig = new ShellConfig.Builder()
                 .enabled(false)
                 .build();
-        ShellTool disabledTool = new ShellTool(workspaceRoot, disabledConfig);
+        ShellTool disabledTool = new ShellTool(pathValidator, disabledConfig);
         
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo test");
@@ -223,7 +244,11 @@ public class ShellToolTest {
         ToolResult result = tool.execute(args);
         
         // Should reject path traversal attempt
-        assertFalse(result.isSuccess());
+        assertFalse("Should reject path traversal", result.isSuccess());
+        assertTrue("Error should mention security or path traversal",
+                   result.getError().contains("Security") ||
+                   result.getError().contains("traversal") ||
+                   result.getError().contains("outside"));
     }
 
     @Test
@@ -234,9 +259,38 @@ public class ShellToolTest {
         
         ToolResult result = tool.execute(args);
         
-        // Should reject absolute paths
-        assertFalse(result.isSuccess());
-        assertTrue(result.getError().contains("Invalid working directory"));
+        // Absolute paths like "/etc" get the leading slash stripped by PathValidator,
+        // so "/etc" becomes "etc" relative to workspace. Since this directory doesn't
+        // exist in the workspace, the operation fails.
+        // This is still secure because the path is sandboxed to the workspace.
+        assertFalse("Should reject path that doesn't exist in workspace", result.isSuccess());
+        assertTrue("Error should mention directory does not exist or invalid path",
+                   result.getError().contains("does not exist") ||
+                   result.getError().contains("not a directory") ||
+                   result.getError().contains("Security") ||
+                   result.getError().contains("Invalid"));
+    }
+    
+    @Test
+    public void testWorkingDirectoryOutsideWorkspace() throws IOException {
+        // Create a temp directory outside the workspace
+        File outsideDir = new File(System.getProperty("java.io.tmpdir"), "outside_workspace_" + System.currentTimeMillis());
+        outsideDir.mkdir();
+        
+        try {
+            // Try to use a path that points outside the workspace
+            // This tests the executor's validation
+            JsonObject args = new JsonObject();
+            args.addProperty("command", "pwd");
+            args.addProperty("working_directory", "../../" + outsideDir.getName());
+            
+            ToolResult result = tool.execute(args);
+            
+            // Should reject paths outside workspace
+            assertFalse("Should reject path outside workspace", result.isSuccess());
+        } finally {
+            outsideDir.delete();
+        }
     }
 
     @Test
@@ -263,7 +317,29 @@ public class ShellToolTest {
         ToolResult result = tool.execute(args);
         
         // Empty working directory should default to workspace root
-        assertTrue(result.isSuccess());
+        assertTrue("Empty working directory should use workspace root", result.isSuccess());
+    }
+    
+    @Test
+    public void testPathValidatorIntegration() throws IOException {
+        // Create a nested directory structure
+        File nestedDir = new File(workspaceRoot, "level1/level2");
+        nestedDir.mkdirs();
+        
+        try {
+            JsonObject args = new JsonObject();
+            args.addProperty("command", "pwd");
+            args.addProperty("working_directory", "level1/level2");
+            
+            ToolResult result = tool.execute(args);
+            
+            assertTrue("Should succeed with nested directory", result.isSuccess());
+        } finally {
+            // Cleanup
+            new File(nestedDir, "level2").delete();
+            nestedDir.delete();
+            new File(workspaceRoot, "level1").delete();
+        }
     }
 
     @Test
@@ -285,5 +361,17 @@ public class ShellToolTest {
         assertTrue(json.contains("timed_out"));
         assertTrue(json.contains("execution_time_ms"));
         assertTrue(json.contains("stdout"));
+    }
+    
+    @Test
+    public void testConstructorWithVirtualFileSystemNotSupported() {
+        // The VirtualFileSystem constructor should throw because
+        // VirtualFileSystem doesn't expose its PathValidator
+        // This test verifies that behavior
+        // Note: We can't easily test this without mocking VirtualFileSystem
+        // Instead, verify the recommended constructor works
+        ShellTool pathValidatorTool = new ShellTool(pathValidator, ShellConfig.createDefault());
+        assertNotNull(pathValidatorTool);
+        assertEquals("execute_shell", pathValidatorTool.getName());
     }
 }

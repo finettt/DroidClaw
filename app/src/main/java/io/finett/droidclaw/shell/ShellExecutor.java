@@ -9,15 +9,39 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
 
+import io.finett.droidclaw.filesystem.PathValidator;
+
 /**
  * Executes shell commands on Android using ProcessBuilder.
  * Provides timeout mechanism and security checks.
+ * Integrates with VirtualFileSystem for sandboxed working directory validation.
  */
 public class ShellExecutor {
     private final ShellConfig config;
+    private final PathValidator pathValidator;
 
+    /**
+     * Creates a ShellExecutor with the given configuration.
+     * Without PathValidator, working directories must be absolute paths.
+     *
+     * @param config Shell execution configuration
+     */
     public ShellExecutor(ShellConfig config) {
         this.config = config;
+        this.pathValidator = null;
+    }
+
+    /**
+     * Creates a ShellExecutor with configuration and PathValidator.
+     * When PathValidator is provided, working directories are validated against
+     * the virtual filesystem sandbox.
+     *
+     * @param config Shell execution configuration
+     * @param pathValidator PathValidator for working directory validation (may be null)
+     */
+    public ShellExecutor(ShellConfig config, PathValidator pathValidator) {
+        this.config = config;
+        this.pathValidator = pathValidator;
     }
 
     /**
@@ -33,14 +57,45 @@ public class ShellExecutor {
 
     /**
      * Execute a shell command with a specific working directory.
+     * If PathValidator is configured, the working directory path will be validated
+     * against the virtual filesystem sandbox.
      *
      * @param command The command to execute
      * @param workingDirectory The working directory for the command (null for default)
      * @return ShellResult containing stdout, stderr, exit code, and execution metadata
-     * @throws SecurityException if the command is not allowed by the configuration
+     * @throws SecurityException if the command is not allowed or path is outside sandbox
      */
     public ShellResult execute(String command, File workingDirectory) throws SecurityException {
         return execute(command, workingDirectory, config.getTimeoutSeconds());
+    }
+
+    /**
+     * Execute a shell command with a working directory specified as a relative path.
+     * The path is resolved and validated using the PathValidator.
+     *
+     * @param command The command to execute
+     * @param relativeWorkingDir Relative path to working directory (validated against sandbox)
+     * @return ShellResult containing stdout, stderr, exit code, and execution metadata
+     * @throws SecurityException if the command is not allowed or path is outside sandbox
+     * @throws IllegalStateException if no PathValidator is configured
+     */
+    public ShellResult executeWithRelativeDir(String command, String relativeWorkingDir)
+            throws SecurityException, IllegalStateException {
+        if (pathValidator == null) {
+            throw new IllegalStateException(
+                "PathValidator not configured. Use execute() with absolute File path instead."
+            );
+        }
+        
+        File workingDir;
+        try {
+            workingDir = pathValidator.validateAndResolve(relativeWorkingDir);
+        } catch (IOException e) {
+            throw new SecurityException("Invalid working directory: " + relativeWorkingDir +
+                " - " + e.getMessage());
+        }
+        
+        return execute(command, workingDir, config.getTimeoutSeconds());
     }
 
     /**
@@ -52,7 +107,7 @@ public class ShellExecutor {
      * @return ShellResult containing stdout, stderr, exit code, and execution metadata
      * @throws SecurityException if the command is not allowed by the configuration
      */
-    public ShellResult execute(String command, File workingDirectory, int timeoutSeconds) 
+    public ShellResult execute(String command, File workingDirectory, int timeoutSeconds)
             throws SecurityException {
         if (!config.isEnabled()) {
             throw new SecurityException("Shell execution is disabled");
@@ -60,6 +115,25 @@ public class ShellExecutor {
 
         if (!config.isCommandAllowed(command)) {
             throw new SecurityException("Command is not allowed: " + command);
+        }
+
+        // Validate working directory against virtual filesystem sandbox
+        if (workingDirectory != null && pathValidator != null) {
+            try {
+                // Verify the working directory is within the workspace
+                String canonicalWorkspace = pathValidator.getWorkspaceRoot().getCanonicalPath();
+                String canonicalDir = workingDirectory.getCanonicalPath();
+                
+                if (!canonicalDir.startsWith(canonicalWorkspace)) {
+                    throw new SecurityException(
+                        "Working directory is outside workspace sandbox: " + workingDirectory
+                    );
+                }
+            } catch (IOException e) {
+                throw new SecurityException(
+                    "Cannot validate working directory: " + e.getMessage()
+                );
+            }
         }
 
         long startTime = System.currentTimeMillis();
