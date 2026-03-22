@@ -12,7 +12,9 @@ import java.util.Map;
 
 import io.finett.droidclaw.filesystem.VirtualFileSystem;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
+import io.finett.droidclaw.python.PythonConfig;
 import io.finett.droidclaw.python.PythonExecutor;
+import io.finett.droidclaw.shell.ShellConfig;
 import io.finett.droidclaw.shell.ShellExecutor;
 import io.finett.droidclaw.tool.impl.FileDeleteTool;
 import io.finett.droidclaw.tool.impl.FileEditTool;
@@ -31,6 +33,7 @@ import io.finett.droidclaw.tool.impl.ShellTool;
 public class ToolRegistry {
     private final Map<String, Tool> tools = new HashMap<>();
     private final Context context;
+    private final WorkspaceManager workspaceManager;
     private final VirtualFileSystem vfs;
     private final ShellExecutor shellExecutor;
     private final PythonExecutor pythonExecutor;
@@ -39,13 +42,20 @@ public class ToolRegistry {
         this.context = context;
         
         // Initialize workspace and filesystem
-        WorkspaceManager workspaceManager = new WorkspaceManager(context);
-        workspaceManager.initializeWorkspace();
-        this.vfs = new VirtualFileSystem(workspaceManager.getWorkspaceRoot());
+        this.workspaceManager = new WorkspaceManager(context);
+        try {
+            workspaceManager.initialize();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize workspace", e);
+        }
+        this.vfs = new VirtualFileSystem(workspaceManager);
         
         // Initialize executors
-        this.shellExecutor = new ShellExecutor(workspaceManager.getWorkspaceRoot());
-        this.pythonExecutor = new PythonExecutor(context);
+        ShellConfig shellConfig = ShellConfig.createDefault();
+        this.shellExecutor = new ShellExecutor(shellConfig, workspaceManager.getPathValidator());
+        
+        PythonConfig pythonConfig = PythonConfig.createDefault();
+        this.pythonExecutor = new PythonExecutor(context, pythonConfig);
         
         // Register all tools
         registerTools();
@@ -58,15 +68,15 @@ public class ToolRegistry {
         // File system tools
         registerTool(new FileReadTool(vfs));
         registerTool(new FileWriteTool(vfs));
-        registerTool(new FileEditTool(vfs));
+        registerTool(new FileEditTool(vfs, workspaceManager.getPathValidator()));
         registerTool(new FileListTool(vfs));
         registerTool(new FileDeleteTool(vfs));
         registerTool(new FileInfoTool(vfs));
         registerTool(new FileSearchTool(vfs));
         
         // Execution tools
-        registerTool(new ShellTool(shellExecutor));
-        registerTool(new PythonTool(pythonExecutor));
+        registerTool(new ShellTool(workspaceManager.getPathValidator(), ShellConfig.createDefault()));
+        registerTool(new PythonTool(context, workspaceManager.getWorkspaceRoot(), PythonConfig.createDefault()));
     }
 
     /**
