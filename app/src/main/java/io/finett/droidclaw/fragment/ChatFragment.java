@@ -238,7 +238,7 @@ public class ChatFragment extends Fragment {
 
     private void scrollToBottom() {
         if (chatAdapter.getItemCount() > 0) {
-            recyclerView.smoothScrollToPosition(chatAdapter.getItemCount() - 1);
+            recyclerView.scrollToPosition(chatAdapter.getItemCount() - 1);
         }
     }
 

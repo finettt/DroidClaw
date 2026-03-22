@@ -25,8 +25,8 @@ public interface Tool {
 
     /**
      * Executes the tool with the given arguments.
-     * 
-     * @param arguments JSON object containing tool arguments
+     *
+     * @param arguments JSON object containing tool arguments (typically includes tool_call_id from LLM)
      * @return ToolResult containing the execution result
      */
     ToolResult execute(JsonObject arguments);

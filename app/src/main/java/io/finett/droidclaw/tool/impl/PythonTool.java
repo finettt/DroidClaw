@@ -157,8 +157,8 @@ public class PythonTool implements Tool {
             return null;
         }
 
-        // Reject paths with directory traversal
-        if (path.contains("..")) {
+        // Reject paths with directory traversal (check for ".." as path component)
+        if (path.contains("/..") || path.startsWith("..") || path.contains("/../")) {
             return null;
         }
 

@@ -71,8 +71,24 @@ public class ShellConfig {
 
         // Check if command is in blocklist
         for (String blocked : blockedCommands) {
-            if (trimmedCommand.startsWith(blocked) || firstToken.equals(blocked)) {
-                return false;
+            String[] blockedTokens = blocked.split("\\s+");
+            String firstBlockedToken = blockedTokens[0];
+            // Check if first token matches blocked command's first token
+            if (firstToken.equals(firstBlockedToken)) {
+                // Check if this is a blocklist entry with arguments (e.g., "rm -rf /")
+                if (blockedTokens.length > 1) {
+                    // Extract the argument portion of the blocked command
+                    String blockedArgs = blocked.substring(firstBlockedToken.length()).trim();
+                    // Extract the argument portion of the input command
+                    String commandArgs = trimmedCommand.substring(firstToken.length()).trim();
+                    // Block if the command has the same argument prefix as the blocked command
+                    // This blocks "rm -rf data" when "rm -rf /" is blocked
+                    if (blockedArgs.isEmpty() || commandArgs.startsWith(blockedArgs)) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
             }
         }
 
