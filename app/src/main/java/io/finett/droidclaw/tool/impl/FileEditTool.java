@@ -142,7 +142,7 @@ public class FileEditTool implements Tool {
         int changesCount = 0;
         for (int i = 0; i < lines.size(); i++) {
             String originalLine = lines.get(i);
-            String modifiedLine = originalLine.replaceAll(search, replacement);
+            String modifiedLine = originalLine.replace(search, replacement);
             if (!originalLine.equals(modifiedLine)) {
                 lines.set(i, modifiedLine);
                 changesCount++;

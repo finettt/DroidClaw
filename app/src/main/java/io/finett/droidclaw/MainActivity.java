@@ -286,6 +286,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // Reload chat sessions when returning to the activity
+        loadPersistedChatSessions();
+    }
+
+    @Override
     public boolean onSupportNavigateUp() {
         if (navController != null) {
             return NavigationUI.navigateUp(navController, appBarConfiguration)

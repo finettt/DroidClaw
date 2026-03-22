@@ -2,6 +2,8 @@ package io.finett.droidclaw.tool.impl;
 
 import com.google.gson.JsonObject;
 
+import java.nio.charset.StandardCharsets;
+
 import io.finett.droidclaw.filesystem.VirtualFileSystem;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
@@ -65,7 +67,7 @@ public class FileWriteTool implements Tool {
             // Build result JSON
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("path", path);
-            resultJson.addProperty("bytes_written", content.length());
+            resultJson.addProperty("bytes_written", content.getBytes(StandardCharsets.UTF_8).length);
             resultJson.addProperty("appended", append);
             resultJson.addProperty("success", true);
 

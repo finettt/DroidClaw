@@ -74,6 +74,6 @@ public class SettingsManager {
 
     public boolean isConfigured() {
         String apiKey = getApiKey();
-        return apiKey != null && !apiKey.isEmpty();
+        return apiKey != null && !apiKey.trim().isEmpty();
     }
 }
