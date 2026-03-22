@@ -1,5 +1,7 @@
 package io.finett.droidclaw.shell;
 
+import android.os.Build;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -98,13 +100,13 @@ public class ShellExecutor {
             stdoutThread.start();
             stderrThread.start();
 
-            // Wait for process to complete with timeout
-            boolean finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+            // Wait for process to complete with timeout (API level compatible)
+            boolean finished = waitForProcess(process, timeoutSeconds);
 
             if (!finished) {
                 // Process timed out
                 timedOut = true;
-                process.destroyForcibly();
+                destroyProcessForcibly(process);
                 exitCode = -1;
             } else {
                 exitCode = process.exitValue();
@@ -124,18 +126,72 @@ public class ShellExecutor {
             stderr = "Command execution interrupted: " + e.getMessage();
             exitCode = -1;
             timedOut = true;
-            if (process != null) {
-                process.destroyForcibly();
-            }
+            destroyProcessForcibly(process);
             Thread.currentThread().interrupt();
         } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly();
-            }
+            destroyProcessForcibly(process);
         }
 
         long executionTime = System.currentTimeMillis() - startTime;
         return new ShellResult(stdout, stderr, exitCode, timedOut, executionTime);
+    }
+
+    /**
+     * Wait for a process to complete with timeout, compatible with all API levels.
+     * Uses the modern API on API 26+ and a fallback implementation for older versions.
+     *
+     * @param process The process to wait for
+     * @param timeoutSeconds Timeout in seconds
+     * @return true if the process finished, false if it timed out
+     */
+    private boolean waitForProcess(Process process, int timeoutSeconds) throws InterruptedException {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Use the modern API on API 26+
+            return process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+        } else {
+            // Fallback for older API levels: use a worker thread to wait for the process
+            final boolean[] finished = {false};
+            Thread processThread = new Thread(() -> {
+                try {
+                    process.waitFor();
+                    finished[0] = true;
+                } catch (InterruptedException e) {
+                    // Thread was interrupted, timeout occurred
+                }
+            });
+            processThread.start();
+
+            // Wait for either the process to finish or timeout
+            processThread.join(timeoutSeconds * 1000L);
+
+            if (finished[0]) {
+                // Process finished within timeout
+                return true;
+            } else {
+                // Timeout occurred - interrupt the process thread
+                processThread.interrupt();
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Destroy a process forcibly, compatible with all API levels.
+     *
+     * @param process The process to destroy (may be null)
+     */
+    private void destroyProcessForcibly(Process process) {
+        if (process == null) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
+        } else {
+            // On older API levels, destroy() is the only option
+            process.destroy();
+        }
     }
 
     /**
