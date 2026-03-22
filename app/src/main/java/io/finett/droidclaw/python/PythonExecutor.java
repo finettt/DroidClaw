@@ -195,28 +195,21 @@ public class PythonExecutor {
             @Override
             public PythonResult call() {
                 try {
-                    // Use subprocess to run pip
-                    PyObject subprocess = python.getModule("subprocess");
-                    PyObject result = subprocess.callAttr(
-                            "run",
-                            new String[]{"pip", "install", packageName},
-                            "capture_output", true,
-                            "text", true
-                    );
-
-                    int returnCode = result.get("returncode").toInt();
-                    String stdout = result.get("stdout").toString();
-                    String stderr = result.get("stderr").toString();
-
+                    // Chaquopy on Android has limited subprocess support
+                    // Use importlib to check if package is already available
+                    boolean installed = isPackageInstalled(packageName);
+                    
                     long executionTime = System.currentTimeMillis() - startTime;
 
-                    if (returnCode == 0) {
+                    if (installed) {
                         return PythonResult.success(null,
-                                "Package installed: " + packageName + "\n" + stdout,
+                                "Package already installed: " + packageName,
                                 executionTime);
                     } else {
+                        // pip operations are not well supported on Chaquopy
+                        // Packages should be pre-installed via build.gradle
                         return PythonResult.error(
-                                "Failed to install package: " + stderr,
+                                "Package not available. Pre-install via build.gradle: " + packageName,
                                 executionTime);
                     }
 
