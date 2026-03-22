@@ -6,21 +6,22 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
-import androidx.test.core.app.ApplicationProvider;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
+@Config(sdk = 28)
 public class SettingsManagerTest {
 
     private SettingsManager settingsManager;
 
     @Before
     public void setUp() {
-        Context context = ApplicationProvider.getApplicationContext();
+        Context context = RuntimeEnvironment.getApplication();
         settingsManager = new SettingsManager(context);
     }
 
@@ -124,7 +125,7 @@ public class SettingsManagerTest {
         settingsManager.setMaxTokens(512);
         settingsManager.setTemperature(0.5f);
 
-        Context context = ApplicationProvider.getApplicationContext();
+        Context context = RuntimeEnvironment.getApplication();
         SettingsManager newInstance = new SettingsManager(context);
 
         assertEquals("persistent-key", newInstance.getApiKey());
