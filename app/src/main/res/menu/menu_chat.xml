@@ -11,6 +11,9 @@
                 android:id="@+id/action_chats"
                 android:title="@string/chats" />
             <item
+                android:id="@+id/action_skills"
+                android:title="@string/skills" />
+            <item
                 android:id="@+id/action_settings"
                 android:title="@string/settings" />
         </menu>
