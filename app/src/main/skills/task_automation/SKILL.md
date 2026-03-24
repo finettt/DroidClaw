@@ -1,18 +1,6 @@
 ---
 name: task_automation
-version: 1.0.0
-description: Common automation workflows and repetitive tasks
-author: system
-category: automation
-enabled: true
-required_tools:
-  - execute_shell
-  - read_file
-  - write_file
-tags:
-  - automation
-  - workflow
-  - batch-operations
+description: Common automation workflows and repetitive tasks. Use when you need to batch operations, schedule tasks, or execute repetitive workflows.
 ---
 
 # Task Automation Skill

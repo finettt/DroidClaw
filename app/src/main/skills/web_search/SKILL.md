@@ -1,16 +1,6 @@
 ---
 name: web_search
-version: 1.0.0
-description: Search the web for information using command-line tools
-author: system
-category: research
-enabled: true
-required_tools:
-  - execute_shell
-tags:
-  - search
-  - research
-  - information-gathering
+description: Search the web for information. Use when you need to find current information, research topics, or fetch web content.
 ---
 
 # Web Search Skill

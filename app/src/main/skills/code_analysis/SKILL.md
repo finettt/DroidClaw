@@ -1,18 +1,6 @@
 ---
 name: code_analysis
-version: 1.0.0
-description: Analyze code structure and quality
-author: system
-category: coding
-enabled: true
-required_tools:
-  - read_file
-  - search_files
-  - execute_shell
-tags:
-  - code-review
-  - analysis
-  - debugging
+description: Analyze code structure and quality. Use when reviewing code for bugs, anti-patterns, security issues, or best practices.
 ---
 
 # Code Analysis Skill

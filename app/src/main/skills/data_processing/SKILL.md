@@ -1,18 +1,6 @@
 ---
 name: data_processing
-version: 1.0.0
-description: Process and analyze structured data
-author: system
-category: data
-enabled: true
-required_tools:
-  - read_file
-  - write_file
-  - execute_shell
-tags:
-  - data
-  - transformation
-  - analysis
+description: Process and analyze structured data. Use when working with CSV, JSON, or other structured data formats for transformation, filtering, or analysis.
 ---
 
 # Data Processing Skill

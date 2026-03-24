@@ -1,18 +1,6 @@
 ---
 name: skill_creator
-version: 1.0.0
-description: Help users create custom skills through conversation instead of manual writing
-author: system
-category: custom
-enabled: true
-required_tools:
-  - read_file
-  - write_file
-  - list_files
-tags:
-  - skill-creation
-  - customization
-  - user-guided
+description: Help users create custom skills through conversation. Use when users ask to create, modify, or build new skills.
 ---
 
 # Skill Creator Skill
