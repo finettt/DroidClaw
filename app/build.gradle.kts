@@ -76,6 +76,21 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.okhttp)
     implementation(libs.gson)
+    
+    // Markwon for markdown rendering
+    implementation(libs.markwon.core) {
+        exclude(group = "org.jetbrains", module = "annotations-java5")
+    }
+    implementation(libs.markwon.ext.strikethrough) {
+        exclude(group = "org.jetbrains", module = "annotations-java5")
+    }
+    implementation(libs.markwon.ext.tables) {
+        exclude(group = "org.jetbrains", module = "annotations-java5")
+    }
+    implementation(libs.markwon.ext.tasklist) {
+        exclude(group = "org.jetbrains", module = "annotations-java5")
+    }
+    
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.mockito.core)

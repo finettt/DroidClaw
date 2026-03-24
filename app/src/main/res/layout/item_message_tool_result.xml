@@ -1,30 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingVertical="8dp">
+    android:paddingVertical="4dp"
+    android:paddingHorizontal="8dp">
 
-    <TextView
-        android:id="@+id/toolResultLabel"
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/toolResultCard"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Tool result:"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:textColor="?android:attr/textColorPrimary" />
+        android:layout_gravity="start"
+        android:layout_marginEnd="60dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="1dp">
 
-    <TextView
-        android:id="@+id/toolResultContent"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="14sp"
-        android:textColor="?android:attr/textColorPrimary"
-        android:layout_marginTop="4dp"
-        android:layout_marginEnd="80dp"
-        android:maxWidth="280dp"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp"
-        android:layout_gravity="start" />
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp"
+            android:maxWidth="300dp">
+
+            <!-- Header with icon, label and expand/collapse toggle -->
+            <LinearLayout
+                android:id="@+id/toolResultHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/toolResultIcon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="✅"
+                    android:textSize="14sp"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:id="@+id/toolResultLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tool result"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#388E3C" />
+
+                <TextView
+                    android:id="@+id/toolResultToggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▼"
+                    android:textSize="10sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:layout_marginStart="8dp" />
+
+            </LinearLayout>
+
+            <!-- Collapsible content area -->
+            <TextView
+                android:id="@+id/toolResultContent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:fontFamily="monospace"
+                android:layout_marginTop="6dp"
+                android:maxLines="15"
+                android:ellipsize="end" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>

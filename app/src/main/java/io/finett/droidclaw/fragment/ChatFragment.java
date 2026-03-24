@@ -41,6 +41,7 @@ public class ChatFragment extends Fragment {
     private View statusContainer;
     private ProgressBar progressBar;
     private TextView statusText;
+    private TextView statusSubText;
     private ChatAdapter chatAdapter;
     private LlmApiService apiService;
     private SettingsManager settingsManager;
@@ -91,6 +92,7 @@ public class ChatFragment extends Fragment {
         statusContainer = view.findViewById(R.id.statusContainer);
         progressBar = view.findViewById(R.id.progressBar);
         statusText = view.findViewById(R.id.statusText);
+        statusSubText = view.findViewById(R.id.statusSubText);
     }
 
     private void setupRecyclerView() {
@@ -183,18 +185,26 @@ public class ChatFragment extends Fragment {
         agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
             @Override
             public void onProgress(String status) {
-                updateStatus(status);
+                updateStatus(status, null);
             }
 
             @Override
             public void onToolCall(String toolName, String arguments) {
                 Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
-                updateStatus("Executing: " + toolName);
+                
+                // Enhanced status messages for different tool types
+                String statusMessage = getToolStatusMessage(toolName, arguments);
+                String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
+                updateStatus(statusMessage, iterationInfo);
             }
 
             @Override
             public void onToolResult(String toolName, String result) {
                 Log.d(TAG, "Tool result: " + toolName + " -> " + result.substring(0, Math.min(100, result.length())));
+                
+                // Show brief result feedback
+                String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
+                updateStatus("✓ " + formatToolName(toolName) + " completed", iterationInfo);
             }
 
             @Override
@@ -227,9 +237,17 @@ public class ChatFragment extends Fragment {
         messageInput.setEnabled(!loading);
     }
 
-    private void updateStatus(String status) {
+    private void updateStatus(String status, String subStatus) {
         if (statusText != null) {
             statusText.setText(status);
+        }
+        if (statusSubText != null) {
+            if (subStatus != null) {
+                statusSubText.setText(subStatus);
+                statusSubText.setVisibility(View.VISIBLE);
+            } else {
+                statusSubText.setVisibility(View.GONE);
+            }
         }
         if (statusContainer != null) {
             statusContainer.setVisibility(View.VISIBLE);
@@ -240,6 +258,62 @@ public class ChatFragment extends Fragment {
         if (chatAdapter.getItemCount() > 0) {
             recyclerView.scrollToPosition(chatAdapter.getItemCount() - 1);
         }
+    }
+    
+    /**
+     * Get a user-friendly status message for tool execution.
+     */
+    private String getToolStatusMessage(String toolName, String arguments) {
+        // Check for skill-related tools
+        if (toolName.equals("list_files") && arguments.contains(".agent/skills")) {
+            return "🔍 Discovering available skills...";
+        } else if (toolName.equals("read_file") && arguments.contains(".agent/skills")) {
+            return "📖 Loading skill definition...";
+        } else if (toolName.equals("read_file") && arguments.contains("SKILL.md")) {
+            return "📖 Reading skill instructions...";
+        }
+        
+        // Tool-specific messages
+        switch (toolName) {
+            case "execute_shell":
+                return "💻 Running shell command...";
+            case "execute_python":
+                return "🐍 Executing Python script...";
+            case "pip_install":
+                return "📦 Installing Python package...";
+            case "read_file":
+                return "📄 Reading file...";
+            case "write_file":
+                return "✏️ Writing file...";
+            case "edit_file":
+                return "✏️ Editing file...";
+            case "list_files":
+                return "📋 Listing directory...";
+            case "search_files":
+                return "🔍 Searching files...";
+            case "delete_file":
+                return "🗑️ Deleting file...";
+            case "file_info":
+                return "ℹ️ Getting file info...";
+            default:
+                return "🔧 Executing: " + formatToolName(toolName);
+        }
+    }
+    
+    /**
+     * Format tool name from snake_case to Title Case.
+     */
+    private String formatToolName(String toolName) {
+        String[] parts = toolName.split("_");
+        StringBuilder formatted = new StringBuilder();
+        for (String part : parts) {
+            if (formatted.length() > 0) {
+                formatted.append(" ");
+            }
+            formatted.append(part.substring(0, 1).toUpperCase())
+                    .append(part.substring(1).toLowerCase());
+        }
+        return formatted.toString();
     }
 
     @Override
