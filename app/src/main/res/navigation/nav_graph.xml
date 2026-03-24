@@ -22,6 +22,11 @@
         android:label="Settings" />
 
     <fragment
+        android:id="@+id/onboardingFragment"
+        android:name="io.finett.droidclaw.fragment.OnboardingFragment"
+        android:label="Onboarding" />
+
+    <fragment
         android:id="@+id/skillsBrowserFragment"
         android:name="io.finett.droidclaw.fragment.SkillsBrowserFragment"
         android:label="Skills" />

@@ -36,6 +36,38 @@
     <string name="shell_timeout">Shell Timeout (seconds)</string>
     <string name="shell_timeout_description">Maximum time for shell command execution (5-300)</string>
 
+    <!-- Onboarding strings -->
+    <string name="onboarding_title">Welcome to DroidClaw</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_done">Get Started</string>
+    <string name="onboarding_welcome_title">Hello, Welcome!</string>
+    <string name="onboarding_welcome_description">Let\'s get you set up with your personal assistant.</string>
+    <string name="onboarding_name_label">What should we call you?</string>
+    <string name="onboarding_name_hint">Enter your name</string>
+    <string name="onboarding_complete_title">All Set!</string>
+    <string name="onboarding_complete_description">DroidClaw is ready to help you.</string>
+    <string name="reset_onboarding">Reset Onboarding</string>
+    <string name="reset_onboarding_confirm">Are you sure you want to reset the onboarding? You will see the welcome screens again.</string>
+
+    <!-- Settings reorganization strings -->
+    <string name="settings_models">Models</string>
+    <string name="settings_providers">Providers</string>
+    <string name="settings_agent">Agent</string>
+    <string name="model_name">Model Name</string>
+    <string name="provider">Provider</string>
+    <string name="add_model">Add Model</string>
+    <string name="remove_model">Remove</string>
+    <string name="add_provider">Add Provider</string>
+    <string name="remove_provider">Remove</string>
+    <string name="predefined_provider">Predefined</string>
+    <string name="custom_provider">Custom</string>
+    <string name="base_url">Base URL</string>
+    <string name="default_model">Default Model</string>
+    <string name="models_list">Models List</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+
     <!-- Skills UI strings -->
     <string name="skills">Skills</string>
     <string name="skill_browser_title">Available Skills</string>
