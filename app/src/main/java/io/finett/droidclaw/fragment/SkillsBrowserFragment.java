@@ -147,7 +147,7 @@ public class SkillsBrowserFragment extends Fragment {
     }
 
     private SkillInfo readSkillFromDirectory(java.io.File skillDir) throws IOException {
-        java.io.File skillMdFile = new File(skillDir, "SKILL.md");
+        java.io.File skillMdFile = new java.io.File(skillDir, "SKILL.md");
         if (!skillMdFile.exists()) {
             return null;
         }

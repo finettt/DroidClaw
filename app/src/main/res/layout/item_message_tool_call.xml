@@ -9,7 +9,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="@drawable/bg_message_assistant"
         android:paddingHorizontal="16dp"
         android:paddingVertical="12dp"
         android:layout_gravity="start"

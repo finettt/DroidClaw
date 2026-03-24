@@ -1,6 +1,7 @@
 package io.finett.droidclaw.filesystem;
 
 import android.content.Context;
+import android.content.res.AssetManager;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -10,10 +11,12 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -23,6 +26,9 @@ public class WorkspaceManagerTest {
 
     @Mock
     private Context mockContext;
+    
+    @Mock
+    private AssetManager mockAssets;
 
     private WorkspaceManager workspaceManager;
     private File filesDir;
@@ -31,6 +37,11 @@ public class WorkspaceManagerTest {
     public void setUp() throws IOException {
         filesDir = tempFolder.newFolder("app_files");
         when(mockContext.getFilesDir()).thenReturn(filesDir);
+        when(mockContext.getAssets()).thenReturn(mockAssets);
+        
+        // Mock asset loading for skills - throw IOException to simulate missing assets in unit test
+        when(mockAssets.open(anyString())).thenThrow(new IOException("Asset not available in unit test"));
+        
         workspaceManager = new WorkspaceManager(mockContext);
     }
 

@@ -22,7 +22,6 @@
         android:textColor="?android:attr/textColorPrimary"
         android:layout_marginTop="4dp"
         android:layout_marginEnd="80dp"
-        android:background="@drawable/bg_message_assistant"
         android:maxWidth="280dp"
         android:paddingHorizontal="16dp"
         android:paddingVertical="12dp"

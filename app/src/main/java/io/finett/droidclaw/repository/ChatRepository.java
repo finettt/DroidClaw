@@ -4,6 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -12,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.ChatSession;
 
@@ -152,6 +156,34 @@ public class ChatRepository {
                 jsonObject.put("content", message.getContent());
                 jsonObject.put("type", message.getType());
                 jsonObject.put("timestamp", message.getTimestamp());
+                
+                // Save tool-related fields
+                if (message.getType() == ChatMessage.TYPE_TOOL_CALL) {
+                    if (message.getToolCalls() != null && !message.getToolCalls().isEmpty()) {
+                        JSONArray toolCallsArray = new JSONArray();
+                        for (LlmApiService.ToolCall toolCall : message.getToolCalls()) {
+                            JSONObject tcObj = new JSONObject();
+                            tcObj.put("id", toolCall.getId());
+                            tcObj.put("name", toolCall.getName());
+                            tcObj.put("arguments", toolCall.getArguments().toString());
+                            toolCallsArray.put(tcObj);
+                        }
+                        jsonObject.put("toolCalls", toolCallsArray);
+                        Log.d(TAG, "Saving tool call message with " + message.getToolCalls().size() + " tool calls");
+                    } else {
+                        Log.w(TAG, "Tool call message has null or empty toolCalls list!");
+                    }
+                }
+                
+                if (message.getType() == ChatMessage.TYPE_TOOL_RESULT) {
+                    if (message.getToolCallId() != null) {
+                        jsonObject.put("toolCallId", message.getToolCallId());
+                    }
+                    if (message.getToolName() != null) {
+                        jsonObject.put("toolName", message.getToolName());
+                    }
+                }
+                
                 jsonArray.put(jsonObject);
             }
             
@@ -181,15 +213,52 @@ public class ChatRepository {
             
             JSONArray jsonArray = new JSONArray(jsonString);
             for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                
-                String content = jsonObject.getString("content");
-                int type = jsonObject.getInt("type");
-                long timestamp = jsonObject.getLong("timestamp");
-                
-                ChatMessage message = new ChatMessage(content, type);
-                message.setTimestamp(timestamp);
-                messages.add(message);
+                try {
+                    JSONObject jsonObject = jsonArray.getJSONObject(i);
+                    
+                    // Handle content - optString returns "null" string if key doesn't exist
+                    String content = jsonObject.has("content") && !jsonObject.isNull("content")
+                        ? jsonObject.getString("content")
+                        : null;
+                    int type = jsonObject.getInt("type");
+                    long timestamp = jsonObject.getLong("timestamp");
+                    
+                    ChatMessage message;
+                    
+                    if (type == ChatMessage.TYPE_TOOL_CALL && jsonObject.has("toolCalls")) {
+                        // Restore tool calls
+                        JSONArray toolCallsArray = jsonObject.getJSONArray("toolCalls");
+                        List<LlmApiService.ToolCall> toolCalls = new ArrayList<>();
+                        for (int j = 0; j < toolCallsArray.length(); j++) {
+                            JSONObject tcObj = toolCallsArray.getJSONObject(j);
+                            String id = tcObj.getString("id");
+                            String name = tcObj.getString("name");
+                            String argsStr = tcObj.getString("arguments");
+                            JsonObject arguments = JsonParser.parseString(argsStr).getAsJsonObject();
+                            toolCalls.add(new LlmApiService.ToolCall(id, name, arguments));
+                        }
+                        message = ChatMessage.createToolCallMessage(toolCalls);
+                        Log.d(TAG, "Restored tool call message with " + toolCalls.size() + " tool calls");
+                    } else if (type == ChatMessage.TYPE_TOOL_RESULT) {
+                        // Restore tool result
+                        String toolCallId = jsonObject.has("toolCallId") && !jsonObject.isNull("toolCallId")
+                            ? jsonObject.getString("toolCallId")
+                            : null;
+                        String toolName = jsonObject.has("toolName") && !jsonObject.isNull("toolName")
+                            ? jsonObject.getString("toolName")
+                            : null;
+                        message = ChatMessage.createToolResultMessage(toolCallId, toolName, content);
+                        Log.d(TAG, "Restored tool result message for tool: " + toolName);
+                    } else {
+                        message = new ChatMessage(content, type);
+                    }
+                    
+                    message.setTimestamp(timestamp);
+                    messages.add(message);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error loading message at index " + i + " for session: " + sessionId, e);
+                    // Continue loading other messages
+                }
             }
             
             Log.d(TAG, "Loaded " + messages.size() + " messages for session: " + sessionId);
