@@ -1,15 +1,28 @@
 package io.finett.droidclaw.filesystem;
 
 import android.content.Context;
+import android.util.Log;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Manages the workspace directory structure for the agent's virtual filesystem.
  * Creates and initializes the workspace with standard directories on first use.
  */
 public class WorkspaceManager {
+    private static final String TAG = "WorkspaceManager";
+
+    // Built-in skills to copy from app assets/skills
+    private static final String[] BUILTIN_SKILLS = {
+        "skill_creator",
+        "web_search",
+        "code_analysis",
+        "data_processing",
+        "task_automation"
+    };
     private static final String WORKSPACE_DIR = "workspace";
     
     // Standard workspace directories
@@ -74,8 +87,83 @@ public class WorkspaceManager {
     }
 
     /**
+     * Initializes the workspace and copies built-in skills from app resources.
+     * Creates all standard directories and copies skill directories if they don't exist.
+     *
+     * @return true if initialization successful
+     * @throws IOException if directory creation or skill copying fails
+     */
+    public boolean initializeWithSkills() throws IOException {
+        // Initialize standard directories
+        initialize();
+
+        // Copy built-in skills
+        for (String skillName : BUILTIN_SKILLS) {
+            try {
+                copySkill(skillName);
+            } catch (IOException e) {
+                Log.w(TAG, "Failed to copy skill: " + skillName, e);
+                // Continue with other skills
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Copies a built-in skill from app resources to the workspace.
+     *
+     * @param skillName Name of the skill to copy
+     * @throws IOException if copy fails
+     */
+    private void copySkill(String skillName) throws IOException {
+        File skillDir = new File(workspaceRoot, SKILLS_DIR + "/" + skillName);
+
+        // Skip if skill already exists
+        if (skillDir.exists()) {
+            Log.d(TAG, "Skill already exists: " + skillName);
+            return;
+        }
+
+        Log.d(TAG, "Copying skill: " + skillName);
+
+        // Create skill directory
+        if (!skillDir.mkdirs()) {
+            throw new IOException("Failed to create skill directory: " + skillName);
+        }
+
+        // Copy SKILL.md file
+        String skillMdPath = "skills/" + skillName + "/SKILL.md";
+        try (InputStream inputStream = context.getAssets().open(skillMdPath)) {
+            File skillMdFile = new File(skillDir, "SKILL.md");
+            copyInputStreamToFile(inputStream, skillMdFile);
+            Log.d(TAG, "Copied SKILL.md for: " + skillName);
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to copy SKILL.md for skill: " + skillName, e);
+            // Don't fail if SKILL.md is missing - skill directory is still created
+        }
+    }
+
+    /**
+     * Copies an InputStream to a file.
+     *
+     * @param inputStream Input stream to copy
+     * @param outputFile Output file
+     * @throws IOException if copy fails
+     */
+    private void copyInputStreamToFile(InputStream inputStream, File outputFile) throws IOException {
+        try (FileOutputStream outputStream = new FileOutputStream(outputFile)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+        }
+    }
+
+    /**
      * Gets the workspace root directory.
-     * 
+     *
      * @return Workspace root file
      */
     public File getWorkspaceRoot() {

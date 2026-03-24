@@ -99,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupDrawerContent() {
         MaterialButton newChatButton = findViewById(R.id.button_new_chat);
+        MaterialButton skillsButton = findViewById(R.id.button_skills);
         MaterialButton settingsButton = findViewById(R.id.button_settings);
         RecyclerView chatSessionsRecyclerView = findViewById(R.id.recycler_chat_sessions);
 
@@ -138,6 +139,13 @@ public class MainActivity extends AppCompatActivity {
                 args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
                 navController.navigate(R.id.chatFragment, args);
                 Log.d(TAG, "New chat created with session_id: " + currentSessionId);
+            }
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
+        skillsButton.setOnClickListener(v -> {
+            if (navController != null) {
+                navController.navigate(R.id.skillsBrowserFragment);
             }
             drawerLayout.closeDrawer(GravityCompat.START);
         });

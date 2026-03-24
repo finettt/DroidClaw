@@ -11,11 +11,24 @@
         <action
             android:id="@+id/action_chatFragment_to_settingsFragment"
             app:destination="@id/settingsFragment" />
+        <action
+            android:id="@+id/action_chatFragment_to_skillsBrowserFragment"
+            app:destination="@id/skillsBrowserFragment" />
     </fragment>
 
     <fragment
         android:id="@+id/settingsFragment"
         android:name="io.finett.droidclaw.fragment.SettingsFragment"
         android:label="Settings" />
+
+    <fragment
+        android:id="@+id/skillsBrowserFragment"
+        android:name="io.finett.droidclaw.fragment.SkillsBrowserFragment"
+        android:label="Skills" />
+
+    <fragment
+        android:id="@+id/skillContentFragment"
+        android:name="io.finett.droidclaw.fragment.SkillContentFragment"
+        android:label="Skill Details" />
 
 </navigation>

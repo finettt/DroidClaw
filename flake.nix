@@ -39,11 +39,20 @@
             export PYTHON="${pkgs.python311}/bin/python3.11"
             export PYTHON_VERSION="3.11"
 
+            # Aliases for common tasks
+            alias build="./gradlew assembleDebug"
+            alias install="./gradlew installDebug"
+            alias test="./gradlew testDebugUnitTest"
+            alias lint="./gradlew lintDebug"
+            alias clean="./gradlew clean"
+
             echo "DroidClaw dev shell with Python support"
             echo "JAVA_HOME=$JAVA_HOME"
             echo "PYTHON=$PYTHON"
             java -version
             python3 --version
+            echo ""
+            echo "Available aliases: build, install, test, lint, clean"
           '';
         };
       });

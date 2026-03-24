@@ -40,23 +40,23 @@ public class ToolRegistry {
 
     public ToolRegistry(Context context) {
         this.context = context;
-        
+
         // Initialize workspace and filesystem
         this.workspaceManager = new WorkspaceManager(context);
         try {
-            workspaceManager.initialize();
+            workspaceManager.initializeWithSkills();
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize workspace", e);
         }
         this.vfs = new VirtualFileSystem(workspaceManager);
-        
+
         // Initialize executors
         ShellConfig shellConfig = ShellConfig.createDefault();
         this.shellExecutor = new ShellExecutor(shellConfig, workspaceManager.getPathValidator());
-        
+
         PythonConfig pythonConfig = PythonConfig.createDefault();
         this.pythonExecutor = new PythonExecutor(context, pythonConfig);
-        
+
         // Register all tools
         registerTools();
     }

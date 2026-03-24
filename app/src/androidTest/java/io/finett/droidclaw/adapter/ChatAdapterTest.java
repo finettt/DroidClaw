@@ -326,4 +326,149 @@ public class ChatAdapterTest {
         ));
         assertEquals(1, adapter.getItemCount());
     }
+
+    @Test
+    public void addMessage_toolCallMessage_increasesCount() {
+        // Create a tool call message
+        ChatMessage toolCallMessage = new ChatMessage(null, ChatMessage.TYPE_TOOL_CALL);
+        adapter.addMessage(toolCallMessage);
+
+        assertEquals(1, adapter.getItemCount());
+    }
+
+    @Test
+    public void addMessage_toolResultMessage_increasesCount() {
+        // Create a tool result message
+        ChatMessage toolResultMessage = new ChatMessage("Result content", ChatMessage.TYPE_TOOL_RESULT);
+        adapter.addMessage(toolResultMessage);
+
+        assertEquals(1, adapter.getItemCount());
+    }
+
+    @Test
+    public void getItemViewType_toolCallMessage_returnsToolCallType() {
+        adapter.addMessage(new ChatMessage(null, ChatMessage.TYPE_TOOL_CALL));
+
+        int viewType = adapter.getItemViewType(0);
+
+        assertEquals(ChatMessage.TYPE_TOOL_CALL, viewType);
+    }
+
+    @Test
+    public void getItemViewType_toolResultMessage_returnsToolResultType() {
+        adapter.addMessage(new ChatMessage("Result content", ChatMessage.TYPE_TOOL_RESULT));
+
+        int viewType = adapter.getItemViewType(0);
+
+        assertEquals(ChatMessage.TYPE_TOOL_RESULT, viewType);
+    }
+
+    @Test
+    public void getItemViewType_mixedMessages_withToolTypes_returnsCorrectTypes() {
+        adapter.addMessage(new ChatMessage("User msg", ChatMessage.TYPE_USER));
+        adapter.addMessage(new ChatMessage(null, ChatMessage.TYPE_TOOL_CALL));
+        adapter.addMessage(new ChatMessage("Result", ChatMessage.TYPE_TOOL_RESULT));
+
+        assertEquals(ChatMessage.TYPE_USER, adapter.getItemViewType(0));
+        assertEquals(ChatMessage.TYPE_TOOL_CALL, adapter.getItemViewType(1));
+        assertEquals(ChatMessage.TYPE_TOOL_RESULT, adapter.getItemViewType(2));
+    }
+
+    @Test
+    public void onCreateViewHolder_toolCallMessage_createsCorrectViewHolder() {
+        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
+        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_TOOL_CALL
+        );
+
+        assertNotNull(viewHolder);
+        assertNotNull(viewHolder.itemView);
+    }
+
+    @Test
+    public void onCreateViewHolder_toolResultMessage_createsCorrectViewHolder() {
+        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
+        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_TOOL_RESULT
+        );
+
+        assertNotNull(viewHolder);
+        assertNotNull(viewHolder.itemView);
+    }
+
+    @Test
+    public void onBindViewHolder_toolCallMessage_bindsCorrectly() {
+        ChatMessage toolCallMessage = ChatMessage.createToolCallMessage(null);
+        adapter.addMessage(toolCallMessage);
+
+        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
+        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_TOOL_CALL
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        // Verify the view holder has the correct views
+        assertNotNull(viewHolder.itemView.findViewById(R.id.toolCallIcon));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.toolCallText));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.toolCallArgs));
+    }
+
+    @Test
+    public void onBindViewHolder_toolResultMessage_bindsCorrectly() {
+        ChatMessage toolResultMessage = ChatMessage.createToolResultMessage("call-123", "test_tool", "Result content");
+        adapter.addMessage(toolResultMessage);
+
+        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
+        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_TOOL_RESULT
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        // Verify the view holder has the correct views
+        assertNotNull(viewHolder.itemView.findViewById(R.id.toolResultLabel));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.toolResultContent));
+    }
+
+    @Test
+    public void addMessage_withToolCallAndToolResult_maintainsCorrectOrder() {
+        adapter.addMessage(new ChatMessage("User request", ChatMessage.TYPE_USER));
+        adapter.addMessage(ChatMessage.createToolCallMessage(null));
+        adapter.addMessage(ChatMessage.createToolResultMessage("call-123", "test_tool", "Tool result"));
+
+        assertEquals(3, adapter.getItemCount());
+        assertEquals("User request", adapter.getMessages().get(0).getContent());
+        assertEquals(ChatMessage.TYPE_TOOL_CALL, adapter.getMessages().get(1).getType());
+        assertEquals("Tool result", adapter.getMessages().get(2).getContent());
+    }
+
+    @Test
+    public void setMessages_withToolMessages_replacesExistingMessages() {
+        adapter.addMessage(new ChatMessage("Old message", ChatMessage.TYPE_USER));
+
+        List<ChatMessage> newMessages = Arrays.asList(
+                new ChatMessage("User request", ChatMessage.TYPE_USER),
+                ChatMessage.createToolCallMessage(null),
+                ChatMessage.createToolResultMessage("call-123", "test_tool", "Result")
+        );
+
+        adapter.setMessages(newMessages);
+
+        assertEquals(3, adapter.getItemCount());
+        List<ChatMessage> messages = adapter.getMessages();
+        assertEquals("User request", messages.get(0).getContent());
+        assertEquals(ChatMessage.TYPE_TOOL_CALL, messages.get(1).getType());
+        assertEquals("Result", messages.get(2).getContent());
+    }
 }
