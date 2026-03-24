@@ -1,21 +1,20 @@
 ---
 name: web_search
-version: 1.0.0
-description: Search the web for information using command-line tools
-author: system
-category: research
-enabled: true
-required_tools:
-  - execute_shell
-tags:
-  - search
-  - research
-  - information-gathering
+description: Search the web for information. Use when you need to find current information, research topics, or fetch web content.
 ---
 
 # Web Search Skill
 
 This skill enables you to search the web for information using command-line tools like curl and wget.
+
+## When to Use This Skill
+
+Use this skill when:
+- You need current or up-to-date information
+- Researching a topic that requires web lookup
+- Fetching documentation or technical references
+- Finding news or recent events
+- Looking up APIs, libraries, or frameworks
 
 ## Capabilities
 

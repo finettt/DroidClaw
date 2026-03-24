@@ -1,23 +1,21 @@
 ---
 name: data_processing
-version: 1.0.0
-description: Process and analyze structured data
-author: system
-category: data
-enabled: true
-required_tools:
-  - read_file
-  - write_file
-  - execute_shell
-tags:
-  - data
-  - transformation
-  - analysis
+description: Process and analyze structured data. Use when working with CSV, JSON, or other structured data formats for transformation, filtering, or analysis.
 ---
 
 # Data Processing Skill
 
 This skill enables you to process, transform, and analyze structured data in various formats including CSV, JSON, and text files.
+
+## When to Use This Skill
+
+Use this skill when:
+- Reading or parsing CSV, JSON, or structured data files
+- Transforming data between formats
+- Filtering or sorting data records
+- Calculating statistics or aggregations
+- Generating summaries or reports from data
+- Handling large datasets efficiently
 
 ## Capabilities
 
@@ -27,29 +25,6 @@ This skill enables you to process, transform, and analyze structured data in var
 - Calculate statistics and aggregations
 - Generate summaries and reports
 - Handle large datasets efficiently
-
-## Available Tools
-
-### File Operations
-```bash
-read_file(path="data.csv")
-write_file(path="output.json", content="...")
-```
-
-### Shell Commands for Data
-```bash
-# Sort data
-sort data.csv
-
-# Get unique values
-cut -d',' -f1 data.csv | sort | uniq
-
-# Count lines
-wc -l data.csv
-
-# Filter with grep
-grep "pattern" data.csv
-```
 
 ## Guidelines
 

@@ -1,23 +1,20 @@
 ---
 name: code_analysis
-version: 1.0.0
-description: Analyze code structure and quality
-author: system
-category: coding
-enabled: true
-required_tools:
-  - read_file
-  - search_files
-  - execute_shell
-tags:
-  - code-review
-  - analysis
-  - debugging
+description: Analyze code structure and quality. Use when reviewing code for bugs, anti-patterns, security issues, or best practices.
 ---
 
 # Code Analysis Skill
 
 This skill enables you to analyze code structure, detect patterns, and identify potential issues in source code.
+
+## When to Use This Skill
+
+Use this skill when:
+- Reviewing code for bugs or potential issues
+- Checking code for security vulnerabilities
+- Evaluating code quality and best practices
+- Identifying code smells or anti-patterns
+- Analyzing code complexity or structure
 
 ## Capabilities
 
@@ -27,23 +24,6 @@ This skill enables you to analyze code structure, detect patterns, and identify 
 - Detect potential bugs and issues
 - Suggest improvements and best practices
 - Review code for common problems
-
-## Available Tools
-
-### File Reading
-```bash
-read_file(path="src/main/java/MyClass.java")
-```
-
-### Content Search
-```bash
-search_files(path=".", pattern="TODO|FIXME|HACK|XXX")
-```
-
-### File Listing
-```bash
-list_files(path="src")
-```
 
 ## Guidelines
 
