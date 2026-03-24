@@ -204,10 +204,35 @@ public class WorkspaceManagerTest {
         WorkspaceManager.WorkspaceStats smallStats = new WorkspaceManager.WorkspaceStats(
             new File(filesDir, "nonexistent")
         );
-        
+
         String formatted = smallStats.getFormattedSize();
         assertNotNull(formatted);
-        assertTrue(formatted.endsWith(" B") || formatted.contains("KB") || 
+        assertTrue(formatted.endsWith(" B") || formatted.contains("KB") ||
                    formatted.contains("MB") || formatted.contains("GB"));
+    }
+
+    @Test
+    public void testInitializeWithSkills() throws Exception {
+        // Verify initializeWithSkills works without error
+        assertTrue(workspaceManager.initializeWithSkills());
+
+        // Verify workspace root exists
+        File workspaceRoot = workspaceManager.getWorkspaceRoot();
+        assertTrue(workspaceRoot.exists());
+        assertTrue(workspaceRoot.isDirectory());
+
+        // Verify skills directory exists
+        File skillsDir = workspaceManager.getSkillsDirectory();
+        assertTrue(skillsDir.exists());
+    }
+
+    @Test
+    public void testInitializeWithSkillsIdempotent() throws Exception {
+        // Initialize twice
+        assertTrue(workspaceManager.initialize());
+        assertTrue(workspaceManager.initializeWithSkills());
+
+        // Should still work
+        assertTrue(workspaceManager.getWorkspaceRoot().exists());
     }
 }
