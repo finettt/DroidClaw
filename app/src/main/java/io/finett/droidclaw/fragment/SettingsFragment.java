@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.SeekBar;
@@ -14,6 +16,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
+
+import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.util.SettingsManager;
@@ -28,6 +32,13 @@ public class SettingsFragment extends Fragment {
     private TextView temperatureValue;
     private Button saveButton;
     private SettingsManager settingsManager;
+    
+    // Agent settings views
+    private SwitchMaterial shellAccessSwitch;
+    private AutoCompleteTextView sandboxModeDropdown;
+    private EditText maxIterationsInput;
+    private SwitchMaterial requireApprovalSwitch;
+    private EditText shellTimeoutInput;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -59,6 +70,29 @@ public class SettingsFragment extends Fragment {
         temperatureSeekBar = view.findViewById(R.id.temperatureSeekBar);
         temperatureValue = view.findViewById(R.id.temperatureValue);
         saveButton = view.findViewById(R.id.saveButton);
+        
+        // Agent settings views
+        shellAccessSwitch = view.findViewById(R.id.shellAccessSwitch);
+        sandboxModeDropdown = view.findViewById(R.id.sandboxModeDropdown);
+        maxIterationsInput = view.findViewById(R.id.maxIterationsInput);
+        requireApprovalSwitch = view.findViewById(R.id.requireApprovalSwitch);
+        shellTimeoutInput = view.findViewById(R.id.shellTimeoutInput);
+        
+        // Setup sandbox mode dropdown
+        setupSandboxModeDropdown();
+    }
+    
+    private void setupSandboxModeDropdown() {
+        String[] sandboxModes = {
+            getString(R.string.sandbox_strict),
+            getString(R.string.sandbox_relaxed)
+        };
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+            requireContext(),
+            android.R.layout.simple_dropdown_item_1line,
+            sandboxModes
+        );
+        sandboxModeDropdown.setAdapter(adapter);
     }
 
     private void loadSettings() {
@@ -72,6 +106,20 @@ public class SettingsFragment extends Fragment {
         int progress = (int) (temperature * 100);
         temperatureSeekBar.setProgress(progress);
         updateTemperatureLabel(temperature);
+        
+        // Load agent settings
+        shellAccessSwitch.setChecked(settingsManager.isShellAccessEnabled());
+        
+        String sandboxMode = settingsManager.getSandboxMode();
+        if ("relaxed".equals(sandboxMode)) {
+            sandboxModeDropdown.setText(getString(R.string.sandbox_relaxed), false);
+        } else {
+            sandboxModeDropdown.setText(getString(R.string.sandbox_strict), false);
+        }
+        
+        maxIterationsInput.setText(String.valueOf(settingsManager.getMaxAgentIterations()));
+        requireApprovalSwitch.setChecked(settingsManager.isRequireApproval());
+        shellTimeoutInput.setText(String.valueOf(settingsManager.getShellTimeoutSeconds()));
     }
 
     private void setupListeners() {
@@ -102,6 +150,8 @@ public class SettingsFragment extends Fragment {
         String modelName = modelNameInput.getText().toString().trim();
         String systemPrompt = systemPromptInput.getText().toString().trim();
         String maxTokensStr = maxTokensInput.getText().toString().trim();
+        String maxIterationsStr = maxIterationsInput.getText().toString().trim();
+        String shellTimeoutStr = shellTimeoutInput.getText().toString().trim();
 
         // Validation
         if (apiKey.isEmpty()) {
@@ -131,7 +181,39 @@ public class SettingsFragment extends Fragment {
             return;
         }
 
+        // Validate agent settings
+        int maxIterations;
+        try {
+            maxIterations = Integer.parseInt(maxIterationsStr);
+            if (maxIterations < 1 || maxIterations > 50) {
+                maxIterationsInput.setError("Max iterations must be between 1 and 50");
+                return;
+            }
+        } catch (NumberFormatException e) {
+            maxIterationsInput.setError("Invalid number");
+            return;
+        }
+        
+        int shellTimeout;
+        try {
+            shellTimeout = Integer.parseInt(shellTimeoutStr);
+            if (shellTimeout < 5 || shellTimeout > 300) {
+                shellTimeoutInput.setError("Shell timeout must be between 5 and 300 seconds");
+                return;
+            }
+        } catch (NumberFormatException e) {
+            shellTimeoutInput.setError("Invalid number");
+            return;
+        }
+
         float temperature = temperatureSeekBar.getProgress() / 100f;
+        
+        // Determine sandbox mode from dropdown selection
+        String sandboxMode = "strict";
+        String selectedSandbox = sandboxModeDropdown.getText().toString();
+        if (selectedSandbox.equals(getString(R.string.sandbox_relaxed))) {
+            sandboxMode = "relaxed";
+        }
 
         // Save settings
         settingsManager.setApiKey(apiKey);
@@ -140,6 +222,13 @@ public class SettingsFragment extends Fragment {
         settingsManager.setSystemPrompt(systemPrompt);
         settingsManager.setMaxTokens(maxTokens);
         settingsManager.setTemperature(temperature);
+        
+        // Save agent settings
+        settingsManager.setShellAccessEnabled(shellAccessSwitch.isChecked());
+        settingsManager.setSandboxMode(sandboxMode);
+        settingsManager.setMaxAgentIterations(maxIterations);
+        settingsManager.setRequireApproval(requireApprovalSwitch.isChecked());
+        settingsManager.setShellTimeoutSeconds(shellTimeout);
 
         Toast.makeText(requireContext(), "Settings saved", Toast.LENGTH_SHORT).show();
         Navigation.findNavController(requireView()).navigateUp();

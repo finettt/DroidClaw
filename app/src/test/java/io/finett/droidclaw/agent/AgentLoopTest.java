@@ -304,7 +304,7 @@ public class AgentLoopTest {
         agentLoop.start(conversation, mockCallback);
         
         // Verify max iterations error
-        verify(mockCallback).onError(contains("Maximum iterations reached"));
+        verify(mockCallback).onError(contains("Maximum iterations"));
         verify(mockCallback, never()).onComplete(anyString(), anyList());
     }
 

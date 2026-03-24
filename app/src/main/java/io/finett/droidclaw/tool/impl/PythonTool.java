@@ -53,6 +53,25 @@ public class PythonTool implements Tool {
     }
 
     @Override
+    public boolean requiresApproval() {
+        return true; // Python execution can be dangerous
+    }
+    
+    @Override
+    public String getApprovalDescription(JsonObject arguments) {
+        if (arguments.has("package")) {
+            return "Install Python package via pip:\n" + arguments.get("package").getAsString();
+        } else if (arguments.has("script_path")) {
+            return "Execute Python script:\n" + arguments.get("script_path").getAsString();
+        } else if (arguments.has("code")) {
+            String code = arguments.get("code").getAsString();
+            String preview = code.length() > 50 ? code.substring(0, 47) + "..." : code;
+            return "Execute Python code:\n" + preview;
+        }
+        return "Execute Python operation";
+    }
+
+    @Override
     public ToolDefinition getDefinition() {
         JsonObject parameters = new ToolDefinition.ParametersBuilder()
                 .addString("code", "Python code to execute", false)

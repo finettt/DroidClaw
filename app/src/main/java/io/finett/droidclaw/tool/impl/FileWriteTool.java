@@ -45,6 +45,20 @@ public class FileWriteTool implements Tool {
     public ToolDefinition getDefinition() {
         return definition;
     }
+    
+    @Override
+    public boolean requiresApproval() {
+        return true; // File writing can overwrite existing files
+    }
+    
+    @Override
+    public String getApprovalDescription(JsonObject arguments) {
+        String path = arguments.has("path") ?
+            arguments.get("path").getAsString() : "unknown file";
+        boolean append = arguments.has("append") && arguments.get("append").getAsBoolean();
+        String action = append ? "Append to" : "Write to";
+        return action + " file:\n" + path;
+    }
 
     @Override
     public ToolResult execute(JsonObject arguments) {

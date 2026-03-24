@@ -135,4 +135,124 @@ public class SettingsManagerTest {
         assertEquals(512, newInstance.getMaxTokens());
         assertEquals(0.5f, newInstance.getTemperature(), 0.001f);
     }
+
+    // ========================
+    // Agent Settings Tests
+    // ========================
+
+    @Test
+    public void isShellAccessEnabled_whenNotSet_returnsFalse() {
+        assertFalse(settingsManager.isShellAccessEnabled());
+    }
+
+    @Test
+    public void setShellAccessEnabled_storesAndRetrievesValue() {
+        settingsManager.setShellAccessEnabled(true);
+
+        assertTrue(settingsManager.isShellAccessEnabled());
+    }
+
+    @Test
+    public void setShellAccessEnabled_canBeDisabled() {
+        settingsManager.setShellAccessEnabled(true);
+        settingsManager.setShellAccessEnabled(false);
+
+        assertFalse(settingsManager.isShellAccessEnabled());
+    }
+
+    @Test
+    public void getSandboxMode_whenNotSet_returnsStrict() {
+        assertEquals("strict", settingsManager.getSandboxMode());
+    }
+
+    @Test
+    public void setSandboxMode_storesAndRetrievesValue() {
+        settingsManager.setSandboxMode("relaxed");
+
+        assertEquals("relaxed", settingsManager.getSandboxMode());
+    }
+
+    @Test
+    public void setSandboxMode_canBeSetToStrict() {
+        settingsManager.setSandboxMode("relaxed");
+        settingsManager.setSandboxMode("strict");
+
+        assertEquals("strict", settingsManager.getSandboxMode());
+    }
+
+    @Test
+    public void getMaxAgentIterations_whenNotSet_returnsDefault() {
+        assertEquals(20, settingsManager.getMaxAgentIterations());
+    }
+
+    @Test
+    public void setMaxAgentIterations_storesAndRetrievesValue() {
+        settingsManager.setMaxAgentIterations(50);
+
+        assertEquals(50, settingsManager.getMaxAgentIterations());
+    }
+
+    @Test
+    public void setMaxAgentIterations_canBeSetToMinimum() {
+        settingsManager.setMaxAgentIterations(1);
+
+        assertEquals(1, settingsManager.getMaxAgentIterations());
+    }
+
+    @Test
+    public void isRequireApproval_whenNotSet_returnsTrue() {
+        assertTrue(settingsManager.isRequireApproval());
+    }
+
+    @Test
+    public void setRequireApproval_storesAndRetrievesValue() {
+        settingsManager.setRequireApproval(false);
+
+        assertFalse(settingsManager.isRequireApproval());
+    }
+
+    @Test
+    public void setRequireApproval_canBeEnabled() {
+        settingsManager.setRequireApproval(false);
+        settingsManager.setRequireApproval(true);
+
+        assertTrue(settingsManager.isRequireApproval());
+    }
+
+    @Test
+    public void getShellTimeoutSeconds_whenNotSet_returnsDefault() {
+        assertEquals(30, settingsManager.getShellTimeoutSeconds());
+    }
+
+    @Test
+    public void setShellTimeoutSeconds_storesAndRetrievesValue() {
+        settingsManager.setShellTimeoutSeconds(60);
+
+        assertEquals(60, settingsManager.getShellTimeoutSeconds());
+    }
+
+    @Test
+    public void setShellTimeoutSeconds_canBeSetToMaximum() {
+        settingsManager.setShellTimeoutSeconds(300);
+
+        assertEquals(300, settingsManager.getShellTimeoutSeconds());
+    }
+
+    @Test
+    public void agentSettingsPersistAcrossInstances() {
+        settingsManager.setShellAccessEnabled(true);
+        settingsManager.setSandboxMode("relaxed");
+        settingsManager.setMaxAgentIterations(30);
+        settingsManager.setRequireApproval(false);
+        settingsManager.setShellTimeoutSeconds(120);
+
+        Context context = RuntimeEnvironment.getApplication();
+        SettingsManager newInstance = new SettingsManager(context);
+
+        assertTrue(newInstance.isShellAccessEnabled());
+        assertEquals("relaxed", newInstance.getSandboxMode());
+        assertEquals(30, newInstance.getMaxAgentIterations());
+        assertFalse(newInstance.isRequireApproval());
+        assertEquals(120, newInstance.getShellTimeoutSeconds());
+    }
 }

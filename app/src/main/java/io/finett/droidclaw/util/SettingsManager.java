@@ -11,12 +11,26 @@ public class SettingsManager {
     private static final String KEY_SYSTEM_PROMPT = "system_prompt";
     private static final String KEY_MAX_TOKENS = "max_tokens";
     private static final String KEY_TEMPERATURE = "temperature";
+    
+    // Agent settings keys (DroidClaw is always an agent)
+    private static final String KEY_SHELL_ACCESS_ENABLED = "shell_access_enabled";
+    private static final String KEY_SANDBOX_MODE = "sandbox_mode";
+    private static final String KEY_MAX_AGENT_ITERATIONS = "max_agent_iterations";
+    private static final String KEY_REQUIRE_APPROVAL = "require_approval";
+    private static final String KEY_SHELL_TIMEOUT_SECONDS = "shell_timeout_seconds";
 
     private static final String DEFAULT_API_URL = "https://api.openai.com/v1/chat/completions";
     private static final String DEFAULT_MODEL_NAME = "gpt-3.5-turbo";
     private static final String DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant.";
     private static final int DEFAULT_MAX_TOKENS = 1024;
     private static final float DEFAULT_TEMPERATURE = 0.7f;
+    
+    // Agent settings defaults (DroidClaw is always an agent)
+    private static final boolean DEFAULT_SHELL_ACCESS_ENABLED = false;
+    private static final String DEFAULT_SANDBOX_MODE = "strict"; // "strict" or "relaxed"
+    private static final int DEFAULT_MAX_AGENT_ITERATIONS = 20;
+    private static final boolean DEFAULT_REQUIRE_APPROVAL = true;
+    private static final int DEFAULT_SHELL_TIMEOUT_SECONDS = 30;
 
     private final SharedPreferences prefs;
 
@@ -75,5 +89,46 @@ public class SettingsManager {
     public boolean isConfigured() {
         String apiKey = getApiKey();
         return apiKey != null && !apiKey.trim().isEmpty();
+    }
+    
+    // Agent settings (DroidClaw is always an agent)
+    public boolean isShellAccessEnabled() {
+        return prefs.getBoolean(KEY_SHELL_ACCESS_ENABLED, DEFAULT_SHELL_ACCESS_ENABLED);
+    }
+    
+    public void setShellAccessEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_SHELL_ACCESS_ENABLED, enabled).apply();
+    }
+    
+    public String getSandboxMode() {
+        return prefs.getString(KEY_SANDBOX_MODE, DEFAULT_SANDBOX_MODE);
+    }
+    
+    public void setSandboxMode(String mode) {
+        prefs.edit().putString(KEY_SANDBOX_MODE, mode).apply();
+    }
+    
+    public int getMaxAgentIterations() {
+        return prefs.getInt(KEY_MAX_AGENT_ITERATIONS, DEFAULT_MAX_AGENT_ITERATIONS);
+    }
+    
+    public void setMaxAgentIterations(int iterations) {
+        prefs.edit().putInt(KEY_MAX_AGENT_ITERATIONS, iterations).apply();
+    }
+    
+    public boolean isRequireApproval() {
+        return prefs.getBoolean(KEY_REQUIRE_APPROVAL, DEFAULT_REQUIRE_APPROVAL);
+    }
+    
+    public void setRequireApproval(boolean require) {
+        prefs.edit().putBoolean(KEY_REQUIRE_APPROVAL, require).apply();
+    }
+    
+    public int getShellTimeoutSeconds() {
+        return prefs.getInt(KEY_SHELL_TIMEOUT_SECONDS, DEFAULT_SHELL_TIMEOUT_SECONDS);
+    }
+    
+    public void setShellTimeoutSeconds(int seconds) {
+        prefs.edit().putInt(KEY_SHELL_TIMEOUT_SECONDS, seconds).apply();
     }
 }
