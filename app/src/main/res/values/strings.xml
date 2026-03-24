@@ -21,6 +21,20 @@
     <string name="max_tokens">Max Tokens</string>
     <string name="temperature">Temperature</string>
     <string name="save_settings">Save Settings</string>
+    
+    <!-- Agent settings -->
+    <string name="agent_settings">Agent Settings</string>
+    <string name="shell_access">Shell Access</string>
+    <string name="shell_access_description">Allow agent to execute shell commands</string>
+    <string name="sandbox_mode">Sandbox Mode</string>
+    <string name="sandbox_strict">Strict (Workspace only)</string>
+    <string name="sandbox_relaxed">Relaxed (External storage access)</string>
+    <string name="max_iterations">Max Agent Iterations</string>
+    <string name="max_iterations_description">Maximum number of tool execution cycles (1-50)</string>
+    <string name="require_approval">Require Approval</string>
+    <string name="require_approval_description">Ask for confirmation before executing tools</string>
+    <string name="shell_timeout">Shell Timeout (seconds)</string>
+    <string name="shell_timeout_description">Maximum time for shell command execution (5-300)</string>
 
     <!-- Skills UI strings -->
     <string name="skills">Skills</string>

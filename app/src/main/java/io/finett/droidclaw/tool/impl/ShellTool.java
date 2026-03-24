@@ -114,6 +114,20 @@ public class ShellTool implements Tool {
     public String getName() {
         return TOOL_NAME;
     }
+    
+    @Override
+    public boolean requiresApproval() {
+        return true; // Shell commands are potentially dangerous
+    }
+    
+    @Override
+    public String getApprovalDescription(com.google.gson.JsonObject arguments) {
+        String command = arguments.has("command") ?
+            arguments.get("command").getAsString() : "unknown command";
+        String workingDir = arguments.has("working_directory") ?
+            arguments.get("working_directory").getAsString() : ".";
+        return "Execute shell command:\n" + command + "\n\nWorking directory: " + workingDir;
+    }
 
     @Override
     public ToolDefinition getDefinition() {

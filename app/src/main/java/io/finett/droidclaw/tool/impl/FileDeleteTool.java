@@ -41,6 +41,18 @@ public class FileDeleteTool implements Tool {
     public ToolDefinition getDefinition() {
         return definition;
     }
+    
+    @Override
+    public boolean requiresApproval() {
+        return true; // File deletion is a destructive operation
+    }
+    
+    @Override
+    public String getApprovalDescription(JsonObject arguments) {
+        String path = arguments.has("path") ?
+            arguments.get("path").getAsString() : "unknown file";
+        return "Delete file or directory:\n" + path;
+    }
 
     @Override
     public ToolResult execute(JsonObject arguments) {

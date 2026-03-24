@@ -1,5 +1,6 @@
 package io.finett.droidclaw.fragment;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,6 +18,8 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,8 +60,10 @@ public class ChatFragment extends Fragment {
         settingsManager = new SettingsManager(requireContext());
         apiService = new LlmApiService(settingsManager);
         chatRepository = new ChatRepository(requireContext());
-        toolRegistry = new ToolRegistry(requireContext());
-        agentLoop = new AgentLoop(apiService, toolRegistry);
+        // Create ToolRegistry with SettingsManager for shell access settings
+        toolRegistry = new ToolRegistry(requireContext(), settingsManager);
+        // Create AgentLoop with SettingsManager for approval settings
+        agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager);
         
         // Get session ID from arguments
         Bundle args = getArguments();
@@ -226,7 +231,35 @@ public class ChatFragment extends Fragment {
                 setLoading(false);
                 Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
             }
+            
+            @Override
+            public void onApprovalRequired(String toolName, String description, JsonObject arguments,
+                                           AgentLoop.ApprovalCallback approvalCallback) {
+                // Show approval dialog on UI thread
+                requireActivity().runOnUiThread(() -> {
+                    showApprovalDialog(toolName, description, approvalCallback);
+                });
+            }
         });
+    }
+    
+    /**
+     * Show a dialog asking user to approve or deny a tool execution.
+     */
+    private void showApprovalDialog(String toolName, String description, AgentLoop.ApprovalCallback approvalCallback) {
+        new AlertDialog.Builder(requireContext())
+            .setTitle("Approve Tool Execution?")
+            .setMessage("Tool: " + formatToolName(toolName) + "\n\n" + description)
+            .setPositiveButton("Approve", (dialog, which) -> {
+                Log.d(TAG, "User approved tool: " + toolName);
+                approvalCallback.onApproved();
+            })
+            .setNegativeButton("Deny", (dialog, which) -> {
+                Log.d(TAG, "User denied tool: " + toolName);
+                approvalCallback.onDenied();
+            })
+            .setCancelable(false)
+            .show();
     }
 
     private void setLoading(boolean loading) {
