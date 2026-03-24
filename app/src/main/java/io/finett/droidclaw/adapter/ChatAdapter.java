@@ -1,5 +1,6 @@
 package io.finett.droidclaw.adapter;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,6 +15,7 @@ import java.util.List;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.util.MarkdownRenderer;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHolder> {
     private static final int VIEW_TYPE_USER = 0;
@@ -109,29 +111,44 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
     static class UserMessageViewHolder extends MessageViewHolder {
         private final TextView messageText;
+        private final Context context;
 
         UserMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             messageText = itemView.findViewById(R.id.messageText);
+            context = itemView.getContext();
         }
 
         @Override
         void bind(ChatMessage message) {
-            messageText.setText(message.getContent());
+            String content = message.getContent();
+            if (content != null && MarkdownRenderer.containsMarkdown(content)) {
+                MarkdownRenderer.render(context, messageText, content);
+            } else {
+                messageText.setText(content);
+            }
         }
     }
 
     static class AssistantMessageViewHolder extends MessageViewHolder {
         private final TextView messageText;
+        private final Context context;
 
         AssistantMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             messageText = itemView.findViewById(R.id.messageText);
+            context = itemView.getContext();
         }
 
         @Override
         void bind(ChatMessage message) {
-            messageText.setText(message.getContent());
+            String content = message.getContent();
+            // Always render assistant messages as markdown since they often contain formatting
+            if (content != null) {
+                MarkdownRenderer.render(context, messageText, content);
+            } else {
+                messageText.setText("");
+            }
         }
     }
 
@@ -152,33 +169,156 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             if (message.getToolCalls() != null && !message.getToolCalls().isEmpty()) {
                 // Show the first tool call's name as the main text
                 LlmApiService.ToolCall firstToolCall = message.getToolCalls().get(0);
-                toolCallText.setText(firstToolCall.getName());
+                String toolName = firstToolCall.getName();
+                
+                // Set icon based on tool type
+                String icon = getToolIcon(toolName);
+                toolCallIcon.setText(icon);
+                
+                // Format tool name for display
+                toolCallText.setText(formatToolName(toolName));
 
                 // Show all tool call arguments
                 StringBuilder argsBuilder = new StringBuilder();
                 for (LlmApiService.ToolCall toolCall : message.getToolCalls()) {
-                    argsBuilder.append("Tool: ").append(toolCall.getName())
-                            .append("\nArgs: ").append(toolCall.getArguments().toString())
-                            .append("\n\n");
+                    if (message.getToolCalls().size() > 1) {
+                        argsBuilder.append("• ").append(toolCall.getName()).append("\n");
+                    }
+                    argsBuilder.append(formatArguments(toolCall.getArguments().toString()))
+                            .append("\n");
                 }
                 toolCallArgs.setText(argsBuilder.toString().trim());
             }
         }
+        
+        private String getToolIcon(String toolName) {
+            if (toolName.contains("shell") || toolName.contains("execute")) {
+                return "💻";
+            } else if (toolName.contains("file") || toolName.contains("read") || toolName.contains("write")) {
+                return "📁";
+            } else if (toolName.contains("python") || toolName.contains("pip")) {
+                return "🐍";
+            } else if (toolName.contains("search")) {
+                return "🔍";
+            } else if (toolName.contains("list")) {
+                return "📋";
+            } else {
+                return "🔧";
+            }
+        }
+        
+        private String formatToolName(String toolName) {
+            // Convert snake_case to Title Case
+            String[] parts = toolName.split("_");
+            StringBuilder formatted = new StringBuilder();
+            for (String part : parts) {
+                if (formatted.length() > 0) {
+                    formatted.append(" ");
+                }
+                formatted.append(part.substring(0, 1).toUpperCase())
+                        .append(part.substring(1).toLowerCase());
+            }
+            return formatted.toString();
+        }
+        
+        private String formatArguments(String args) {
+            // Pretty-print JSON arguments with limited length
+            if (args.length() > 200) {
+                return args.substring(0, 197) + "...";
+            }
+            return args;
+        }
     }
 
     static class ToolResultMessageViewHolder extends MessageViewHolder {
+        private final View toolResultHeader;
+        private final TextView toolResultIcon;
         private final TextView toolResultLabel;
+        private final TextView toolResultToggle;
         private final TextView toolResultContent;
+        private boolean isExpanded = false;
 
         ToolResultMessageViewHolder(@NonNull View itemView) {
             super(itemView);
+            toolResultHeader = itemView.findViewById(R.id.toolResultHeader);
+            toolResultIcon = itemView.findViewById(R.id.toolResultIcon);
             toolResultLabel = itemView.findViewById(R.id.toolResultLabel);
+            toolResultToggle = itemView.findViewById(R.id.toolResultToggle);
             toolResultContent = itemView.findViewById(R.id.toolResultContent);
+            
+            // Set up click listener for expand/collapse
+            toolResultHeader.setOnClickListener(v -> toggleExpanded());
         }
 
         @Override
         void bind(ChatMessage message) {
-            toolResultContent.setText(message.getContent());
+            String content = message.getContent();
+            String toolName = message.getToolName();
+            Context context = itemView.getContext();
+            
+            // Set label with tool name
+            if (toolName != null) {
+                toolResultLabel.setText(formatToolName(toolName) + " result");
+            } else {
+                toolResultLabel.setText("Tool result");
+            }
+            
+            // Determine if result indicates success or error
+            boolean isError = content != null && (content.toLowerCase().contains("error:")
+                    || content.toLowerCase().startsWith("error"));
+            
+            // Set icon based on success/error
+            toolResultIcon.setText(isError ? "❌" : "✅");
+            
+            // Set content with markdown rendering if applicable
+            if (content != null) {
+                if (MarkdownRenderer.containsMarkdown(content)) {
+                    MarkdownRenderer.render(context, toolResultContent, content);
+                } else {
+                    toolResultContent.setText(content);
+                }
+            } else {
+                toolResultContent.setText("No output");
+            }
+            
+            // Start collapsed if content is long
+            if (content != null && content.length() > 100) {
+                isExpanded = false;
+                updateExpandState();
+            } else {
+                isExpanded = true;
+                toolResultToggle.setVisibility(View.GONE);
+                toolResultContent.setMaxLines(Integer.MAX_VALUE);
+            }
+        }
+        
+        private void toggleExpanded() {
+            isExpanded = !isExpanded;
+            updateExpandState();
+        }
+        
+        private void updateExpandState() {
+            if (isExpanded) {
+                toolResultToggle.setText("▲");
+                toolResultContent.setMaxLines(Integer.MAX_VALUE);
+            } else {
+                toolResultToggle.setText("▼");
+                toolResultContent.setMaxLines(3);
+            }
+        }
+        
+        private String formatToolName(String toolName) {
+            // Convert snake_case to Title Case
+            String[] parts = toolName.split("_");
+            StringBuilder formatted = new StringBuilder();
+            for (String part : parts) {
+                if (formatted.length() > 0) {
+                    formatted.append(" ");
+                }
+                formatted.append(part.substring(0, 1).toUpperCase())
+                        .append(part.substring(1).toLowerCase());
+            }
+            return formatted.toString();
         }
     }
 }
