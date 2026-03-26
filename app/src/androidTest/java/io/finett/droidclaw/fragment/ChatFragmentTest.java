@@ -22,8 +22,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
+
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Model;
+import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -411,9 +415,14 @@ public class ChatFragmentTest {
 
     private void configureSettings() {
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
-        settingsManager.setApiKey("test-api-key");
-        settingsManager.setApiUrl("http://localhost:1234/v1/chat/completions");
-        settingsManager.setModelName("test-model");
+        // Create a test provider with a model
+        Provider testProvider = new Provider("test-provider", "Test Provider",
+                "http://localhost:1234/v1", "test-api-key", "openai-completions");
+        Model testModel = new Model("test-model", "Test Model", "openai-completions",
+                false, Arrays.asList("text"), 4096, 4096);
+        testProvider.addModel(testModel);
+        settingsManager.addProvider(testProvider);
+        settingsManager.setDefaultModel("test-provider/test-model");
     }
 
     private void attachNavController(ChatFragment fragment, int destinationId) {

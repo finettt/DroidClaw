@@ -33,6 +33,8 @@ import org.junit.runner.RunWith;
 
 import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
+import io.finett.droidclaw.model.Model;
+import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
@@ -61,7 +63,7 @@ public class CriticalUserJourneysUITest {
     }
 
     @Test
-    public void userJourney_firstLaunch_completeOnboarding() {
+    public void userJourney_firstLaunch_showsMainChatInterface() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // User launches app for first time
             // Should see main chat interface
@@ -76,26 +78,6 @@ public class CriticalUserJourneysUITest {
             onView(withId(R.id.button_new_chat))
                     .check(matches(isDisplayed()));
             onView(withId(R.id.button_settings))
-                    .check(matches(isDisplayed()));
-
-            // User navigates to settings to configure
-            onView(withId(R.id.button_settings))
-                    .perform(click());
-
-            // User enters API configuration
-            onView(withId(R.id.apiKeyInput))
-                    .perform(replaceText("sk-test-key-123"), closeSoftKeyboard());
-            onView(withId(R.id.apiUrlInput))
-                    .perform(replaceText("https://api.openai.com/v1/chat/completions"), closeSoftKeyboard());
-            onView(withId(R.id.modelNameInput))
-                    .perform(replaceText("gpt-3.5-turbo"), closeSoftKeyboard());
-
-            // User saves settings
-            onView(withId(R.id.saveButton))
-                    .perform(click());
-
-            // Should return to chat view
-            onView(withId(R.id.messageInput))
                     .check(matches(isDisplayed()));
         }
     }
@@ -153,7 +135,7 @@ public class CriticalUserJourneysUITest {
     }
 
     @Test
-    public void userJourney_navigateToSettings_modifyAndReturn() {
+    public void userJourney_navigateToSettings_viewSettingsList() {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -165,16 +147,8 @@ public class CriticalUserJourneysUITest {
             onView(withId(R.id.button_settings))
                     .perform(click());
 
-            // User modifies max tokens
-            onView(withId(R.id.maxTokensInput))
-                    .perform(replaceText("2048"), closeSoftKeyboard());
-
-            // User saves changes
-            onView(withId(R.id.saveButton))
-                    .perform(click());
-
-            // Should return to chat
-            onView(withId(R.id.messageInput))
+            // Should see settings list
+            onView(withId(R.id.recycler_settings))
                     .check(matches(isDisplayed()));
         }
     }
@@ -326,10 +300,6 @@ public class CriticalUserJourneysUITest {
             onView(withId(R.id.button_settings))
                     .perform(click());
 
-            // Verify in settings
-            onView(withId(R.id.apiKeyInput))
-                    .check(matches(isDisplayed()));
-
             // Press back
             pressBack();
 
@@ -417,39 +387,15 @@ public class CriticalUserJourneysUITest {
         }
     }
 
-    @Test
-    public void userJourney_completeSettingsConfiguration_allFields() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-            // Navigate to settings
-            onView(withId(R.id.drawer_layout)).perform(open());
-            onView(withId(R.id.button_settings)).perform(click());
-
-            // Fill all text settings fields
-            onView(withId(R.id.apiKeyInput))
-                    .perform(replaceText("sk-comprehensive-test"), closeSoftKeyboard());
-            onView(withId(R.id.apiUrlInput))
-                    .perform(replaceText("https://api.test.com/v1/chat/completions"), closeSoftKeyboard());
-            onView(withId(R.id.modelNameInput))
-                    .perform(replaceText("gpt-4"), closeSoftKeyboard());
-            onView(withId(R.id.maxTokensInput))
-                    .perform(replaceText("4096"), closeSoftKeyboard());
-            onView(withId(R.id.systemPromptInput))
-                    .perform(replaceText("You are a helpful assistant."), closeSoftKeyboard());
-
-            // Save all settings
-            onView(withId(R.id.saveButton))
-                    .perform(click());
-
-            // Return to chat
-            onView(withId(R.id.messageInput))
-                    .check(matches(isDisplayed()));
-        }
-    }
-
     private void configureSettings() {
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
-        settingsManager.setApiKey("test-api-key");
-        settingsManager.setApiUrl("http://localhost:1234/v1/chat/completions");
-        settingsManager.setModelName("test-model");
+        // Create a test provider with a model
+        Provider testProvider = new Provider("test-provider", "Test Provider", 
+                "http://localhost:1234/v1", "test-api-key", "openai-completions");
+        Model testModel = new Model("test-model", "Test Model", "openai-completions", 
+                false, java.util.Arrays.asList("text"), 4096, 4096);
+        testProvider.addModel(testModel);
+        settingsManager.addProvider(testProvider);
+        settingsManager.setDefaultModel("test-provider/test-model");
     }
 }
