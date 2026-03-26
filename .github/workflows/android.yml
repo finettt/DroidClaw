@@ -54,6 +54,10 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          tag: google_apis
+          arch: x86_64
 
       - name: Create and start emulator
         run: |
