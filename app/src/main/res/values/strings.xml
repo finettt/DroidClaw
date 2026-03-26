@@ -12,29 +12,87 @@
     <string name="delete_chat">Delete Chat</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="confirm">Confirm</string>
     <string name="api_configuration">API Configuration</string>
     <string name="api_key">API Key</string>
     <string name="api_url">API URL</string>
     <string name="model_name">Model Name</string>
     <string name="chat_settings">Chat Settings</string>
-    <string name="system_prompt">System Prompt</string>
     <string name="max_tokens">Max Tokens</string>
-    <string name="temperature">Temperature</string>
     <string name="save_settings">Save Settings</string>
+    
+    <!-- Settings menu -->
+    <string name="settings_providers">Providers</string>
+    <string name="settings_providers_subtitle">%d providers configured</string>
+    <string name="settings_agent">Agent</string>
+    <string name="settings_agent_subtitle">Configure agent behavior</string>
+    <string name="settings_reset_onboarding">Reset Onboarding</string>
+    <string name="settings_reset_onboarding_subtitle">Start fresh setup</string>
+    <string name="settings_reset_onboarding_confirm">Are you sure you want to reset onboarding? This will restart the setup process.</string>
+    
+    <!-- Providers -->
+    <string name="providers">Providers</string>
+    <string name="add_provider">Add Provider</string>
+    <string name="edit_provider">Edit Provider</string>
+    <string name="delete_provider">Delete Provider</string>
+    <string name="delete_provider_confirm">Are you sure you want to delete this provider and all its models?</string>
+    <string name="provider_name">Provider Name</string>
+    <string name="provider_base_url">Base URL</string>
+    <string name="provider_api_type">API Type</string>
+    <string name="provider_models_count">%d model(s)</string>
+    <string name="no_providers">No providers configured</string>
+    
+    <!-- Models -->
+    <string name="models">Models</string>
+    <string name="add_model">Add Model</string>
+    <string name="edit_model">Edit Model</string>
+    <string name="delete_model">Delete Model</string>
+    <string name="delete_model_confirm">Are you sure you want to delete this model?</string>
+    <string name="model_id">Model ID</string>
+    <string name="model_display_name">Display Name</string>
+    <string name="model_context_window">Context Window</string>
+    <string name="model_context_window_tokens">%d tokens</string>
+    <string name="model_reasoning">Reasoning Model</string>
+    <string name="model_input_types">Input Types</string>
+    <string name="model_input_text">Text</string>
+    <string name="model_input_image">Image</string>
+    <string name="no_models">No models configured</string>
+    
+    <!-- API Types -->
+    <string name="api_type_openai_completions">OpenAI Completions</string>
+    <string name="api_type_openai_responses">OpenAI Responses</string>
+    <string name="api_type_anthropic">Anthropic</string>
+    <string name="api_type_google">Google</string>
     
     <!-- Agent settings -->
     <string name="agent_settings">Agent Settings</string>
+    <string name="agent_default_model">Default Model</string>
+    <string name="agent_default_model_hint">Select a model</string>
+    <string name="agent_execution_settings">Execution Settings</string>
     <string name="shell_access">Shell Access</string>
     <string name="shell_access_description">Allow agent to execute shell commands</string>
     <string name="sandbox_mode">Sandbox Mode</string>
     <string name="sandbox_strict">Strict (Workspace only)</string>
     <string name="sandbox_relaxed">Relaxed (External storage access)</string>
-    <string name="max_iterations">Max Agent Iterations</string>
-    <string name="max_iterations_description">Maximum number of tool execution cycles (1-50)</string>
+    <string name="max_iterations">Max Iterations</string>
+    <string name="max_iterations_description">Maximum tool execution cycles</string>
     <string name="require_approval">Require Approval</string>
-    <string name="require_approval_description">Ask for confirmation before executing tools</string>
+    <string name="require_approval_description">Confirm before executing tools</string>
     <string name="shell_timeout">Shell Timeout (seconds)</string>
-    <string name="shell_timeout_description">Maximum time for shell command execution (5-300)</string>
+    <string name="shell_timeout_description">Command execution limit</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to DroidClaw</string>
+    <string name="onboarding_welcome_subtitle">Your AI-powered coding assistant</string>
+    <string name="onboarding_name_title">What\'s your name?</string>
+    <string name="onboarding_name_hint">Enter your name</string>
+    <string name="onboarding_name_error">Please enter your name</string>
+    <string name="onboarding_provider_title">Set up your first provider</string>
+    <string name="onboarding_provider_subtitle">Configure an AI provider to get started</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_get_started">Get Started</string>
 
     <!-- Skills UI strings -->
     <string name="skills">Skills</string>
@@ -59,4 +117,9 @@
     <string name="skill_create_via_chat">Create new skill via chat</string>
     <string name="skill_discovery_status">Discovering skills...</string>
     <string name="skill_loaded_status">Loaded skill: %1$s</string>
+    
+    <!-- Validation -->
+    <string name="validation_required">This field is required</string>
+    <string name="validation_invalid_url">Please enter a valid URL</string>
+    <string name="validation_invalid_number">Please enter a valid number</string>
 </resources>
