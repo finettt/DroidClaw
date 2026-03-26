@@ -10,7 +10,11 @@
         android:label="DroidClaw">
         <action
             android:id="@+id/action_chatFragment_to_settingsFragment"
-            app:destination="@id/settingsFragment" />
+            app:destination="@id/settingsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_chatFragment_to_skillsBrowserFragment"
             app:destination="@id/skillsBrowserFragment" />
@@ -22,13 +26,25 @@
         android:label="Settings">
         <action
             android:id="@+id/action_settingsFragment_to_providersListFragment"
-            app:destination="@id/providersListFragment" />
+            app:destination="@id/providersListFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_settingsFragment_to_agentSettingsFragment"
-            app:destination="@id/agentSettingsFragment" />
+            app:destination="@id/agentSettingsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
         <action
             android:id="@+id/action_settingsFragment_to_onboardingFragment"
-            app:destination="@id/onboardingFragment" />
+            app:destination="@id/onboardingFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -37,7 +53,11 @@
         android:label="Providers">
         <action
             android:id="@+id/action_providersListFragment_to_providerDetailFragment"
-            app:destination="@id/providerDetailFragment" />
+            app:destination="@id/providerDetailFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -51,7 +71,11 @@
             android:defaultValue="@null" />
         <action
             android:id="@+id/action_providerDetailFragment_to_modelDetailFragment"
-            app:destination="@id/modelDetailFragment" />
+            app:destination="@id/modelDetailFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
