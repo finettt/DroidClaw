@@ -215,17 +215,11 @@ public class LlmApiService {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", settingsManager.getModelName());
         requestBody.addProperty("max_tokens", settingsManager.getMaxTokens());
-        requestBody.addProperty("temperature", settingsManager.getTemperature());
+        requestBody.addProperty("temperature", 0.7f);
 
         JsonArray messages = new JsonArray();
 
-        // Add system prompt
-        JsonObject systemMessage = new JsonObject();
-        systemMessage.addProperty("role", "system");
-        systemMessage.addProperty("content", settingsManager.getSystemPrompt());
-        messages.add(systemMessage);
-
-        // Add conversation history
+        // Add conversation history (no system prompt in new configuration)
         for (ChatMessage chatMessage : conversationHistory) {
             messages.add(chatMessage.toApiMessage());
         }

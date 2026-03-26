@@ -19,7 +19,64 @@
     <fragment
         android:id="@+id/settingsFragment"
         android:name="io.finett.droidclaw.fragment.SettingsFragment"
-        android:label="Settings" />
+        android:label="Settings">
+        <action
+            android:id="@+id/action_settingsFragment_to_providersListFragment"
+            app:destination="@id/providersListFragment" />
+        <action
+            android:id="@+id/action_settingsFragment_to_agentSettingsFragment"
+            app:destination="@id/agentSettingsFragment" />
+        <action
+            android:id="@+id/action_settingsFragment_to_onboardingFragment"
+            app:destination="@id/onboardingFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/providersListFragment"
+        android:name="io.finett.droidclaw.fragment.ProvidersListFragment"
+        android:label="Providers">
+        <action
+            android:id="@+id/action_providersListFragment_to_providerDetailFragment"
+            app:destination="@id/providerDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/providerDetailFragment"
+        android:name="io.finett.droidclaw.fragment.ProviderDetailFragment"
+        android:label="Provider Details">
+        <argument
+            android:name="providerId"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+        <action
+            android:id="@+id/action_providerDetailFragment_to_modelDetailFragment"
+            app:destination="@id/modelDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/modelDetailFragment"
+        android:name="io.finett.droidclaw.fragment.ModelDetailFragment"
+        android:label="Model Details">
+        <argument
+            android:name="providerId"
+            app:argType="string" />
+        <argument
+            android:name="modelId"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/agentSettingsFragment"
+        android:name="io.finett.droidclaw.fragment.AgentSettingsFragment"
+        android:label="Agent Settings" />
+
+    <fragment
+        android:id="@+id/onboardingFragment"
+        android:name="io.finett.droidclaw.fragment.OnboardingFragment"
+        android:label="Welcome" />
 
     <fragment
         android:id="@+id/skillsBrowserFragment"
