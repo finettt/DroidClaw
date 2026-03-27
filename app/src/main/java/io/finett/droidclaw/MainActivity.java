@@ -79,20 +79,23 @@ public class MainActivity extends AppCompatActivity {
             drawerToggle.syncState();
             
             // On fresh app launch, open the most recent persisted session or create one if none exist
+            // Post navigation to ensure NavController is fully initialized
             if (savedInstanceState == null) {
-                ChatSession initialSession;
-                if (chatSessions.isEmpty()) {
-                    initialSession = addNewChatSession();
-                    Log.d(TAG, "No saved sessions found. Created initial session: " + initialSession.getId());
-                } else {
-                    initialSession = chatSessions.get(0);
-                    Log.d(TAG, "Opening most recent saved session: " + initialSession.getId());
-                }
+                drawerLayout.post(() -> {
+                    ChatSession initialSession;
+                    if (chatSessions.isEmpty()) {
+                        initialSession = addNewChatSession();
+                        Log.d(TAG, "No saved sessions found. Created initial session: " + initialSession.getId());
+                    } else {
+                        initialSession = chatSessions.get(0);
+                        Log.d(TAG, "Opening most recent saved session: " + initialSession.getId());
+                    }
 
-                currentSessionId = initialSession.getId();
-                Bundle args = new Bundle();
-                args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
-                navController.navigate(R.id.chatFragment, args);
+                    currentSessionId = initialSession.getId();
+                    Bundle args = new Bundle();
+                    args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
+                    navController.navigate(R.id.chatFragment, args);
+                });
             }
         }
     }
