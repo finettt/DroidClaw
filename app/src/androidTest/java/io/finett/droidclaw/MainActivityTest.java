@@ -15,6 +15,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
+import io.finett.droidclaw.util.TestUtils;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -118,35 +120,16 @@ public class MainActivityTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
-                
+
                 // Open drawer first
                 drawerLayout.openDrawer(GravityCompat.START);
             });
 
-            // Wait for drawer to open
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForDrawerState(scenario, true);
 
-            scenario.onActivity(activity -> {
-                // Click new chat button
-                activity.findViewById(R.id.button_new_chat).performClick();
-            });
+            scenario.onActivity(activity -> activity.findViewById(R.id.button_new_chat).performClick());
 
-            // Wait for drawer to close
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            scenario.onActivity(activity -> {
-                DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
-                assertFalse("Drawer should be closed after clicking new chat", 
-                        drawerLayout.isDrawerOpen(GravityCompat.START));
-            });
+            waitForDrawerState(scenario, false);
         }
     }
 
@@ -155,35 +138,16 @@ public class MainActivityTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
-                
+
                 // Open drawer first
                 drawerLayout.openDrawer(GravityCompat.START);
             });
 
-            // Wait for drawer to open
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForDrawerState(scenario, true);
 
-            scenario.onActivity(activity -> {
-                // Click settings button
-                activity.findViewById(R.id.button_settings).performClick();
-            });
+            scenario.onActivity(activity -> activity.findViewById(R.id.button_settings).performClick());
 
-            // Wait for drawer to close
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            scenario.onActivity(activity -> {
-                DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
-                assertFalse("Drawer should be closed after clicking settings", 
-                        drawerLayout.isDrawerOpen(GravityCompat.START));
-            });
+            waitForDrawerState(scenario, false);
         }
     }
 
@@ -723,5 +687,32 @@ public class MainActivityTest {
                 assertEquals(2, recyclerView.getAdapter().getItemCount());
             });
         }
+    }
+    private void waitForDrawerState(ActivityScenario<MainActivity> scenario, boolean expectedOpen) {
+        long timeoutAt = System.currentTimeMillis() + 2000L;
+        boolean[] stateMatches = new boolean[1];
+
+        do {
+            TestUtils.waitForIdle();
+            scenario.onActivity(activity -> {
+                DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
+                stateMatches[0] = drawerLayout.isDrawerOpen(GravityCompat.START) == expectedOpen;
+            });
+
+            if (stateMatches[0]) {
+                return;
+            }
+
+            TestUtils.waitFor(50);
+        } while (System.currentTimeMillis() < timeoutAt);
+
+        scenario.onActivity(activity -> {
+            DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
+            assertEquals(
+                    "Unexpected drawer state",
+                    expectedOpen,
+                    drawerLayout.isDrawerOpen(GravityCompat.START)
+            );
+        });
     }
 }

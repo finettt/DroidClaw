@@ -40,13 +40,13 @@
             export PYTHON_VERSION="3.11"
 
             # Aliases for common tasks
-            alias build="./gradlew assembleDebug"
-            alias install="./gradlew installDebug"
-            alias test="./gradlew test"
-            alias test-unit="./gradlew testDebugUnitTest"
-            alias test-instrumented="./gradlew connectedAndroidTest"
-            alias lint="./gradlew lintDebug"
-            alias clean="./gradlew clean"
+            alias build-app="./gradlew assembleDebug"
+            alias install-app="./gradlew installDebug"
+            # alias test="./gradlew test"
+            alias test-unit-app="./gradlew testDebugUnitTest"
+            alias test-instrumented=app="./gradlew connectedAndroidTest"
+            alias lint-app="./gradlew lintDebug"
+            alias clean-app="./gradlew clean"
 
             echo "DroidClaw dev shell with Python support"
             echo "JAVA_HOME=$JAVA_HOME"
@@ -54,7 +54,7 @@
             java -version
             python3 --version
             echo ""
-            echo "Available aliases: build, install, test, test-unit, test-instrumented, lint, clean"
+            echo "Available aliases: build-app, install-app, test-unit-app, test-instrumented-app, lint-app, clean-app"
           '';
         };
       });
