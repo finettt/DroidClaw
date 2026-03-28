@@ -56,6 +56,10 @@ public class UserFlowIntegrationTest {
         SharedPreferences chatPrefs = getApplicationContext()
                 .getSharedPreferences(CHAT_PREFS, Context.MODE_PRIVATE);
         chatPrefs.edit().clear().commit();
+        
+        // Mark onboarding as completed so integration tests skip onboarding screen
+        SettingsManager settingsManager = new SettingsManager(getApplicationContext());
+        settingsManager.setOnboardingCompleted(true);
     }
     
     @After
@@ -355,6 +359,11 @@ public class UserFlowIntegrationTest {
                 waitForUiReady();
             }
 
+            // Close drawer to see the main content
+            onView(withId(R.id.drawer_layout))
+                    .perform(androidx.test.espresso.contrib.DrawerActions.close());
+            waitForUiReady();
+
             // App should still be functional
             onView(withId(R.id.messageInput))
                     .check(matches(isDisplayed()));
@@ -372,6 +381,8 @@ public class UserFlowIntegrationTest {
         testProvider.addModel(testModel);
         settingsManager.addProvider(testProvider);
         settingsManager.setDefaultModel("persistent-provider/persistent-model");
+        // Mark onboarding as completed
+        settingsManager.setOnboardingCompleted(true);
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
@@ -386,12 +397,14 @@ public class UserFlowIntegrationTest {
     private void configureSettings() {
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
         // Create a test provider with a model
-        Provider testProvider = new Provider("test-provider", "Test Provider", 
+        Provider testProvider = new Provider("test-provider", "Test Provider",
                 "http://localhost:1234/v1", "test-api-key", "openai-completions");
-        Model testModel = new Model("test-model", "Test Model", "openai-completions", 
+        Model testModel = new Model("test-model", "Test Model", "openai-completions",
                 false, Arrays.asList("text"), 4096, 4096);
         testProvider.addModel(testModel);
         settingsManager.addProvider(testProvider);
         settingsManager.setDefaultModel("test-provider/test-model");
+        // Mark onboarding as completed so integration tests skip onboarding screen
+        settingsManager.setOnboardingCompleted(true);
     }
 }

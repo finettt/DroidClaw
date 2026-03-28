@@ -32,6 +32,7 @@ import io.finett.droidclaw.adapter.ChatSessionAdapter;
 import io.finett.droidclaw.fragment.ChatFragment;
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.repository.ChatRepository;
+import io.finett.droidclaw.util.SettingsManager;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -42,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
     private ChatSessionAdapter chatSessionAdapter;
     private final List<ChatSession> chatSessions = new ArrayList<>();
     private ChatRepository chatRepository;
+    private SettingsManager settingsManager;
     private String currentSessionId;
 
     @Override
@@ -51,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
 
         drawerLayout = findViewById(R.id.drawer_layout);
         chatRepository = new ChatRepository(this);
+        settingsManager = new SettingsManager(this);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -78,23 +81,30 @@ public class MainActivity extends AppCompatActivity {
             drawerLayout.addDrawerListener(drawerToggle);
             drawerToggle.syncState();
             
-            // On fresh app launch, open the most recent persisted session or create one if none exist
+            // On fresh app launch, check onboarding status
             // Post navigation to ensure NavController is fully initialized
             if (savedInstanceState == null) {
                 drawerLayout.post(() -> {
-                    ChatSession initialSession;
-                    if (chatSessions.isEmpty()) {
-                        initialSession = addNewChatSession();
-                        Log.d(TAG, "No saved sessions found. Created initial session: " + initialSession.getId());
+                    if (!settingsManager.isOnboardingCompleted()) {
+                        // Navigate to onboarding
+                        Log.d(TAG, "Onboarding not completed, navigating to onboarding screen");
+                        navController.navigate(R.id.onboardingFragment);
                     } else {
-                        initialSession = chatSessions.get(0);
-                        Log.d(TAG, "Opening most recent saved session: " + initialSession.getId());
-                    }
+                        // Open the most recent persisted session or create one if none exist
+                        ChatSession initialSession;
+                        if (chatSessions.isEmpty()) {
+                            initialSession = addNewChatSession();
+                            Log.d(TAG, "No saved sessions found. Created initial session: " + initialSession.getId());
+                        } else {
+                            initialSession = chatSessions.get(0);
+                            Log.d(TAG, "Opening most recent saved session: " + initialSession.getId());
+                        }
 
-                    currentSessionId = initialSession.getId();
-                    Bundle args = new Bundle();
-                    args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
-                    navController.navigate(R.id.chatFragment, args);
+                        currentSessionId = initialSession.getId();
+                        Bundle args = new Bundle();
+                        args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
+                        navController.navigate(R.id.chatFragment, args);
+                    }
                 });
             }
         }
