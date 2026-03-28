@@ -24,7 +24,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+        
 
         // Chaquopy configuration - ABI filters
         ndk {
@@ -50,7 +50,7 @@ android {
         unitTests {
             isReturnDefaultValues = true
         }
-        execution = "ANDROIDX_TEST_ORCHESTRATOR"
+        
     }
 }
 
