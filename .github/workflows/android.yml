@@ -97,6 +97,12 @@ jobs:
           disable-animations: false
           script: echo "Generated AVD snapshot for caching."
 
+      - name: Disable emulator animations
+        run: |
+          adb shell settings put global window_animation_scale 0.0
+          adb shell settings put global transition_animation_scale 0.0
+          adb shell settings put global animator_duration_scale 0.0
+
       - name: Run Android tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -108,15 +114,7 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           disable-spellchecker: true
-          script: |
-            adb shell settings put global window_animation_scale 0.0
-            adb shell settings put global transition_animation_scale 0.0
-            adb shell settings put global animator_duration_scale 0.0
-
-            ./gradlew connectedAndroidTest \
-              -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} \
-              -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} \
-              --stacktrace
+          script: ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} --stacktrace
         timeout-minutes: 10
 
       - name: Upload test results
