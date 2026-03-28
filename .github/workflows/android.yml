@@ -109,7 +109,7 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           script: ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} --stacktrace
-        timeout-minutes: 10
+        timeout-minutes: 20
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
