@@ -25,11 +25,13 @@ import java.util.List;
 
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.repository.ChatRepository;
+import io.finett.droidclaw.util.SettingsManager;
 
 @RunWith(AndroidJUnit4.class)
 public class MainActivityTest {
 
     private static final String CHAT_PREFS = "chat_messages";
+    private static final String SETTINGS_PREFS = "droidclaw_settings";
 
     @Before
     public void setUp() {
@@ -37,6 +39,14 @@ public class MainActivityTest {
         SharedPreferences chatPrefs = getApplicationContext()
                 .getSharedPreferences(CHAT_PREFS, Context.MODE_PRIVATE);
         chatPrefs.edit().clear().commit();
+        
+        SharedPreferences settingsPrefs = getApplicationContext()
+                .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
+        settingsPrefs.edit().clear().commit();
+        
+        // Mark onboarding as completed so tests can access MainActivity directly
+        SettingsManager settingsManager = new SettingsManager(getApplicationContext());
+        settingsManager.setOnboardingCompleted(true);
     }
 
     @Test

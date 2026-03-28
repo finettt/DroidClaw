@@ -65,6 +65,10 @@ public class CriticalUserJourneysUITest {
         SharedPreferences chatPrefs = getApplicationContext()
                 .getSharedPreferences(CHAT_PREFS, Context.MODE_PRIVATE);
         chatPrefs.edit().clear().commit();
+        
+        // Mark onboarding as completed so tests can access MainActivity directly
+        SettingsManager settingsManager = new SettingsManager(getApplicationContext());
+        settingsManager.setOnboardingCompleted(true);
     }
     
     @After
@@ -494,12 +498,14 @@ public class CriticalUserJourneysUITest {
     private void configureSettings() {
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
         // Create a test provider with a model
-        Provider testProvider = new Provider("test-provider", "Test Provider", 
+        Provider testProvider = new Provider("test-provider", "Test Provider",
                 "http://localhost:1234/v1", "test-api-key", "openai-completions");
-        Model testModel = new Model("test-model", "Test Model", "openai-completions", 
+        Model testModel = new Model("test-model", "Test Model", "openai-completions",
                 false, java.util.Arrays.asList("text"), 4096, 4096);
         testProvider.addModel(testModel);
         settingsManager.addProvider(testProvider);
         settingsManager.setDefaultModel("test-provider/test-model");
+        // Mark onboarding as completed
+        settingsManager.setOnboardingCompleted(true);
     }
 }
