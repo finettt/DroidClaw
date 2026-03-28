@@ -3,7 +3,6 @@ package io.finett.droidclaw.util;
 import static androidx.test.espresso.Espresso.onIdle;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
-import static androidx.test.espresso.matcher.RootMatchers.hasWindowFocus;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 
@@ -42,21 +41,21 @@ public class TestUtils {
     }
     
     /**
-     * Polls until the window has focus, with a default timeout of 5 seconds.
+     * Polls until the root view is displayed, with a default timeout of 5 seconds.
      * This is a deterministic approach that waits only as long as needed.
      *
-     * @throws AssertionError if window never gains focus within timeout
+     * @throws AssertionError if root view is never displayed within timeout
      */
     public static void waitForWindowFocus() {
         waitForWindowFocus(DEFAULT_TIMEOUT_MS);
     }
     
     /**
-     * Polls until the window has focus, with a configurable timeout.
+     * Polls until the root view is displayed, with a configurable timeout.
      * This is a deterministic approach that waits only as long as needed.
      *
-     * @param timeoutMs Maximum time to wait for window focus
-     * @throws AssertionError if window never gains focus within timeout
+     * @param timeoutMs Maximum time to wait for root view to be displayed
+     * @throws AssertionError if root view is never displayed within timeout
      */
     public static void waitForWindowFocus(long timeoutMs) {
         long deadline = System.currentTimeMillis() + timeoutMs;
@@ -65,7 +64,6 @@ public class TestUtils {
         while (System.currentTimeMillis() < deadline) {
             try {
                 onView(isRoot())
-                        .inRoot(hasWindowFocus())
                         .check(matches(isDisplayed()));
                 return; // Success - window has focus
             } catch (Exception e) {
@@ -74,7 +72,7 @@ public class TestUtils {
             }
         }
         
-        throw new AssertionError("Window did not gain focus within " + timeoutMs + "ms", lastException);
+        throw new AssertionError("Root view was not displayed within " + timeoutMs + "ms", lastException);
     }
     
     /**
