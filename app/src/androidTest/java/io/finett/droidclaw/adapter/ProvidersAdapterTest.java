@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import android.content.Context;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -24,6 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
+import io.finett.droidclaw.util.AdapterTestHelper;
+import io.finett.droidclaw.util.TestThemeHelper;
 
 @RunWith(AndroidJUnit4.class)
 public class ProvidersAdapterTest {
@@ -50,53 +54,53 @@ public class ProvidersAdapterTest {
     // ==================== submitList Tests ====================
 
     @Test
-    public void submitList_withProviders_updatesCount() {
+    public void submitList_withProviders_updatesCount() throws InterruptedException {
         List<Provider> providers = Arrays.asList(
             new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai"),
             new Provider("anthropic", "Anthropic", "https://api.anthropic.com", "sk-ant", "anthropic")
         );
 
-        adapter.submitList(providers);
+        AdapterTestHelper.submitListAndWait(adapter, providers);
 
         assertEquals(2, adapter.getItemCount());
     }
 
     @Test
-    public void submitList_withEmptyList_clearsAdapter() {
+    public void submitList_withEmptyList_clearsAdapter() throws InterruptedException {
         List<Provider> providers = Arrays.asList(
             new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai")
         );
-        adapter.submitList(providers);
+        AdapterTestHelper.submitListAndWait(adapter, providers);
 
-        adapter.submitList(new ArrayList<>());
+        AdapterTestHelper.submitListAndWait(adapter, new ArrayList<>());
 
         assertEquals(0, adapter.getItemCount());
     }
 
     @Test
-    public void submitList_withNull_clearsAdapter() {
+    public void submitList_withNull_clearsAdapter() throws InterruptedException {
         List<Provider> providers = Arrays.asList(
             new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai")
         );
-        adapter.submitList(providers);
+        AdapterTestHelper.submitListAndWait(adapter, providers);
 
-        adapter.submitList(null);
+        AdapterTestHelper.submitListAndWait(adapter, null);
 
         assertEquals(0, adapter.getItemCount());
     }
 
     @Test
-    public void submitList_replacesExistingList() {
+    public void submitList_replacesExistingList() throws InterruptedException {
         List<Provider> providers1 = Arrays.asList(
             new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai")
         );
-        adapter.submitList(providers1);
+        AdapterTestHelper.submitListAndWait(adapter, providers1);
 
         List<Provider> providers2 = Arrays.asList(
             new Provider("anthropic", "Anthropic", "https://api.anthropic.com", "sk-ant", "anthropic"),
             new Provider("google", "Google", "https://generativelanguage.googleapis.com", "key", "google")
         );
-        adapter.submitList(providers2);
+        AdapterTestHelper.submitListAndWait(adapter, providers2);
 
         assertEquals(2, adapter.getItemCount());
     }
@@ -105,8 +109,9 @@ public class ProvidersAdapterTest {
 
     @Test
     public void onCreateViewHolder_createsValidViewHolder() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
@@ -116,8 +121,9 @@ public class ProvidersAdapterTest {
 
     @Test
     public void onCreateViewHolder_viewHolderHasCorrectViews() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
@@ -134,8 +140,9 @@ public class ProvidersAdapterTest {
         List<Provider> providers = Arrays.asList(provider);
         adapter.submitList(providers);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
@@ -150,8 +157,9 @@ public class ProvidersAdapterTest {
         List<Provider> providers = Arrays.asList(provider);
         adapter.submitList(providers);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
@@ -169,8 +177,9 @@ public class ProvidersAdapterTest {
         List<Provider> providers = Arrays.asList(provider);
         adapter.submitList(providers);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
@@ -187,8 +196,9 @@ public class ProvidersAdapterTest {
         List<Provider> providers = Arrays.asList(provider);
         adapter.submitList(providers);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
@@ -211,8 +221,9 @@ public class ProvidersAdapterTest {
         List<Provider> providers = Arrays.asList(provider1, provider2);
         adapter.submitList(providers);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         // Test first provider
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);
@@ -230,7 +241,7 @@ public class ProvidersAdapterTest {
     // ==================== Click Listener Tests ====================
 
     @Test
-    public void clickListener_whenSet_receivesClickEvents() {
+    public void clickListener_whenSet_receivesClickEvents() throws InterruptedException {
         AtomicBoolean clicked = new AtomicBoolean(false);
         AtomicReference<Provider> clickedProvider = new AtomicReference<>();
 
@@ -241,12 +252,23 @@ public class ProvidersAdapterTest {
 
         Provider testProvider = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
         List<Provider> providers = Arrays.asList(testProvider);
-        adapter.submitList(providers);
+        AdapterTestHelper.submitListAndWait(adapter, providers);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
-        RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
-        adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        recyclerView.setAdapter(adapter);
+        
+        // Force layout to attach view holders properly
+        recyclerView.measure(
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
+        );
+        recyclerView.layout(0, 0, 1000, 1000);
+        
+        // Get the view holder that is now properly attached
+        RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
+        assertNotNull("ViewHolder should be attached", viewHolder);
 
         viewHolder.itemView.performClick();
 
@@ -260,8 +282,9 @@ public class ProvidersAdapterTest {
         List<Provider> providers = Arrays.asList(testProvider);
         adapter.submitList(providers);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
 
@@ -272,39 +295,39 @@ public class ProvidersAdapterTest {
     // ==================== DiffUtil Tests ====================
 
     @Test
-    public void diffUtil_identifiesSameItems() {
+    public void diffUtil_identifiesSameItems() throws InterruptedException {
         Provider provider1 = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
         Provider provider2 = new Provider("openai", "OpenAI Updated", "https://api.openai.com/v2", "sk-new", "openai");
 
-        adapter.submitList(Arrays.asList(provider1));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider1));
         assertEquals(1, adapter.getItemCount());
 
-        adapter.submitList(Arrays.asList(provider2));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider2));
         assertEquals(1, adapter.getItemCount());
     }
 
     @Test
-    public void diffUtil_identifiesDifferentItems() {
+    public void diffUtil_identifiesDifferentItems() throws InterruptedException {
         Provider provider1 = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
         Provider provider2 = new Provider("anthropic", "Anthropic", "https://api.anthropic.com", "sk-ant", "anthropic");
 
-        adapter.submitList(Arrays.asList(provider1));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider1));
         assertEquals(1, adapter.getItemCount());
 
-        adapter.submitList(Arrays.asList(provider1, provider2));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider1, provider2));
         assertEquals(2, adapter.getItemCount());
     }
 
     @Test
-    public void diffUtil_detectsModelCountChange() {
+    public void diffUtil_detectsModelCountChange() throws InterruptedException {
         Provider provider1 = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
         Provider provider2 = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
         provider2.addModel(new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096));
 
-        adapter.submitList(Arrays.asList(provider1));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider1));
         
         // When model count changes, content should be different
-        adapter.submitList(Arrays.asList(provider2));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider2));
         assertEquals(1, adapter.getItemCount());
     }
 
@@ -317,8 +340,9 @@ public class ProvidersAdapterTest {
         Provider provider = new Provider("long-name", longName, "https://api.example.com", "key", "api");
         adapter.submitList(Arrays.asList(provider));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
 
@@ -332,8 +356,9 @@ public class ProvidersAdapterTest {
         Provider provider = new Provider("test", "Test Provider", longUrl, "key", "api");
         adapter.submitList(Arrays.asList(provider));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
 
@@ -348,8 +373,9 @@ public class ProvidersAdapterTest {
         Provider provider = new Provider("special", specialName, specialUrl, "key", "api");
         adapter.submitList(Arrays.asList(provider));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
 
@@ -366,14 +392,15 @@ public class ProvidersAdapterTest {
         
         // Add 100 models
         for (int i = 0; i < 100; i++) {
-            provider.addModel(new Model("model-" + i, "Model " + i, "api", false, 
+            provider.addModel(new Model("model-" + i, "Model " + i, "api", false,
                     Arrays.asList("text"), 8192, 4096));
         }
         
         adapter.submitList(Arrays.asList(provider));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
 
@@ -384,12 +411,12 @@ public class ProvidersAdapterTest {
     }
 
     @Test
-    public void submitList_multipleUpdates_maintainsCorrectState() {
+    public void submitList_multipleUpdates_maintainsCorrectState() throws InterruptedException {
         // First submission
         List<Provider> providers1 = Arrays.asList(
             new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai")
         );
-        adapter.submitList(providers1);
+        AdapterTestHelper.submitListAndWait(adapter, providers1);
         assertEquals(1, adapter.getItemCount());
 
         // Second submission
@@ -397,15 +424,15 @@ public class ProvidersAdapterTest {
             new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai"),
             new Provider("anthropic", "Anthropic", "https://api.anthropic.com", "sk-ant", "anthropic")
         );
-        adapter.submitList(providers2);
+        AdapterTestHelper.submitListAndWait(adapter, providers2);
         assertEquals(2, adapter.getItemCount());
 
         // Third submission - clear
-        adapter.submitList(new ArrayList<>());
+        AdapterTestHelper.submitListAndWait(adapter, new ArrayList<>());
         assertEquals(0, adapter.getItemCount());
 
         // Fourth submission - repopulate
-        adapter.submitList(providers1);
+        AdapterTestHelper.submitListAndWait(adapter, providers1);
         assertEquals(1, adapter.getItemCount());
     }
 }

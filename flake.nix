@@ -42,7 +42,9 @@
             # Aliases for common tasks
             alias build="./gradlew assembleDebug"
             alias install="./gradlew installDebug"
-            alias test="./gradlew testDebugUnitTest"
+            alias test="./gradlew test"
+            alias test-unit="./gradlew testDebugUnitTest"
+            alias test-instrumented="./gradlew connectedAndroidTest"
             alias lint="./gradlew lintDebug"
             alias clean="./gradlew clean"
 
@@ -52,7 +54,7 @@
             java -version
             python3 --version
             echo ""
-            echo "Available aliases: build, install, test, lint, clean"
+            echo "Available aliases: build, install, test, test-unit, test-instrumented, lint, clean"
           '';
         };
       });

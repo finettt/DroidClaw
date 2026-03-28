@@ -5,12 +5,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 
+import android.content.Context;
 import android.view.View;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.Before;
@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.finett.droidclaw.R;
+import io.finett.droidclaw.util.TestThemeHelper;
 
 @RunWith(AndroidJUnit4.class)
 public class SettingsAdapterTest {
@@ -106,8 +107,9 @@ public class SettingsAdapterTest {
 
     @Test
     public void onCreateViewHolder_createsValidViewHolder() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
@@ -117,8 +119,9 @@ public class SettingsAdapterTest {
 
     @Test
     public void onCreateViewHolder_viewHolderHasCorrectViews() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
@@ -138,8 +141,9 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
@@ -156,8 +160,9 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
@@ -174,8 +179,9 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
@@ -192,8 +198,9 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
@@ -210,8 +217,9 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
@@ -232,8 +240,9 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item1, item2);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         // Test first item
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);
@@ -266,10 +275,21 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(testItem);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
-        RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
-        adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        recyclerView.setAdapter(adapter);
+        
+        // Force layout to attach view holders properly
+        recyclerView.measure(
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
+        );
+        recyclerView.layout(0, 0, 1000, 1000);
+        
+        // Get the view holder that is now properly attached
+        RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
+        assertNotNull("ViewHolder should be attached", viewHolder);
 
         viewHolder.itemView.performClick();
 
@@ -285,8 +305,9 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(testItem);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
@@ -305,8 +326,9 @@ public class SettingsAdapterTest {
         // Explicitly set null listener
         adapter.setOnSettingsItemClickListener(null);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
@@ -325,8 +347,9 @@ public class SettingsAdapterTest {
         );
         adapter.setItems(Arrays.asList(item));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
@@ -343,8 +366,9 @@ public class SettingsAdapterTest {
         );
         adapter.setItems(Arrays.asList(item));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
@@ -360,8 +384,9 @@ public class SettingsAdapterTest {
         );
         adapter.setItems(Arrays.asList(item));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
@@ -377,8 +402,9 @@ public class SettingsAdapterTest {
         );
         adapter.setItems(Arrays.asList(item));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
@@ -393,8 +419,9 @@ public class SettingsAdapterTest {
         );
         adapter.setItems(Arrays.asList(item));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
@@ -409,8 +436,9 @@ public class SettingsAdapterTest {
         );
         adapter.setItems(Arrays.asList(item));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
@@ -473,8 +501,9 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item1, item2);
         adapter.setItems(items);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         // Test first item (with chevron)
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);

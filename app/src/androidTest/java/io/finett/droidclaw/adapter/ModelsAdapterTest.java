@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import android.content.Context;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -23,6 +25,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.Model;
+import io.finett.droidclaw.util.AdapterTestHelper;
+import io.finett.droidclaw.util.TestThemeHelper;
 
 @RunWith(AndroidJUnit4.class)
 public class ModelsAdapterTest {
@@ -49,53 +53,53 @@ public class ModelsAdapterTest {
     // ==================== submitList Tests ====================
 
     @Test
-    public void submitList_withModels_updatesCount() {
+    public void submitList_withModels_updatesCount() throws InterruptedException {
         List<Model> models = Arrays.asList(
             new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096),
             new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048)
         );
 
-        adapter.submitList(models);
+        AdapterTestHelper.submitListAndWait(adapter, models);
 
         assertEquals(2, adapter.getItemCount());
     }
 
     @Test
-    public void submitList_withEmptyList_clearsAdapter() {
+    public void submitList_withEmptyList_clearsAdapter() throws InterruptedException {
         List<Model> models = Arrays.asList(
             new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
-        adapter.submitList(models);
+        AdapterTestHelper.submitListAndWait(adapter, models);
 
-        adapter.submitList(new ArrayList<>());
+        AdapterTestHelper.submitListAndWait(adapter, new ArrayList<>());
 
         assertEquals(0, adapter.getItemCount());
     }
 
     @Test
-    public void submitList_withNull_clearsAdapter() {
+    public void submitList_withNull_clearsAdapter() throws InterruptedException {
         List<Model> models = Arrays.asList(
             new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
-        adapter.submitList(models);
+        AdapterTestHelper.submitListAndWait(adapter, models);
 
-        adapter.submitList(null);
+        AdapterTestHelper.submitListAndWait(adapter, null);
 
         assertEquals(0, adapter.getItemCount());
     }
 
     @Test
-    public void submitList_replacesExistingList() {
+    public void submitList_replacesExistingList() throws InterruptedException {
         List<Model> models1 = Arrays.asList(
             new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
-        adapter.submitList(models1);
+        AdapterTestHelper.submitListAndWait(adapter, models1);
 
         List<Model> models2 = Arrays.asList(
             new Model("claude-3", "Claude 3", "anthropic", true, Arrays.asList("text", "image"), 100000, 4096),
             new Model("claude-2", "Claude 2", "anthropic", false, Arrays.asList("text"), 100000, 4096)
         );
-        adapter.submitList(models2);
+        AdapterTestHelper.submitListAndWait(adapter, models2);
 
         assertEquals(2, adapter.getItemCount());
     }
@@ -104,8 +108,9 @@ public class ModelsAdapterTest {
 
     @Test
     public void onCreateViewHolder_createsValidViewHolder() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
@@ -115,8 +120,9 @@ public class ModelsAdapterTest {
 
     @Test
     public void onCreateViewHolder_viewHolderHasCorrectViews() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
@@ -133,8 +139,9 @@ public class ModelsAdapterTest {
         );
         adapter.submitList(models);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
@@ -150,8 +157,9 @@ public class ModelsAdapterTest {
         );
         adapter.submitList(models);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
@@ -170,8 +178,9 @@ public class ModelsAdapterTest {
         );
         adapter.submitList(models);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         // Test first model
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);
@@ -189,7 +198,7 @@ public class ModelsAdapterTest {
     // ==================== Click Listener Tests ====================
 
     @Test
-    public void clickListener_whenSet_receivesClickEvents() {
+    public void clickListener_whenSet_receivesClickEvents() throws InterruptedException {
         AtomicBoolean clicked = new AtomicBoolean(false);
         AtomicReference<Model> clickedModel = new AtomicReference<>();
 
@@ -200,12 +209,23 @@ public class ModelsAdapterTest {
 
         Model testModel = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
         List<Model> models = Arrays.asList(testModel);
-        adapter.submitList(models);
+        AdapterTestHelper.submitListAndWait(adapter, models);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
-        RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
-        adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        recyclerView.setAdapter(adapter);
+        
+        // Force layout to attach view holders properly
+        recyclerView.measure(
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
+        );
+        recyclerView.layout(0, 0, 1000, 1000);
+        
+        // Get the view holder that is now properly attached
+        RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
+        assertNotNull("ViewHolder should be attached", viewHolder);
 
         viewHolder.itemView.performClick();
 
@@ -219,8 +239,9 @@ public class ModelsAdapterTest {
         List<Model> models = Arrays.asList(testModel);
         adapter.submitList(models);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
 
@@ -231,26 +252,26 @@ public class ModelsAdapterTest {
     // ==================== DiffUtil Tests ====================
 
     @Test
-    public void diffUtil_identifiesSameItems() {
+    public void diffUtil_identifiesSameItems() throws InterruptedException {
         Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
         Model model2 = new Model("gpt-4", "GPT-4 Updated", "openai", false, Arrays.asList("text"), 16384, 8192);
 
-        adapter.submitList(Arrays.asList(model1));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(model1));
         assertEquals(1, adapter.getItemCount());
 
-        adapter.submitList(Arrays.asList(model2));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(model2));
         assertEquals(1, adapter.getItemCount());
     }
 
     @Test
-    public void diffUtil_identifiesDifferentItems() {
+    public void diffUtil_identifiesDifferentItems() throws InterruptedException {
         Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
         Model model2 = new Model("claude-3", "Claude 3", "anthropic", true, Arrays.asList("text"), 100000, 4096);
 
-        adapter.submitList(Arrays.asList(model1));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(model1));
         assertEquals(1, adapter.getItemCount());
 
-        adapter.submitList(Arrays.asList(model1, model2));
+        AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(model1, model2));
         assertEquals(2, adapter.getItemCount());
     }
 
@@ -263,8 +284,9 @@ public class ModelsAdapterTest {
         Model model = new Model("long-name-model", longName, "openai", false, Arrays.asList("text"), 8192, 4096);
         adapter.submitList(Arrays.asList(model));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
 
@@ -277,8 +299,9 @@ public class ModelsAdapterTest {
         Model model = new Model("test-model", "Test Model", "test", false, Arrays.asList("text"), 0, 0);
         adapter.submitList(Arrays.asList(model));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
 
@@ -290,12 +313,13 @@ public class ModelsAdapterTest {
 
     @Test
     public void submitList_withLargeContextWindow_displaysCorrectly() {
-        Model model = new Model("large-ctx", "Large Context", "test", false, 
+        Model model = new Model("large-ctx", "Large Context", "test", false,
                 Arrays.asList("text"), Integer.MAX_VALUE, 4096);
         adapter.submitList(Arrays.asList(model));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
 
@@ -309,8 +333,9 @@ public class ModelsAdapterTest {
         Model model = new Model("special", specialName, "test", false, Arrays.asList("text"), 8192, 4096);
         adapter.submitList(Arrays.asList(model));
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
 
@@ -319,12 +344,12 @@ public class ModelsAdapterTest {
     }
 
     @Test
-    public void submitList_multipleUpdates_maintainsCorrectState() {
+    public void submitList_multipleUpdates_maintainsCorrectState() throws InterruptedException {
         // First submission
         List<Model> models1 = Arrays.asList(
             new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
-        adapter.submitList(models1);
+        AdapterTestHelper.submitListAndWait(adapter, models1);
         assertEquals(1, adapter.getItemCount());
 
         // Second submission
@@ -332,15 +357,15 @@ public class ModelsAdapterTest {
             new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096),
             new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048)
         );
-        adapter.submitList(models2);
+        AdapterTestHelper.submitListAndWait(adapter, models2);
         assertEquals(2, adapter.getItemCount());
 
         // Third submission - clear
-        adapter.submitList(new ArrayList<>());
+        AdapterTestHelper.submitListAndWait(adapter, new ArrayList<>());
         assertEquals(0, adapter.getItemCount());
 
         // Fourth submission - repopulate
-        adapter.submitList(models1);
+        AdapterTestHelper.submitListAndWait(adapter, models1);
         assertEquals(1, adapter.getItemCount());
     }
 }
