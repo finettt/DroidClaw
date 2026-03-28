@@ -24,6 +24,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
 
         // Chaquopy configuration - ABI filters
         ndk {
@@ -49,6 +50,7 @@ android {
         unitTests {
             isReturnDefaultValues = true
         }
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 }
 
@@ -102,4 +104,7 @@ dependencies {
     androidTestImplementation(libs.navigation.testing)
     debugImplementation(libs.fragment.testing)
     androidTestImplementation(libs.fragment.testing)
+
+    // Test orchestrator for parallel test execution
+    androidTestUtil("androidx.test:orchestrator:1.5.1")
 }

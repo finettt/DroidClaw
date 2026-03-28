@@ -41,8 +41,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     strategy:
+      fail-fast: false
       matrix:
         api-level: [34, 35, 36]
+        shard-index: [0, 1, 2]
+        total-shards: [3]
 
     steps:
       - name: Checkout repository
@@ -79,7 +82,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.api-level }}
+          key: avd-${{ matrix.api-level }}-${{ matrix.target }}
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -105,14 +108,22 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           disable-spellchecker: true
-          script: ./gradlew connectedAndroidTest --stacktrace
-        timeout-minutes: 30
+          script: |
+            adb shell settings put global window_animation_scale 0.0
+            adb shell settings put global transition_animation_scale 0.0
+            adb shell settings put global animator_duration_scale 0.0
+
+            ./gradlew connectedAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} \
+              -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} \
+              --stacktrace
+        timeout-minutes: 10
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-api-${{ matrix.api-level }}
+          name: test-results-api${{ matrix.api-level }}-shard${{ matrix.shard-index }}
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
