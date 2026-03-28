@@ -67,7 +67,9 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.Settin
 
     public void setItems(List<SettingsItem> newItems) {
         items.clear();
-        items.addAll(newItems);
+        if (newItems != null) {
+            items.addAll(newItems);
+        }
         notifyDataSetChanged();
     }
 

@@ -3,12 +3,12 @@ package io.finett.droidclaw.adapter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import android.content.Context;
 import android.view.View;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.Before;
@@ -21,6 +21,7 @@ import java.util.List;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.util.TestThemeHelper;
 
 @RunWith(AndroidJUnit4.class)
 public class ChatAdapterTest {
@@ -209,8 +210,9 @@ public class ChatAdapterTest {
 
     @Test
     public void onCreateViewHolder_userMessage_createsCorrectViewHolder() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         
         ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                 recyclerView,
@@ -223,8 +225,9 @@ public class ChatAdapterTest {
 
     @Test
     public void onCreateViewHolder_assistantMessage_createsCorrectViewHolder() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         
         ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                 recyclerView,
@@ -239,8 +242,9 @@ public class ChatAdapterTest {
     public void onBindViewHolder_userMessage_bindsCorrectly() {
         adapter.addMessage(new ChatMessage("Test user message", ChatMessage.TYPE_USER));
         
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                 recyclerView,
                 ChatMessage.TYPE_USER
@@ -257,8 +261,9 @@ public class ChatAdapterTest {
     public void onBindViewHolder_assistantMessage_bindsCorrectly() {
         adapter.addMessage(new ChatMessage("Test assistant message", ChatMessage.TYPE_ASSISTANT));
         
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                 recyclerView,
                 ChatMessage.TYPE_ASSISTANT
@@ -376,8 +381,9 @@ public class ChatAdapterTest {
 
     @Test
     public void onCreateViewHolder_toolCallMessage_createsCorrectViewHolder() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                 recyclerView,
@@ -390,8 +396,9 @@ public class ChatAdapterTest {
 
     @Test
     public void onCreateViewHolder_toolResultMessage_createsCorrectViewHolder() {
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
         ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                 recyclerView,
@@ -407,8 +414,9 @@ public class ChatAdapterTest {
         ChatMessage toolCallMessage = ChatMessage.createToolCallMessage(null);
         adapter.addMessage(toolCallMessage);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                 recyclerView,
                 ChatMessage.TYPE_TOOL_CALL
@@ -427,8 +435,9 @@ public class ChatAdapterTest {
         ChatMessage toolResultMessage = ChatMessage.createToolResultMessage("call-123", "test_tool", "Result content");
         adapter.addMessage(toolResultMessage);
 
-        RecyclerView recyclerView = new RecyclerView(ApplicationProvider.getApplicationContext());
-        recyclerView.setLayoutManager(new LinearLayoutManager(ApplicationProvider.getApplicationContext()));
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
         ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                 recyclerView,
                 ChatMessage.TYPE_TOOL_RESULT

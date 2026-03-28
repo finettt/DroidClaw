@@ -17,6 +17,7 @@ import androidx.fragment.app.testing.FragmentScenario;
 import androidx.navigation.testing.TestNavHostController;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -77,6 +78,9 @@ public class ChatFragmentTest {
 
         try (FragmentScenario<ChatFragment> scenario =
                      FragmentScenario.launchInContainer(ChatFragment.class, args, R.style.Theme_DroidClaw)) {
+            // Wait for fragment to fully initialize
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
 
@@ -222,6 +226,9 @@ public class ChatFragmentTest {
 
         try (FragmentScenario<ChatFragment> scenario =
                      FragmentScenario.launchInContainer(ChatFragment.class, args, R.style.Theme_DroidClaw)) {
+            // Wait for fragment to fully initialize
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
 
