@@ -44,7 +44,7 @@
             alias install-app="./gradlew installDebug"
             # alias test="./gradlew test"
             alias test-unit-app="./gradlew testDebugUnitTest"
-            alias test-instrumented=app="./gradlew connectedAndroidTest"
+            alias test-instrumented-app="./gradlew connectedAndroidTest"
             alias lint-app="./gradlew lintDebug"
             alias clean-app="./gradlew clean"
 

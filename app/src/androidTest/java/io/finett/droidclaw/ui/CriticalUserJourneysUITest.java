@@ -1,13 +1,11 @@
 package io.finett.droidclaw.ui;
 
 import static androidx.test.core.app.ApplicationProvider.getApplicationContext;
-import static androidx.test.espresso.Espresso.onIdle;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
 import static androidx.test.espresso.action.ViewActions.replaceText;
-import static androidx.test.espresso.action.ViewActions.typeText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.contrib.DrawerActions.close;
 import static androidx.test.espresso.contrib.DrawerActions.open;
@@ -25,13 +23,11 @@ import androidx.core.view.GravityCompat;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.espresso.IdlingRegistry;
 import androidx.test.espresso.contrib.RecyclerViewActions;
-import androidx.test.ext.junit.rules.ActivityScenarioRule;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -78,21 +74,12 @@ public class CriticalUserJourneysUITest {
             idlingResource = null;
         }
     }
-    
-    /**
-     * Wait for UI to be fully ready after activity launch.
-     * This helps with slow CI emulators.
-     */
-    private void waitForUiReady() {
-        TestUtils.waitFor(500);
-        onIdle();
-    }
 
     @Test
     public void userJourney_firstLaunch_showsMainChatInterface() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User launches app for first time
             // Should see main chat interface
@@ -102,7 +89,7 @@ public class CriticalUserJourneysUITest {
             // User opens drawer to explore
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Drawer should be open with navigation options
             onView(withId(R.id.button_new_chat))
@@ -118,17 +105,17 @@ public class CriticalUserJourneysUITest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User types a message
             onView(withId(R.id.messageInput))
                     .perform(replaceText("Hello, how are you?"), closeSoftKeyboard());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // User sends the message
             onView(withId(R.id.sendButton))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Input should be cleared
             onView(withId(R.id.messageInput))
@@ -140,15 +127,15 @@ public class CriticalUserJourneysUITest {
     public void userJourney_createMultipleChats_switchBetween() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User creates first chat
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.button_new_chat))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Drawer should close
             onView(withId(R.id.drawer_layout))
@@ -157,20 +144,20 @@ public class CriticalUserJourneysUITest {
             // User creates second chat
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.button_new_chat))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // User switches to previous chat
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // Click on first chat in list (index 1, since current is 0)
             onView(withId(R.id.recycler_chat_sessions))
                     .perform(RecyclerViewActions.actionOnItemAtPosition(1, click()));
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Should be in chat view
             onView(withId(R.id.messageInput))
@@ -184,17 +171,17 @@ public class CriticalUserJourneysUITest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User opens drawer
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // User goes to settings
             onView(withId(R.id.button_settings))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Should see settings list
             onView(withId(R.id.recycler_settings))
@@ -206,14 +193,14 @@ public class CriticalUserJourneysUITest {
     public void userJourney_drawerInteraction_openCloseMultipleTimes() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User explores drawer multiple times
             for (int i = 0; i < 3; i++) {
                 // Open drawer
                 onView(withId(R.id.drawer_layout))
                         .perform(open());
-                waitForUiReady();
+                TestUtils.waitForUiReady();
                 
                 onView(withId(R.id.drawer_layout))
                         .check(matches(isOpen(GravityCompat.START)));
@@ -221,7 +208,7 @@ public class CriticalUserJourneysUITest {
                 // Close drawer
                 onView(withId(R.id.drawer_layout))
                         .perform(close());
-                waitForUiReady();
+                TestUtils.waitForUiReady();
                 
                 onView(withId(R.id.drawer_layout))
                         .check(matches(isClosed(GravityCompat.START)));
@@ -237,12 +224,12 @@ public class CriticalUserJourneysUITest {
     public void userJourney_emptyMessageAttempt_validation() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User tries to send empty message
             onView(withId(R.id.sendButton))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Input should remain enabled (message not sent)
             onView(withId(R.id.messageInput))
@@ -253,7 +240,7 @@ public class CriticalUserJourneysUITest {
                     .perform(replaceText("   "), closeSoftKeyboard());
             onView(withId(R.id.sendButton))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Should still be functional
             onView(withId(R.id.messageInput))
@@ -265,14 +252,14 @@ public class CriticalUserJourneysUITest {
     public void userJourney_settingsWithoutApiKey_showsValidation() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User tries to send message without configuring API
             onView(withId(R.id.messageInput))
                     .perform(replaceText("Test message"), closeSoftKeyboard());
             onView(withId(R.id.sendButton))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Should be redirected to settings or shown a message
             // The app handles this gracefully
@@ -286,25 +273,25 @@ public class CriticalUserJourneysUITest {
     public void userJourney_rapidActions_stressTest() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User performs rapid actions
             for (int i = 0; i < 5; i++) {
                 // Type and clear message
                 onView(withId(R.id.messageInput))
                         .perform(replaceText("Quick " + i), closeSoftKeyboard());
-                waitForUiReady();
+                TestUtils.waitForUiReady();
                 onView(withId(R.id.messageInput))
                         .perform(replaceText(""));
-                waitForUiReady();
+                TestUtils.waitForUiReady();
 
                 // Open and close drawer quickly
                 onView(withId(R.id.drawer_layout))
                         .perform(open());
-                waitForUiReady();
+                TestUtils.waitForUiReady();
                 onView(withId(R.id.drawer_layout))
                         .perform(close());
-                waitForUiReady();
+                TestUtils.waitForUiReady();
             }
 
             // App should remain stable
@@ -320,7 +307,7 @@ public class CriticalUserJourneysUITest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User types very long message
             String longMessage = "This is a very long message that tests the input handling capabilities. " +
@@ -330,12 +317,12 @@ public class CriticalUserJourneysUITest {
 
             onView(withId(R.id.messageInput))
                     .perform(replaceText(longMessage), closeSoftKeyboard());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // User sends the long message
             onView(withId(R.id.sendButton))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Message should be cleared
             onView(withId(R.id.messageInput))
@@ -349,21 +336,21 @@ public class CriticalUserJourneysUITest {
 
         // First launch - create chat
         try (ActivityScenario<MainActivity> scenario1 = ActivityScenario.launch(MainActivity.class)) {
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.button_new_chat))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
         }
 
         // Second launch - verify chat persisted
         try (ActivityScenario<MainActivity> scenario2 = ActivityScenario.launch(MainActivity.class)) {
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // Should have at least 2 sessions (initial + created)
             onView(withId(R.id.recycler_chat_sessions))
@@ -375,19 +362,19 @@ public class CriticalUserJourneysUITest {
     public void userJourney_settingsNavigation_backButton() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // Navigate to settings
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.button_settings))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Press back
             pressBack();
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Should return to chat (or may exit app depending on nav implementation)
             // The important thing is it doesn't crash
@@ -398,32 +385,32 @@ public class CriticalUserJourneysUITest {
     public void userJourney_multipleSessionsWorkflow_comprehensive() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // Create Session 1
             onView(withId(R.id.drawer_layout)).perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.button_new_chat)).perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Create Session 2
             onView(withId(R.id.drawer_layout)).perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.button_new_chat)).perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Create Session 3
             onView(withId(R.id.drawer_layout)).perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.button_new_chat)).perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Switch to Session 1 (should be at index 2 now)
             onView(withId(R.id.drawer_layout)).perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.recycler_chat_sessions))
                     .perform(RecyclerViewActions.actionOnItemAtPosition(2, click()));
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Verify we're in a chat view
             onView(withId(R.id.messageInput))
@@ -431,10 +418,10 @@ public class CriticalUserJourneysUITest {
 
             // Switch to Session 2
             onView(withId(R.id.drawer_layout)).perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             onView(withId(R.id.recycler_chat_sessions))
                     .perform(RecyclerViewActions.actionOnItemAtPosition(1, click()));
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Still functional
             onView(withId(R.id.messageInput))
@@ -446,7 +433,7 @@ public class CriticalUserJourneysUITest {
     public void userJourney_toolbarNavigation_hamburgerMenu() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // Drawer should be closed initially
             onView(withId(R.id.drawer_layout))
@@ -455,7 +442,7 @@ public class CriticalUserJourneysUITest {
             // Tap hamburger menu (open drawer via toolbar)
             onView(withId(R.id.drawer_layout))
                     .perform(open());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Drawer should open
             onView(withId(R.id.drawer_layout))
@@ -475,19 +462,19 @@ public class CriticalUserJourneysUITest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             // Wait for UI to be fully ready
-            waitForUiReady();
+            TestUtils.waitForUiReady();
             
             // User types message with special characters
             String specialMessage = "Hello! Test message with numbers 123";
 
             onView(withId(R.id.messageInput))
                     .perform(replaceText(specialMessage), closeSoftKeyboard());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Send message
             onView(withId(R.id.sendButton))
                     .perform(click());
-            waitForUiReady();
+            TestUtils.waitForUiReady();
 
             // Should handle special characters without crashing
             onView(withId(R.id.messageInput))
