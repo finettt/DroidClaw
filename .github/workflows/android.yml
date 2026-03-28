@@ -42,7 +42,7 @@ jobs:
     needs: test
     strategy:
       matrix:
-        api-level: [29, 33, 35]
+        api-level: [34, 35, 36]
 
     steps:
       - name: Checkout repository
