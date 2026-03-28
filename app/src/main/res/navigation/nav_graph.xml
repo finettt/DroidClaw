@@ -100,7 +100,13 @@
     <fragment
         android:id="@+id/onboardingFragment"
         android:name="io.finett.droidclaw.fragment.OnboardingFragment"
-        android:label="Welcome" />
+        android:label="Welcome">
+        <action
+            android:id="@+id/action_onboardingFragment_to_chatFragment"
+            app:destination="@id/chatFragment"
+            app:popUpTo="@id/onboardingFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
 
     <fragment
         android:id="@+id/skillsBrowserFragment"
