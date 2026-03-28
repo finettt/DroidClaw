@@ -7,11 +7,8 @@ import static androidx.test.espresso.matcher.RootMatchers.hasWindowFocus;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 
-import android.app.Activity;
-
 import androidx.test.espresso.IdlingRegistry;
 import androidx.test.espresso.IdlingResource;
-import androidx.test.espresso.NoMatchingRootException;
 
 /**
  * Utility class for Android instrumented tests.
@@ -71,9 +68,6 @@ public class TestUtils {
                         .inRoot(hasWindowFocus())
                         .check(matches(isDisplayed()));
                 return; // Success - window has focus
-            } catch (NoMatchingRootException e) {
-                lastException = e;
-                sleep(POLL_INTERVAL_MS);
             } catch (Exception e) {
                 lastException = e;
                 sleep(POLL_INTERVAL_MS);
