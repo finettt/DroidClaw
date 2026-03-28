@@ -1,15 +1,26 @@
 package io.finett.droidclaw.util;
 
 import static androidx.test.espresso.Espresso.onIdle;
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.RootMatchers.hasWindowFocus;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
+
+import android.app.Activity;
 
 import androidx.test.espresso.IdlingRegistry;
 import androidx.test.espresso.IdlingResource;
+import androidx.test.espresso.NoMatchingRootException;
 
 /**
  * Utility class for Android instrumented tests.
  * Provides helper methods for test synchronization and waiting.
  */
 public class TestUtils {
+    
+    private static final long DEFAULT_TIMEOUT_MS = 5000;
+    private static final long POLL_INTERVAL_MS = 100;
     
     /**
      * Waits for Espresso to be idle.
@@ -22,7 +33,7 @@ public class TestUtils {
     /**
      * Waits for a specified duration.
      * Use sparingly - prefer IdlingResources when possible.
-     * 
+     *
      * @param millis Time to wait in milliseconds
      */
     public static void sleep(long millis) {
@@ -31,6 +42,54 @@ public class TestUtils {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+    
+    /**
+     * Polls until the window has focus, with a default timeout of 5 seconds.
+     * This is a deterministic approach that waits only as long as needed.
+     *
+     * @throws AssertionError if window never gains focus within timeout
+     */
+    public static void waitForWindowFocus() {
+        waitForWindowFocus(DEFAULT_TIMEOUT_MS);
+    }
+    
+    /**
+     * Polls until the window has focus, with a configurable timeout.
+     * This is a deterministic approach that waits only as long as needed.
+     *
+     * @param timeoutMs Maximum time to wait for window focus
+     * @throws AssertionError if window never gains focus within timeout
+     */
+    public static void waitForWindowFocus(long timeoutMs) {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        Exception lastException = null;
+        
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                onView(isRoot())
+                        .inRoot(hasWindowFocus())
+                        .check(matches(isDisplayed()));
+                return; // Success - window has focus
+            } catch (NoMatchingRootException e) {
+                lastException = e;
+                sleep(POLL_INTERVAL_MS);
+            } catch (Exception e) {
+                lastException = e;
+                sleep(POLL_INTERVAL_MS);
+            }
+        }
+        
+        throw new AssertionError("Window did not gain focus within " + timeoutMs + "ms", lastException);
+    }
+    
+    /**
+     * Waits for UI to be ready after activity launch or navigation.
+     * Combines window focus polling with Espresso idle synchronization.
+     */
+    public static void waitForUiReady() {
+        waitForWindowFocus();
+        onIdle();
     }
     
     /**
@@ -73,7 +132,7 @@ public class TestUtils {
     /**
      * Waits for a specified duration using an IdlingResource.
      * This is better than Thread.sleep as it integrates with Espresso's synchronization.
-     * 
+     *
      * @param millis Time to wait in milliseconds
      */
     public static void waitFor(long millis) {
