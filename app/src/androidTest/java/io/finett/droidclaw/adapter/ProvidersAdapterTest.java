@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -240,7 +241,7 @@ public class ProvidersAdapterTest {
     // ==================== Click Listener Tests ====================
 
     @Test
-    public void clickListener_whenSet_receivesClickEvents() {
+    public void clickListener_whenSet_receivesClickEvents() throws InterruptedException {
         AtomicBoolean clicked = new AtomicBoolean(false);
         AtomicReference<Provider> clickedProvider = new AtomicReference<>();
 
@@ -251,13 +252,23 @@ public class ProvidersAdapterTest {
 
         Provider testProvider = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
         List<Provider> providers = Arrays.asList(testProvider);
-        adapter.submitList(providers);
+        AdapterTestHelper.submitListAndWait(adapter, providers);
 
         Context context = TestThemeHelper.getThemedContext();
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
-        RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
-        adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
+        recyclerView.setAdapter(adapter);
+        
+        // Force layout to attach view holders properly
+        recyclerView.measure(
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
+        );
+        recyclerView.layout(0, 0, 1000, 1000);
+        
+        // Get the view holder that is now properly attached
+        RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
+        assertNotNull("ViewHolder should be attached", viewHolder);
 
         viewHolder.itemView.performClick();
 

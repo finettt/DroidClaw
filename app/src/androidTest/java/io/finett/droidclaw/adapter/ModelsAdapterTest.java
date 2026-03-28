@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.view.View;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -197,7 +198,7 @@ public class ModelsAdapterTest {
     // ==================== Click Listener Tests ====================
 
     @Test
-    public void clickListener_whenSet_receivesClickEvents() {
+    public void clickListener_whenSet_receivesClickEvents() throws InterruptedException {
         AtomicBoolean clicked = new AtomicBoolean(false);
         AtomicReference<Model> clickedModel = new AtomicReference<>();
 
@@ -208,13 +209,23 @@ public class ModelsAdapterTest {
 
         Model testModel = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
         List<Model> models = Arrays.asList(testModel);
-        adapter.submitList(models);
+        AdapterTestHelper.submitListAndWait(adapter, models);
 
         Context context = TestThemeHelper.getThemedContext();
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
-        RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
-        adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
+        recyclerView.setAdapter(adapter);
+        
+        // Force layout to attach view holders properly
+        recyclerView.measure(
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
+        );
+        recyclerView.layout(0, 0, 1000, 1000);
+        
+        // Get the view holder that is now properly attached
+        RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
+        assertNotNull("ViewHolder should be attached", viewHolder);
 
         viewHolder.itemView.performClick();
 

@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
@@ -85,14 +86,14 @@ public class ChatFragmentTest {
                 attachNavController(fragment, R.id.chatFragment);
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
-                ProgressBar progressBar = fragment.requireView().findViewById(R.id.progressBar);
+                View statusContainer = fragment.requireView().findViewById(R.id.statusContainer);
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recyclerView);
 
                 messageInput.setText("Need configuration");
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
 
                 assertEquals("Need configuration", messageInput.getText().toString());
-                assertEquals(android.view.View.GONE, progressBar.getVisibility());
+                assertEquals(android.view.View.GONE, statusContainer.getVisibility());
                 assertEquals(0, recyclerView.getAdapter().getItemCount());
             });
         }
@@ -181,7 +182,7 @@ public class ChatFragmentTest {
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
                 ImageButton sendButton = fragment.requireView().findViewById(R.id.sendButton);
-                ProgressBar progressBar = fragment.requireView().findViewById(R.id.progressBar);
+                View statusContainer = fragment.requireView().findViewById(R.id.statusContainer);
 
                 messageInput.setText("Test");
                 sendButton.performClick();
@@ -195,9 +196,9 @@ public class ChatFragmentTest {
 
                 // Should show loading state (or have already completed, which is also valid)
                 // The important thing is that it doesn't crash
-                assertNotNull(progressBar);
+                assertNotNull(statusContainer);
                 assertFalse("Send button should be disabled or re-enabled",
-                        sendButton.isEnabled() && progressBar.getVisibility() == android.view.View.VISIBLE);
+                        sendButton.isEnabled() && statusContainer.getVisibility() == android.view.View.VISIBLE);
             });
         }
     }
@@ -234,12 +235,12 @@ public class ChatFragmentTest {
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
                 ImageButton sendButton = fragment.requireView().findViewById(R.id.sendButton);
-                ProgressBar progressBar = fragment.requireView().findViewById(R.id.progressBar);
+                View statusContainer = fragment.requireView().findViewById(R.id.statusContainer);
 
                 assertTrue("Message input should be enabled", messageInput.isEnabled());
                 assertTrue("Send button should be enabled", sendButton.isEnabled());
-                assertEquals("Progress bar should be hidden",
-                        android.view.View.GONE, progressBar.getVisibility());
+                assertEquals("Status container should be hidden",
+                        android.view.View.GONE, statusContainer.getVisibility());
             });
         }
     }
@@ -349,8 +350,22 @@ public class ChatFragmentTest {
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
             });
 
+            // Wait a bit for the async operation to start
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
             // Destroy fragment - should cancel pending requests without crashing
             scenario.moveToState(androidx.lifecycle.Lifecycle.State.DESTROYED);
+            
+            // Wait a bit more to ensure callbacks don't crash
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 

@@ -228,6 +228,10 @@ public class ChatFragment extends Fragment {
 
             @Override
             public void onError(String error) {
+                if (!isAdded() || getContext() == null) {
+                    Log.w(TAG, "onError: Fragment not attached, ignoring error: " + error);
+                    return;
+                }
                 setLoading(false);
                 Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
             }
