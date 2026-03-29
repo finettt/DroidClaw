@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate CalVer version
+        id: version
+        run: |
+          # Generate CalVer version: YYYY.MM.DD
+          VERSION=$(date -u +"%Y.%m.%d")
+          
+          # Check if a release with this version already exists today
+          # If so, append a build number
+          EXISTING_TAGS=$(git tag -l "${VERSION}*" | wc -l)
+          if [ "$EXISTING_TAGS" -gt 0 ]; then
+            VERSION="${VERSION}.${EXISTING_TAGS}"
+          fi
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Update version in build.gradle.kts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Calculate versionCode from date components
+          YEAR=$(date -u +"%Y")
+          MONTH=$(date -u +"%m")
+          DAY=$(date -u +"%d")
+          VERSION_CODE=$((YEAR * 10000 + MONTH * 100 + DAY))
+          
+          # Update versionName and versionCode in app/build.gradle.kts
+          sed -i "s/versionName = \".*\"/versionName = \"${VERSION}\"/" app/build.gradle.kts
+          sed -i "s/versionCode = [0-9]*/versionCode = ${VERSION_CODE}/" app/build.gradle.kts
+          
+          echo "Updated to versionName=${VERSION}, versionCode=${VERSION_CODE}"
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Find APK file
+        id: find_apk
+        run: |
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          if [ -z "$APK_PATH" ]; then
+            echo "Error: No APK file found"
+            exit 1
+          fi
+          APK_NAME="DroidClaw-${{ steps.version.outputs.version }}.apk"
+          cp "$APK_PATH" "$APK_NAME"
+          echo "apk_path=${APK_NAME}" >> $GITHUB_OUTPUT
+          echo "Found APK: ${APK_PATH}, renamed to: ${APK_NAME}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: DroidClaw ${{ steps.version.outputs.version }}
+          body: |
+            ## DroidClaw Release ${{ steps.version.outputs.version }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.find_apk.outputs.apk_path }}
+          fail_on_unmatched_files: true
