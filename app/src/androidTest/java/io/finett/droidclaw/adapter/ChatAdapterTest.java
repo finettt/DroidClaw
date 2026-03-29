@@ -1,7 +1,9 @@
 package io.finett.droidclaw.adapter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.view.View;
@@ -479,5 +481,83 @@ public class ChatAdapterTest {
         assertEquals("User request", messages.get(0).getContent());
         assertEquals(ChatMessage.TYPE_TOOL_CALL, messages.get(1).getType());
         assertEquals("Result", messages.get(2).getContent());
+    }
+
+    // --- TYPE_SYSTEM tests for identity system support ---
+
+    @Test
+    public void addMessage_systemMessage_increasesCount() {
+        ChatMessage systemMessage = new ChatMessage("System content", ChatMessage.TYPE_SYSTEM);
+        adapter.addMessage(systemMessage);
+
+        assertEquals(1, adapter.getItemCount());
+    }
+
+    @Test
+    public void getItemViewType_systemMessage_returnsSystemType() {
+        adapter.addMessage(new ChatMessage("System content", ChatMessage.TYPE_SYSTEM));
+
+        int viewType = adapter.getItemViewType(0);
+
+        assertEquals(ChatMessage.TYPE_SYSTEM, viewType);
+    }
+
+    @Test
+    public void getItemViewType_mixedMessages_withSystemType_returnsCorrectTypes() {
+        adapter.addMessage(new ChatMessage("System msg", ChatMessage.TYPE_SYSTEM));
+        adapter.addMessage(new ChatMessage("User msg", ChatMessage.TYPE_USER));
+        adapter.addMessage(new ChatMessage("Assistant msg", ChatMessage.TYPE_ASSISTANT));
+
+        assertEquals(ChatMessage.TYPE_SYSTEM, adapter.getItemViewType(0));
+        assertEquals(ChatMessage.TYPE_USER, adapter.getItemViewType(1));
+        assertEquals(ChatMessage.TYPE_ASSISTANT, adapter.getItemViewType(2));
+    }
+
+    @Test
+    public void setMessages_withSystemMessages_preservesOrder() {
+        List<ChatMessage> messages = Arrays.asList(
+                new ChatMessage("System context", ChatMessage.TYPE_SYSTEM),
+                new ChatMessage("User query", ChatMessage.TYPE_USER),
+                new ChatMessage("Assistant response", ChatMessage.TYPE_ASSISTANT)
+        );
+
+        adapter.setMessages(messages);
+
+        assertEquals(3, adapter.getItemCount());
+        List<ChatMessage> retrieved = adapter.getMessages();
+        assertEquals(ChatMessage.TYPE_SYSTEM, retrieved.get(0).getType());
+        assertEquals("System context", retrieved.get(0).getContent());
+        assertEquals(ChatMessage.TYPE_USER, retrieved.get(1).getType());
+        assertEquals(ChatMessage.TYPE_ASSISTANT, retrieved.get(2).getType());
+    }
+
+    @Test
+    public void systemMessage_isSystem_returnsTrue() {
+        ChatMessage systemMessage = new ChatMessage("System content", ChatMessage.TYPE_SYSTEM);
+        
+        assertTrue("isSystem() should return true for TYPE_SYSTEM", systemMessage.isSystem());
+        assertFalse("isUser() should return false for TYPE_SYSTEM", systemMessage.isUser());
+        assertFalse("isAssistant() should return false for TYPE_SYSTEM", systemMessage.isAssistant());
+    }
+
+    @Test
+    public void systemMessage_toApiMessage_hasCorrectFormat() {
+        ChatMessage systemMessage = new ChatMessage("System instructions", ChatMessage.TYPE_SYSTEM);
+        
+        com.google.gson.JsonObject apiMessage = systemMessage.toApiMessage();
+        
+        assertEquals("system", apiMessage.get("role").getAsString());
+        assertEquals("System instructions", apiMessage.get("content").getAsString());
+    }
+
+    @Test
+    public void allMessageTypes_toApiMessage_hasCorrectRole() {
+        ChatMessage systemMessage = new ChatMessage("System", ChatMessage.TYPE_SYSTEM);
+        ChatMessage userMessage = new ChatMessage("User", ChatMessage.TYPE_USER);
+        ChatMessage assistantMessage = new ChatMessage("Assistant", ChatMessage.TYPE_ASSISTANT);
+        
+        assertEquals("system", systemMessage.toApiMessage().get("role").getAsString());
+        assertEquals("user", userMessage.toApiMessage().get("role").getAsString());
+        assertEquals("assistant", assistantMessage.toApiMessage().get("role").getAsString());
     }
 }
