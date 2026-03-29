@@ -154,13 +154,13 @@ public class OnboardingFragment extends Fragment {
     }
 
     private void setupErrorClearingListeners() {
-        etProviderName.addTextChangedListener(new SimpleTextWatcher(() -> 
+        etProviderName.addTextChangedListener(new SimpleTextWatcher(() ->
             tilProviderName.setError(null)));
-        etBaseUrl.addTextChangedListener(new SimpleTextWatcher(() -> 
+        etBaseUrl.addTextChangedListener(new SimpleTextWatcher(() ->
             tilBaseUrl.setError(null)));
-        etApiKey.addTextChangedListener(new SimpleTextWatcher(() -> 
+        etApiKey.addTextChangedListener(new SimpleTextWatcher(() ->
             tilApiKey.setError(null)));
-        actvApiType.addTextChangedListener(new SimpleTextWatcher(() -> 
+        actvApiType.addTextChangedListener(new SimpleTextWatcher(() ->
             tilApiType.setError(null)));
     }
 

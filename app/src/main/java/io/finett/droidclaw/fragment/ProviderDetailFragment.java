@@ -18,6 +18,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
+
+import android.text.Editable;
+import android.text.TextWatcher;
 
 import java.util.UUID;
 
@@ -32,6 +36,9 @@ public class ProviderDetailFragment extends Fragment {
     private TextInputEditText inputProviderName;
     private TextInputEditText inputBaseUrl;
     private TextInputEditText inputApiKey;
+    private TextInputLayout tilProviderName;
+    private TextInputLayout tilBaseUrl;
+    private TextInputLayout tilApiKey;
     private AutoCompleteTextView dropdownApiType;
     private RecyclerView recyclerModels;
     private Button buttonAddModel;
@@ -88,6 +95,9 @@ public class ProviderDetailFragment extends Fragment {
         inputProviderName = view.findViewById(R.id.input_provider_name);
         inputBaseUrl = view.findViewById(R.id.input_base_url);
         inputApiKey = view.findViewById(R.id.input_api_key);
+        tilProviderName = view.findViewById(R.id.til_provider_name);
+        tilBaseUrl = view.findViewById(R.id.til_base_url);
+        tilApiKey = view.findViewById(R.id.til_api_key);
         dropdownApiType = view.findViewById(R.id.dropdown_api_type);
         recyclerModels = view.findViewById(R.id.recycler_models);
         buttonAddModel = view.findViewById(R.id.button_add_model);
@@ -146,6 +156,14 @@ public class ProviderDetailFragment extends Fragment {
         buttonAddModel.setOnClickListener(v -> navigateToNewModel());
         buttonSave.setOnClickListener(v -> saveProvider());
         buttonDelete.setOnClickListener(v -> confirmDeleteProvider());
+        
+        // Clear errors on input
+        inputProviderName.addTextChangedListener(new SimpleTextWatcher(() ->
+            tilProviderName.setError(null)));
+        inputBaseUrl.addTextChangedListener(new SimpleTextWatcher(() ->
+            tilBaseUrl.setError(null)));
+        inputApiKey.addTextChangedListener(new SimpleTextWatcher(() ->
+            tilApiKey.setError(null)));
     }
 
     private void saveProvider() {
@@ -156,22 +174,22 @@ public class ProviderDetailFragment extends Fragment {
 
         // Validation
         if (name.isEmpty()) {
-            inputProviderName.setError(getString(R.string.validation_required));
+            tilProviderName.setError(getString(R.string.validation_required));
             return;
         }
 
         if (baseUrl.isEmpty()) {
-            inputBaseUrl.setError(getString(R.string.validation_required));
+            tilBaseUrl.setError(getString(R.string.validation_required));
             return;
         }
 
         if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-            inputBaseUrl.setError(getString(R.string.validation_invalid_url));
+            tilBaseUrl.setError(getString(R.string.validation_invalid_url));
             return;
         }
 
         if (apiKey.isEmpty()) {
-            inputApiKey.setError(getString(R.string.validation_required));
+            tilApiKey.setError(getString(R.string.validation_required));
             return;
         }
 
@@ -259,5 +277,25 @@ public class ProviderDetailFragment extends Fragment {
             return "google";
         }
         return "openai-completions";
+    }
+
+    // Simple TextWatcher helper
+    private static class SimpleTextWatcher implements TextWatcher {
+        private final Runnable onChanged;
+
+        SimpleTextWatcher(Runnable onChanged) {
+            this.onChanged = onChanged;
+        }
+
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {
+            onChanged.run();
+        }
+
+        @Override
+        public void afterTextChanged(Editable s) {}
     }
 }
