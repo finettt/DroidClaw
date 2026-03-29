@@ -132,3 +132,35 @@ Settings stored as JSON in SharedPreferences (`droidclaw_settings`):
 - Tool execution requires approval by default (configurable)
 - Max iterations limit prevents infinite loops (default: 20)
 - Skill files limited to 100KB
+
+## Releases and Versioning
+
+DroidClaw uses [release-please](https://github.com/googleapis/release-please) for automated releases.
+
+### How It Works
+
+1. **Conventional Commits**: Use [Conventional Commits](https://www.conventionalcommits.org/) format:
+   - `feat:` - New features (bumps minor version)
+   - `fix:` - Bug fixes (bumps patch version)
+   - `feat!:` or `BREAKING CHANGE:` - Breaking changes (bumps major version)
+
+2. **Automated Release PRs**: When commits are pushed to `main`/`master`, release-please:
+   - Analyzes commit messages
+   - Creates/updates a Release PR with CHANGELOG updates
+   - Updates version in [`app/build.gradle.kts`](app/build.gradle.kts:24)
+
+3. **Creating a Release**: Merge the Release PR to:
+   - Create a GitHub release with tag
+   - Trigger APK build and upload to release assets
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| [`.github/release-please-config.json`](.github/release-please-config.json) | Release-please settings |
+| [`.release-please-manifest.json`](.release-please-manifest.json) | Current version tracking |
+| [`.github/workflows/release-please.yml`](.github/workflows/release-please.yml) | GitHub Actions workflow |
+
+### Version Markers
+
+The version in [`app/build.gradle.kts`](app/build.gradle.kts:24) uses the `x-release-please-version` comment marker for automatic updates.
