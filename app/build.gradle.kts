@@ -20,8 +20,8 @@ android {
         applicationId = "io.finett.droidclaw"
         minSdk = 22
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.0.0" // x-release-please-version
+        versionCode = 20260329
+        versionName = "2026.03.29" // x-release-please-version
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
