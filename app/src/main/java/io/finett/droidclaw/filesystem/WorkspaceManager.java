@@ -35,6 +35,10 @@ public class WorkspaceManager {
     private static final String MEMORY_DIR = ".agent/memory";
     private static final String SKILLS_DIR = ".agent/skills";
     private static final String CONFIG_DIR = ".agent/config";
+    
+    // Identity files
+    private static final String SOUL_FILE = ".agent/soul.md";
+    private static final String USER_FILE = ".agent/user.md";
 
     private final Context context;
     private final File workspaceRoot;
@@ -97,6 +101,14 @@ public class WorkspaceManager {
         // Initialize standard directories
         initialize();
 
+        // Create identity files
+        try {
+            createIdentityFiles();
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to create identity files", e);
+            // Continue even if identity files fail
+        }
+
         // Copy built-in skills
         for (String skillName : BUILTIN_SKILLS) {
             try {
@@ -158,6 +170,40 @@ public class WorkspaceManager {
             while ((bytesRead = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, bytesRead);
             }
+        }
+    }
+
+    /**
+     * Creates identity files (soul.md and user.md) from app assets if they don't exist.
+     *
+     * @throws IOException if file creation fails
+     */
+    private void createIdentityFiles() throws IOException {
+        createIdentityFile(SOUL_FILE, "identity/soul.md");
+        createIdentityFile(USER_FILE, "identity/user.md");
+    }
+
+    /**
+     * Creates an identity file from app assets if it doesn't exist.
+     *
+     * @param workspacePath Path in workspace (e.g., ".agent/soul.md")
+     * @param assetPath Path in assets (e.g., "identity/soul.md")
+     * @throws IOException if file creation fails
+     */
+    private void createIdentityFile(String workspacePath, String assetPath) throws IOException {
+        File file = new File(workspaceRoot, workspacePath);
+        
+        // Skip if file already exists
+        if (file.exists()) {
+            Log.d(TAG, "Identity file already exists: " + workspacePath);
+            return;
+        }
+        
+        Log.d(TAG, "Creating identity file: " + workspacePath);
+        
+        try (InputStream inputStream = context.getAssets().open(assetPath)) {
+            copyInputStreamToFile(inputStream, file);
+            Log.d(TAG, "Created identity file: " + workspacePath);
         }
     }
 
@@ -262,8 +308,26 @@ public class WorkspaceManager {
     }
 
     /**
+     * Gets the soul.md identity file path.
+     *
+     * @return Soul file path relative to workspace
+     */
+    public static String getSoulFilePath() {
+        return SOUL_FILE;
+    }
+
+    /**
+     * Gets the user.md identity file path.
+     *
+     * @return User file path relative to workspace
+     */
+    public static String getUserFilePath() {
+        return USER_FILE;
+    }
+
+    /**
      * Clears the temporary directory.
-     * 
+     *
      * @return true if successful
      */
     public boolean clearTempDirectory() {

@@ -28,7 +28,9 @@ import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.adapter.ChatAdapter;
 import io.finett.droidclaw.agent.AgentLoop;
+import io.finett.droidclaw.agent.IdentityManager;
 import io.finett.droidclaw.api.LlmApiService;
+import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.tool.ToolRegistry;
@@ -51,6 +53,8 @@ public class ChatFragment extends Fragment {
     private ChatRepository chatRepository;
     private ToolRegistry toolRegistry;
     private AgentLoop agentLoop;
+    private IdentityManager identityManager;
+    private WorkspaceManager workspaceManager;
     private String currentSessionId;
 
     @Override
@@ -60,10 +64,25 @@ public class ChatFragment extends Fragment {
         settingsManager = new SettingsManager(requireContext());
         apiService = new LlmApiService(settingsManager);
         chatRepository = new ChatRepository(requireContext());
+        
+        // Initialize workspace and identity
+        workspaceManager = new WorkspaceManager(requireContext());
+        try {
+            workspaceManager.initializeWithSkills();
+            Log.d(TAG, "Workspace initialized");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to initialize workspace", e);
+        }
+        
+        identityManager = new IdentityManager(requireContext(), workspaceManager);
+        
         // Create ToolRegistry with SettingsManager for shell access settings
         toolRegistry = new ToolRegistry(requireContext(), settingsManager);
         // Create AgentLoop with SettingsManager for approval settings
         agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager);
+        
+        // Load and set identity context
+        loadIdentityContext();
         
         // Get session ID from arguments
         Bundle args = getArguments();
@@ -72,6 +91,20 @@ public class ChatFragment extends Fragment {
             Log.d(TAG, "onCreate: Received session_id: " + currentSessionId);
         } else {
             Log.w(TAG, "onCreate: No session_id received");
+        }
+    }
+    
+    /**
+     * Loads identity context (soul.md and user.md) and sets it in the agent loop.
+     */
+    private void loadIdentityContext() {
+        try {
+            List<ChatMessage> identityMessages = identityManager.getIdentityMessages();
+            agentLoop.setIdentityContext(identityMessages);
+            Log.d(TAG, "Loaded identity context: " + identityMessages.size() + " message(s)");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to load identity context, continuing without it", e);
+            // Continue without identity context - not critical
         }
     }
 

@@ -121,14 +121,26 @@ public class MainActivityTest {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
 
-                // Open drawer first
+                // Open drawer first and wait for animation
                 drawerLayout.openDrawer(GravityCompat.START);
             });
 
+            // Wait for drawer to fully open with longer timeout
             waitForDrawerState(scenario, true);
 
-            scenario.onActivity(activity -> activity.findViewById(R.id.button_new_chat).performClick());
+            // Small delay to ensure drawer is stable after animation
+            TestUtils.waitFor(100);
 
+            scenario.onActivity(activity -> {
+                // Verify drawer is open before clicking
+                DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
+                assertTrue("Drawer should be open before clicking button",
+                        drawerLayout.isDrawerOpen(GravityCompat.START));
+                
+                activity.findViewById(R.id.button_new_chat).performClick();
+            });
+
+            // Wait for drawer to close
             waitForDrawerState(scenario, false);
         }
     }
@@ -139,14 +151,26 @@ public class MainActivityTest {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
 
-                // Open drawer first
+                // Open drawer first and wait for animation
                 drawerLayout.openDrawer(GravityCompat.START);
             });
 
+            // Wait for drawer to fully open with longer timeout
             waitForDrawerState(scenario, true);
 
-            scenario.onActivity(activity -> activity.findViewById(R.id.button_settings).performClick());
+            // Small delay to ensure drawer is stable after animation
+            TestUtils.waitFor(100);
 
+            scenario.onActivity(activity -> {
+                // Verify drawer is open before clicking
+                DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
+                assertTrue("Drawer should be open before clicking button",
+                        drawerLayout.isDrawerOpen(GravityCompat.START));
+                
+                activity.findViewById(R.id.button_settings).performClick();
+            });
+
+            // Wait for drawer to close
             waitForDrawerState(scenario, false);
         }
     }
@@ -689,7 +713,7 @@ public class MainActivityTest {
         }
     }
     private void waitForDrawerState(ActivityScenario<MainActivity> scenario, boolean expectedOpen) {
-        long timeoutAt = System.currentTimeMillis() + 2000L;
+        long timeoutAt = System.currentTimeMillis() + 3000L;  // Increased timeout to 3 seconds
         boolean[] stateMatches = new boolean[1];
 
         do {
@@ -700,16 +724,19 @@ public class MainActivityTest {
             });
 
             if (stateMatches[0]) {
+                // Wait a bit more to ensure drawer animation is fully complete
+                TestUtils.waitFor(50);
                 return;
             }
 
-            TestUtils.waitFor(50);
+            TestUtils.waitFor(100);  // Increased poll interval
         } while (System.currentTimeMillis() < timeoutAt);
 
         scenario.onActivity(activity -> {
             DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
             assertEquals(
-                    "Unexpected drawer state",
+                    "Drawer state did not match expected state within timeout. Expected: " +
+                    (expectedOpen ? "open" : "closed"),
                     expectedOpen,
                     drawerLayout.isDrawerOpen(GravityCompat.START)
             );

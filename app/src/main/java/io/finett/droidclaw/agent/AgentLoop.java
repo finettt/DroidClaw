@@ -35,6 +35,7 @@ public class AgentLoop {
     private int iterationCount;
     private int maxIterations;
     private boolean requireApproval;
+    private List<ChatMessage> identityMessages;
 
     /**
      * Callback interface for agent events.
@@ -93,8 +94,18 @@ public class AgentLoop {
     }
 
     /**
+     * Sets the identity context (soul.md and user.md) to be prepended to conversations.
+     *
+     * @param identityMessages List of system messages containing identity context
+     */
+    public void setIdentityContext(List<ChatMessage> identityMessages) {
+        this.identityMessages = identityMessages;
+        Log.d(TAG, "Identity context set: " + (identityMessages != null ? identityMessages.size() : 0) + " message(s)");
+    }
+
+    /**
      * Start the agent loop with a user message.
-     * 
+     *
      * @param conversationHistory Full conversation history including the new user message
      * @param callback Callback for progress and completion
      */
@@ -124,8 +135,8 @@ public class AgentLoop {
         // Get tool definitions
         JsonArray tools = toolRegistry.getToolDefinitions();
 
-        // Send message to LLM with tools
-        apiService.sendMessageWithTools(conversationHistory, tools, new LlmApiService.ChatCallbackWithTools() {
+        // Send message to LLM with tools and identity context
+        apiService.sendMessageWithTools(conversationHistory, tools, identityMessages, new LlmApiService.ChatCallbackWithTools() {
             @Override
             public void onSuccess(LlmApiService.LlmResponse response) {
                 handleLlmResponse(response, conversationHistory, callback);
