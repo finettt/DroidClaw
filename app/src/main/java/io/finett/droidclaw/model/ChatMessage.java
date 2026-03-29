@@ -12,6 +12,7 @@ public class ChatMessage {
     public static final int TYPE_ASSISTANT = 1;
     public static final int TYPE_TOOL_CALL = 2;
     public static final int TYPE_TOOL_RESULT = 3;
+    public static final int TYPE_SYSTEM = 4;
 
     private String content;
     private int type;
@@ -111,6 +112,10 @@ public class ChatMessage {
         this.toolName = toolName;
     }
 
+    public boolean isSystem() {
+        return type == TYPE_SYSTEM;
+    }
+
     /**
      * Convert this message to the API format required by OpenAI.
      *
@@ -120,6 +125,11 @@ public class ChatMessage {
         JsonObject message = new JsonObject();
 
         switch (type) {
+            case TYPE_SYSTEM:
+                message.addProperty("role", "system");
+                message.addProperty("content", content);
+                break;
+
             case TYPE_USER:
                 message.addProperty("role", "user");
                 message.addProperty("content", content);

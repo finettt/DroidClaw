@@ -69,10 +69,11 @@ The agent uses an iterative tool-calling loop (`AgentLoop.java`):
 |-----------|---------|
 | `LlmApiService` | OpenAI-compatible API client (OkHttp + Gson) |
 | `AgentLoop` | Iterative tool-calling workflow |
+| `IdentityManager` | Loads and manages identity documents (soul.md, user.md) |
 | `ToolRegistry` | Manages all tools (file, shell, python) |
 | `Tool` interface | All tools implement getName(), getDefinition(), execute() |
 | `VirtualFileSystem` | Sandboxed filesystem operations |
-| `WorkspaceManager` | Workspace directory structure (.agent/skills/) |
+| `WorkspaceManager` | Workspace directory structure (.agent/skills/, identity files) |
 | `PathValidator` | Prevents path traversal attacks |
 | `ShellExecutor` | ProcessBuilder wrapper for shell commands |
 | `PythonExecutor` | Chaquopy-based Python execution |
@@ -81,7 +82,7 @@ The agent uses an iterative tool-calling loop (`AgentLoop.java`):
 
 ### Data Models
 
-- `ChatMessage` - User/assistant/tool_call/tool_result messages
+- `ChatMessage` - User/assistant/system/tool_call/tool_result messages
 - `ChatSession` - Session metadata (id, title, updatedAt)
 - `Provider` - API provider (id, name, baseUrl, apiKey, models)
 - `Model` - Model config (id, name, contextWindow, maxTokens, input types)
@@ -100,6 +101,40 @@ Skills are directory-based with `SKILL.md` files in `.agent/skills/`:
 - Built-in: `skill_creator`, `web_search`, `code_analysis`, `data_processing`, `task_automation`
 - Agent discovers skills via `list_files(".agent/skills/")`
 - Agent loads skills on-demand via `read_file(".agent/skills/[name]/SKILL.md")`
+
+### Identity System
+
+DroidClaw maintains two identity documents that provide the agent with persistent identity and user knowledge:
+
+- **`.agent/soul.md`** - Agent's identity, values, capabilities, and self-concept
+  - Defines who the agent is and how it operates
+  - Includes core principles, working style, and boundaries
+  - Instructs agent to update user.md when learning about the user
+  - Created from `app/src/main/assets/identity/soul.md` template on first run
+
+- **`.agent/user.md`** - User profile and preferences (auto-updated by agent)
+  - Contains user identity, preferences, and working style
+  - Tracks goals, projects, and patterns observed by the agent
+  - Updated by agent using `write_file` tool when learning new information
+  - Provides continuity across sessions where memory is otherwise fragile
+
+**Loading Mechanism:**
+- Identity files loaded at session start (ChatFragment initialization)
+- Injected as system messages prepended to conversation history
+- Hidden from UI (not displayed as chat messages)
+- Cached per session to avoid repeated file reads
+
+**Update Flow:**
+1. Agent learns something about user during conversation
+2. Agent uses `write_file` tool to update `.agent/user.md`
+3. Updated profile available in next session
+4. Creates continuity despite stateless LLM nature
+
+**Implementation:**
+- `IdentityManager` - Loads and formats identity documents
+- `WorkspaceManager` - Creates identity files from assets on initialization
+- `AgentLoop` - Accepts identity context and passes to API service
+- `LlmApiService` - Prepends identity as system messages in API requests
 
 ### Configuration
 
@@ -132,3 +167,5 @@ Settings stored as JSON in SharedPreferences (`droidclaw_settings`):
 - Tool execution requires approval by default (configurable)
 - Max iterations limit prevents infinite loops (default: 20)
 - Skill files limited to 100KB
+- Identity files (soul.md, user.md) are loaded at session start and injected as system context
+- Agent can update user.md anytime via write_file tool to maintain user knowledge across sessions

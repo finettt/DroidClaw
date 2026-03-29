@@ -107,16 +107,21 @@ public class LlmApiService {
     }
 
     public void sendMessage(List<ChatMessage> conversationHistory, ChatCallback callback) {
-        sendMessage(conversationHistory, null, callback);
+        sendMessage(conversationHistory, null, null, callback);
     }
 
     public void sendMessage(List<ChatMessage> conversationHistory, JsonArray tools, ChatCallback callback) {
+        sendMessage(conversationHistory, tools, null, callback);
+    }
+
+    public void sendMessage(List<ChatMessage> conversationHistory, JsonArray tools,
+                           List<ChatMessage> identityMessages, ChatCallback callback) {
         if (!settingsManager.isConfigured()) {
             mainHandler.post(() -> callback.onError("API key not configured. Please set it in Settings."));
             return;
         }
 
-        JsonObject requestBody = buildRequestBody(conversationHistory, tools);
+        JsonObject requestBody = buildRequestBody(conversationHistory, tools, identityMessages);
         String jsonBody = gson.toJson(requestBody);
 
         Request.Builder requestBuilder = new Request.Builder()
@@ -165,12 +170,25 @@ public class LlmApiService {
      * @param callback Callback with LlmResponse containing content and tool calls
      */
     public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools, ChatCallbackWithTools callback) {
+        sendMessageWithTools(conversationHistory, tools, null, callback);
+    }
+
+    /**
+     * Send message with tool support, identity context, and get structured response.
+     *
+     * @param conversationHistory Full conversation history
+     * @param tools Tool definitions (can be null)
+     * @param identityMessages System messages for identity context (soul.md, user.md)
+     * @param callback Callback with LlmResponse containing content and tool calls
+     */
+    public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools,
+                                     List<ChatMessage> identityMessages, ChatCallbackWithTools callback) {
         if (!settingsManager.isConfigured()) {
             mainHandler.post(() -> callback.onError("API key not configured. Please set it in Settings."));
             return;
         }
 
-        JsonObject requestBody = buildRequestBody(conversationHistory, tools);
+        JsonObject requestBody = buildRequestBody(conversationHistory, tools, identityMessages);
         String jsonBody = gson.toJson(requestBody);
 
         Request.Builder requestBuilder = new Request.Builder()
@@ -211,7 +229,8 @@ public class LlmApiService {
         });
     }
 
-    private JsonObject buildRequestBody(List<ChatMessage> conversationHistory, JsonArray tools) {
+    private JsonObject buildRequestBody(List<ChatMessage> conversationHistory, JsonArray tools,
+                                        List<ChatMessage> identityMessages) {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", settingsManager.getModelName());
         requestBody.addProperty("max_tokens", settingsManager.getMaxTokens());
@@ -219,7 +238,14 @@ public class LlmApiService {
 
         JsonArray messages = new JsonArray();
 
-        // Add conversation history (no system prompt in new configuration)
+        // Add identity messages FIRST (system messages with soul.md and user.md)
+        if (identityMessages != null) {
+            for (ChatMessage identityMessage : identityMessages) {
+                messages.add(identityMessage.toApiMessage());
+            }
+        }
+
+        // Add conversation history
         for (ChatMessage chatMessage : conversationHistory) {
             messages.add(chatMessage.toApiMessage());
         }
