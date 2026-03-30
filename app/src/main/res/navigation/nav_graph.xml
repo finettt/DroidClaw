@@ -16,8 +16,8 @@
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
         <action
-            android:id="@+id/action_chatFragment_to_skillsBrowserFragment"
-            app:destination="@id/skillsBrowserFragment" />
+            android:id="@+id/action_chatFragment_to_fileBrowserFragment"
+            app:destination="@id/fileBrowserFragment" />
     </fragment>
 
     <fragment
@@ -34,6 +34,13 @@
         <action
             android:id="@+id/action_settingsFragment_to_agentSettingsFragment"
             app:destination="@id/agentSettingsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_settingsFragment_to_skillsBrowserFragment"
+            app:destination="@id/skillsBrowserFragment"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
@@ -117,5 +124,10 @@
         android:id="@+id/skillContentFragment"
         android:name="io.finett.droidclaw.fragment.SkillContentFragment"
         android:label="Skill Details" />
+
+    <fragment
+        android:id="@+id/fileBrowserFragment"
+        android:name="io.finett.droidclaw.fragment.FileBrowserFragment"
+        android:label="Files" />
 
 </navigation>

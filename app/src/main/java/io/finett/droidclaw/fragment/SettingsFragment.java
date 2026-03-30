@@ -25,6 +25,7 @@ public class SettingsFragment extends Fragment {
 
     private static final String ITEM_PROVIDERS = "providers";
     private static final String ITEM_AGENT = "agent";
+    private static final String ITEM_SKILLS = "skills";
     private static final String ITEM_RESET_ONBOARDING = "reset_onboarding";
 
     private RecyclerView recyclerView;
@@ -87,6 +88,15 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
+        // Skills item
+        items.add(new SettingsAdapter.SettingsItem(
+                ITEM_SKILLS,
+                "🧠",
+                getString(R.string.settings_skills),
+                getString(R.string.settings_skills_subtitle),
+                true
+        ));
+
         // Reset Onboarding item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_RESET_ONBOARDING,
@@ -108,6 +118,10 @@ public class SettingsFragment extends Fragment {
             case ITEM_AGENT:
                 Navigation.findNavController(requireView())
                         .navigate(R.id.action_settingsFragment_to_agentSettingsFragment);
+                break;
+            case ITEM_SKILLS:
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.action_settingsFragment_to_skillsBrowserFragment);
                 break;
             case ITEM_RESET_ONBOARDING:
                 showResetOnboardingConfirmation();
