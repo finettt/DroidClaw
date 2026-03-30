@@ -13,11 +13,13 @@
 
         <!-- Provider Name -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_provider_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:hint="@string/provider_name"
-            app:boxBackgroundMode="outline">
+            app:boxBackgroundMode="outline"
+            app:errorEnabled="true">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/input_provider_name"
@@ -29,11 +31,13 @@
 
         <!-- Base URL -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_base_url"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:hint="@string/provider_base_url"
-            app:boxBackgroundMode="outline">
+            app:boxBackgroundMode="outline"
+            app:errorEnabled="true">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/input_base_url"
@@ -45,11 +49,13 @@
 
         <!-- API Key -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_api_key"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:hint="@string/api_key"
             app:boxBackgroundMode="outline"
+            app:errorEnabled="true"
             app:endIconMode="password_toggle">
 
             <com.google.android.material.textfield.TextInputEditText
