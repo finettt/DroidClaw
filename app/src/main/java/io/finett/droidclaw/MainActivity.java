@@ -112,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupDrawerContent() {
         MaterialButton newChatButton = findViewById(R.id.button_new_chat);
-        MaterialButton skillsButton = findViewById(R.id.button_skills);
+        MaterialButton filesButton = findViewById(R.id.button_files);
         MaterialButton settingsButton = findViewById(R.id.button_settings);
         RecyclerView chatSessionsRecyclerView = findViewById(R.id.recycler_chat_sessions);
 
@@ -156,9 +156,9 @@ public class MainActivity extends AppCompatActivity {
             drawerLayout.closeDrawer(GravityCompat.START);
         });
 
-        skillsButton.setOnClickListener(v -> {
+        filesButton.setOnClickListener(v -> {
             if (navController != null) {
-                navController.navigate(R.id.skillsBrowserFragment);
+                navController.navigate(R.id.fileBrowserFragment);
             }
             drawerLayout.closeDrawer(GravityCompat.START);
         });
