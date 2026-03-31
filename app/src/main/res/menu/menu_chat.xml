@@ -11,8 +11,8 @@
                 android:id="@+id/action_chats"
                 android:title="@string/chats" />
             <item
-                android:id="@+id/action_skills"
-                android:title="@string/skills" />
+                android:id="@+id/action_files"
+                android:title="@string/files" />
             <item
                 android:id="@+id/action_settings"
                 android:title="@string/settings" />

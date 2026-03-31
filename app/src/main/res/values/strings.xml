@@ -118,6 +118,16 @@
     <string name="skill_discovery_status">Discovering skills...</string>
     <string name="skill_loaded_status">Loaded skill: %1$s</string>
     
+    <!-- File Browser -->
+    <string name="files">Files</string>
+    <string name="file_browser_title">Files</string>
+    <string name="file_browser_empty">Empty directory</string>
+    <string name="file_browser_error">Error: %1$s</string>
+    <string name="file_browser_directory">Directory</string>
+    <string name="file_browser_parent_directory">Parent directory</string>
+    <string name="settings_skills">Skills</string>
+    <string name="settings_skills_subtitle">View and manage agent skills</string>
+    
     <!-- Validation -->
     <string name="validation_required">This field is required</string>
     <string name="validation_invalid_url">Please enter a valid URL</string>
