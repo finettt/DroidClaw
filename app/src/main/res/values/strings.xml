@@ -124,6 +124,7 @@
     <string name="file_browser_empty">Empty directory</string>
     <string name="file_browser_error">Error: %1$s</string>
     <string name="file_browser_directory">Directory</string>
+    <string name="file_browser_parent_directory">Parent directory</string>
     <string name="settings_skills">Skills</string>
     <string name="settings_skills_subtitle">View and manage agent skills</string>
     

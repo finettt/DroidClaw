@@ -128,6 +128,12 @@ public class FileBrowserFragment extends Fragment {
                     return getFileName(a.getPath()).compareToIgnoreCase(getFileName(b.getPath()));
                 });
 
+                // Add parent directory entry (..) if not at root
+                if (!".".equals(path)) {
+                    String parentPath = getParentPath(path);
+                    files.add(0, new ParentDirectoryEntry(parentPath));
+                }
+
                 requireActivity().runOnUiThread(() -> {
                     adapter.setFiles(files);
                     emptyText.setVisibility(files.isEmpty() ? View.VISIBLE : View.GONE);
@@ -157,7 +163,22 @@ public class FileBrowserFragment extends Fragment {
         loadDirectory(parent.getPath());
     }
 
+    private String getParentPath(String path) {
+        if (".".equals(path)) {
+            return ".";
+        }
+        int lastSlash = path.lastIndexOf('/');
+        if (lastSlash <= 0) {
+            return ".";
+        }
+        return path.substring(0, lastSlash);
+    }
+
     private String getFileName(String path) {
+        // Special case for parent directory
+        if ("..".equals(path)) {
+            return "..";
+        }
         int lastSlash = path.lastIndexOf('/');
         return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
     }
@@ -198,6 +219,23 @@ public class FileBrowserFragment extends Fragment {
     private String formatDate(long timestamp) {
         SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
         return sdf.format(new Date(timestamp));
+    }
+
+    /**
+     * Special FileInfo subclass to identify parent directory entries.
+     */
+    static class ParentDirectoryEntry extends VirtualFileSystem.FileInfo {
+        private final String parentPath;
+
+        ParentDirectoryEntry(String parentPath) {
+            super("..", true, 0, 0);
+            this.parentPath = parentPath;
+        }
+
+        @Override
+        public String getPath() {
+            return parentPath;
+        }
     }
 
     /**
@@ -265,16 +303,26 @@ public class FileBrowserFragment extends Fragment {
             }
 
             void bind(VirtualFileSystem.FileInfo file) {
+                // Check if this is a parent directory entry
+                boolean isParentDir = file instanceof ParentDirectoryEntry;
+                
                 // Extract just the name for display
-                String path = file.getPath();
-                int lastSlash = path.lastIndexOf('/');
-                String name = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
-
+                String name;
+                if (isParentDir) {
+                    name = "..";
+                } else {
+                    String path = file.getPath();
+                    int lastSlash = path.lastIndexOf('/');
+                    name = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+                }
+                
                 fileName.setText(name);
 
                 // Set icon based on file type
                 String icon;
-                if (file.isDirectory()) {
+                if (isParentDir) {
+                    icon = "⬆️";
+                } else if (file.isDirectory()) {
                     icon = "📁";
                 } else {
                     String nameLower = name.toLowerCase();
@@ -291,7 +339,9 @@ public class FileBrowserFragment extends Fragment {
                 fileIcon.setText(icon);
 
                 // Set details
-                if (file.isDirectory()) {
+                if (isParentDir) {
+                    fileDetails.setText(R.string.file_browser_parent_directory);
+                } else if (file.isDirectory()) {
                     fileDetails.setText(R.string.file_browser_directory);
                 } else {
                     String size;
@@ -306,7 +356,7 @@ public class FileBrowserFragment extends Fragment {
                     fileDetails.setText(size + " • " + sdf.format(new Date(file.getLastModified())));
                 }
 
-                // Show chevron only for directories
+                // Show chevron for directories (including parent directory)
                 fileChevron.setVisibility(file.isDirectory() ? View.VISIBLE : View.GONE);
             }
         }
