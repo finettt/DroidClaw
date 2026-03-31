@@ -376,6 +376,240 @@ public class FileBrowserFragmentTest {
         }
     }
 
+    @Test
+    public void subdirectory_showsParentDirectoryEntry() {
+        // Create test directory
+        File testDir = new File(workspaceManager.getWorkspaceRoot(), "subdir");
+        testDir.mkdirs();
+
+        try (FragmentScenario<FileBrowserFragment> scenario =
+                     FragmentScenario.launchInContainer(FileBrowserFragment.class, null, R.style.Theme_DroidClaw)) {
+            scenario.onFragment(fragment -> {
+                attachNavController(fragment, R.id.fileBrowserFragment);
+            });
+
+            // Wait for background loading
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // Click on directory to navigate into it
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                if (fileList.getAdapter().getItemCount() > 0) {
+                    View firstItem = fileList.getLayoutManager().findViewByPosition(0);
+                    if (firstItem != null) {
+                        firstItem.performClick();
+                    }
+                }
+            });
+
+            // Wait for navigation
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                // Should have at least the parent directory entry
+                assertTrue("Should have parent directory entry (..) in subdirectory",
+                        fileList.getAdapter().getItemCount() >= 1);
+
+                // Check first item is parent directory with ".." name
+                View firstItem = fileList.getLayoutManager().findViewByPosition(0);
+                if (firstItem != null) {
+                    TextView fileName = firstItem.findViewById(R.id.fileName);
+                    assertEquals("First item should be parent directory", "..", fileName.getText().toString());
+
+                    TextView fileIcon = firstItem.findViewById(R.id.fileIcon);
+                    assertEquals("Parent directory should have up arrow icon", "⬆️", fileIcon.getText().toString());
+
+                    TextView fileDetails = firstItem.findViewById(R.id.fileDetails);
+                    assertEquals("Parent directory should show correct label",
+                            fragment.getString(R.string.file_browser_parent_directory), fileDetails.getText().toString());
+                }
+            });
+        }
+    }
+
+    @Test
+    public void rootDirectory_noParentDirectoryEntry() {
+        try (FragmentScenario<FileBrowserFragment> scenario =
+                     FragmentScenario.launchInContainer(FileBrowserFragment.class, null, R.style.Theme_DroidClaw)) {
+            scenario.onFragment(fragment -> {
+                attachNavController(fragment, R.id.fileBrowserFragment);
+            });
+
+            // Wait for background loading
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                // Root directory should not have parent directory entry
+                if (fileList.getAdapter().getItemCount() > 0) {
+                    View firstItem = fileList.getLayoutManager().findViewByPosition(0);
+                    if (firstItem != null) {
+                        TextView fileName = firstItem.findViewById(R.id.fileName);
+                        // First item should NOT be ".." in root directory
+                        assertTrue("Root directory should not have parent directory entry",
+                                !".." .equals(fileName.getText().toString()));
+                    }
+                }
+            });
+        }
+    }
+
+    @Test
+    public void clickParentDirectory_navigatesToParent() {
+        // Create nested directory structure
+        File testDir = new File(workspaceManager.getWorkspaceRoot(), "parent_dir");
+        testDir.mkdirs();
+        File nestedDir = new File(testDir, "child_dir");
+        nestedDir.mkdirs();
+
+        try (FragmentScenario<FileBrowserFragment> scenario =
+                     FragmentScenario.launchInContainer(FileBrowserFragment.class, null, R.style.Theme_DroidClaw)) {
+            scenario.onFragment(fragment -> {
+                attachNavController(fragment, R.id.fileBrowserFragment);
+            });
+
+            // Wait for background loading
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // Navigate into parent_dir
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                View firstItem = fileList.getLayoutManager().findViewByPosition(0);
+                if (firstItem != null) {
+                    firstItem.performClick();
+                }
+            });
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // Navigate into child_dir
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                // Second item should be child_dir (first is ..)
+                View secondItem = fileList.getLayoutManager().findViewByPosition(1);
+                if (secondItem != null) {
+                    secondItem.performClick();
+                }
+            });
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // Verify we're in child_dir
+            scenario.onFragment(fragment -> {
+                TextView pathText = fragment.requireView().findViewById(R.id.pathText);
+                assertTrue("Should be in child directory",
+                        pathText.getText().toString().contains("child_dir"));
+            });
+
+            // Click on parent directory entry (..)
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                View firstItem = fileList.getLayoutManager().findViewByPosition(0);
+                if (firstItem != null) {
+                    TextView fileName = firstItem.findViewById(R.id.fileName);
+                    assertEquals("First item should be parent directory", "..", fileName.getText().toString());
+                    firstItem.performClick();
+                }
+            });
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // Verify we're back in parent_dir
+            scenario.onFragment(fragment -> {
+                TextView pathText = fragment.requireView().findViewById(R.id.pathText);
+                assertTrue("Should be back in parent directory",
+                        pathText.getText().toString().contains("parent_dir"));
+                // Should not contain child_dir anymore
+                assertTrue("Should not be in child directory anymore",
+                        !pathText.getText().toString().contains("child_dir"));
+            });
+        }
+    }
+
+    @Test
+    public void parentDirectoryEntry_showsChevron() {
+        // Create test directory
+        File testDir = new File(workspaceManager.getWorkspaceRoot(), "test_subdir");
+        testDir.mkdirs();
+
+        try (FragmentScenario<FileBrowserFragment> scenario =
+                     FragmentScenario.launchInContainer(FileBrowserFragment.class, null, R.style.Theme_DroidClaw)) {
+            scenario.onFragment(fragment -> {
+                attachNavController(fragment, R.id.fileBrowserFragment);
+            });
+
+            // Wait for background loading
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // Navigate into directory
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                View firstItem = fileList.getLayoutManager().findViewByPosition(0);
+                if (firstItem != null) {
+                    firstItem.performClick();
+                }
+            });
+
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                View firstItem = fileList.getLayoutManager().findViewByPosition(0);
+                if (firstItem != null) {
+                    TextView fileChevron = firstItem.findViewById(R.id.fileChevron);
+                    assertEquals("Parent directory entry should show chevron",
+                            View.VISIBLE, fileChevron.getVisibility());
+                }
+            });
+        }
+    }
+
     private void createTestFile(String name, String content) {
         try {
             File file = new File(workspaceManager.getWorkspaceRoot(), name);
