@@ -14,6 +14,7 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.tool.ToolResult;
 import io.finett.droidclaw.util.SettingsManager;
+import io.finett.droidclaw.repository.MemoryRepository;
 
 /**
  * AgentLoop handles the iterative tool-calling workflow.
@@ -32,6 +33,8 @@ public class AgentLoop {
     private final LlmApiService apiService;
     private final ToolRegistry toolRegistry;
     private final SettingsManager settingsManager;
+    private final ConversationSummarizer summarizer;
+    private final MemoryContextBuilder memoryContext;
     private int iterationCount;
     private int maxIterations;
     private boolean requireApproval;
@@ -71,16 +74,26 @@ public class AgentLoop {
      * Uses default values for max iterations and approval.
      */
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry) {
-        this(apiService, toolRegistry, null);
+        this(apiService, toolRegistry, null, null, null);
     }
     
     /**
      * Creates an AgentLoop with settings for configuration.
      */
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager) {
+        this(apiService, toolRegistry, settingsManager, null, null);
+    }
+    
+    /**
+     * Creates an AgentLoop with full memory support.
+     */
+    public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager,
+                     ConversationSummarizer summarizer, MemoryContextBuilder memoryContext) {
         this.apiService = apiService;
         this.toolRegistry = toolRegistry;
         this.settingsManager = settingsManager;
+        this.summarizer = summarizer;
+        this.memoryContext = memoryContext;
         this.iterationCount = 0;
         
         // Load settings
@@ -132,11 +145,60 @@ public class AgentLoop {
 
         Log.d(TAG, "Iteration " + iterationCount + "/" + maxIterations);
 
+        // Check if summarization needed (if summarizer available)
+        if (summarizer != null && summarizer.needsSummarization(conversationHistory)) {
+            callback.onProgress("Context limit approaching, summarizing conversation...");
+            
+            summarizer.summarizeAndSave(conversationHistory)
+                .thenAccept(compressedHistory -> {
+                    callback.onProgress("Summary saved, continuing conversation...");
+                    
+                    // Replace conversation history with compressed version
+                    conversationHistory.clear();
+                    conversationHistory.addAll(compressedHistory);
+                    
+                    // Continue with compressed conversation
+                    continueIteration(conversationHistory, callback);
+                })
+                .exceptionally(e -> {
+                    Log.e(TAG, "Summarization failed, continuing with full history", e);
+                    // Continue anyway with full history
+                    continueIteration(conversationHistory, callback);
+                    return null;
+                });
+            return;
+        }
+        
+        // Continue normal iteration
+        continueIteration(conversationHistory, callback);
+    }
+    
+    /**
+     * Continue iteration with conversation (after optional summarization).
+     */
+    private void continueIteration(List<ChatMessage> conversationHistory, AgentCallback callback) {
+        // Build context messages (identity + memory)
+        List<ChatMessage> contextMessages = new ArrayList<>();
+        
+        // Add identity messages
+        if (identityMessages != null) {
+            contextMessages.addAll(identityMessages);
+        }
+        
+        // Add memory context (if available)
+        if (memoryContext != null) {
+            String memoryCtx = memoryContext.buildMemoryContext();
+            if (!memoryCtx.isEmpty()) {
+                contextMessages.add(new ChatMessage(memoryCtx, ChatMessage.TYPE_SYSTEM));
+                Log.d(TAG, "Added memory context: " + memoryCtx.length() + " chars");
+            }
+        }
+
         // Get tool definitions
         JsonArray tools = toolRegistry.getToolDefinitions();
 
-        // Send message to LLM with tools and identity context
-        apiService.sendMessageWithTools(conversationHistory, tools, identityMessages, new LlmApiService.ChatCallbackWithTools() {
+        // Send message to LLM with tools and context
+        apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, new LlmApiService.ChatCallbackWithTools() {
             @Override
             public void onSuccess(LlmApiService.LlmResponse response) {
                 handleLlmResponse(response, conversationHistory, callback);

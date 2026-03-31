@@ -28,11 +28,14 @@ import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.adapter.ChatAdapter;
 import io.finett.droidclaw.agent.AgentLoop;
+import io.finett.droidclaw.agent.ConversationSummarizer;
 import io.finett.droidclaw.agent.IdentityManager;
+import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.ChatRepository;
+import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -51,6 +54,7 @@ public class ChatFragment extends Fragment {
     private LlmApiService apiService;
     private SettingsManager settingsManager;
     private ChatRepository chatRepository;
+    private MemoryRepository memoryRepository;
     private ToolRegistry toolRegistry;
     private AgentLoop agentLoop;
     private IdentityManager identityManager;
@@ -76,10 +80,16 @@ public class ChatFragment extends Fragment {
         
         identityManager = new IdentityManager(requireContext(), workspaceManager);
         
+        // Initialize memory system
+        memoryRepository = new MemoryRepository(workspaceManager);
+        ConversationSummarizer summarizer = new ConversationSummarizer(apiService, memoryRepository);
+        MemoryContextBuilder memoryContext = new MemoryContextBuilder(memoryRepository);
+        
         // Create ToolRegistry with SettingsManager for shell access settings
         toolRegistry = new ToolRegistry(requireContext(), settingsManager);
-        // Create AgentLoop with SettingsManager for approval settings
-        agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager);
+        
+        // Create AgentLoop with full memory support
+        agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);
         
         // Load and set identity context
         loadIdentityContext();

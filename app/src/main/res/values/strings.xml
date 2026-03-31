@@ -128,6 +128,12 @@
     <string name="settings_skills">Skills</string>
     <string name="settings_skills_subtitle">View and manage agent skills</string>
     
+    <!-- Memory -->
+    <string name="memory">Memory</string>
+    <string name="memory_browser_title">Memory</string>
+    <string name="long_term_memory">Long-term Memory</string>
+    <string name="daily_notes">Daily Notes</string>
+    
     <!-- Validation -->
     <string name="validation_required">This field is required</string>
     <string name="validation_invalid_url">Please enter a valid URL</string>
