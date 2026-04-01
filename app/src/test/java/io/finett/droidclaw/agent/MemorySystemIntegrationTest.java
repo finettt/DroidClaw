@@ -123,12 +123,11 @@ public class MemorySystemIntegrationTest {
         ConversationSummarizer summarizer = new ConversationSummarizer(mockApiService, memoryRepository);
 
         // Mock LLM to return a summary
-        when(mockApiService.sendMessageWithTools(any(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools callback = invocation.getArgument(3);
-                callback.onSuccess(new LlmApiService.LlmResponse("Summary: User asked about various topics", null));
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools callback = invocation.getArgument(3);
+            callback.onSuccess(new LlmApiService.LlmResponse("Summary: User asked about various topics", null));
+            return null;
+        }).when(mockApiService).sendMessageWithTools(any(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         // Check if summarization needed
         assertTrue("Should need summarization for large conversation", summarizer.needsSummarization(conversation));
@@ -286,12 +285,11 @@ public class MemorySystemIntegrationTest {
         assertTrue("Should need summarization", summarizer.needsSummarization(conversation));
 
         // Mock LLM response
-        when(mockApiService.sendMessageWithTools(any(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools callback = invocation.getArgument(3);
-                callback.onSuccess(new LlmApiService.LlmResponse("Comprehensive summary", null));
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools callback = invocation.getArgument(3);
+            callback.onSuccess(new LlmApiService.LlmResponse("Comprehensive summary", null));
+            return null;
+        }).when(mockApiService).sendMessageWithTools(any(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         summarizer.summarizeAndSave(conversation, new ConversationSummarizer.SummarizeCallback() {
             @Override

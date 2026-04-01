@@ -120,12 +120,11 @@ public class ConversationSummarizerTest {
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
         // Mock LLM response
-        when(mockApiService.sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
-                cb.onSuccess(new LlmApiService.LlmResponse("Summary of conversation", null));
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            cb.onSuccess(new LlmApiService.LlmResponse("Summary of conversation", null));
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         summarizer.summarizeAndSave(messages, callback);
 
@@ -152,12 +151,11 @@ public class ConversationSummarizerTest {
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
         // Mock LLM error
-        when(mockApiService.sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
-                cb.onError("API error");
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            cb.onError("API error");
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         summarizer.summarizeAndSave(messages, callback);
 
@@ -184,12 +182,11 @@ public class ConversationSummarizerTest {
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
         // Mock LLM success
-        when(mockApiService.sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
-                cb.onSuccess(new LlmApiService.LlmResponse("Summary", null));
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            cb.onSuccess(new LlmApiService.LlmResponse("Summary", null));
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         // Mock save error
         doThrow(new IOException("Disk full")).when(mockMemoryRepository).appendToDailyNote(anyString());
@@ -214,12 +211,11 @@ public class ConversationSummarizerTest {
         // Or test through the public API
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        when(mockApiService.sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
-                cb.onSuccess(new LlmApiService.LlmResponse("Test summary", null));
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            cb.onSuccess(new LlmApiService.LlmResponse("Test summary", null));
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         summarizer.summarizeAndSave(messages, callback);
 
@@ -242,12 +238,11 @@ public class ConversationSummarizerTest {
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        when(mockApiService.sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
-                cb.onSuccess(new LlmApiService.LlmResponse("Summary", null));
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            cb.onSuccess(new LlmApiService.LlmResponse("Summary", null));
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         summarizer.summarizeAndSave(messages, callback);
 
@@ -275,12 +270,11 @@ public class ConversationSummarizerTest {
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        when(mockApiService.sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
-                cb.onSuccess(new LlmApiService.LlmResponse("Summary", null));
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            cb.onSuccess(new LlmApiService.LlmResponse("Summary", null));
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         summarizer.summarizeAndSave(messages, callback);
 
@@ -294,7 +288,7 @@ public class ConversationSummarizerTest {
     }
 
     @Test
-    public void testCreateFallbackSummary_countsMessageTypes() {
+    public void testCreateFallbackSummary_countsMessageTypes() throws IOException {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage("User 1", ChatMessage.TYPE_USER));
         messages.add(new ChatMessage("User 2", ChatMessage.TYPE_USER));
@@ -305,12 +299,11 @@ public class ConversationSummarizerTest {
         // Use reflection or test through public API
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        when(mockApiService.sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
-                cb.onError("Error");
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            cb.onError("Error");
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         summarizer.summarizeAndSave(messages, callback);
 
@@ -334,12 +327,11 @@ public class ConversationSummarizerTest {
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
         // Mock LLM error that calls onError
-        when(mockApiService.sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class)))
-            .thenAnswer(invocation -> {
-                LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
-                cb.onError("Network error");
-                return null;
-            });
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            cb.onError("Network error");
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         summarizer.summarizeAndSave(messages, callback);
 

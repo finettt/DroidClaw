@@ -464,7 +464,7 @@ public class AgentLoopTest {
     // ==================== Memory Integration Tests ====================
 
     @Test
-    public void testStart_withMemoryContext_includesMemoryInRequest() {
+    public void testStart_withMemoryContext_includesMemoryInRequest() throws java.io.IOException {
         // Set up AgentLoop with memory context
         MemoryContextBuilder memoryContext = new MemoryContextBuilder(mockMemoryRepository);
         agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, null, memoryContext);
@@ -632,7 +632,7 @@ public class AgentLoopTest {
     }
 
     @Test
-    public void testIdentityAndMemory_bothIncluded_inCorrectOrder() {
+    public void testIdentityAndMemory_bothIncluded_inCorrectOrder() throws java.io.IOException {
         MemoryContextBuilder memoryContext = new MemoryContextBuilder(mockMemoryRepository);
         agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, null, memoryContext);
 

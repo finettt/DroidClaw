@@ -24,7 +24,7 @@ public class TokenEstimatorTest {
 
     @Test
     public void testEstimateTokens_nullText_returnsZero() {
-        int tokens = TokenEstimator.estimateTokens(null);
+        int tokens = TokenEstimator.estimateTokens((String) null);
         assertEquals("Null text should return 0 tokens", 0, tokens);
     }
 

@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 
+import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 
 import static org.junit.Assert.*;
