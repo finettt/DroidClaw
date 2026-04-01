@@ -23,6 +23,7 @@ import java.util.List;
 
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.tool.ToolResult;
 
@@ -40,6 +41,9 @@ public class AgentLoopTest {
 
     @Mock
     private AgentLoop.AgentCallback mockCallback;
+
+    @Mock
+    private MemoryRepository mockMemoryRepository;
 
     private AgentLoop agentLoop;
 
@@ -453,8 +457,277 @@ public class AgentLoopTest {
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
         
-        assertEquals("Should have correct iteration count", 
+        assertEquals("Should have correct iteration count",
             expectedIterations[0], agentLoop.getIterationCount());
+    }
+
+    // ==================== Memory Integration Tests ====================
+
+    @Test
+    public void testStart_withMemoryContext_includesMemoryInRequest() {
+        // Set up AgentLoop with memory context
+        MemoryContextBuilder memoryContext = new MemoryContextBuilder(mockMemoryRepository);
+        agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, null, memoryContext);
+
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("");
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                LlmApiService.ChatCallbackWithTools callback =
+                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+
+                // Verify context messages are passed
+                List<ChatMessage> contextMessages = invocation.getArgument(2, List.class);
+                assertNotNull("Context messages should be passed", contextMessages);
+
+                LlmApiService.LlmResponse response = new LlmApiService.LlmResponse(
+                    "Hello!",
+                    null
+                );
+                callback.onSuccess(response);
+                return null;
+            }
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
+            any(), any(LlmApiService.ChatCallbackWithTools.class));
+
+        List<ChatMessage> conversation = createSimpleConversation();
+        agentLoop.start(conversation, mockCallback);
+
+        verify(mockCallback).onComplete(eq("Hello!"), anyList());
+    }
+
+    @Test
+    public void testStart_withSummarization_triggersAndSaves() {
+        // Set up AgentLoop with summarizer
+        ConversationSummarizer summarizer = new ConversationSummarizer(mockApiService, mockMemoryRepository);
+        agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, summarizer, null);
+
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+
+        // Mock summarizer to trigger
+        doAnswer(new Answer<Boolean>() {
+            @Override
+            public Boolean answer(InvocationOnMock invocation) {
+                return true; // Always needs summarization
+            }
+        }).when(summarizer).needsSummarization(anyList());
+
+        // Mock LLM response after summarization
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                LlmApiService.ChatCallbackWithTools callback =
+                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+
+                LlmApiService.LlmResponse response = new LlmApiService.LlmResponse(
+                    "Summary complete",
+                    null
+                );
+                callback.onSuccess(response);
+                return null;
+            }
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
+            any(), any(LlmApiService.ChatCallbackWithTools.class));
+
+        // Create conversation with enough messages to trigger summarization
+        List<ChatMessage> conversation = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            conversation.add(new ChatMessage("Message " + i, ChatMessage.TYPE_USER));
+        }
+
+        agentLoop.start(conversation, mockCallback);
+
+        verify(mockCallback).onProgress(contains("summarizing"));
+        verify(mockCallback).onComplete(eq("Summary complete"), anyList());
+    }
+
+    @Test
+    public void testStart_summarizationSuccess_compressedHistoryUsed() {
+        ConversationSummarizer summarizer = new ConversationSummarizer(mockApiService, mockMemoryRepository);
+        agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, summarizer, null);
+
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+
+        // Mock summarizer to trigger
+        doAnswer(new Answer<Boolean>() {
+            @Override
+            public Boolean answer(InvocationOnMock invocation) {
+                return true;
+            }
+        }).when(summarizer).needsSummarization(anyList());
+
+        // Mock LLM response
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                LlmApiService.ChatCallbackWithTools callback =
+                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                callback.onSuccess(new LlmApiService.LlmResponse("Response", null));
+                return null;
+            }
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
+            any(), any(LlmApiService.ChatCallbackWithTools.class));
+
+        // Create conversation with enough messages
+        List<ChatMessage> conversation = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            conversation.add(new ChatMessage("Message " + i, ChatMessage.TYPE_USER));
+        }
+
+        agentLoop.start(conversation, mockCallback);
+
+        // Verify summarization happened
+        verify(mockCallback).onProgress(contains("summarizing"));
+    }
+
+    @Test
+    public void testStart_summarizationError_fallsBackToFullHistory() {
+        ConversationSummarizer summarizer = new ConversationSummarizer(mockApiService, mockMemoryRepository);
+        agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, summarizer, null);
+
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+
+        // Mock summarizer to trigger
+        doAnswer(new Answer<Boolean>() {
+            @Override
+            public Boolean answer(InvocationOnMock invocation) {
+                return true;
+            }
+        }).when(summarizer).needsSummarization(anyList());
+
+        // Mock LLM error on first call, then success
+        final int[] callCount = {0};
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                LlmApiService.ChatCallbackWithTools callback =
+                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+
+                callCount[0]++;
+                if (callCount[0] == 1) {
+                    // First call - summarization error
+                    callback.onError("API error");
+                } else {
+                    // Second call - success
+                    callback.onSuccess(new LlmApiService.LlmResponse("Response", null));
+                }
+                return null;
+            }
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
+            any(), any(LlmApiService.ChatCallbackWithTools.class));
+
+        List<ChatMessage> conversation = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            conversation.add(new ChatMessage("Message " + i, ChatMessage.TYPE_USER));
+        }
+
+        agentLoop.start(conversation, mockCallback);
+
+        // Should still complete with fallback
+        verify(mockCallback).onComplete(anyString(), anyList());
+    }
+
+    @Test
+    public void testIdentityAndMemory_bothIncluded_inCorrectOrder() {
+        MemoryContextBuilder memoryContext = new MemoryContextBuilder(mockMemoryRepository);
+        agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, null, memoryContext);
+
+        // Set identity context
+        List<ChatMessage> identityMessages = Arrays.asList(
+            new ChatMessage("You are a helpful assistant", ChatMessage.TYPE_SYSTEM)
+        );
+        agentLoop.setIdentityContext(identityMessages);
+
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("");
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                LlmApiService.ChatCallbackWithTools callback =
+                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+
+                // Verify context messages order: identity first, then memory
+                List<ChatMessage> contextMessages = invocation.getArgument(2, List.class);
+                assertNotNull("Context messages should be passed", contextMessages);
+
+                // First should be identity system message
+                assertTrue("First context message should be system (identity)",
+                    contextMessages.get(0).isSystem());
+
+                LlmApiService.LlmResponse response = new LlmApiService.LlmResponse(
+                    "Hello!",
+                    null
+                );
+                callback.onSuccess(response);
+                return null;
+            }
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
+            any(), any(LlmApiService.ChatCallbackWithTools.class));
+
+        List<ChatMessage> conversation = createSimpleConversation();
+        agentLoop.start(conversation, mockCallback);
+
+        verify(mockCallback).onComplete(eq("Hello!"), anyList());
+    }
+
+    @Test
+    public void testMemoryContextBuilder_null_handledGracefully() {
+        agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, null, null);
+
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                LlmApiService.ChatCallbackWithTools callback =
+                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+
+                // Context should be empty list when no memory context builder
+                List<ChatMessage> contextMessages = invocation.getArgument(2, List.class);
+                assertNotNull("Context messages should be passed (even if empty)", contextMessages);
+
+                callback.onSuccess(new LlmApiService.LlmResponse("Hello!", null));
+                return null;
+            }
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
+            any(), any(LlmApiService.ChatCallbackWithTools.class));
+
+        List<ChatMessage> conversation = createSimpleConversation();
+        agentLoop.start(conversation, mockCallback);
+
+        verify(mockCallback).onComplete(eq("Hello!"), anyList());
+    }
+
+    @Test
+    public void testSummarizer_null_handledGracefully() {
+        agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null, null, null);
+
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                LlmApiService.ChatCallbackWithTools callback =
+                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                callback.onSuccess(new LlmApiService.LlmResponse("Hello!", null));
+                return null;
+            }
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
+            any(), any(LlmApiService.ChatCallbackWithTools.class));
+
+        List<ChatMessage> conversation = createSimpleConversation();
+        agentLoop.start(conversation, mockCallback);
+
+        // Should complete without triggering any summarization
+        verify(mockCallback).onComplete(eq("Hello!"), anyList());
+        verify(mockCallback, never()).onProgress(contains("summarizing"));
     }
 
     /**
