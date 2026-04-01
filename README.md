@@ -1,5 +1,7 @@
 # DroidClaw - LLM Chat Application
 
+[![Android CI](https://github.com/finettt/DroidClaw/actions/workflows/android.yml/badge.svg)](https://github.com/finettt/DroidClaw/actions/workflows/android.yml)
+
 An Android application for chatting with Large Language Models (LLMs) with a clean, modern interface. DroidClaw includes Python 3.11 runtime support via Chaquopy, enabling the AI agent to execute Python scripts as part of its skills system.
 
 ## Features
