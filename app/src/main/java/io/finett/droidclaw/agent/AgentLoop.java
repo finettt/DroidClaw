@@ -149,8 +149,9 @@ public class AgentLoop {
         if (summarizer != null && summarizer.needsSummarization(conversationHistory)) {
             callback.onProgress("Context limit approaching, summarizing conversation...");
             
-            summarizer.summarizeAndSave(conversationHistory)
-                .thenAccept(compressedHistory -> {
+            summarizer.summarizeAndSave(conversationHistory, new ConversationSummarizer.SummarizeCallback() {
+                @Override
+                public void onResult(List<ChatMessage> compressedHistory) {
                     callback.onProgress("Summary saved, continuing conversation...");
                     
                     // Replace conversation history with compressed version
@@ -159,13 +160,15 @@ public class AgentLoop {
                     
                     // Continue with compressed conversation
                     continueIteration(conversationHistory, callback);
-                })
-                .exceptionally(e -> {
-                    Log.e(TAG, "Summarization failed, continuing with full history", e);
+                }
+                
+                @Override
+                public void onError(Throwable error) {
+                    Log.e(TAG, "Summarization failed, continuing with full history", error);
                     // Continue anyway with full history
                     continueIteration(conversationHistory, callback);
-                    return null;
-                });
+                }
+            });
             return;
         }
         

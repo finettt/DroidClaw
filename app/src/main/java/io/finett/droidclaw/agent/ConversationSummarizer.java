@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
 
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
@@ -55,18 +54,24 @@ public class ConversationSummarizer {
     }
     
     /**
+     * Callback for summarizeAndSave operation.
+     */
+    public interface SummarizeCallback {
+        void onResult(List<ChatMessage> compressedHistory);
+        void onError(Throwable error);
+    }
+    
+    /**
      * Summarize conversation and save to daily note.
      * Returns compressed conversation with recent messages only.
      * 
      * @param messages Full conversation history
-     * @return CompletableFuture with compressed message list
+     * @param callback Callback receiving compressed message list
      */
-    public CompletableFuture<List<ChatMessage>> summarizeAndSave(List<ChatMessage> messages) {
-        CompletableFuture<List<ChatMessage>> future = new CompletableFuture<>();
-        
+    public void summarizeAndSave(List<ChatMessage> messages, SummarizeCallback callback) {
         if (messages.isEmpty()) {
-            future.complete(messages);
-            return future;
+            callback.onResult(messages);
+            return;
         }
         
         // Determine split point
@@ -76,19 +81,20 @@ public class ConversationSummarizer {
         
         if (summarizeCount <= 0) {
             Log.d(TAG, "Too few messages to summarize, keeping all");
-            future.complete(messages);
-            return future;
+            callback.onResult(messages);
+            return;
         }
         
         // Split messages
-        List<ChatMessage> toSummarize = messages.subList(0, summarizeCount);
-        List<ChatMessage> toKeep = messages.subList(summarizeCount, totalMessages);
+        final List<ChatMessage> toSummarize = new ArrayList<>(messages.subList(0, summarizeCount));
+        final List<ChatMessage> toKeep = new ArrayList<>(messages.subList(summarizeCount, totalMessages));
         
         Log.d(TAG, "Summarizing " + summarizeCount + " messages, keeping " + keepCount + " recent");
         
         // Generate summary using LLM
-        generateSummary(toSummarize)
-            .thenAccept(summary -> {
+        generateSummary(toSummarize, new SummaryCallback() {
+            @Override
+            public void onResult(String summary) {
                 try {
                     // Save to daily note with timestamp
                     String timestamp = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
@@ -98,33 +104,39 @@ public class ConversationSummarizer {
                     Log.d(TAG, "Saved summary to daily note: " + summary.length() + " chars");
                     
                     // Return compressed conversation
-                    future.complete(toKeep);
+                    callback.onResult(toKeep);
                     
                 } catch (IOException e) {
                     Log.e(TAG, "Failed to save summary to daily note", e);
                     // Still return compressed conversation even if save failed
-                    future.complete(toKeep);
+                    callback.onResult(toKeep);
                 }
-            })
-            .exceptionally(e -> {
-                Log.e(TAG, "Failed to generate summary", e);
+            }
+            
+            @Override
+            public void onError(Throwable error) {
+                Log.e(TAG, "Failed to generate summary", error);
                 // On failure, return full conversation
-                future.complete(messages);
-                return null;
-            });
-        
-        return future;
+                callback.onResult(messages);
+            }
+        });
+    }
+    
+    /**
+     * Callback for summary generation.
+     */
+    private interface SummaryCallback {
+        void onResult(String summary);
+        void onError(Throwable error);
     }
     
     /**
      * Generate summary of messages using LLM.
      * 
      * @param messages Messages to summarize
-     * @return CompletableFuture with summary text
+     * @param callback Callback receiving summary text
      */
-    private CompletableFuture<String> generateSummary(List<ChatMessage> messages) {
-        CompletableFuture<String> future = new CompletableFuture<>();
-        
+    private void generateSummary(List<ChatMessage> messages, SummaryCallback callback) {
         // Build summary prompt
         String prompt = buildSummaryPrompt(messages);
         
@@ -137,7 +149,7 @@ public class ConversationSummarizer {
             @Override
             public void onSuccess(String response) {
                 Log.d(TAG, "Summary generated: " + response.length() + " chars");
-                future.complete(response.trim());
+                callback.onResult(response.trim());
             }
             
             @Override
@@ -145,11 +157,9 @@ public class ConversationSummarizer {
                 Log.e(TAG, "Summary generation failed: " + error);
                 // Fallback to simple concatenation
                 String fallback = createFallbackSummary(messages);
-                future.complete(fallback);
+                callback.onResult(fallback);
             }
         });
-        
-        return future;
     }
     
     /**
