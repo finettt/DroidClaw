@@ -30,21 +30,21 @@ public class TokenEstimatorTest {
 
     @Test
     public void testEstimateTokens_singleWord_correctEstimate() {
-        // "hello" = 1 word * 1.3 = 1.3 ≈ 1 token
+        // "hello" = 1 word * 1.3 = 1.3, ceil = 2 tokens
         int tokens = TokenEstimator.estimateTokens("hello");
         assertEquals("Single word should estimate correctly", 2, tokens);
     }
 
     @Test
     public void testEstimateTokens_multipleWords_correctEstimate() {
-        // "hello world test" = 3 words * 1.3 = 3.9 ≈ 5 tokens
+        // "hello world test" = 3 words * 1.3 = 3.9, ceil = 4 tokens
         int tokens = TokenEstimator.estimateTokens("hello world test");
-        assertEquals("Multiple words should estimate correctly", 5, tokens);
+        assertEquals("Multiple words should estimate correctly", 4, tokens);
     }
 
     @Test
     public void testEstimateTokens_withWhitespace_handlesCorrectly() {
-        // Should handle extra whitespace
+        // Should handle extra whitespace - "hello world" = 2 words * 1.3 = 2.6, ceil = 3
         int tokens = TokenEstimator.estimateTokens("  hello   world  ");
         assertEquals("Should handle whitespace correctly", 3, tokens);
     }
@@ -56,9 +56,9 @@ public class TokenEstimatorTest {
         messages.add(new ChatMessage("test message", ChatMessage.TYPE_ASSISTANT));
 
         int tokens = TokenEstimator.estimateTokens(messages);
-        // "hello world" = 2 * 1.3 = 2.6 ≈ 3
-        // "test message" = 2 * 1.3 = 2.6 ≈ 3
-        // Total ≈ 6
+        // "hello world" = 2 * 1.3 = 2.6, ceil = 3
+        // "test message" = 2 * 1.3 = 2.6, ceil = 3
+        // Total = 6
         assertEquals("Should aggregate tokens from all messages", 6, tokens);
     }
 
@@ -70,9 +70,9 @@ public class TokenEstimatorTest {
         messages.add(new ChatMessage("world", ChatMessage.TYPE_ASSISTANT));
 
         int tokens = TokenEstimator.estimateTokens(messages);
-        // "hello" = 1 * 1.3 = 1.3 ≈ 2
-        // "world" = 1 * 1.3 = 1.3 ≈ 2
-        // Total ≈ 4
+        // "hello" = 1 * 1.3 = 1.3, ceil = 2
+        // "world" = 1 * 1.3 = 1.3, ceil = 2
+        // Total = 4
         assertEquals("Should ignore null messages", 4, tokens);
     }
 
@@ -83,7 +83,7 @@ public class TokenEstimatorTest {
         messages.add(new ChatMessage("", ChatMessage.TYPE_USER));
 
         int tokens = TokenEstimator.estimateTokens(messages);
-        // Only "hello" counts: 1 * 1.3 = 1.3 ≈ 2
+        // Only "hello" counts: 1 * 1.3 = 1.3, ceil = 2
         assertEquals("Should ignore messages with empty content", 2, tokens);
     }
 
@@ -97,9 +97,9 @@ public class TokenEstimatorTest {
 
         // Range [1, 3) = messages "two" and "three"
         int tokens = TokenEstimator.estimateTokens(messages, 1, 3);
-        // "two" = 1 * 1.3 = 1.3 ≈ 2
-        // "three" = 1 * 1.3 = 1.3 ≈ 2
-        // Total ≈ 4
+        // "two" = 1 * 1.3 = 1.3, ceil = 2
+        // "three" = 1 * 1.3 = 1.3, ceil = 2
+        // Total = 4
         assertEquals("Should estimate tokens for specified range", 4, tokens);
     }
 
@@ -121,8 +121,8 @@ public class TokenEstimatorTest {
 
         // End beyond size should be clamped
         int tokens = TokenEstimator.estimateTokens(messages, 0, 100);
-        // Both messages: "one" + "two" = 2 * 1.3 * 2 ≈ 5
-        assertEquals("Should clamp end to list size", 5, tokens);
+        // Both messages: "one" = 2 tokens, "two" = 2 tokens = 4 total
+        assertEquals("Should clamp end to list size", 4, tokens);
     }
 
     @Test
@@ -167,14 +167,14 @@ public class TokenEstimatorTest {
 
     @Test
     public void testEstimateTokens_withSpecialCharacters_handlesCorrectly() {
-        // Special characters shouldn't affect word count
+        // "hello, world! test..." = 3 words * 1.3 = 3.9, ceil = 4 tokens
         int tokens = TokenEstimator.estimateTokens("hello, world! test...");
         assertEquals("Should handle special characters", 4, tokens);
     }
 
     @Test
     public void testEstimateTokens_withNewlines_handlesCorrectly() {
-        // Newlines are whitespace, should be handled
+        // "hello\nworld\ttest" = 3 words * 1.3 = 3.9, ceil = 4 tokens
         int tokens = TokenEstimator.estimateTokens("hello\nworld\ttest");
         assertEquals("Should handle newlines and tabs", 4, tokens);
     }

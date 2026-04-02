@@ -112,32 +112,43 @@ public class MemorySystemIntegrationTest {
 
     @Test
     public void testSummarizationFlow_withRealisticConversation() throws IOException {
-        // Setup: Create a realistic conversation with many messages
+        // Setup: Create a realistic conversation with many messages that exceed token threshold
+        // Need ~2300 words total to exceed 3000 tokens (3000 / 1.3 = 2308 words)
+        // Use ~100 words per message, 30 messages = 3000 words = ~3900 tokens
         List<ChatMessage> conversation = new ArrayList<>();
-        for (int i = 0; i < 15; i++) {
-            conversation.add(new ChatMessage("User message " + i, ChatMessage.TYPE_USER));
-            conversation.add(new ChatMessage("Assistant response " + i, ChatMessage.TYPE_ASSISTANT));
+        for (int i = 0; i < 20; i++) {
+            StringBuilder userMsg = new StringBuilder("User message " + i + " ");
+            StringBuilder assistantMsg = new StringBuilder("Assistant response " + i + " ");
+            // Add ~100 words to each message - 120 words * 40 messages = 4800 words = 6240 tokens
+            for (int j = 0; j < 60; j++) {
+                userMsg.append("word ");
+                assistantMsg.append("word ");
+            }
+            conversation.add(new ChatMessage(userMsg.toString(), ChatMessage.TYPE_USER));
+            conversation.add(new ChatMessage(assistantMsg.toString(), ChatMessage.TYPE_ASSISTANT));
         }
 
         // Create summarizer
         ConversationSummarizer summarizer = new ConversationSummarizer(mockApiService, memoryRepository);
 
-        // Mock LLM to return a summary
+        // Mock LLM to return a summary - use sendMessage (not sendMessageWithTools)
         doAnswer(invocation -> {
-            LlmApiService.ChatCallbackWithTools callback = invocation.getArgument(3);
-            callback.onSuccess(new LlmApiService.LlmResponse("Summary: User asked about various topics", null));
+            LlmApiService.ChatCallback callback = invocation.getArgument(2);
+            callback.onSuccess("Summary: User asked about various topics");
             return null;
-        }).when(mockApiService).sendMessageWithTools(any(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
 
         // Check if summarization needed
         assertTrue("Should need summarization for large conversation", summarizer.needsSummarization(conversation));
 
         // Perform summarization
+        final boolean[] callbackCalled = {false};
+        final List<ChatMessage>[] resultHolder = new List[1];
         summarizer.summarizeAndSave(conversation, new ConversationSummarizer.SummarizeCallback() {
             @Override
             public void onResult(List<ChatMessage> compressedHistory) {
-                // Verify compressed history has fewer messages
-                assertTrue("Compressed history should be smaller", compressedHistory.size() < conversation.size());
+                resultHolder[0] = compressedHistory;
+                callbackCalled[0] = true;
             }
 
             @Override
@@ -145,6 +156,13 @@ public class MemorySystemIntegrationTest {
                 fail("Summarization should succeed: " + error.getMessage());
             }
         });
+
+        // Wait a bit for async operations
+        try { Thread.sleep(100); } catch (InterruptedException e) { }
+        
+        assertTrue("Callback should have been called", callbackCalled[0]);
+        assertNotNull("Result should not be null", resultHolder[0]);
+        assertTrue("Compressed history should be smaller", resultHolder[0].size() < conversation.size());
 
         // Verify summary was saved to daily note
         String todayNote = memoryRepository.readTodayNote();
@@ -272,11 +290,19 @@ public class MemorySystemIntegrationTest {
 
     @Test
     public void testSummarization_withVeryLargeConversation() throws IOException {
-        // Create a very large conversation (50 messages, ~10000 tokens)
+        // Create a very large conversation with enough words to exceed 3000 tokens
+        // Need ~2300 words total to exceed 3000 tokens
         List<ChatMessage> conversation = new ArrayList<>();
         for (int i = 0; i < 50; i++) {
-            conversation.add(new ChatMessage("User message " + i + " with more content", ChatMessage.TYPE_USER));
-            conversation.add(new ChatMessage("Assistant response " + i + " with more content", ChatMessage.TYPE_ASSISTANT));
+            StringBuilder userMsg = new StringBuilder("User message " + i + " ");
+            StringBuilder assistantMsg = new StringBuilder("Assistant response " + i + " ");
+            // Add ~50 words to each message
+            for (int j = 0; j < 25; j++) {
+                userMsg.append("extra ");
+                assistantMsg.append("extra ");
+            }
+            conversation.add(new ChatMessage(userMsg.toString(), ChatMessage.TYPE_USER));
+            conversation.add(new ChatMessage(assistantMsg.toString(), ChatMessage.TYPE_ASSISTANT));
         }
 
         ConversationSummarizer summarizer = new ConversationSummarizer(mockApiService, memoryRepository);
@@ -284,18 +310,20 @@ public class MemorySystemIntegrationTest {
         // Should need summarization
         assertTrue("Should need summarization", summarizer.needsSummarization(conversation));
 
-        // Mock LLM response
+        // Mock LLM response - use sendMessage (not sendMessageWithTools)
         doAnswer(invocation -> {
-            LlmApiService.ChatCallbackWithTools callback = invocation.getArgument(3);
-            callback.onSuccess(new LlmApiService.LlmResponse("Comprehensive summary", null));
+            LlmApiService.ChatCallback callback = invocation.getArgument(2);
+            callback.onSuccess("Comprehensive summary");
             return null;
-        }).when(mockApiService).sendMessageWithTools(any(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
+        }).when(mockApiService).sendMessage(any(), any(), any(LlmApiService.ChatCallback.class));
 
+        final boolean[] callbackCalled = {false};
         summarizer.summarizeAndSave(conversation, new ConversationSummarizer.SummarizeCallback() {
             @Override
             public void onResult(List<ChatMessage> compressedHistory) {
                 // Should keep only a few recent messages
                 assertTrue("Should compress to few messages", compressedHistory.size() <= 10);
+                callbackCalled[0] = true;
             }
 
             @Override
@@ -303,6 +331,11 @@ public class MemorySystemIntegrationTest {
                 fail("Should not error: " + error.getMessage());
             }
         });
+
+        // Wait a bit for async operations
+        try { Thread.sleep(100); } catch (InterruptedException e) { }
+        
+        assertTrue("Callback should have been called", callbackCalled[0]);
     }
 
     // Helper methods

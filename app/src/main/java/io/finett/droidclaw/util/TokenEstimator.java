@@ -28,8 +28,8 @@ public class TokenEstimator {
         String[] words = text.trim().split("\\s+");
         int wordCount = words.length;
         
-        // Apply conversion factor
-        return (int) (wordCount * WORDS_TO_TOKENS);
+        // Apply conversion factor and round up
+        return (int) Math.ceil(wordCount * WORDS_TO_TOKENS);
     }
     
     /**
@@ -46,7 +46,7 @@ public class TokenEstimator {
         
         int totalTokens = 0;
         for (ChatMessage message : messages) {
-            if (message.getContent() != null && !message.getContent().isEmpty()) {
+            if (message != null && message.getContent() != null && !message.getContent().isEmpty()) {
                 totalTokens += estimateTokens(message.getContent());
             }
         }

@@ -285,7 +285,10 @@ public class MemoryRepositoryTest {
     @Test
     public void testHasMemory_withToday_returnsTrue() throws IOException {
         String todayFilename = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
-        new File(memoryDir, todayFilename).createNewFile();
+        File todayFile = new File(memoryDir, todayFilename);
+        java.io.FileWriter writer = new java.io.FileWriter(todayFile);
+        writer.write("# Today's Note\n\nSome content");
+        writer.close();
 
         MemoryContextBuilder builder = new MemoryContextBuilder(memoryRepository);
         assertTrue(builder.hasMemory());
@@ -294,7 +297,10 @@ public class MemoryRepositoryTest {
     @Test
     public void testHasMemory_withYesterday_returnsTrue() throws IOException {
         String yesterdayFilename = LocalDate.now().minusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
-        new File(memoryDir, yesterdayFilename).createNewFile();
+        File yesterdayFile = new File(memoryDir, yesterdayFilename);
+        java.io.FileWriter writer = new java.io.FileWriter(yesterdayFile);
+        writer.write("# Yesterday's Note\n\nSome content");
+        writer.close();
 
         MemoryContextBuilder builder = new MemoryContextBuilder(memoryRepository);
         assertTrue(builder.hasMemory());
@@ -302,9 +308,12 @@ public class MemoryRepositoryTest {
 
     @Test
     public void testHasMemory_withAnyMemory_returnsTrue() throws IOException {
-        // Only create yesterday's note
+        // Only create yesterday's note with content
         String yesterdayFilename = LocalDate.now().minusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
-        new File(memoryDir, yesterdayFilename).createNewFile();
+        File yesterdayFile = new File(memoryDir, yesterdayFilename);
+        java.io.FileWriter writer = new java.io.FileWriter(yesterdayFile);
+        writer.write("# Yesterday's Note\n\nSome content");
+        writer.close();
 
         MemoryContextBuilder builder = new MemoryContextBuilder(memoryRepository);
         assertTrue(builder.hasMemory());
