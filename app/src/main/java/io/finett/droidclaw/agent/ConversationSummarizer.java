@@ -25,29 +25,58 @@ import io.finett.droidclaw.util.TokenEstimator;
  */
 public class ConversationSummarizer {
     private static final String TAG = "ConversationSummarizer";
-    private static final int TOKEN_THRESHOLD = 3000;
     private static final int KEEP_RECENT_MESSAGES = 8;
+    private static final double COMPRESSION_THRESHOLD = 0.75; // 75% of context length
     
     private final LlmApiService apiService;
     private final MemoryRepository memoryRepository;
+    private final int contextWindow;
     
     public ConversationSummarizer(LlmApiService apiService, MemoryRepository memoryRepository) {
+        this(apiService, memoryRepository, 4096); // Default context window
+    }
+    
+    public ConversationSummarizer(LlmApiService apiService, MemoryRepository memoryRepository, int contextWindow) {
         this.apiService = apiService;
         this.memoryRepository = memoryRepository;
+        this.contextWindow = contextWindow;
     }
     
     /**
-     * Check if conversation needs summarization.
-     * 
-     * @param messages Current conversation history
-     * @return true if token count exceeds threshold
+     * Check if conversation needs summarization based on current context tokens.
+     * Uses the "Last Usage" algorithm - checks actual context size from API.
+     *
+     * @param currentContextTokens Actual token count from last API response
+     * @return true if token count exceeds threshold (75% of context window)
      */
-    public boolean needsSummarization(List<ChatMessage> messages) {
-        int tokens = TokenEstimator.estimateTokens(messages);
-        boolean needs = tokens >= TOKEN_THRESHOLD;
+    public boolean needsSummarization(int currentContextTokens) {
+        int threshold = (int) (contextWindow * COMPRESSION_THRESHOLD);
+        boolean needs = currentContextTokens >= threshold;
         
         if (needs) {
-            Log.d(TAG, "Summarization needed: " + tokens + " tokens >= " + TOKEN_THRESHOLD);
+            Log.d(TAG, "Summarization needed: " + currentContextTokens + " tokens >= " +
+                  threshold + " (" + (COMPRESSION_THRESHOLD * 100) + "% of " + contextWindow + ")");
+        }
+        
+        return needs;
+    }
+    
+    /**
+     * Check if conversation needs summarization (deprecated - use currentContextTokens version).
+     * This method uses estimation and should be replaced with the actual token count.
+     *
+     * @param messages Current conversation history
+     * @return true if estimated token count exceeds threshold
+     * @deprecated Use {@link #needsSummarization(int)} with actual context tokens instead
+     */
+    @Deprecated
+    public boolean needsSummarization(List<ChatMessage> messages) {
+        int estimatedTokens = TokenEstimator.estimateTokens(messages);
+        int threshold = (int) (contextWindow * COMPRESSION_THRESHOLD);
+        boolean needs = estimatedTokens >= threshold;
+        
+        if (needs) {
+            Log.d(TAG, "Summarization needed (estimated): " + estimatedTokens + " tokens >= " + threshold);
         }
         
         return needs;
@@ -220,11 +249,20 @@ public class ConversationSummarizer {
     }
     
     /**
-     * Get current token threshold.
-     * 
-     * @return Token threshold value
+     * Get current token threshold based on context window.
+     *
+     * @return Token threshold value (75% of context window)
      */
     public int getTokenThreshold() {
-        return TOKEN_THRESHOLD;
+        return (int) (contextWindow * COMPRESSION_THRESHOLD);
+    }
+    
+    /**
+     * Get context window size.
+     *
+     * @return Context window size in tokens
+     */
+    public int getContextWindow() {
+        return contextWindow;
     }
 }

@@ -39,6 +39,18 @@ public class AgentLoop {
     private int maxIterations;
     private boolean requireApproval;
     private List<ChatMessage> identityMessages;
+    
+    // Token tracking - "Last Usage" algorithm
+    // Current context tokens (from last API response - this is the ACTUAL context size)
+    private int currentContextTokens = 0;
+    private int currentPromptTokens = 0;
+    private int currentCompletionTokens = 0;
+    
+    // Session cumulative tokens (total spent across all requests)
+    private int totalTokens = 0;
+    private int totalPromptTokens = 0;
+    private int totalCompletionTokens = 0;
+    private int totalToolCalls = 0;
 
     /**
      * Callback interface for agent events.
@@ -145,9 +157,10 @@ public class AgentLoop {
 
         Log.d(TAG, "Iteration " + iterationCount + "/" + maxIterations);
 
-        // Check if summarization needed (if summarizer available)
-        if (summarizer != null && summarizer.needsSummarization(conversationHistory)) {
-            callback.onProgress("Context limit approaching, summarizing conversation...");
+        // Check if summarization needed using "Last Usage" algorithm (if summarizer available)
+        // Use actual current context tokens instead of estimated tokens
+        if (summarizer != null && summarizer.needsSummarization(currentContextTokens)) {
+            callback.onProgress("Context limit approaching (" + currentContextTokens + " tokens), summarizing conversation...");
             
             summarizer.summarizeAndSave(conversationHistory, new ConversationSummarizer.SummarizeCallback() {
                 @Override
@@ -157,6 +170,10 @@ public class AgentLoop {
                     // Replace conversation history with compressed version
                     conversationHistory.clear();
                     conversationHistory.addAll(compressedHistory);
+                    
+                    // Reset current context tokens after compression (context is now clean)
+                    // Session cumulative tokens are preserved
+                    resetCurrentContext();
                     
                     // Continue with compressed conversation
                     continueIteration(conversationHistory, callback);
@@ -204,6 +221,22 @@ public class AgentLoop {
         apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, new LlmApiService.ChatCallbackWithTools() {
             @Override
             public void onSuccess(LlmApiService.LlmResponse response) {
+                // Update token tracking using "Last Usage" algorithm
+                if (response.getUsage() != null && response.getUsage().isAvailable()) {
+                    // Current context (from last API response - this is the ACTUAL context size)
+                    currentContextTokens = response.getUsage().getTotalTokens();
+                    currentPromptTokens = response.getUsage().getPromptTokens();
+                    currentCompletionTokens = response.getUsage().getCompletionTokens();
+                    
+                    // Session cumulative stats (total spent across all requests)
+                    totalTokens += response.getUsage().getTotalTokens();
+                    totalPromptTokens += response.getUsage().getPromptTokens();
+                    totalCompletionTokens += response.getUsage().getCompletionTokens();
+                    
+                    Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
+                          ", Session total: " + totalTokens);
+                }
+                
                 handleLlmResponse(response, conversationHistory, callback);
             }
 
@@ -239,6 +272,9 @@ public class AgentLoop {
         // Add assistant message with tool calls to history
         ChatMessage toolCallMessage = ChatMessage.createToolCallMessage(toolCalls);
         conversationHistory.add(toolCallMessage);
+        
+        // Increment tool call counter
+        totalToolCalls += toolCalls.size();
 
         // Process tool calls sequentially with approval support
         processToolCallsWithApproval(toolCalls, 0, conversationHistory, callback);
@@ -365,5 +401,84 @@ public class AgentLoop {
      */
     public void reset() {
         iterationCount = 0;
+    }
+    
+    // Token tracking getters - "Last Usage" algorithm
+    
+    /**
+     * Get current context tokens (from last API response).
+     * This represents the ACTUAL context size.
+     */
+    public int getCurrentContextTokens() {
+        return currentContextTokens;
+    }
+    
+    public int getCurrentPromptTokens() {
+        return currentPromptTokens;
+    }
+    
+    public int getCurrentCompletionTokens() {
+        return currentCompletionTokens;
+    }
+    
+    /**
+     * Get session cumulative tokens (total spent across all requests).
+     */
+    public int getTotalTokens() {
+        return totalTokens;
+    }
+    
+    public int getTotalPromptTokens() {
+        return totalPromptTokens;
+    }
+    
+    public int getTotalCompletionTokens() {
+        return totalCompletionTokens;
+    }
+    
+    public int getTotalToolCalls() {
+        return totalToolCalls;
+    }
+    
+    /**
+     * Reset all token counters (current context and session cumulative).
+     * Called when starting a new session or clearing context.
+     */
+    public void resetTokens() {
+        currentContextTokens = 0;
+        currentPromptTokens = 0;
+        currentCompletionTokens = 0;
+        totalTokens = 0;
+        totalPromptTokens = 0;
+        totalCompletionTokens = 0;
+        totalToolCalls = 0;
+        Log.d(TAG, "Token counters reset");
+    }
+    
+    /**
+     * Reset only current context tokens (called after compression).
+     * Session cumulative tokens are preserved.
+     */
+    public void resetCurrentContext() {
+        currentContextTokens = 0;
+        currentPromptTokens = 0;
+        currentCompletionTokens = 0;
+        Log.d(TAG, "Current context tokens reset (session totals preserved)");
+    }
+    
+    /**
+     * Set token values from saved session.
+     * Used when restoring a session.
+     */
+    public void setTokensFromSession(int currentContext, int currentPrompt, int currentCompletion,
+                                      int total, int totalPrompt, int totalCompletion, int toolCalls) {
+        this.currentContextTokens = currentContext;
+        this.currentPromptTokens = currentPrompt;
+        this.currentCompletionTokens = currentCompletion;
+        this.totalTokens = total;
+        this.totalPromptTokens = totalPrompt;
+        this.totalCompletionTokens = totalCompletion;
+        this.totalToolCalls = toolCalls;
+        Log.d(TAG, "Token counters restored from session");
     }
 }

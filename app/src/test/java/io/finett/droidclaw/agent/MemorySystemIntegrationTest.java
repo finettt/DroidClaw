@@ -285,7 +285,9 @@ public class MemorySystemIntegrationTest {
     public void testTokenThreshold_constant() {
         ConversationSummarizer summarizer = new ConversationSummarizer(mockApiService, memoryRepository);
 
-        assertEquals("Token threshold should be 3000", 3000, summarizer.getTokenThreshold());
+        // Token threshold is now 75% of context window (default 4096)
+        // 4096 * 0.75 = 3072
+        assertEquals("Token threshold should be 3072 (75% of 4096)", 3072, summarizer.getTokenThreshold());
     }
 
     @Test

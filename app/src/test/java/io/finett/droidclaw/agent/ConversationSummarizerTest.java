@@ -26,7 +26,8 @@ import io.finett.droidclaw.repository.MemoryRepository;
 @RunWith(MockitoJUnitRunner.class)
 public class ConversationSummarizerTest {
 
-    private static final int TOKEN_THRESHOLD = 3000;
+    private static final int DEFAULT_CONTEXT_WINDOW = 4096;
+    private static final int TOKEN_THRESHOLD = (int) (DEFAULT_CONTEXT_WINDOW * 0.75); // 3072
 
     @Mock
     private LlmApiService mockApiService;
@@ -337,7 +338,9 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testGetTokenThreshold_returnsConstant() {
-        assertEquals("Should return correct threshold", TOKEN_THRESHOLD, summarizer.getTokenThreshold());
+        // Token threshold is now 75% of context window (default 4096)
+        // 4096 * 0.75 = 3072
+        assertEquals("Should return correct threshold", 3072, summarizer.getTokenThreshold());
     }
 
     @Test
