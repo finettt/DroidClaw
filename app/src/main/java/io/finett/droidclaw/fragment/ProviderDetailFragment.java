@@ -198,6 +198,7 @@ public class ProviderDetailFragment extends Fragment {
         // Update provider object
         if (isNewProvider) {
             provider.setId(UUID.randomUUID().toString());
+            isNewProvider = false;
         }
         provider.setName(name);
         provider.setBaseUrl(baseUrl);
