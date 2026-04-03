@@ -4,8 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -31,7 +29,6 @@ public class ModelDetailFragment extends Fragment {
 
     private TextInputEditText inputModelId;
     private TextInputEditText inputModelName;
-    private AutoCompleteTextView dropdownApiType;
     private TextInputEditText inputContextWindow;
     private TextInputEditText inputMaxTokens;
     private SwitchMaterial switchReasoning;
@@ -89,7 +86,6 @@ public class ModelDetailFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         initViews(view);
-        setupApiTypeDropdown();
         loadModelData();
         setupListeners();
     }
@@ -97,7 +93,6 @@ public class ModelDetailFragment extends Fragment {
     private void initViews(View view) {
         inputModelId = view.findViewById(R.id.input_model_id);
         inputModelName = view.findViewById(R.id.input_model_name);
-        dropdownApiType = view.findViewById(R.id.dropdown_api_type);
         inputContextWindow = view.findViewById(R.id.input_context_window);
         inputMaxTokens = view.findViewById(R.id.input_max_tokens);
         switchReasoning = view.findViewById(R.id.switch_reasoning);
@@ -112,21 +107,6 @@ public class ModelDetailFragment extends Fragment {
         }
     }
 
-    private void setupApiTypeDropdown() {
-        String[] apiTypes = {
-                getString(R.string.api_type_openai_completions),
-                getString(R.string.api_type_openai_responses),
-                getString(R.string.api_type_anthropic),
-                getString(R.string.api_type_google)
-        };
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                apiTypes
-        );
-        dropdownApiType.setAdapter(adapter);
-    }
-
     private void loadModelData() {
         if (model != null) {
             if (model.getId() != null) {
@@ -135,12 +115,7 @@ public class ModelDetailFragment extends Fragment {
             if (model.getName() != null) {
                 inputModelName.setText(model.getName());
             }
-            if (model.getApi() != null) {
-                dropdownApiType.setText(getApiTypeDisplayName(model.getApi()), false);
-            } else {
-                dropdownApiType.setText(getString(R.string.api_type_openai_completions), false);
-            }
-            
+
             inputContextWindow.setText(String.valueOf(model.getContextWindow()));
             inputMaxTokens.setText(String.valueOf(model.getMaxTokens()));
             switchReasoning.setChecked(model.isReasoning());
@@ -148,7 +123,6 @@ public class ModelDetailFragment extends Fragment {
             checkboxInputImage.setChecked(model.hasImageInput());
         } else {
             // Defaults for new model
-            dropdownApiType.setText(getString(R.string.api_type_openai_completions), false);
             inputContextWindow.setText("4096");
             inputMaxTokens.setText("4096");
             checkboxInputText.setChecked(true);
@@ -163,7 +137,6 @@ public class ModelDetailFragment extends Fragment {
     private void saveModel() {
         String id = inputModelId.getText().toString().trim();
         String name = inputModelName.getText().toString().trim();
-        String apiTypeDisplay = dropdownApiType.getText().toString();
         String contextWindowStr = inputContextWindow.getText().toString().trim();
         String maxTokensStr = inputMaxTokens.getText().toString().trim();
 
@@ -202,7 +175,8 @@ public class ModelDetailFragment extends Fragment {
             return;
         }
 
-        String apiType = getApiTypeValue(apiTypeDisplay);
+        // Use the provider's API type for the model
+        String apiType = provider.getApi();
         boolean reasoning = switchReasoning.isChecked();
         
         List<String> inputTypes = new ArrayList<>();
@@ -251,34 +225,4 @@ public class ModelDetailFragment extends Fragment {
                 .show();
     }
 
-    private String getApiTypeDisplayName(String apiType) {
-        if (apiType == null) {
-            return getString(R.string.api_type_openai_completions);
-        }
-        switch (apiType) {
-            case "openai-completions":
-                return getString(R.string.api_type_openai_completions);
-            case "openai-responses":
-                return getString(R.string.api_type_openai_responses);
-            case "anthropic":
-                return getString(R.string.api_type_anthropic);
-            case "google":
-                return getString(R.string.api_type_google);
-            default:
-                return getString(R.string.api_type_openai_completions);
-        }
-    }
-
-    private String getApiTypeValue(String displayName) {
-        if (displayName.equals(getString(R.string.api_type_openai_completions))) {
-            return "openai-completions";
-        } else if (displayName.equals(getString(R.string.api_type_openai_responses))) {
-            return "openai-responses";
-        } else if (displayName.equals(getString(R.string.api_type_anthropic))) {
-            return "anthropic";
-        } else if (displayName.equals(getString(R.string.api_type_google))) {
-            return "google";
-        }
-        return "openai-completions";
-    }
-}
+ }
