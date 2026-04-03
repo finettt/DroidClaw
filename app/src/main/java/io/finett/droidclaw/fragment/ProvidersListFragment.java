@@ -63,12 +63,15 @@ public class ProvidersListFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // Reload settings manager to get fresh data from SharedPreferences
+        settingsManager = new SettingsManager(requireContext());
         loadProviders();
     }
 
     private void loadProviders() {
         List<Provider> providers = settingsManager.getProviders();
-        adapter.submitList(providers);
+        // Create a new list to ensure ListAdapter detects the change
+        adapter.submitList(new java.util.ArrayList<>(providers));
 
         if (providers.isEmpty()) {
             recyclerView.setVisibility(View.GONE);

@@ -2,6 +2,7 @@ package io.finett.droidclaw.api;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -24,6 +25,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class LlmApiService {
+    private static final String TAG = "LlmApiService";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
     private final OkHttpClient client;
@@ -140,6 +142,7 @@ public class LlmApiService {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                Log.e(TAG, "Network error", e);
                 mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
             }
 
@@ -149,6 +152,7 @@ public class LlmApiService {
                     String responseBody = response.body() != null ? response.body().string() : "";
                     
                     if (!response.isSuccessful()) {
+                        Log.e(TAG, "API error: " + response.code() + " - " + responseBody);
                         mainHandler.post(() -> callback.onError("API error: " + response.code() + " - " + responseBody));
                         return;
                     }
@@ -156,6 +160,7 @@ public class LlmApiService {
                     String assistantMessage = parseResponse(responseBody);
                     mainHandler.post(() -> callback.onSuccess(assistantMessage));
                 } catch (Exception e) {
+                    Log.e(TAG, "Parse error", e);
                     mainHandler.post(() -> callback.onError("Parse error: " + e.getMessage()));
                 }
             }
@@ -207,6 +212,7 @@ public class LlmApiService {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                Log.e(TAG, "Network error", e);
                 mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
             }
 
@@ -216,6 +222,7 @@ public class LlmApiService {
                     String responseBody = response.body() != null ? response.body().string() : "";
                     
                     if (!response.isSuccessful()) {
+                        Log.e(TAG, "API error: " + response.code() + " - " + responseBody);
                         mainHandler.post(() -> callback.onError("API error: " + response.code() + " - " + responseBody));
                         return;
                     }
@@ -223,6 +230,7 @@ public class LlmApiService {
                     LlmResponse llmResponse = parseResponseWithTools(responseBody);
                     mainHandler.post(() -> callback.onSuccess(llmResponse));
                 } catch (Exception e) {
+                    Log.e(TAG, "Parse error", e);
                     mainHandler.post(() -> callback.onError("Parse error: " + e.getMessage()));
                 }
             }
