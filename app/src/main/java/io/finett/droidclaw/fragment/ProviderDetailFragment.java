@@ -66,11 +66,15 @@ public class ProviderDetailFragment extends Fragment {
             if (isNewProvider) {
                 // Invalid provider ID, create new
                 provider = new Provider();
+                provider.setId(UUID.randomUUID().toString());
+                providerId = provider.getId();
             }
         } else {
             // Creating new provider
             isNewProvider = true;
             provider = new Provider();
+            provider.setId(UUID.randomUUID().toString());
+            providerId = provider.getId();
         }
     }
 
@@ -89,6 +93,20 @@ public class ProviderDetailFragment extends Fragment {
         setupModelsRecyclerView();
         loadProviderData();
         setupListeners();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Reload settings manager to get fresh data from SharedPreferences
+        settingsManager = new SettingsManager(requireContext());
+        // Reload provider data when returning from ModelDetailFragment
+        Provider updatedProvider = settingsManager.getProvider(providerId);
+        if (updatedProvider != null) {
+            provider = updatedProvider;
+            // Create a new list to ensure ListAdapter detects the change
+            modelsAdapter.submitList(new java.util.ArrayList<>(provider.getModels()));
+        }
     }
 
     private void initViews(View view) {
@@ -195,11 +213,7 @@ public class ProviderDetailFragment extends Fragment {
 
         String apiType = getApiTypeValue(apiTypeDisplay);
 
-        // Update provider object
-        if (isNewProvider) {
-            provider.setId(UUID.randomUUID().toString());
-            isNewProvider = false;
-        }
+        // Update provider object (ID already set in onCreate)
         provider.setName(name);
         provider.setBaseUrl(baseUrl);
         provider.setApiKey(apiKey);
@@ -208,6 +222,7 @@ public class ProviderDetailFragment extends Fragment {
         // Save to settings
         if (isNewProvider) {
             settingsManager.addProvider(provider);
+            isNewProvider = false;
         } else {
             settingsManager.updateProvider(provider);
         }
@@ -238,15 +253,34 @@ public class ProviderDetailFragment extends Fragment {
     }
 
     private void navigateToNewModel() {
-        if (isNewProvider) {
-            Toast.makeText(requireContext(), "Please save the provider first", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
+        // Save current form data to the in-memory provider before navigating
+        updateProviderFromForm();
+        
         Bundle args = new Bundle();
         args.putString("providerId", provider.getId());
         Navigation.findNavController(requireView())
                 .navigate(R.id.action_providerDetailFragment_to_modelDetailFragment, args);
+    }
+    
+    private void updateProviderFromForm() {
+        String name = inputProviderName.getText().toString().trim();
+        String baseUrl = inputBaseUrl.getText().toString().trim();
+        String apiKey = inputApiKey.getText().toString().trim();
+        String apiTypeDisplay = dropdownApiType.getText().toString();
+        String apiType = getApiTypeValue(apiTypeDisplay);
+        
+        provider.setName(name);
+        provider.setBaseUrl(baseUrl);
+        provider.setApiKey(apiKey);
+        provider.setApi(apiType);
+        
+        // Save the provider to settings (so ModelDetailFragment can access it)
+        if (isNewProvider) {
+            settingsManager.addProvider(provider);
+            isNewProvider = false;
+        } else {
+            settingsManager.updateProvider(provider);
+        }
     }
 
     private String getApiTypeDisplayName(String apiType) {
