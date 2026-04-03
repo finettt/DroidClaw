@@ -82,7 +82,10 @@ public class ChatFragment extends Fragment {
         
         // Initialize memory system
         memoryRepository = new MemoryRepository(workspaceManager);
-        ConversationSummarizer summarizer = new ConversationSummarizer(apiService, memoryRepository);
+        
+        // Get context window from selected model configuration
+        int contextWindow = getModelContextWindow();
+        ConversationSummarizer summarizer = new ConversationSummarizer(apiService, memoryRepository, contextWindow);
         MemoryContextBuilder memoryContext = new MemoryContextBuilder(memoryRepository);
         
         // Create ToolRegistry with SettingsManager for shell access settings
@@ -394,6 +397,24 @@ public class ChatFragment extends Fragment {
                     .append(part.substring(1).toLowerCase());
         }
         return formatted.toString();
+    }
+    
+    /**
+     * Get the context window size from the currently selected model.
+     * Falls back to default if model is not configured.
+     */
+    private int getModelContextWindow() {
+        Object[] selected = settingsManager.getSelectedProviderAndModel();
+        if (selected != null && selected[1] instanceof io.finett.droidclaw.model.Model) {
+            io.finett.droidclaw.model.Model model = (io.finett.droidclaw.model.Model) selected[1];
+            int contextWindow = model.getContextWindow();
+            Log.d(TAG, "Using model context window: " + contextWindow);
+            return contextWindow;
+        }
+        
+        // Fallback to default
+        Log.w(TAG, "Model not configured, using default context window: 4096");
+        return 4096;
     }
 
     @Override

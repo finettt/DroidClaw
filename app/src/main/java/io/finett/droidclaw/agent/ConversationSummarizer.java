@@ -26,7 +26,7 @@ import io.finett.droidclaw.util.TokenEstimator;
 public class ConversationSummarizer {
     private static final String TAG = "ConversationSummarizer";
     private static final int KEEP_RECENT_MESSAGES = 8;
-    private static final double COMPRESSION_THRESHOLD = 0.75; // 75% of context length
+    private static final double COMPRESSION_THRESHOLD = 0.80; // 80% of context length
     
     private final LlmApiService apiService;
     private final MemoryRepository memoryRepository;
@@ -47,7 +47,7 @@ public class ConversationSummarizer {
      * Uses the "Last Usage" algorithm - checks actual context size from API.
      *
      * @param currentContextTokens Actual token count from last API response
-     * @return true if token count exceeds threshold (75% of context window)
+     * @return true if token count exceeds threshold (80% of context window)
      */
     public boolean needsSummarization(int currentContextTokens) {
         int threshold = (int) (contextWindow * COMPRESSION_THRESHOLD);
@@ -251,7 +251,7 @@ public class ConversationSummarizer {
     /**
      * Get current token threshold based on context window.
      *
-     * @return Token threshold value (75% of context window)
+     * @return Token threshold value (80% of context window)
      */
     public int getTokenThreshold() {
         return (int) (contextWindow * COMPRESSION_THRESHOLD);
