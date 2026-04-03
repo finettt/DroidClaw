@@ -82,7 +82,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.api-level }}-${{ matrix.target }}
+          key: avd-${{ matrix.api-level }}-google_apis
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -94,7 +94,7 @@ jobs:
           profile: pixel_7_pro
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
+          disable-animations: true
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run Android tests on emulator
@@ -108,8 +108,14 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           disable-spellchecker: true
-          script: ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} --stacktrace
-        timeout-minutes: 20
+          script: |
+            adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
+            adb shell locksettings set-disabled true || true
+            adb shell input keyevent 82
+            adb shell svc power stayon true
+            sleep 5
+            ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} --stacktrace
+        timeout-minutes: 25
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
