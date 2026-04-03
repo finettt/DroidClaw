@@ -109,26 +109,12 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           script: |
-            # Dismiss any system dialogs and ensure focus
             adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
-            
-            # Disable lock screen
             adb shell locksettings set-disabled true || true
-            
-            # Wake up device and unlock
             adb shell input keyevent 82
-            
-            # Keep screen on
             adb shell svc power stayon true
-            
-            # Additional wait for stability
             sleep 5
-            
-            # Run tests
-            ./gradlew connectedAndroidTest \
-              -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} \
-              -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} \
-              --stacktrace
+            ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} --stacktrace
         timeout-minutes: 25
 
       - name: Upload test results
