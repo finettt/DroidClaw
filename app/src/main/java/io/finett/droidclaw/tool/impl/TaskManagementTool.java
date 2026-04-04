@@ -14,10 +14,13 @@ import java.util.Locale;
 
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.model.TaskRecord;
+import io.finett.droidclaw.model.TaskSecurityConfig;
 import io.finett.droidclaw.repository.TaskRepository;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
+import io.finett.droidclaw.util.AuditLogger;
+import io.finett.droidclaw.util.SettingsManager;
 
 /**
  * Tool for managing scheduled tasks (cron jobs) via conversation.
@@ -39,13 +42,21 @@ public class TaskManagementTool implements Tool {
     private static final String ACTION_DELETE = "delete";
     private static final String ACTION_HISTORY = "history";
     private static final String ACTION_STATUS = "status";
+    private static final String ACTION_EMERGENCY_DISABLE = "emergency_disable";
+    private static final String ACTION_EMERGENCY_ENABLE = "emergency_enable";
+    private static final String ACTION_AUDIT_LOG = "audit_log";
+    private static final String ACTION_SECURITY_CONFIG = "security_config";
 
     private final TaskRepository taskRepository;
     private final Context context;
+    private final SettingsManager settingsManager;
+    private final AuditLogger auditLogger;
 
     public TaskManagementTool(Context context) {
         this.context = context;
         this.taskRepository = new TaskRepository(context);
+        this.settingsManager = new SettingsManager(context);
+        this.auditLogger = new AuditLogger(context);
     }
 
     @Override
@@ -57,9 +68,9 @@ public class TaskManagementTool implements Tool {
     public ToolDefinition getDefinition() {
         return new ToolDefinition(
                 TOOL_NAME,
-                "Manage scheduled tasks (cron jobs). Can create, list, pause, resume, delete tasks, and view execution history.",
+                "Manage scheduled tasks (cron jobs). Can create, list, pause, resume, delete tasks, view execution history, manage security, and emergency controls.",
                 new ToolDefinition.ParametersBuilder()
-                        .addString("action", "Action to perform: create, list, pause, resume, delete, history, or status", true)
+                        .addString("action", "Action to perform: create, list, pause, resume, delete, history, status, emergency_disable, emergency_enable, audit_log, security_config", true)
                         .addString("name", "Task name (required for create, pause, resume, delete, history)", false)
                         .addString("prompt", "Task instructions - what the agent should do (required for create)", false)
                         .addString("interval", "Execution interval: 15min, 30min, 1h, 2h, 4h, 6h, 12h, 1d (required for create)", false)
@@ -67,6 +78,8 @@ public class TaskManagementTool implements Tool {
                         .addBoolean("notify_on_success", "Send notification on success (default: true)", false)
                         .addBoolean("notify_on_failure", "Send notification on failure (default: true)", false)
                         .addInteger("max_history", "Maximum number of history entries to return (default: 10)", false)
+                        .addString("reason", "Reason for emergency disable/enable (required for emergency_disable)", false)
+                        .addInteger("max_entries", "Maximum number of audit log entries to return (default: 20)", false)
                         .build()
         );
     }
@@ -93,8 +106,16 @@ public class TaskManagementTool implements Tool {
             return viewHistory(arguments);
         } else if (actionLower.equals(ACTION_STATUS)) {
             return taskStatus();
+        } else if (actionLower.equals(ACTION_EMERGENCY_DISABLE)) {
+            return emergencyDisable(arguments);
+        } else if (actionLower.equals(ACTION_EMERGENCY_ENABLE)) {
+            return emergencyEnable();
+        } else if (actionLower.equals(ACTION_AUDIT_LOG)) {
+            return viewAuditLog(arguments);
+        } else if (actionLower.equals(ACTION_SECURITY_CONFIG)) {
+            return viewSecurityConfig();
         } else {
-            return ToolResult.error("Unknown action: " + action + ". Valid actions: create, list, pause, resume, delete, history, status");
+            return ToolResult.error("Unknown action: " + action + ". Valid actions: create, list, pause, resume, delete, history, status, emergency_disable, emergency_enable, audit_log, security_config");
         }
     }
 
@@ -373,5 +394,100 @@ public class TaskManagementTool implements Tool {
     private String getFormattedTime(long millis) {
         SimpleDateFormat sdf = new SimpleDateFormat("MMM dd HH:mm", Locale.getDefault());
         return sdf.format(new Date(millis));
+    }
+
+    // ========== EMERGENCY CONTROLS ==========
+
+    private ToolResult emergencyDisable(JsonObject arguments) {
+        String reason = arguments.has("reason") ? arguments.get("reason").getAsString() : null;
+        if (reason == null || reason.isEmpty()) {
+            return ToolResult.error("Missing required parameter: reason. Provide a reason for emergency disable.");
+        }
+
+        // Activate emergency disable
+        settingsManager.activateTaskEmergencyDisable(reason);
+
+        // Log to audit trail
+        auditLogger.logEmergencyEvent("disable", reason);
+
+        return ToolResult.success("## Emergency Disable Activated\n\n**Reason:** " + reason + "\n\nAll background task execution has been halted. Use action='emergency_enable' to resume.");
+    }
+
+    private ToolResult emergencyEnable() {
+        if (!settingsManager.isTaskEmergencyDisable()) {
+            return ToolResult.success("Emergency disable is not currently active.");
+        }
+
+        String reason = settingsManager.getTaskSecurityConfig().getEmergencyDisableReason();
+
+        // Deactivate emergency disable
+        settingsManager.deactivateTaskEmergencyDisable();
+
+        // Log to audit trail
+        auditLogger.logEmergencyEvent("enable", "Previous reason: " + reason);
+
+        return ToolResult.success("## Emergency Disable Deactivated\n\nBackground task execution has been resumed.\n\n**Previous reason:** " + reason);
+    }
+
+    // ========== AUDIT LOG ==========
+
+    private ToolResult viewAuditLog(JsonObject arguments) {
+        int maxEntries = 20;
+        if (arguments.has("max_entries")) {
+            maxEntries = arguments.get("max_entries").getAsInt();
+        }
+
+        List<AuditLogger.AuditEntry> entries = auditLogger.getRecentEntries(maxEntries);
+
+        if (entries.isEmpty()) {
+            return ToolResult.success("No audit log entries found.");
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("## Audit Log (Last ").append(entries.size()).append(" entries)\n\n");
+
+        for (AuditLogger.AuditEntry entry : entries) {
+            sb.append("- **").append(getFormattedTime(entry.getTimestamp())).append("** [")
+              .append(entry.getEventType()).append("] ")
+              .append(entry.getAction()).append("\n");
+            if (entry.getDetails() != null && !entry.getDetails().isEmpty()) {
+                sb.append("  ").append(entry.getDetails()).append("\n");
+            }
+        }
+
+        return ToolResult.success(sb.toString());
+    }
+
+    // ========== SECURITY CONFIG ==========
+
+    private ToolResult viewSecurityConfig() {
+        TaskSecurityConfig config = settingsManager.getTaskSecurityConfig();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("## Task Security Configuration\n\n");
+
+        // Emergency status
+        if (config.isEmergencyActive()) {
+            sb.append("### [EMERGENCY DISABLE ACTIVE]\n\n");
+            sb.append("- **Reason:** ").append(config.getEmergencyDisableReason()).append("\n");
+            sb.append("- **Activated:** ").append(getFormattedTime(config.getEmergencyDisableTimestamp())).append("\n\n");
+        }
+
+        // Sandbox settings
+        sb.append("### Sandbox Settings\n\n");
+        sb.append("- **Restrict to workspace:** ").append(config.isRestrictToWorkspace() ? "Yes" : "No").append("\n");
+        sb.append("- **Block destructive ops:** ").append(config.isBlockDestructiveOps() ? "Yes" : "No").append("\n");
+        sb.append("- **Block shell access:** ").append(config.isBlockShellAccess() ? "Yes" : "No").append("\n");
+        sb.append("- **Block Python access:** ").append(config.isBlockPythonAccess() ? "Yes" : "No").append("\n");
+
+        // Resource limits
+        sb.append("\n### Resource Limits\n\n");
+        sb.append("- **Max execution time:** ").append(config.getMaxExecutionTimeSeconds()).append("s\n");
+        sb.append("- **Max iterations:** ").append(config.getMaxIterations()).append("\n");
+        sb.append("- **Max tool calls:** ").append(config.getMaxToolCalls()).append("\n");
+        sb.append("- **Max token usage:** ").append(config.getMaxTokenUsage()).append("\n");
+        sb.append("- **Max memory context:** ").append(config.getMaxMemoryContextSize()).append(" chars\n");
+
+        return ToolResult.success(sb.toString());
     }
 }

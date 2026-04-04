@@ -18,6 +18,7 @@ import io.finett.droidclaw.model.AgentConfig;
 import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
+import io.finett.droidclaw.model.TaskSecurityConfig;
 
 public class SettingsManager {
     private static final String TAG = "SettingsManager";
@@ -31,6 +32,7 @@ public class SettingsManager {
     private Map<String, Provider> providers;
     private AgentConfig agentConfig;
     private HeartbeatConfig heartbeatConfig;
+    private TaskSecurityConfig taskSecurityConfig;
     private boolean onboardingCompleted;
     private String userName;
 
@@ -101,6 +103,7 @@ public class SettingsManager {
         providers = new HashMap<>();
         agentConfig = AgentConfig.getDefaults();
         heartbeatConfig = new HeartbeatConfig();
+        taskSecurityConfig = new TaskSecurityConfig();
         onboardingCompleted = false;
         userName = "";
     }
@@ -435,6 +438,37 @@ public class SettingsManager {
     public void setHeartbeatEnabled(boolean enabled) {
         heartbeatConfig.setEnabled(enabled);
         saveToJson();
+    }
+
+    // ==================== Task Security Configuration ====================
+
+    public TaskSecurityConfig getTaskSecurityConfig() {
+        return taskSecurityConfig;
+    }
+
+    public void setTaskSecurityConfig(TaskSecurityConfig config) {
+        this.taskSecurityConfig = config;
+        saveToJson();
+    }
+
+    // Convenience methods for task security settings
+    public boolean isTaskEmergencyDisable() {
+        return taskSecurityConfig != null && taskSecurityConfig.isEmergencyDisable();
+    }
+
+    public void activateTaskEmergencyDisable(String reason) {
+        if (taskSecurityConfig == null) {
+            taskSecurityConfig = new TaskSecurityConfig();
+        }
+        taskSecurityConfig.activateEmergencyDisable(reason);
+        saveToJson();
+    }
+
+    public void deactivateTaskEmergencyDisable() {
+        if (taskSecurityConfig != null) {
+            taskSecurityConfig.deactivateEmergencyDisable();
+            saveToJson();
+        }
     }
 
     public long getHeartbeatIntervalMinutes() {

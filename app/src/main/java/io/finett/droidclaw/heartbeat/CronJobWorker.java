@@ -24,11 +24,14 @@ import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.model.TaskRecord;
 import io.finett.droidclaw.model.TaskResult;
+import io.finett.droidclaw.model.TaskSecurityConfig;
 import io.finett.droidclaw.notification.NotificationManager;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.repository.TaskRepository;
+import io.finett.droidclaw.tool.SandboxedToolRegistry;
 import io.finett.droidclaw.tool.ToolRegistry;
+import io.finett.droidclaw.util.AuditLogger;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
@@ -49,6 +52,7 @@ public class CronJobWorker extends Worker {
     private final TaskRepository taskRepository;
     private final SettingsManager settingsManager;
     private final MemoryRepository memoryRepository;
+    private final AuditLogger auditLogger;
 
     public CronJobWorker(
             @NonNull Context context,
@@ -60,6 +64,7 @@ public class CronJobWorker extends Worker {
         this.taskRepository = new TaskRepository(context);
         this.settingsManager = new SettingsManager(context);
         this.memoryRepository = new MemoryRepository(workspaceManager);
+        this.auditLogger = new AuditLogger(context);
     }
 
     @NonNull
@@ -87,8 +92,25 @@ public class CronJobWorker extends Worker {
                 return Result.success();
             }
 
+            // Check emergency disable
+            if (settingsManager.isTaskEmergencyDisable()) {
+                Log.w(TAG, "Emergency disable active, skipping cron job: " + job.getName());
+                auditLogger.logSecurityEvent(
+                        job.getId(),
+                        "cronjob",
+                        "emergency_block",
+                        "Emergency disable: " + settingsManager.getTaskSecurityConfig().getEmergencyDisableReason()
+                );
+                return Result.success();
+            }
+
             // 2. Create task record
             TaskRecord record = TaskRecord.create(job.getId(), job.getName(), job.getPrompt());
+
+            // Log execution start
+            auditLogger.logExecution(
+                    AuditLogger.AuditEntry.executionStart(job.getId(), "cronjob", job.getName())
+            );
 
             // 3. Create hidden isolated session
             ChatSession hiddenSession = ChatSession.createCronJobSession(
@@ -125,18 +147,31 @@ public class CronJobWorker extends Worker {
             // Add the task prompt
             messages.add(new ChatMessage(job.getPrompt(), ChatMessage.TYPE_USER));
 
-            // 7. Create API service and isolated agent loop
+            // 7. Create API service and sandboxed tool registry
             LlmApiService apiService = new LlmApiService(settingsManager);
-            ToolRegistry toolRegistry = new ToolRegistry(getApplicationContext(), settingsManager);
+            
+            // Use sandboxed tool registry with security constraints
+            TaskSecurityConfig securityConfig = settingsManager.getTaskSecurityConfig();
+            SandboxedToolRegistry toolRegistry = new SandboxedToolRegistry(
+                    getApplicationContext(),
+                    securityConfig,
+                    auditLogger,
+                    job.getId(),
+                    "cronjob"
+            );
 
             AgentConfig agentConfig = settingsManager.getAgentConfig();
 
-            // Use job's max iterations or default from agent config
+            // Use job's max iterations or security config limit (whichever is lower)
             int maxIterations = job.getMaxIterations() > 0 ? job.getMaxIterations() : agentConfig.getMaxIterations();
+            int securityMaxIterations = securityConfig.getMaxIterations();
+            if (securityMaxIterations > 0 && securityMaxIterations < maxIterations) {
+                maxIterations = securityMaxIterations;
+            }
 
             AgentLoop agentLoop = new AgentLoop(
                     apiService,
-                    toolRegistry,
+                    toolRegistry.getWrappedRegistry(), // AgentLoop needs full registry for tool definitions
                     settingsManager,
                     null, // No summarizer for cron jobs
                     null  // No memory context builder (already added manually)
@@ -209,6 +244,11 @@ public class CronJobWorker extends Worker {
                 taskRepository.saveTaskRecord(record);
                 taskRepository.saveCronJob(job);
 
+                // Log failure to audit
+                auditLogger.logExecution(
+                        AuditLogger.AuditEntry.executionFailure(job.getId(), "cronjob", job.getName(), error[0])
+                );
+
                 // Create TaskResult for failure
                 TaskResult result = new TaskResult();
                 result.setTaskType("cronjob");
@@ -248,6 +288,30 @@ public class CronJobWorker extends Worker {
             record.setNotificationTitle("✅ " + job.getName());
             record.setNotificationSummary(extractSummary(finalResponse[0]));
             taskRepository.saveTaskRecord(record);
+
+            // Log success to audit
+            long executionTime = record.getDurationMs();
+            auditLogger.logExecution(
+                    AuditLogger.AuditEntry.executionSuccess(job.getId(), "cronjob", job.getName(), executionTime)
+            );
+
+            // Check resource limits
+            if (agentLoop.getTotalToolCalls() > securityConfig.getMaxToolCalls()) {
+                auditLogger.logSecurityEvent(
+                        job.getId(),
+                        "cronjob",
+                        "resource_limit",
+                        "Tool calls exceeded: " + agentLoop.getTotalToolCalls() + " > " + securityConfig.getMaxToolCalls()
+                );
+            }
+            if (agentLoop.getTotalTokens() > securityConfig.getMaxTokenUsage()) {
+                auditLogger.logSecurityEvent(
+                        job.getId(),
+                        "cronjob",
+                        "resource_limit",
+                        "Token usage exceeded: " + agentLoop.getTotalTokens() + " > " + securityConfig.getMaxTokenUsage()
+                );
+            }
 
             // 12. Create TaskResult for Zen UI
             TaskResult taskResult = TaskResult.fromCronJob(job, record);
