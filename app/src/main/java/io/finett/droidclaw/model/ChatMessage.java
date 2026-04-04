@@ -22,6 +22,11 @@ public class ChatMessage {
     private List<LlmApiService.ToolCall> toolCalls;
     private String toolCallId;
     private String toolName;
+    
+    // For context messages from background tasks (collapsible in UI)
+    private boolean isContext = false;          // Collapsible context card
+    private String contextSourceId;             // ID of the TaskResult this came from
+    private String contextTaskName;             // Task name for display
 
     public ChatMessage(String content, int type) {
         this.content = content;
@@ -110,6 +115,52 @@ public class ChatMessage {
 
     public void setToolName(String toolName) {
         this.toolName = toolName;
+    }
+    
+    // Context support for background task results
+    
+    /**
+     * Check if this message is context from a background task.
+     * Context messages are displayed as collapsible cards in the UI.
+     */
+    public boolean isContext() {
+        return isContext;
+    }
+    
+    /**
+     * Mark this message as context from a background task.
+     * Will be displayed as a collapsible card in chat.
+     */
+    public void setIsContext(boolean isContext) {
+        this.isContext = isContext;
+    }
+    
+    public String getContextSourceId() {
+        return contextSourceId;
+    }
+    
+    public void setContextSourceId(String contextSourceId) {
+        this.contextSourceId = contextSourceId;
+    }
+    
+    public String getContextTaskName() {
+        return contextTaskName;
+    }
+    
+    public void setContextTaskName(String contextTaskName) {
+        this.contextTaskName = contextTaskName;
+    }
+    
+    /**
+     * Create a context message from a background task result.
+     * This message will be displayed as a collapsible card.
+     */
+    public static ChatMessage createContextMessage(String taskResultId, String taskName, String content) {
+        ChatMessage message = new ChatMessage(content, TYPE_ASSISTANT);
+        message.isContext = true;
+        message.contextSourceId = taskResultId;
+        message.contextTaskName = taskName;
+        return message;
     }
 
     public boolean isSystem() {

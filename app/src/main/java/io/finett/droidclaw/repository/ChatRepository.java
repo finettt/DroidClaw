@@ -45,6 +45,15 @@ public class ChatRepository {
                 jsonObject.put("title", session.getTitle());
                 jsonObject.put("updatedAt", session.getUpdatedAt());
                 
+                // Save session type and metadata
+                jsonObject.put("sessionType", session.getSessionType());
+                if (session.getCronJobId() != null) {
+                    jsonObject.put("cronJobId", session.getCronJobId());
+                }
+                if (session.getTaskRecordId() != null) {
+                    jsonObject.put("taskRecordId", session.getTaskRecordId());
+                }
+                
                 // Save current context tokens (Last Usage algorithm)
                 jsonObject.put("currentContextTokens", session.getCurrentContextTokens());
                 jsonObject.put("currentPromptTokens", session.getCurrentPromptTokens());
@@ -91,6 +100,15 @@ public class ChatRepository {
                 
                 ChatSession session = new ChatSession(id, title, updatedAt);
                 
+                // Load session type and metadata
+                session.setSessionType(jsonObject.optInt("sessionType", ChatSession.TYPE_USER));
+                if (jsonObject.has("cronJobId")) {
+                    session.setCronJobId(jsonObject.getString("cronJobId"));
+                }
+                if (jsonObject.has("taskRecordId")) {
+                    session.setTaskRecordId(jsonObject.getString("taskRecordId"));
+                }
+                
                 // Load current context tokens (Last Usage algorithm)
                 session.setCurrentContextTokens(jsonObject.optInt("currentContextTokens", 0));
                 session.setCurrentPromptTokens(jsonObject.optInt("currentPromptTokens", 0));
@@ -115,6 +133,84 @@ public class ChatRepository {
         }
         
         return sessions;
+    }
+    
+    /**
+     * Load all sessions including hidden ones (cron job sessions).
+     */
+    public List<ChatSession> loadAllSessions() {
+        return loadSessions();  // Base implementation loads all
+    }
+    
+    /**
+     * Load only user-visible sessions (filters out hidden sessions).
+     */
+    public List<ChatSession> loadVisibleSessions() {
+        List<ChatSession> allSessions = loadSessions();
+        List<ChatSession> visibleSessions = new ArrayList<>();
+        
+        for (ChatSession session : allSessions) {
+            if (!session.isHidden()) {
+                visibleSessions.add(session);
+            }
+        }
+        
+        Log.d(TAG, "Filtered to " + visibleSessions.size() + " visible sessions from " + allSessions.size() + " total");
+        return visibleSessions;
+    }
+    
+    /**
+     * Save a hidden session (e.g., cron job session).
+     */
+    public void saveHiddenSession(ChatSession session) {
+        List<ChatSession> allSessions = loadSessions();
+        
+        // Remove if already exists
+        allSessions.removeIf(s -> s.getId().equals(session.getId()));
+        
+        // Add the session
+        allSessions.add(session);
+        
+        // Save all sessions
+        saveSessions(allSessions);
+        
+        Log.d(TAG, "Saved hidden session: " + session.getId());
+    }
+    
+    /**
+     * Get a specific session by ID (including hidden sessions).
+     */
+    public ChatSession getSession(String sessionId) {
+        List<ChatSession> sessions = loadSessions();
+        for (ChatSession session : sessions) {
+            if (session.getId().equals(sessionId)) {
+                return session;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Get the main user session (first user session, or create if needed).
+     */
+    public ChatSession getMainSession() {
+        List<ChatSession> sessions = loadVisibleSessions();
+        if (!sessions.isEmpty()) {
+            return sessions.get(0);  // First session is main
+        }
+        
+        // Create a new main session
+        ChatSession mainSession = new ChatSession(
+            java.util.UUID.randomUUID().toString(),
+            "Main Chat",
+            System.currentTimeMillis()
+        );
+        
+        List<ChatSession> allSessions = new ArrayList<>();
+        allSessions.add(mainSession);
+        saveSessions(allSessions);
+        
+        return mainSession;
     }
     
     /**
@@ -209,6 +305,17 @@ public class ChatRepository {
                     }
                 }
                 
+                // Save context fields for background task results
+                if (message.isContext()) {
+                    jsonObject.put("isContext", true);
+                    if (message.getContextSourceId() != null) {
+                        jsonObject.put("contextSourceId", message.getContextSourceId());
+                    }
+                    if (message.getContextTaskName() != null) {
+                        jsonObject.put("contextTaskName", message.getContextTaskName());
+                    }
+                }
+                
                 jsonArray.put(jsonObject);
             }
             
@@ -279,6 +386,18 @@ public class ChatRepository {
                     }
                     
                     message.setTimestamp(timestamp);
+                    
+                    // Restore context fields
+                    if (jsonObject.optBoolean("isContext", false)) {
+                        message.setIsContext(true);
+                        if (jsonObject.has("contextSourceId")) {
+                            message.setContextSourceId(jsonObject.getString("contextSourceId"));
+                        }
+                        if (jsonObject.has("contextTaskName")) {
+                            message.setContextTaskName(jsonObject.getString("contextTaskName"));
+                        }
+                    }
+                    
                     messages.add(message);
                 } catch (Exception e) {
                     Log.e(TAG, "Error loading message at index " + i + " for session: " + sessionId, e);
