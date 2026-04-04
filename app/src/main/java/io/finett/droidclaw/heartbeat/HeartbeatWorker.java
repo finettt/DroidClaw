@@ -242,10 +242,7 @@ public class HeartbeatWorker extends Worker {
 
         if (heartbeatFile.exists()) {
             try {
-                String content = new String(
-                        java.nio.file.Files.readAllBytes(heartbeatFile.toPath()),
-                        StandardCharsets.UTF_8
-                );
+                String content = readFileSync(heartbeatFile);
                 return "Read HEARTBEAT.md and follow it strictly. " +
                         "If nothing needs attention, reply HEARTBEAT_OK.\n\n" +
                         content;
@@ -257,6 +254,24 @@ public class HeartbeatWorker extends Worker {
         // Default prompt
         return "Quick check: anything urgent that needs attention? " +
                 "If nothing, reply HEARTBEAT_OK.";
+    }
+
+    /**
+     * Read file content synchronously using legacy API (minSdk 22 compatible).
+     */
+    private String readFileSync(File file) throws IOException {
+        java.io.FileInputStream fis = new java.io.FileInputStream(file);
+        try {
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                baos.write(buffer, 0, bytesRead);
+            }
+            return baos.toString(StandardCharsets.UTF_8.name());
+        } finally {
+            fis.close();
+        }
     }
 
     /**

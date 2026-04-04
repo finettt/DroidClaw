@@ -14,7 +14,7 @@ import io.finett.droidclaw.util.SettingsManager;
  * all enabled tasks are properly scheduled.
  */
 public class TaskSchedulerInitializer {
-    private static final String TAG = "TaskSchedulerInitializer";
+    private static final String TAG = "TaskSchedulerInit"; // 17 chars (max 23)
 
     /**
      * Initialize and schedule all background tasks.
