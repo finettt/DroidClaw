@@ -135,4 +135,15 @@
         android:name="io.finett.droidclaw.fragment.MemoryBrowserFragment"
         android:label="Memory" />
 
+    <fragment
+        android:id="@+id/zenResultFragment"
+        android:name="io.finett.droidclaw.fragment.ZenResultFragment"
+        android:label="Task Result">
+        <argument
+            android:name="resultId"
+            app:argType="string"
+            android:defaultValue="@null"
+            app:nullable="true" />
+    </fragment>
+
 </navigation>

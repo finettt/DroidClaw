@@ -23,6 +23,7 @@ import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.model.TaskResult;
+import io.finett.droidclaw.notification.NotificationManager;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.repository.TaskRepository;
@@ -193,6 +194,16 @@ public class HeartbeatWorker extends Worker {
             result.setNotificationTitle("Heartbeat Alert");
             result.setNotificationSummary(extractSummary(finalResponse[0]));
             taskRepository.saveTaskResult(result);
+
+            // Send push notification if enabled
+            if (config.isSendNotifications()) {
+                try {
+                    NotificationManager notificationManager = new NotificationManager(getApplicationContext());
+                    notificationManager.sendHeartbeatAlert(result);
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to send heartbeat notification", e);
+                }
+            }
 
             config.setLastStatus("alert");
             config.setLastRunAt(System.currentTimeMillis());

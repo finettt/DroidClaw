@@ -1,5 +1,6 @@
 package io.finett.droidclaw;
 
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -30,8 +31,10 @@ import java.util.UUID;
 
 import io.finett.droidclaw.adapter.ChatSessionAdapter;
 import io.finett.droidclaw.fragment.ChatFragment;
+import io.finett.droidclaw.fragment.ZenResultFragment;
 import io.finett.droidclaw.heartbeat.TaskSchedulerInitializer;
 import io.finett.droidclaw.model.ChatSession;
+import io.finett.droidclaw.notification.NotificationManager;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -45,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private final List<ChatSession> chatSessions = new ArrayList<>();
     private ChatRepository chatRepository;
     private SettingsManager settingsManager;
+    private NotificationManager notificationManager;
     private String currentSessionId;
 
     @Override
@@ -55,6 +59,10 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout = findViewById(R.id.drawer_layout);
         chatRepository = new ChatRepository(this);
         settingsManager = new SettingsManager(this);
+        notificationManager = new NotificationManager(this);
+
+        // Request notification permission (Android 13+)
+        requestNotificationPermission();
 
         // Initialize background task scheduler (heartbeat & cron jobs)
         TaskSchedulerInitializer.initialize(this);
@@ -323,6 +331,62 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         // Reload chat sessions when returning to the activity
         loadPersistedChatSessions();
+
+        // Handle notification tap intent
+        handleNotificationIntent();
+    }
+
+    /**
+     * Request notification permission (Android 13+).
+     */
+    private void requestNotificationPermission() {
+        if (notificationManager != null && !notificationManager.hasPermission()) {
+            notificationManager.requestPermission(this);
+        }
+    }
+
+    /**
+     * Handle intent from notification tap to open Zen result screen.
+     */
+    private void handleNotificationIntent() {
+        if (getIntent() != null && "ACTION_VIEW_RESULT".equals(getIntent().getAction())) {
+            String resultId = getIntent().getStringExtra("EXTRA_RESULT_ID");
+            if (resultId != null && navController != null) {
+                Bundle args = new Bundle();
+                args.putString(ZenResultFragment.ARG_RESULT_ID, resultId);
+                navController.navigate(R.id.zenResultFragment, args);
+                Log.d(TAG, "Navigating to ZenResultFragment for result: " + resultId);
+            }
+            // Clear the action to prevent re-navigation on rotation
+            getIntent().setAction(null);
+            getIntent().removeExtra("EXTRA_RESULT_ID");
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NotificationManager.REQUEST_CODE_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Notification permission granted");
+            } else {
+                Log.w(TAG, "Notification permission denied - background task notifications will not work");
+            }
+        }
+    }
+
+    /**
+     * Get the notification manager instance (for workers to access).
+     */
+    public NotificationManager getNotificationManager() {
+        return notificationManager;
+    }
+
+    /**
+     * Get the NavController for manual navigation.
+     */
+    public NavController getNavController() {
+        return navController;
     }
 
     @Override

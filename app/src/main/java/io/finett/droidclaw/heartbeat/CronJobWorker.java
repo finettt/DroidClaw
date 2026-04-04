@@ -24,6 +24,7 @@ import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.model.TaskRecord;
 import io.finett.droidclaw.model.TaskResult;
+import io.finett.droidclaw.notification.NotificationManager;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.repository.TaskRepository;
@@ -223,6 +224,16 @@ public class CronJobWorker extends Worker {
                 result.setNotificationSummary("Execution failed: " + error[0]);
                 taskRepository.saveTaskResult(result);
 
+                // Send push notification for failure
+                if (job.isNotifyOnFailure()) {
+                    try {
+                        NotificationManager notificationManager = new NotificationManager(getApplicationContext());
+                        notificationManager.sendCronJobResult(result, job.getId());
+                    } catch (Exception e) {
+                        Log.w(TAG, "Failed to send cron job failure notification", e);
+                    }
+                }
+
                 return Result.success(); // Return success to avoid retry
             }
 
@@ -243,6 +254,16 @@ public class CronJobWorker extends Worker {
             taskResult.setNotificationTitle(record.getNotificationTitle());
             taskResult.setNotificationSummary(record.getNotificationSummary());
             taskRepository.saveTaskResult(taskResult);
+
+            // Send push notification for success
+            if (job.isNotifyOnSuccess()) {
+                try {
+                    NotificationManager notificationManager = new NotificationManager(getApplicationContext());
+                    notificationManager.sendCronJobResult(taskResult, job.getId());
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to send cron job success notification", e);
+                }
+            }
 
             // 13. Update cron job metadata
             job.recordSuccess();
