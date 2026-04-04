@@ -130,4 +130,9 @@
         android:name="io.finett.droidclaw.fragment.FileBrowserFragment"
         android:label="Files" />
 
+    <fragment
+        android:id="@+id/memoryBrowserFragment"
+        android:name="io.finett.droidclaw.fragment.MemoryBrowserFragment"
+        android:label="Memory" />
+
 </navigation>

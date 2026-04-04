@@ -113,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupDrawerContent() {
         MaterialButton newChatButton = findViewById(R.id.button_new_chat);
         MaterialButton filesButton = findViewById(R.id.button_files);
+        MaterialButton memoryButton = findViewById(R.id.button_memory);
         MaterialButton settingsButton = findViewById(R.id.button_settings);
         RecyclerView chatSessionsRecyclerView = findViewById(R.id.recycler_chat_sessions);
 
@@ -159,6 +160,13 @@ public class MainActivity extends AppCompatActivity {
         filesButton.setOnClickListener(v -> {
             if (navController != null) {
                 navController.navigate(R.id.fileBrowserFragment);
+            }
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
+        memoryButton.setOnClickListener(v -> {
+            if (navController != null) {
+                navController.navigate(R.id.memoryBrowserFragment);
             }
             drawerLayout.closeDrawer(GravityCompat.START);
         });

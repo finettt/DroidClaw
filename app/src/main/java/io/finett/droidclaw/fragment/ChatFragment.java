@@ -28,11 +28,14 @@ import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.adapter.ChatAdapter;
 import io.finett.droidclaw.agent.AgentLoop;
+import io.finett.droidclaw.agent.ConversationSummarizer;
 import io.finett.droidclaw.agent.IdentityManager;
+import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.ChatRepository;
+import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -51,6 +54,7 @@ public class ChatFragment extends Fragment {
     private LlmApiService apiService;
     private SettingsManager settingsManager;
     private ChatRepository chatRepository;
+    private MemoryRepository memoryRepository;
     private ToolRegistry toolRegistry;
     private AgentLoop agentLoop;
     private IdentityManager identityManager;
@@ -76,10 +80,19 @@ public class ChatFragment extends Fragment {
         
         identityManager = new IdentityManager(requireContext(), workspaceManager);
         
+        // Initialize memory system
+        memoryRepository = new MemoryRepository(workspaceManager);
+        
+        // Get context window from selected model configuration
+        int contextWindow = getModelContextWindow();
+        ConversationSummarizer summarizer = new ConversationSummarizer(apiService, memoryRepository, contextWindow);
+        MemoryContextBuilder memoryContext = new MemoryContextBuilder(memoryRepository);
+        
         // Create ToolRegistry with SettingsManager for shell access settings
         toolRegistry = new ToolRegistry(requireContext(), settingsManager);
-        // Create AgentLoop with SettingsManager for approval settings
-        agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager);
+        
+        // Create AgentLoop with full memory support
+        agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);
         
         // Load and set identity context
         loadIdentityContext();
@@ -384,6 +397,24 @@ public class ChatFragment extends Fragment {
                     .append(part.substring(1).toLowerCase());
         }
         return formatted.toString();
+    }
+    
+    /**
+     * Get the context window size from the currently selected model.
+     * Falls back to default if model is not configured.
+     */
+    private int getModelContextWindow() {
+        Object[] selected = settingsManager.getSelectedProviderAndModel();
+        if (selected != null && selected[1] instanceof io.finett.droidclaw.model.Model) {
+            io.finett.droidclaw.model.Model model = (io.finett.droidclaw.model.Model) selected[1];
+            int contextWindow = model.getContextWindow();
+            Log.d(TAG, "Using model context window: " + contextWindow);
+            return contextWindow;
+        }
+        
+        // Fallback to default
+        Log.w(TAG, "Model not configured, using default context window: 4096");
+        return 4096;
     }
 
     @Override

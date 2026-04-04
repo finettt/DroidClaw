@@ -44,6 +44,18 @@ public class ChatRepository {
                 jsonObject.put("id", session.getId());
                 jsonObject.put("title", session.getTitle());
                 jsonObject.put("updatedAt", session.getUpdatedAt());
+                
+                // Save current context tokens (Last Usage algorithm)
+                jsonObject.put("currentContextTokens", session.getCurrentContextTokens());
+                jsonObject.put("currentPromptTokens", session.getCurrentPromptTokens());
+                jsonObject.put("currentCompletionTokens", session.getCurrentCompletionTokens());
+                
+                // Save session cumulative tokens
+                jsonObject.put("totalTokens", session.getTotalTokens());
+                jsonObject.put("totalPromptTokens", session.getTotalPromptTokens());
+                jsonObject.put("totalCompletionTokens", session.getTotalCompletionTokens());
+                jsonObject.put("totalToolCalls", session.getTotalToolCalls());
+                
                 jsonArray.put(jsonObject);
             }
             
@@ -77,7 +89,20 @@ public class ChatRepository {
                 String title = jsonObject.getString("title");
                 long updatedAt = jsonObject.getLong("updatedAt");
                 
-                sessions.add(new ChatSession(id, title, updatedAt));
+                ChatSession session = new ChatSession(id, title, updatedAt);
+                
+                // Load current context tokens (Last Usage algorithm)
+                session.setCurrentContextTokens(jsonObject.optInt("currentContextTokens", 0));
+                session.setCurrentPromptTokens(jsonObject.optInt("currentPromptTokens", 0));
+                session.setCurrentCompletionTokens(jsonObject.optInt("currentCompletionTokens", 0));
+                
+                // Load session cumulative tokens
+                session.setTotalTokens(jsonObject.optInt("totalTokens", 0));
+                session.setTotalPromptTokens(jsonObject.optInt("totalPromptTokens", 0));
+                session.setTotalCompletionTokens(jsonObject.optInt("totalCompletionTokens", 0));
+                session.setTotalToolCalls(jsonObject.optInt("totalToolCalls", 0));
+                
+                sessions.add(session);
             }
             
             // Sort by updatedAt descending (newest first)

@@ -67,11 +67,17 @@ public class LlmApiService {
         private final String content;
         private final List<ToolCall> toolCalls;
         private final boolean hasToolCalls;
+        private final TokenUsage usage;
 
         public LlmResponse(String content, List<ToolCall> toolCalls) {
+            this(content, toolCalls, null);
+        }
+
+        public LlmResponse(String content, List<ToolCall> toolCalls, TokenUsage usage) {
             this.content = content;
             this.toolCalls = toolCalls != null ? toolCalls : new ArrayList<>();
             this.hasToolCalls = !this.toolCalls.isEmpty();
+            this.usage = usage;
         }
 
         public String getContent() {
@@ -84,6 +90,10 @@ public class LlmApiService {
 
         public boolean hasToolCalls() {
             return hasToolCalls;
+        }
+
+        public TokenUsage getUsage() {
+            return usage;
         }
     }
 
@@ -296,14 +306,14 @@ public class LlmApiService {
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
         
         if (choices == null || choices.size() == 0) {
-            return new LlmResponse("No response received", null);
+            return new LlmResponse("No response received", null, null);
         }
 
         JsonObject firstChoice = choices.get(0).getAsJsonObject();
         JsonObject message = firstChoice.getAsJsonObject("message");
         
         if (message == null) {
-            return new LlmResponse("No message in response", null);
+            return new LlmResponse("No message in response", null, null);
         }
 
         // Extract content (may be null if there are tool calls)
@@ -332,7 +342,17 @@ public class LlmApiService {
             }
         }
 
-        return new LlmResponse(content, toolCalls);
+        // Extract token usage information (Last Usage algorithm)
+        TokenUsage usage = null;
+        if (jsonResponse.has("usage")) {
+            JsonObject usageObj = jsonResponse.getAsJsonObject("usage");
+            int totalTokens = usageObj.has("total_tokens") ? usageObj.get("total_tokens").getAsInt() : 0;
+            int promptTokens = usageObj.has("prompt_tokens") ? usageObj.get("prompt_tokens").getAsInt() : 0;
+            int completionTokens = usageObj.has("completion_tokens") ? usageObj.get("completion_tokens").getAsInt() : 0;
+            usage = new TokenUsage(totalTokens, promptTokens, completionTokens);
+        }
+
+        return new LlmResponse(content, toolCalls, usage);
     }
 
     public void cancelAllRequests() {

@@ -4,6 +4,9 @@
         android:id="@+id/nav_chats"
         android:title="@string/chats" />
     <item
+        android:id="@+id/nav_memory"
+        android:title="@string/memory" />
+    <item
         android:id="@+id/nav_settings"
         android:title="@string/settings" />
 </menu>

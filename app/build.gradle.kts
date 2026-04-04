@@ -42,6 +42,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -69,6 +70,7 @@ chaquopy {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugaring)
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
