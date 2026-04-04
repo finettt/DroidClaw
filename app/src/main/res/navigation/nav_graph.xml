@@ -52,6 +52,13 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_settingsFragment_to_heartbeatSettingsFragment"
+            app:destination="@id/heartbeatSettingsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -145,5 +152,10 @@
             android:defaultValue="@null"
             app:nullable="true" />
     </fragment>
+
+    <fragment
+        android:id="@+id/heartbeatSettingsFragment"
+        android:name="io.finett.droidclaw.fragment.HeartbeatSettingsFragment"
+        android:label="Heartbeat Settings" />
 
 </navigation>

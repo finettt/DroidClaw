@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Enable Heartbeat Toggle -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_enabled"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_enabled_description"
+                    android:textAppearance="?attr/textAppearanceCaption"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_heartbeat_enabled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="8dp"
+            android:background="?android:attr/listDivider" />
+
+        <!-- Interval Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/heartbeat_interval_settings"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Interval Selector -->
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:hint="@string/heartbeat_interval"
+            app:boxBackgroundMode="outline">
+
+            <AutoCompleteTextView
+                android:id="@+id/dropdown_heartbeat_interval"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="none" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="8dp"
+            android:background="?android:attr/listDivider" />
+
+        <!-- Active Hours Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/heartbeat_active_hours"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Respect Active Hours Toggle -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_respect_active_hours"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_respect_active_hours_description"
+                    android:textAppearance="?attr/textAppearanceCaption"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_respect_active_hours"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- Active Hours Start -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_active_hours_start"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:hint="@string/heartbeat_active_hours_start"
+            app:helperText="@string/heartbeat_active_hours_start_description"
+            app:boxBackgroundMode="outline">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_active_hours_start"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="time"
+                android:text="08:00" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Active Hours End -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_active_hours_end"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:hint="@string/heartbeat_active_hours_end"
+            app:helperText="@string/heartbeat_active_hours_end_description"
+            app:boxBackgroundMode="outline">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_active_hours_end"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="time"
+                android:text="22:00" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="8dp"
+            android:background="?android:attr/listDivider" />
+
+        <!-- Notifications Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/heartbeat_notifications"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Send Notifications Toggle -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_send_notifications"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_send_notifications_description"
+                    android:textAppearance="?attr/textAppearanceCaption"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_send_notifications"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- Show Alerts Toggle -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_show_alerts"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_show_alerts_description"
+                    android:textAppearance="?attr/textAppearanceCaption"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_show_alerts"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- Show OK Messages Toggle -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_show_ok_messages"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_show_ok_messages_description"
+                    android:textAppearance="?attr/textAppearanceCaption"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_show_ok_messages"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="8dp"
+            android:background="?android:attr/listDivider" />
+
+        <!-- Advanced Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/heartbeat_advanced"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Require Network Toggle -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_require_network"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_require_network_description"
+                    android:textAppearance="?attr/textAppearanceCaption"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_require_network"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- Battery Not Low Toggle -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="24dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_battery_not_low"
+                    android:textAppearance="?attr/textAppearanceSubtitle1" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/heartbeat_battery_not_low_description"
+                    android:textAppearance="?attr/textAppearanceCaption"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+            </LinearLayout>
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_battery_not_low"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <!-- Save Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/save" />
+
+    </LinearLayout>
+
+</ScrollView>

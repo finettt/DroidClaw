@@ -134,6 +134,38 @@
     <string name="long_term_memory">Long-term Memory</string>
     <string name="daily_notes">Daily Notes</string>
     
+    <!-- Heartbeat Settings -->
+    <string name="settings_heartbeat">Heartbeat</string>
+    <string name="settings_heartbeat_subtitle">Configure periodic check-ins</string>
+    <string name="heartbeat_enabled">Enable Heartbeat</string>
+    <string name="heartbeat_enabled_description">Periodic check-ins in main chat session</string>
+    <string name="heartbeat_interval_settings">Interval Settings</string>
+    <string name="heartbeat_interval">Check-in Interval</string>
+    <string name="heartbeat_interval_minutes">%d minutes</string>
+    <string name="heartbeat_interval_1_hour">1 hour</string>
+    <string name="heartbeat_interval_hours">%d hours</string>
+    <string name="heartbeat_active_hours">Active Hours</string>
+    <string name="heartbeat_respect_active_hours">Restrict to Active Hours</string>
+    <string name="heartbeat_respect_active_hours_description">Only run check-ins during specified hours</string>
+    <string name="heartbeat_active_hours_start">Start Time</string>
+    <string name="heartbeat_active_hours_start_description">e.g., 08:00</string>
+    <string name="heartbeat_active_hours_end">End Time</string>
+    <string name="heartbeat_active_hours_end_description">e.g., 22:00</string>
+    <string name="heartbeat_invalid_time_format">Use HH:MM format (e.g., 08:00)</string>
+    <string name="heartbeat_notifications">Notifications</string>
+    <string name="heartbeat_send_notifications">Send Push Notifications</string>
+    <string name="heartbeat_send_notifications_description">Alert when attention is needed</string>
+    <string name="heartbeat_show_alerts">Show Alerts in Chat</string>
+    <string name="heartbeat_show_alerts_description">Display alert messages in chat history</string>
+    <string name="heartbeat_show_ok_messages">Show OK Messages</string>
+    <string name="heartbeat_show_ok_messages_description">Display HEARTBEAT_OK in chat (usually silent)</string>
+    <string name="heartbeat_advanced">Advanced Settings</string>
+    <string name="heartbeat_require_network">Require Network</string>
+    <string name="heartbeat_require_network_description">Only run when connected to network</string>
+    <string name="heartbeat_battery_not_low">Skip on Low Battery</string>
+    <string name="heartbeat_battery_not_low_description">Pause check-ins when battery is low</string>
+    <string name="heartbeat_settings_saved">Heartbeat settings saved</string>
+
     <!-- Validation -->
     <string name="validation_required">This field is required</string>
     <string name="validation_invalid_url">Please enter a valid URL</string>
