@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="?colorOutlineVariant">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <!-- Status Badge -->
+            <com.google.android.material.chip.Chip
+                android:id="@+id/statusChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="Success"
+                android:textAppearance="?textAppearanceBodySmall"
+                app:chipMinHeight="24dp" />
+
+            <!-- Job Name -->
+            <TextView
+                android:id="@+id/jobNameText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Server Log Checker"
+                android:textAppearance="?textAppearanceTitleMedium"
+                android:ellipsize="end"
+                android:maxLines="1" />
+
+        </LinearLayout>
+
+        <!-- Execution Time -->
+        <TextView
+            android:id="@+id/executedAtText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Apr 4, 2026 14:30"
+            android:textAppearance="?textAppearanceBodySmall"
+            android:textColor="?colorOnSurfaceVariant"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Response Preview -->
+        <TextView
+            android:id="@+id/responsePreviewText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Task completed successfully..."
+            android:textAppearance="?textAppearanceBodyMedium"
+            android:textColor="?colorOnSurfaceVariant"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Statistics -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/durationText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Duration: 5.2s"
+                android:textAppearance="?textAppearanceBodySmall"
+                android:textColor="?colorOnSurfaceVariant" />
+
+            <TextView
+                android:id="@+id/toolCallsText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Tools: 3"
+                android:textAppearance="?textAppearanceBodySmall"
+                android:textColor="?colorOnSurfaceVariant"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/tokensText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Tokens: 1.2k"
+                android:textAppearance="?textAppearanceBodySmall"
+                android:textColor="?colorOnSurfaceVariant"
+                android:gravity="end" />
+
+        </LinearLayout>
+
+        <!-- View Full Chat Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/viewFullChatButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="View Full Chat"
+            android:layout_marginTop="12dp"
+            android:layout_gravity="end"
+            style="@style/Widget.Material3.Button.TextButton" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

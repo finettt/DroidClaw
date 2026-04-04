@@ -59,6 +59,13 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_settingsFragment_to_cronJobListFragment"
+            app:destination="@id/cronJobListFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -157,5 +164,32 @@
         android:id="@+id/heartbeatSettingsFragment"
         android:name="io.finett.droidclaw.fragment.HeartbeatSettingsFragment"
         android:label="Heartbeat Settings" />
+
+    <fragment
+        android:id="@+id/cronJobListFragment"
+        android:name="io.finett.droidclaw.fragment.CronJobListFragment"
+        android:label="Scheduled Tasks" />
+
+    <fragment
+        android:id="@+id/taskHistoryFragment"
+        android:name="io.finett.droidclaw.fragment.TaskHistoryFragment"
+        android:label="Task History">
+        <argument
+            android:name="cronJobId"
+            app:argType="string"
+            android:defaultValue="@null"
+            app:nullable="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/taskChatFragment"
+        android:name="io.finett.droidclaw.fragment.TaskChatFragment"
+        android:label="Task Chat">
+        <argument
+            android:name="recordId"
+            app:argType="string"
+            android:defaultValue="@null"
+            app:nullable="true" />
+    </fragment>
 
 </navigation>

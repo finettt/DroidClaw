@@ -19,6 +19,7 @@ import java.util.List;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.adapter.SettingsAdapter;
+import io.finett.droidclaw.repository.TaskRepository;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class SettingsFragment extends Fragment {
@@ -26,17 +27,20 @@ public class SettingsFragment extends Fragment {
     private static final String ITEM_PROVIDERS = "providers";
     private static final String ITEM_AGENT = "agent";
     private static final String ITEM_HEARTBEAT = "heartbeat";
+    private static final String ITEM_SCHEDULED_TASKS = "scheduled_tasks";
     private static final String ITEM_SKILLS = "skills";
     private static final String ITEM_RESET_ONBOARDING = "reset_onboarding";
 
     private RecyclerView recyclerView;
     private SettingsAdapter adapter;
     private SettingsManager settingsManager;
+    private TaskRepository taskRepository;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         settingsManager = new SettingsManager(requireContext());
+        taskRepository = new TaskRepository(requireContext());
     }
 
     @Nullable
@@ -98,6 +102,20 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
+        // Scheduled Tasks item
+        int taskCount = taskRepository.getTotalCronJobs();
+        int activeTaskCount = taskRepository.getEnabledCronJobsCount();
+        String taskSubtitle = taskCount > 0 
+                ? getString(R.string.settings_scheduled_tasks_subtitle, taskCount, activeTaskCount)
+                : getString(R.string.settings_scheduled_tasks_subtitle_empty);
+        items.add(new SettingsAdapter.SettingsItem(
+                ITEM_SCHEDULED_TASKS,
+                "📋",
+                getString(R.string.settings_scheduled_tasks),
+                taskSubtitle,
+                true
+        ));
+
         // Skills item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_SKILLS,
@@ -132,6 +150,10 @@ public class SettingsFragment extends Fragment {
             case ITEM_HEARTBEAT:
                 Navigation.findNavController(requireView())
                         .navigate(R.id.action_settingsFragment_to_heartbeatSettingsFragment);
+                break;
+            case ITEM_SCHEDULED_TASKS:
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.action_settingsFragment_to_cronJobListFragment);
                 break;
             case ITEM_SKILLS:
                 Navigation.findNavController(requireView())

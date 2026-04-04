@@ -137,6 +137,11 @@
     <!-- Heartbeat Settings -->
     <string name="settings_heartbeat">Heartbeat</string>
     <string name="settings_heartbeat_subtitle">Configure periodic check-ins</string>
+
+    <!-- Scheduled Tasks (Cron Jobs) -->
+    <string name="settings_scheduled_tasks">Scheduled Tasks</string>
+    <string name="settings_scheduled_tasks_subtitle">%1$d tasks (%2$d active)</string>
+    <string name="settings_scheduled_tasks_subtitle_empty">Create tasks via chat</string>
     <string name="heartbeat_enabled">Enable Heartbeat</string>
     <string name="heartbeat_enabled_description">Periodic check-ins in main chat session</string>
     <string name="heartbeat_interval_settings">Interval Settings</string>
