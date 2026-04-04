@@ -1,5 +1,6 @@
 package io.finett.droidclaw.adapter;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -57,7 +58,9 @@ public class TaskRecordAdapter extends RecyclerView.Adapter<TaskRecordAdapter.Ta
 
     public void submitList(List<TaskRecord> newRecords) {
         records.clear();
-        records.addAll(newRecords);
+        if (newRecords != null) {
+            records.addAll(newRecords);
+        }
         notifyDataSetChanged();
     }
 
@@ -94,7 +97,7 @@ public class TaskRecordAdapter extends RecyclerView.Adapter<TaskRecordAdapter.Ta
             // Status chip
             statusChip.setText(record.getStatusDisplayText());
             int statusColor = Color.parseColor(record.getStatusBadgeColor());
-            statusChip.setChipBackgroundColorResource(androidx.appcompat.R.color.material_grey_200);
+            statusChip.setChipBackgroundColorResource(R.color.material_grey_200);
             statusChip.setTextColor(statusColor);
 
             // Executed at

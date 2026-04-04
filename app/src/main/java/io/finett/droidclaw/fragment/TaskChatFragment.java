@@ -13,7 +13,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.widget.TextView;
 
-import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.chip.Chip;
 
 import java.util.List;
@@ -37,7 +36,6 @@ public class TaskChatFragment extends Fragment {
 
     private String recordId;
 
-    private MaterialToolbar toolbar;
     private Chip statusChip;
     private TextView durationText;
     private TextView tokensText;
@@ -73,7 +71,6 @@ public class TaskChatFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        toolbar = view.findViewById(R.id.toolbar);
         statusChip = view.findViewById(R.id.statusChip);
         durationText = view.findViewById(R.id.durationText);
         tokensText = view.findViewById(R.id.tokensText);
@@ -85,21 +82,14 @@ public class TaskChatFragment extends Fragment {
             currentRecord = taskRepository.getTaskRecord(recordId);
         }
 
-        // Set up toolbar
+        // Set up toolbar title in MainActivity
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setSupportActionBar(toolbar);
             if (((MainActivity) getActivity()).getSupportActionBar() != null) {
-                ((MainActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
                 String title = currentRecord != null ? currentRecord.getCronJobName() : "Task Chat";
                 ((MainActivity) getActivity()).getSupportActionBar().setTitle(title);
+                ((MainActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
         }
-
-        toolbar.setNavigationOnClickListener(v -> {
-            if (getActivity() != null) {
-                getActivity().onBackPressed();
-            }
-        });
 
         // Set up RecyclerView with ChatAdapter
         chatAdapter = new ChatAdapter();

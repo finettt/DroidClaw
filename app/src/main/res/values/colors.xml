@@ -4,4 +4,9 @@
     <color name="white">#FFFFFFFF</color>
     <color name="user_message_bg">#FF6200EE</color>
     <color name="assistant_message_bg">#FFE0E0E0</color>
+    
+    <!-- Material Design Grey Palette for chip backgrounds -->
+    <color name="material_grey_100">#FFF5F5F5</color>
+    <color name="material_grey_200">#FFEEEEEE</color>
+    <color name="material_grey_300">#FFE0E0E0</color>
 </resources>

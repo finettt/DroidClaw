@@ -14,7 +14,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.widget.TextView;
 
-import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.List;
@@ -32,7 +31,6 @@ import io.finett.droidclaw.repository.TaskRepository;
 public class CronJobListFragment extends Fragment implements CronJobAdapter.OnCronJobClickListener {
     private static final String TAG = "CronJobListFragment";
 
-    private MaterialToolbar toolbar;
     private RecyclerView cronJobsList;
     private View emptyState;
     private TextView totalJobsText;
@@ -59,27 +57,19 @@ public class CronJobListFragment extends Fragment implements CronJobAdapter.OnCr
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        toolbar = view.findViewById(R.id.toolbar);
         cronJobsList = view.findViewById(R.id.cronJobsList);
         emptyState = view.findViewById(R.id.emptyState);
         totalJobsText = view.findViewById(R.id.totalJobsText);
         activeJobsText = view.findViewById(R.id.activeJobsText);
         successRateText = view.findViewById(R.id.successRateText);
 
-        // Set up toolbar
+        // Set up toolbar title in MainActivity
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setSupportActionBar(toolbar);
             if (((MainActivity) getActivity()).getSupportActionBar() != null) {
-                ((MainActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
                 ((MainActivity) getActivity()).getSupportActionBar().setTitle("Scheduled Tasks");
+                ((MainActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
         }
-
-        toolbar.setNavigationOnClickListener(v -> {
-            if (getActivity() != null) {
-                getActivity().onBackPressed();
-            }
-        });
 
         // Set up RecyclerView
         adapter = new CronJobAdapter(this);

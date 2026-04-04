@@ -14,8 +14,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.widget.TextView;
 
-import com.google.android.material.appbar.MaterialToolbar;
-
 import java.util.List;
 
 import io.finett.droidclaw.MainActivity;
@@ -34,7 +32,6 @@ public class TaskHistoryFragment extends Fragment implements TaskRecordAdapter.O
 
     private String cronJobId;
 
-    private MaterialToolbar toolbar;
     private RecyclerView taskRecordsList;
     private View emptyState;
 
@@ -65,7 +62,6 @@ public class TaskHistoryFragment extends Fragment implements TaskRecordAdapter.O
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        toolbar = view.findViewById(R.id.toolbar);
         taskRecordsList = view.findViewById(R.id.taskRecordsList);
         emptyState = view.findViewById(R.id.emptyState);
 
@@ -74,21 +70,14 @@ public class TaskHistoryFragment extends Fragment implements TaskRecordAdapter.O
             currentJob = taskRepository.getCronJob(cronJobId);
         }
 
-        // Set up toolbar
+        // Set up toolbar title in MainActivity
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setSupportActionBar(toolbar);
             if (((MainActivity) getActivity()).getSupportActionBar() != null) {
-                ((MainActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
                 String title = currentJob != null ? currentJob.getName() : "Task History";
                 ((MainActivity) getActivity()).getSupportActionBar().setTitle(title);
+                ((MainActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
         }
-
-        toolbar.setNavigationOnClickListener(v -> {
-            if (getActivity() != null) {
-                getActivity().onBackPressed();
-            }
-        });
 
         // Set up RecyclerView
         adapter = new TaskRecordAdapter(this);
