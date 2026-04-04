@@ -211,16 +211,14 @@ public class HeartbeatWorker extends Worker {
      * Load heartbeat config from settings.
      */
     private HeartbeatConfig loadHeartbeatConfig() {
-        // For now, return default config
-        // In Phase 6, this will be loaded from SettingsManager
-        return new HeartbeatConfig();
+        return settingsManager.getHeartbeatConfig();
     }
 
     /**
      * Save heartbeat config to settings.
      */
     private void saveHeartbeatConfig(HeartbeatConfig config) {
-        // In Phase 6, this will be saved via SettingsManager
+        settingsManager.setHeartbeatConfig(config);
     }
 
     /**

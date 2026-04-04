@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.finett.droidclaw.model.AgentConfig;
+import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
 
@@ -29,6 +30,7 @@ public class SettingsManager {
     // Cached data
     private Map<String, Provider> providers;
     private AgentConfig agentConfig;
+    private HeartbeatConfig heartbeatConfig;
     private boolean onboardingCompleted;
     private String userName;
 
@@ -71,6 +73,14 @@ public class SettingsManager {
                 agentConfig = AgentConfig.getDefaults();
             }
 
+            // Load heartbeat config
+            if (root.has("heartbeat")) {
+                JSONObject heartbeatJson = root.getJSONObject("heartbeat");
+                heartbeatConfig = parseHeartbeatConfig(heartbeatJson);
+            } else {
+                heartbeatConfig = new HeartbeatConfig();
+            }
+
             // Load onboarding state
             if (root.has("onboarding")) {
                 JSONObject onboardingJson = root.getJSONObject("onboarding");
@@ -90,6 +100,7 @@ public class SettingsManager {
     private void initializeDefaults() {
         providers = new HashMap<>();
         agentConfig = AgentConfig.getDefaults();
+        heartbeatConfig = new HeartbeatConfig();
         onboardingCompleted = false;
         userName = "";
     }
@@ -148,6 +159,24 @@ public class SettingsManager {
         return config;
     }
 
+    private HeartbeatConfig parseHeartbeatConfig(JSONObject json) throws JSONException {
+        HeartbeatConfig config = new HeartbeatConfig();
+        config.setEnabled(json.optBoolean("enabled", true));
+        config.setIntervalMinutes(json.optLong("intervalMinutes", 30));
+        config.setShowOkMessages(json.optBoolean("showOkMessages", false));
+        config.setShowAlerts(json.optBoolean("showAlerts", true));
+        config.setSendNotifications(json.optBoolean("sendNotifications", true));
+        config.setAckMaxChars(json.optInt("ackMaxChars", 300));
+        config.setActiveHoursStart(json.optString("activeHoursStart", null));
+        config.setActiveHoursEnd(json.optString("activeHoursEnd", null));
+        config.setRespectActiveHours(json.optBoolean("respectActiveHours", false));
+        config.setRequireNetwork(json.optBoolean("requireNetwork", false));
+        config.setBatteryNotLow(json.optBoolean("batteryNotLow", true));
+        config.setLastRunAt(json.optLong("lastRunAt", 0));
+        config.setLastStatus(json.optString("lastStatus", ""));
+        return config;
+    }
+
     public void saveToJson() {
         try {
             JSONObject root = new JSONObject();
@@ -163,6 +192,9 @@ public class SettingsManager {
             JSONObject agentsObj = new JSONObject();
             agentsObj.put("defaults", serializeAgentConfig(agentConfig));
             root.put("agents", agentsObj);
+
+            // Save heartbeat config
+            root.put("heartbeat", serializeHeartbeatConfig(heartbeatConfig));
 
             // Save onboarding state
             JSONObject onboardingObj = new JSONObject();
@@ -220,6 +252,24 @@ public class SettingsManager {
         json.put("maxIterations", config.getMaxIterations());
         json.put("requireApproval", config.isRequireApproval());
         json.put("shellTimeout", config.getShellTimeout());
+        return json;
+    }
+
+    private JSONObject serializeHeartbeatConfig(HeartbeatConfig config) throws JSONException {
+        JSONObject json = new JSONObject();
+        json.put("enabled", config.isEnabled());
+        json.put("intervalMinutes", config.getIntervalMinutes());
+        json.put("showOkMessages", config.isShowOkMessages());
+        json.put("showAlerts", config.isShowAlerts());
+        json.put("sendNotifications", config.isSendNotifications());
+        json.put("ackMaxChars", config.getAckMaxChars());
+        json.put("activeHoursStart", config.getActiveHoursStart() != null ? config.getActiveHoursStart() : JSONObject.NULL);
+        json.put("activeHoursEnd", config.getActiveHoursEnd() != null ? config.getActiveHoursEnd() : JSONObject.NULL);
+        json.put("respectActiveHours", config.isRespectActiveHours());
+        json.put("requireNetwork", config.isRequireNetwork());
+        json.put("batteryNotLow", config.isBatteryNotLow());
+        json.put("lastRunAt", config.getLastRunAt());
+        json.put("lastStatus", config.getLastStatus());
         return json;
     }
 
@@ -363,6 +413,45 @@ public class SettingsManager {
 
     public void setShellTimeoutSeconds(int seconds) {
         agentConfig.setShellTimeout(seconds);
+        saveToJson();
+    }
+
+    // ==================== Heartbeat Configuration ====================
+
+    public HeartbeatConfig getHeartbeatConfig() {
+        return heartbeatConfig;
+    }
+
+    public void setHeartbeatConfig(HeartbeatConfig config) {
+        this.heartbeatConfig = config;
+        saveToJson();
+    }
+
+    // Convenience methods for heartbeat settings
+    public boolean isHeartbeatEnabled() {
+        return heartbeatConfig.isEnabled();
+    }
+
+    public void setHeartbeatEnabled(boolean enabled) {
+        heartbeatConfig.setEnabled(enabled);
+        saveToJson();
+    }
+
+    public long getHeartbeatIntervalMinutes() {
+        return heartbeatConfig.getIntervalMinutes();
+    }
+
+    public void setHeartbeatIntervalMinutes(long minutes) {
+        heartbeatConfig.setIntervalMinutes(minutes);
+        saveToJson();
+    }
+
+    public boolean isHeartbeatSendNotifications() {
+        return heartbeatConfig.isSendNotifications();
+    }
+
+    public void setHeartbeatSendNotifications(boolean sendNotifications) {
+        heartbeatConfig.setSendNotifications(sendNotifications);
         saveToJson();
     }
 

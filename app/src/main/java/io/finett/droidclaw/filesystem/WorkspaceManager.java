@@ -35,10 +35,13 @@ public class WorkspaceManager {
     private static final String MEMORY_DIR = ".agent/memory";
     private static final String SKILLS_DIR = ".agent/skills";
     private static final String CONFIG_DIR = ".agent/config";
-    
+
     // Identity files
     private static final String SOUL_FILE = ".agent/soul.md";
     private static final String USER_FILE = ".agent/user.md";
+
+    // Heartbeat checklist
+    private static final String HEARTBEAT_FILE = ".agent/HEARTBEAT.md";
 
     private final Context context;
     private final File workspaceRoot;
@@ -107,6 +110,14 @@ public class WorkspaceManager {
         } catch (IOException e) {
             Log.w(TAG, "Failed to create identity files", e);
             // Continue even if identity files fail
+        }
+
+        // Create default HEARTBEAT.md
+        try {
+            createDefaultHeartbeatFile();
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to create HEARTBEAT.md", e);
+            // Continue even if heartbeat file fails
         }
 
         // Copy built-in skills
@@ -181,6 +192,38 @@ public class WorkspaceManager {
     private void createIdentityFiles() throws IOException {
         createIdentityFile(SOUL_FILE, "identity/soul.md");
         createIdentityFile(USER_FILE, "identity/user.md");
+    }
+
+    /**
+     * Creates the default HEARTBEAT.md checklist file if it doesn't exist.
+     *
+     * @return true if file was created, false if it already exists
+     * @throws IOException if file creation fails
+     */
+    public boolean createDefaultHeartbeatFile() throws IOException {
+        File file = new File(workspaceRoot, HEARTBEAT_FILE);
+
+        // Skip if file already exists
+        if (file.exists()) {
+            Log.d(TAG, "HEARTBEAT.md already exists");
+            return false;
+        }
+
+        Log.d(TAG, "Creating default HEARTBEAT.md");
+
+        String defaultHeartbeat = "# Heartbeat Checklist\n\n" +
+                "- Quick scan: anything urgent in emails or GitHub?\n" +
+                "- Check if any cron jobs failed\n" +
+                "- If daytime (8am-10pm), check if user needs anything\n" +
+                "- Monitor workspace for errors or warnings\n\n" +
+                "**Remember:** If nothing urgent, just say HEARTBEAT_OK.\n";
+
+        try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
+            writer.write(defaultHeartbeat);
+        }
+
+        Log.d(TAG, "Created default HEARTBEAT.md");
+        return true;
     }
 
     /**
@@ -323,6 +366,15 @@ public class WorkspaceManager {
      */
     public static String getUserFilePath() {
         return USER_FILE;
+    }
+
+    /**
+     * Gets the HEARTBEAT.md checklist file path.
+     *
+     * @return Heartbeat file path relative to workspace
+     */
+    public static String getHeartbeatFilePath() {
+        return HEARTBEAT_FILE;
     }
 
     /**

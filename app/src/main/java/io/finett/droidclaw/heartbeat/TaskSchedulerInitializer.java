@@ -5,6 +5,7 @@ import android.util.Log;
 
 import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.repository.TaskRepository;
+import io.finett.droidclaw.util.SettingsManager;
 
 /**
  * Initializes and schedules all background tasks (Heartbeat and Cron Jobs).
@@ -24,13 +25,15 @@ public class TaskSchedulerInitializer {
         Log.d(TAG, "Initializing background tasks...");
 
         try {
+            SettingsManager settingsManager = new SettingsManager(context);
             TaskRepository taskRepository = new TaskRepository(context);
             TaskScheduler scheduler = new TaskScheduler(context, taskRepository);
 
-            // 1. Schedule Heartbeat
-            HeartbeatConfig heartbeatConfig = new HeartbeatConfig(); // Default config for now
+            // 1. Schedule Heartbeat with persisted config
+            HeartbeatConfig heartbeatConfig = settingsManager.getHeartbeatConfig();
             scheduler.scheduleHeartbeat(heartbeatConfig);
-            Log.d(TAG, "Heartbeat scheduled with default config");
+            Log.d(TAG, "Heartbeat scheduled: enabled=" + heartbeatConfig.isEnabled() +
+                    ", interval=" + heartbeatConfig.getIntervalMinutes() + "min");
 
             // 2. Schedule all enabled cron jobs
             scheduler.scheduleAllEnabledCronJobs();
@@ -51,10 +54,12 @@ public class TaskSchedulerInitializer {
         Log.d(TAG, "Initializing background tasks with custom heartbeat config...");
 
         try {
+            SettingsManager settingsManager = new SettingsManager(context);
             TaskRepository taskRepository = new TaskRepository(context);
             TaskScheduler scheduler = new TaskScheduler(context, taskRepository);
 
-            // 1. Schedule Heartbeat with custom config
+            // Save and schedule Heartbeat with custom config
+            settingsManager.setHeartbeatConfig(heartbeatConfig);
             scheduler.scheduleHeartbeat(heartbeatConfig);
             Log.d(TAG, "Heartbeat scheduled with custom config: " + heartbeatConfig.getIntervalMinutes() + "min");
 
