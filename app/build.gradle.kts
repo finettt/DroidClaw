@@ -80,7 +80,11 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.okhttp)
     implementation(libs.gson)
-    
+
+    // WorkManager for background task scheduling (heartbeat & cron jobs)
+    implementation("androidx.work:work-runtime:2.9.0")
+    testImplementation("androidx.work:work-testing:2.9.0")
+
     // Markwon for markdown rendering
     implementation(libs.markwon.core) {
         exclude(group = "org.jetbrains", module = "annotations-java5")

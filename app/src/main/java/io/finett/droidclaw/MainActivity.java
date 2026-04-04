@@ -30,6 +30,7 @@ import java.util.UUID;
 
 import io.finett.droidclaw.adapter.ChatSessionAdapter;
 import io.finett.droidclaw.fragment.ChatFragment;
+import io.finett.droidclaw.heartbeat.TaskSchedulerInitializer;
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.util.SettingsManager;
@@ -54,6 +55,9 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout = findViewById(R.id.drawer_layout);
         chatRepository = new ChatRepository(this);
         settingsManager = new SettingsManager(this);
+
+        // Initialize background task scheduler (heartbeat & cron jobs)
+        TaskSchedulerInitializer.initialize(this);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
