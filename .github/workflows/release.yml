@@ -11,32 +11,110 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Generate CalVer version
         id: version
+        shell: bash
         run: |
-          # Generate CalVer version: YYYY.MM.DD
           VERSION=$(date -u +"%Y.%m.%d")
-          
-          # Check if a release with this version already exists today
-          # If so, append a build number
+
           EXISTING_TAGS=$(git tag -l "${VERSION}*" | wc -l)
           if [ "$EXISTING_TAGS" -gt 0 ]; then
             VERSION="${VERSION}.${EXISTING_TAGS}"
           fi
-          
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Generated version: ${VERSION}"
+
+      - name: Find previous tag
+        id: prev_tag
+        shell: bash
+        run: |
+          PREV_TAG=$(git tag --sort=-creatordate | head -n 1 || true)
+          echo "prev_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Previous tag: ${PREV_TAG}"
+
+      - name: Generate PR-only release notes
+        id: notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const version = `${{ steps.version.outputs.version }}`;
+            const prevTag = `${{ steps.prev_tag.outputs.prev_tag }}`.trim();
+
+            let base;
+            if (prevTag) {
+              const ref = await github.rest.git.getRef({
+                owner,
+                repo,
+                ref: `tags/${prevTag}`
+              });
+              base = ref.data.object.sha;
+            } else {
+              const commits = await github.paginate(github.rest.repos.listCommits, {
+                owner,
+                repo,
+                per_page: 100
+              });
+              base = commits[commits.length - 1]?.sha;
+            }
+
+            const head = context.sha;
+
+            let pulls = [];
+            if (base) {
+              const compare = await github.rest.repos.compareCommits({
+                owner,
+                repo,
+                base,
+                head
+              });
+
+              const seen = new Set();
+
+              for (const commit of compare.data.commits) {
+                const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                  owner,
+                  repo,
+                  commit_sha: commit.sha
+                });
+
+                for (const pr of prs.data) {
+                  if (pr.merged_at && !seen.has(pr.number)) {
+                    seen.add(pr.number);
+                    pulls.push(pr);
+                  }
+                }
+              }
+
+              pulls.sort((a, b) => new Date(a.merged_at) - new Date(b.merged_at));
+            }
+
+            let body = `## DroidClaw Release ${version}\n\n### What's Changed\n\n`;
+
+            if (pulls.length > 0) {
+              for (const pr of pulls) {
+                body += `- ${pr.title} by @${pr.user.login} in #${pr.number}\n`;
+              }
+            } else {
+              body += `- No merged pull requests found.\n`;
+            }
+
+            core.setOutput("body", body);
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -49,18 +127,17 @@ jobs:
         run: chmod +x gradlew
 
       - name: Update version in build.gradle.kts
+        shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Calculate versionCode from date components
           YEAR=$(date -u +"%Y")
           MONTH=$(date -u +"%m")
           DAY=$(date -u +"%d")
           VERSION_CODE=$((YEAR * 10000 + MONTH * 100 + DAY))
-          
-          # Update versionName and versionCode in app/build.gradle.kts
+
           sed -i "s/versionName = \".*\"/versionName = \"${VERSION}\"/" app/build.gradle.kts
           sed -i "s/versionCode = [0-9]*/versionCode = ${VERSION_CODE}/" app/build.gradle.kts
-          
+
           echo "Updated to versionName=${VERSION}, versionCode=${VERSION_CODE}"
 
       - name: Build Release APK
@@ -68,6 +145,7 @@ jobs:
 
       - name: Find APK file
         id: find_apk
+        shell: bash
         run: |
           APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
           if [ -z "$APK_PATH" ]; then
@@ -76,7 +154,7 @@ jobs:
           fi
           APK_NAME="DroidClaw-${{ steps.version.outputs.version }}.apk"
           cp "$APK_PATH" "$APK_NAME"
-          echo "apk_path=${APK_NAME}" >> $GITHUB_OUTPUT
+          echo "apk_path=${APK_NAME}" >> "$GITHUB_OUTPUT"
           echo "Found APK: ${APK_PATH}, renamed to: ${APK_NAME}"
 
       - name: Create GitHub Release
@@ -84,10 +162,8 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: DroidClaw ${{ steps.version.outputs.version }}
-          body: |
-            ## DroidClaw Release ${{ steps.version.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
           prerelease: ${{ inputs.prerelease }}
-          generate_release_notes: true
           files: |
             ${{ steps.find_apk.outputs.apk_path }}
           fail_on_unmatched_files: true
