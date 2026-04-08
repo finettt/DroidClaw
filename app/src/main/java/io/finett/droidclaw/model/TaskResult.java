@@ -1,5 +1,6 @@
 package io.finett.droidclaw.model;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -7,7 +8,8 @@ import java.util.Map;
  * Represents the result of a background task execution.
  * Used to track outcomes of heartbeat checks, cron jobs, and other automated tasks.
  */
-public class TaskResult {
+public class TaskResult implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     // Task types
     public static final int TYPE_HEARTBEAT = 1;

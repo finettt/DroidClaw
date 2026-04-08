@@ -138,4 +138,16 @@
     <string name="validation_required">This field is required</string>
     <string name="validation_invalid_url">Please enter a valid URL</string>
     <string name="validation_invalid_number">Please enter a valid number</string>
+
+    <!-- Zen Result -->
+    <string name="chat_about_this">Chat about this</string>
+    <string name="share_result">Share result</string>
+    <string name="result_share_title">Task Result</string>
+    <string name="result_type_heartbeat">Heartbeat</string>
+    <string name="result_type_cron">Cron Job</string>
+    <string name="result_type_manual">Manual Task</string>
+    <string name="chat_continuation_new">New Chat</string>
+    <string name="chat_continuation_existing">Add to Existing Chat</string>
+    <string name="chat_continuation_picker_title">How would you like to continue?</string>
+    <string name="chat_continuation_agent_prompt">I\'ve added the %1$s results above. What would you like to clarify or explore?</string>
 </resources>

@@ -22,6 +22,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     private static final int VIEW_TYPE_ASSISTANT = 1;
     private static final int VIEW_TYPE_TOOL_CALL = 2;
     private static final int VIEW_TYPE_TOOL_RESULT = 3;
+    private static final int VIEW_TYPE_CONTEXT_CARD = 5;
 
     private final List<ChatMessage> messages = new ArrayList<>();
 
@@ -54,6 +55,11 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 view = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.item_message_tool_result, parent, false);
                 return new ToolResultMessageViewHolder(view);
+
+            case VIEW_TYPE_CONTEXT_CARD:
+                view = LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.item_message_context_card, parent, false);
+                return new ContextCardMessageViewHolder(view);
 
             default:
                 view = LayoutInflater.from(parent.getContext())
@@ -319,6 +325,119 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                         .append(part.substring(1).toLowerCase());
             }
             return formatted.toString();
+        }
+    }
+
+    static class ContextCardMessageViewHolder extends MessageViewHolder {
+        private final View contextCardHeader;
+        private final TextView contextCardIcon;
+        private final TextView contextCardTitle;
+        private final TextView contextCardTimestamp;
+        private final TextView contextCardToggle;
+        private final TextView contextCardContent;
+        private boolean isExpanded = false;
+
+        ContextCardMessageViewHolder(@NonNull View itemView) {
+            super(itemView);
+            contextCardHeader = itemView.findViewById(R.id.contextCardHeader);
+            contextCardIcon = itemView.findViewById(R.id.contextCardIcon);
+            contextCardTitle = itemView.findViewById(R.id.contextCardTitle);
+            contextCardTimestamp = itemView.findViewById(R.id.contextCardTimestamp);
+            contextCardToggle = itemView.findViewById(R.id.contextCardToggle);
+            contextCardContent = itemView.findViewById(R.id.contextCardContent);
+
+            // Set up click listener for expand/collapse
+            contextCardHeader.setOnClickListener(v -> toggleExpanded());
+        }
+
+        @Override
+        void bind(ChatMessage message) {
+            Context context = itemView.getContext();
+
+            // Set icon based on context type
+            String contextType = message.getContextType();
+            String icon = getContextIcon(contextType);
+            contextCardIcon.setText(icon);
+
+            // Set title
+            String title = getContextTitle(contextType, context);
+            contextCardTitle.setText(title);
+
+            // Set timestamp
+            long timestamp = message.getTimestamp();
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", 
+                    java.util.Locale.getDefault());
+            contextCardTimestamp.setText(sdf.format(new java.util.Date(timestamp)));
+
+            // Set content with markdown rendering if applicable
+            String content = message.getContent();
+            if (content != null) {
+                if (MarkdownRenderer.containsMarkdown(content)) {
+                    MarkdownRenderer.render(context, contextCardContent, content);
+                } else {
+                    contextCardContent.setText(content);
+                }
+            } else {
+                contextCardContent.setText("No content available");
+            }
+
+            // Start collapsed if content is long
+            if (content != null && content.length() > 150) {
+                isExpanded = false;
+                updateExpandState();
+            } else {
+                isExpanded = true;
+                contextCardToggle.setVisibility(View.GONE);
+                contextCardContent.setMaxLines(Integer.MAX_VALUE);
+                contextCardContent.setVisibility(View.VISIBLE);
+            }
+        }
+
+        private void toggleExpanded() {
+            isExpanded = !isExpanded;
+            updateExpandState();
+        }
+
+        private void updateExpandState() {
+            if (isExpanded) {
+                contextCardToggle.setText("▲");
+                contextCardContent.setVisibility(View.VISIBLE);
+                contextCardContent.setMaxLines(Integer.MAX_VALUE);
+            } else {
+                contextCardToggle.setText("▼");
+                contextCardContent.setVisibility(View.VISIBLE);
+                contextCardContent.setMaxLines(3);
+            }
+        }
+
+        private String getContextIcon(String contextType) {
+            if (contextType == null) return "📋";
+            
+            switch (contextType.toLowerCase()) {
+                case "heartbeat":
+                    return "💓";
+                case "cron_job":
+                    return "⏰";
+                case "manual":
+                    return "🔧";
+                default:
+                    return "📋";
+            }
+        }
+
+        private String getContextTitle(String contextType, Context context) {
+            if (contextType == null) return "Task Result";
+            
+            switch (contextType.toLowerCase()) {
+                case "heartbeat":
+                    return "Heartbeat Check";
+                case "cron_job":
+                    return "Scheduled Task";
+                case "manual":
+                    return "Manual Task";
+                default:
+                    return "Task Result";
+            }
         }
     }
 }

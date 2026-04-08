@@ -13,15 +13,21 @@ public class ChatMessage {
     public static final int TYPE_TOOL_CALL = 2;
     public static final int TYPE_TOOL_RESULT = 3;
     public static final int TYPE_SYSTEM = 4;
+    public static final int TYPE_CONTEXT_CARD = 5;
 
     private String content;
     private int type;
     private long timestamp;
-    
+
     // For tool-related messages
     private List<LlmApiService.ToolCall> toolCalls;
     private String toolCallId;
     private String toolName;
+
+    // For context card messages
+    private boolean isContextCard;
+    private String contextType; // "heartbeat", "cron", "manual"
+    private String originalTaskId; // Links to the original task
 
     public ChatMessage(String content, int type) {
         this.content = content;
@@ -116,6 +122,42 @@ public class ChatMessage {
         return type == TYPE_SYSTEM;
     }
 
+    public boolean isContextCard() {
+        return isContextCard;
+    }
+
+    public void setIsContextCard(boolean isContextCard) {
+        this.isContextCard = isContextCard;
+    }
+
+    public String getContextType() {
+        return contextType;
+    }
+
+    public void setContextType(String contextType) {
+        this.contextType = contextType;
+    }
+
+    public String getOriginalTaskId() {
+        return originalTaskId;
+    }
+
+    public void setOriginalTaskId(String originalTaskId) {
+        this.originalTaskId = originalTaskId;
+    }
+
+    /**
+     * Create a context card message for task result continuation.
+     */
+    public static ChatMessage createContextCardMessage(TaskResult taskResult) {
+        ChatMessage message = new ChatMessage(taskResult.getContent(), TYPE_CONTEXT_CARD);
+        message.isContextCard = true;
+        message.contextType = TaskResult.typeToString(taskResult.getType()).toLowerCase();
+        message.originalTaskId = taskResult.getId();
+        message.timestamp = taskResult.getTimestamp();
+        return message;
+    }
+
     /**
      * Convert this message to the API format required by OpenAI.
      *
@@ -170,6 +212,14 @@ public class ChatMessage {
                 message.addProperty("role", "tool");
                 message.addProperty("tool_call_id", toolCallId);
                 message.addProperty("content", content != null ? content : "");
+                break;
+
+            case TYPE_CONTEXT_CARD:
+                // Context card - treat as system message with task context
+                message.addProperty("role", "system");
+                String contextContent = "[Task Context: " + contextType + "]\n" + 
+                                       (content != null ? content : "");
+                message.addProperty("content", contextContent);
                 break;
         }
 

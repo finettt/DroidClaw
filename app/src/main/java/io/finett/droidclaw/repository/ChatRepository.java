@@ -212,13 +212,24 @@ public class ChatRepository {
                         Log.w(TAG, "Tool call message has null or empty toolCalls list!");
                     }
                 }
-                
+
                 if (message.getType() == ChatMessage.TYPE_TOOL_RESULT) {
                     if (message.getToolCallId() != null) {
                         jsonObject.put("toolCallId", message.getToolCallId());
                     }
                     if (message.getToolName() != null) {
                         jsonObject.put("toolName", message.getToolName());
+                    }
+                }
+
+                // Save context card fields
+                if (message.getType() == ChatMessage.TYPE_CONTEXT_CARD) {
+                    jsonObject.put("isContextCard", message.isContextCard());
+                    if (message.getContextType() != null) {
+                        jsonObject.put("contextType", message.getContextType());
+                    }
+                    if (message.getOriginalTaskId() != null) {
+                        jsonObject.put("originalTaskId", message.getOriginalTaskId());
                     }
                 }
                 
@@ -262,7 +273,7 @@ public class ChatRepository {
                     long timestamp = jsonObject.getLong("timestamp");
                     
                     ChatMessage message;
-                    
+
                     if (type == ChatMessage.TYPE_TOOL_CALL && jsonObject.has("toolCalls")) {
                         // Restore tool calls
                         JSONArray toolCallsArray = jsonObject.getJSONArray("toolCalls");
@@ -287,6 +298,17 @@ public class ChatRepository {
                             : null;
                         message = ChatMessage.createToolResultMessage(toolCallId, toolName, content);
                         Log.d(TAG, "Restored tool result message for tool: " + toolName);
+                    } else if (type == ChatMessage.TYPE_CONTEXT_CARD) {
+                        // Restore context card
+                        message = new ChatMessage(content, type);
+                        message.setIsContextCard(jsonObject.optBoolean("isContextCard", true));
+                        if (jsonObject.has("contextType") && !jsonObject.isNull("contextType")) {
+                            message.setContextType(jsonObject.getString("contextType"));
+                        }
+                        if (jsonObject.has("originalTaskId") && !jsonObject.isNull("originalTaskId")) {
+                            message.setOriginalTaskId(jsonObject.getString("originalTaskId"));
+                        }
+                        Log.d(TAG, "Restored context card message for task: " + message.getOriginalTaskId());
                     } else {
                         message = new ChatMessage(content, type);
                     }

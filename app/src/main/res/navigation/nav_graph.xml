@@ -8,6 +8,11 @@
         android:id="@+id/chatFragment"
         android:name="io.finett.droidclaw.fragment.ChatFragment"
         android:label="DroidClaw">
+        <argument
+            android:name="task_result"
+            app:argType="java.io.Serializable"
+            app:nullable="true"
+            android:defaultValue="@null" />
         <action
             android:id="@+id/action_chatFragment_to_settingsFragment"
             app:destination="@id/settingsFragment"
@@ -134,5 +139,21 @@
         android:id="@+id/memoryBrowserFragment"
         android:name="io.finett.droidclaw.fragment.MemoryBrowserFragment"
         android:label="Memory" />
+
+    <fragment
+        android:id="@+id/zenResultFragment"
+        android:name="io.finett.droidclaw.fragment.ZenResultFragment"
+        android:label="Task Result">
+        <argument
+            android:name="task_result"
+            app:argType="java.io.Serializable"
+            app:nullable="true"
+            android:defaultValue="@null" />
+        <action
+            android:id="@+id/action_zenResultFragment_to_chatFragment"
+            app:destination="@id/chatFragment"
+            app:popUpTo="@id/zenResultFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
 
 </navigation>

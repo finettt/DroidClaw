@@ -31,6 +31,8 @@ import java.util.UUID;
 import io.finett.droidclaw.adapter.ChatSessionAdapter;
 import io.finett.droidclaw.fragment.ChatFragment;
 import io.finett.droidclaw.model.ChatSession;
+import io.finett.droidclaw.model.SessionType;
+import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -197,6 +199,55 @@ public class MainActivity extends AppCompatActivity {
         chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
         Log.d(TAG, "Created and saved new chat session: " + newSession.getId());
         return newSession;
+    }
+
+    /**
+     * Create a new chat session linked to a task result.
+     * Used for chat continuation from task results.
+     */
+    public ChatSession addNewChatSessionWithTask(TaskResult taskResult, String title) {
+        ChatSession newSession = new ChatSession(
+                UUID.randomUUID().toString(),
+                title,
+                System.currentTimeMillis()
+        );
+        
+        // Link to task
+        if (taskResult != null) {
+            newSession.setParentTaskId(taskResult.getId());
+            // Set session type based on task type
+            if (taskResult.getType() == TaskResult.TYPE_HEARTBEAT) {
+                newSession.setSessionType(SessionType.HIDDEN_HEARTBEAT);
+            } else if (taskResult.getType() == TaskResult.TYPE_CRON_JOB) {
+                newSession.setSessionType(SessionType.HIDDEN_CRON);
+            }
+        }
+        
+        chatSessions.add(0, newSession);
+        chatRepository.saveSessions(chatSessions);
+        chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
+        Log.d(TAG, "Created task-linked chat session: " + newSession.getId());
+        return newSession;
+    }
+
+    /**
+     * Get the most recent chat session for continuation.
+     */
+    public ChatSession getMostRecentChatSession() {
+        if (chatSessions.isEmpty()) {
+            return null;
+        }
+        return chatSessions.get(0);
+    }
+
+    /**
+     * Add a chat session to the list (used by continuation service).
+     */
+    public void addChatSessionToList(ChatSession session) {
+        chatSessions.add(0, session);
+        chatRepository.saveSessions(chatSessions);
+        chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
+        Log.d(TAG, "Added chat session to list: " + session.getId());
     }
     
     public void updateSessionMetadata(String sessionId, String firstUserMessage, long updatedAt) {
