@@ -14,7 +14,7 @@ import io.finett.droidclaw.model.HeartbeatConfig;
  * Stores and retrieves heartbeat settings using SharedPreferences.
  */
 public class HeartbeatConfigRepository {
-    private static final String TAG = "HeartbeatConfigRepository";
+    private static final String TAG = "HeartbeatCfgRepo";
     private static final String PREFS_NAME = "droidclaw_heartbeat";
     private static final String KEY_CONFIG = "heartbeat_config";
 
