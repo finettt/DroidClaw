@@ -555,9 +555,310 @@ public class ChatAdapterTest {
         ChatMessage systemMessage = new ChatMessage("System", ChatMessage.TYPE_SYSTEM);
         ChatMessage userMessage = new ChatMessage("User", ChatMessage.TYPE_USER);
         ChatMessage assistantMessage = new ChatMessage("Assistant", ChatMessage.TYPE_ASSISTANT);
-        
+
         assertEquals("system", systemMessage.toApiMessage().get("role").getAsString());
         assertEquals("user", userMessage.toApiMessage().get("role").getAsString());
         assertEquals("assistant", assistantMessage.toApiMessage().get("role").getAsString());
+    }
+
+    // ==================== CONTEXT CARD TESTS ====================
+
+    @Test
+    public void addMessage_contextCardMessage_increasesCount() {
+        ChatMessage contextCard = new ChatMessage("Context content", ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("heartbeat");
+        adapter.addMessage(contextCard);
+
+        assertEquals(1, adapter.getItemCount());
+    }
+
+    @Test
+    public void getItemViewType_contextCardMessage_returnsContextCardType() {
+        adapter.addMessage(new ChatMessage("Context content", ChatMessage.TYPE_CONTEXT_CARD));
+
+        int viewType = adapter.getItemViewType(0);
+
+        assertEquals(ChatMessage.TYPE_CONTEXT_CARD, viewType);
+    }
+
+    @Test
+    public void getItemViewType_mixedMessages_withContextCard_returnsCorrectTypes() {
+        adapter.addMessage(new ChatMessage("User msg", ChatMessage.TYPE_USER));
+        adapter.addMessage(new ChatMessage("Context card", ChatMessage.TYPE_CONTEXT_CARD));
+        adapter.addMessage(new ChatMessage("Assistant msg", ChatMessage.TYPE_ASSISTANT));
+
+        assertEquals(ChatMessage.TYPE_USER, adapter.getItemViewType(0));
+        assertEquals(ChatMessage.TYPE_CONTEXT_CARD, adapter.getItemViewType(1));
+        assertEquals(ChatMessage.TYPE_ASSISTANT, adapter.getItemViewType(2));
+    }
+
+    @Test
+    public void onCreateViewHolder_contextCardMessage_createsCorrectViewHolder() {
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_CONTEXT_CARD
+        );
+
+        assertNotNull(viewHolder);
+        assertNotNull(viewHolder.itemView);
+    }
+
+    @Test
+    public void onBindViewHolder_contextCardMessage_bindsCorrectly() {
+        ChatMessage contextCard = new ChatMessage("Heartbeat result content", ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("heartbeat");
+        contextCard.setTimestamp(1000L);
+        adapter.addMessage(contextCard);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_CONTEXT_CARD
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        // Verify the view holder has the correct views
+        assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardHeader));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardIcon));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardTitle));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardTimestamp));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardToggle));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardContent));
+    }
+
+    @Test
+    public void onBindViewHolder_contextCardMessage_displaysCorrectContent() {
+        String taskContent = "# Task Result\n\nDetails here";
+        ChatMessage contextCard = new ChatMessage(taskContent, ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("heartbeat");
+        contextCard.setTimestamp(1000L);
+        adapter.addMessage(contextCard);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_CONTEXT_CARD
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        TextView contentText = viewHolder.itemView.findViewById(R.id.contextCardContent);
+        assertNotNull("Content text view should exist", contentText);
+        // Content may be rendered as markdown, so check it contains key text
+        assertTrue("Content should contain task text",
+                contentText.getText().toString().contains("Details here") ||
+                contentText.getText().toString().contains("Task Result"));
+    }
+
+    @Test
+    public void onBindViewHolder_contextCardMessage_withHeartbeatType_showsCorrectTitle() {
+        ChatMessage contextCard = new ChatMessage("Heartbeat content", ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("heartbeat");
+        contextCard.setTimestamp(1000L);
+        adapter.addMessage(contextCard);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_CONTEXT_CARD
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        TextView titleText = viewHolder.itemView.findViewById(R.id.contextCardTitle);
+        assertNotNull("Title text view should exist", titleText);
+        assertEquals("Title should be 'Heartbeat Check'", "Heartbeat Check", titleText.getText().toString());
+    }
+
+    @Test
+    public void onBindViewHolder_contextCardMessage_withCronJobType_showsCorrectTitle() {
+        ChatMessage contextCard = new ChatMessage("Cron content", ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("cron_job");
+        contextCard.setTimestamp(2000L);
+        adapter.addMessage(contextCard);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_CONTEXT_CARD
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        TextView titleText = viewHolder.itemView.findViewById(R.id.contextCardTitle);
+        assertNotNull("Title text view should exist", titleText);
+        assertEquals("Title should be 'Scheduled Task'", "Scheduled Task", titleText.getText().toString());
+    }
+
+    @Test
+    public void onBindViewHolder_contextCardMessage_withManualType_showsCorrectTitle() {
+        ChatMessage contextCard = new ChatMessage("Manual content", ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("manual");
+        contextCard.setTimestamp(3000L);
+        adapter.addMessage(contextCard);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_CONTEXT_CARD
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        TextView titleText = viewHolder.itemView.findViewById(R.id.contextCardTitle);
+        assertNotNull("Title text view should exist", titleText);
+        assertEquals("Title should be 'Manual Task'", "Manual Task", titleText.getText().toString());
+    }
+
+    @Test
+    public void onBindViewHolder_contextCardMessage_displaysFormattedTimestamp() {
+        ChatMessage contextCard = new ChatMessage("Timestamp content", ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("heartbeat");
+        contextCard.setTimestamp(System.currentTimeMillis());
+        adapter.addMessage(contextCard);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_CONTEXT_CARD
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        TextView timestampText = viewHolder.itemView.findViewById(R.id.contextCardTimestamp);
+        assertNotNull("Timestamp text view should exist", timestampText);
+        assertTrue("Timestamp should be formatted (not empty)",
+                timestampText.getText().toString().length() > 0);
+    }
+
+    @Test
+    public void contextCardMessage_withNullContent_showsPlaceholder() {
+        ChatMessage contextCard = new ChatMessage(null, ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("heartbeat");
+        contextCard.setTimestamp(1000L);
+        adapter.addMessage(contextCard);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_CONTEXT_CARD
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        TextView contentText = viewHolder.itemView.findViewById(R.id.contextCardContent);
+        assertNotNull("Content text view should exist", contentText);
+        assertEquals("Should show placeholder", "No content available", contentText.getText().toString());
+    }
+
+    @Test
+    public void setMessages_withContextCardMessages_replacesExistingMessages() {
+        adapter.addMessage(new ChatMessage("Old message", ChatMessage.TYPE_USER));
+
+        ChatMessage contextCard = new ChatMessage("Task result", ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("heartbeat");
+        contextCard.setTimestamp(1000L);
+
+        List<ChatMessage> newMessages = Arrays.asList(
+                new ChatMessage("User request", ChatMessage.TYPE_USER),
+                contextCard,
+                new ChatMessage("Assistant response", ChatMessage.TYPE_ASSISTANT)
+        );
+
+        adapter.setMessages(newMessages);
+
+        assertEquals(3, adapter.getItemCount());
+        List<ChatMessage> messages = adapter.getMessages();
+        assertEquals("User request", messages.get(0).getContent());
+        assertEquals(ChatMessage.TYPE_CONTEXT_CARD, messages.get(1).getType());
+        assertEquals("Task result", messages.get(1).getContent());
+        assertEquals("Assistant response", messages.get(2).getContent());
+    }
+
+    @Test
+    public void addMessage_multipleContextCards_allDisplayed() {
+        ChatMessage hbCard = new ChatMessage("Heartbeat 1", ChatMessage.TYPE_CONTEXT_CARD);
+        hbCard.setIsContextCard(true);
+        hbCard.setContextType("heartbeat");
+        hbCard.setTimestamp(1000L);
+
+        ChatMessage cronCard = new ChatMessage("Cron 1", ChatMessage.TYPE_CONTEXT_CARD);
+        cronCard.setIsContextCard(true);
+        cronCard.setContextType("cron_job");
+        cronCard.setTimestamp(2000L);
+
+        adapter.addMessage(hbCard);
+        adapter.addMessage(cronCard);
+
+        assertEquals(2, adapter.getItemCount());
+        assertEquals("Heartbeat 1", adapter.getMessages().get(0).getContent());
+        assertEquals("Cron 1", adapter.getMessages().get(1).getContent());
+    }
+
+    @Test
+    public void mixedMessageTypes_allViewTypesCreatedCorrectly() {
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+
+        // Add all message types
+        adapter.addMessage(new ChatMessage("System", ChatMessage.TYPE_SYSTEM));
+        adapter.addMessage(new ChatMessage("User", ChatMessage.TYPE_USER));
+        adapter.addMessage(new ChatMessage("Assistant", ChatMessage.TYPE_ASSISTANT));
+        adapter.addMessage(new ChatMessage(null, ChatMessage.TYPE_TOOL_CALL));
+        adapter.addMessage(new ChatMessage("Tool result", ChatMessage.TYPE_TOOL_RESULT));
+        
+        ChatMessage contextCard = new ChatMessage("Context", ChatMessage.TYPE_CONTEXT_CARD);
+        contextCard.setIsContextCard(true);
+        contextCard.setContextType("heartbeat");
+        contextCard.setTimestamp(1000L);
+        adapter.addMessage(contextCard);
+
+        assertEquals(6, adapter.getItemCount());
+
+        // Verify each view type
+        assertEquals(ChatMessage.TYPE_SYSTEM, adapter.getItemViewType(0));
+        assertEquals(ChatMessage.TYPE_USER, adapter.getItemViewType(1));
+        assertEquals(ChatMessage.TYPE_ASSISTANT, adapter.getItemViewType(2));
+        assertEquals(ChatMessage.TYPE_TOOL_CALL, adapter.getItemViewType(3));
+        assertEquals(ChatMessage.TYPE_TOOL_RESULT, adapter.getItemViewType(4));
+        assertEquals(ChatMessage.TYPE_CONTEXT_CARD, adapter.getItemViewType(5));
+
+        // Verify all view holders can be created
+        for (int i = 0; i < 6; i++) {
+            ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                    recyclerView,
+                    adapter.getItemViewType(i)
+            );
+            assertNotNull("ViewHolder for type " + i + " should not be null", viewHolder);
+        }
     }
 }
