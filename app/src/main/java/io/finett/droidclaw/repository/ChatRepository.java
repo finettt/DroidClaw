@@ -18,6 +18,7 @@ import java.util.List;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.ChatSession;
+import io.finett.droidclaw.model.SessionType;
 
 public class ChatRepository {
     private static final String TAG = "ChatRepository";
@@ -55,7 +56,13 @@ public class ChatRepository {
                 jsonObject.put("totalPromptTokens", session.getTotalPromptTokens());
                 jsonObject.put("totalCompletionTokens", session.getTotalCompletionTokens());
                 jsonObject.put("totalToolCalls", session.getTotalToolCalls());
-                
+
+                // Save session type and visibility
+                jsonObject.put("sessionType", session.getSessionType());
+                if (session.getParentTaskId() != null) {
+                    jsonObject.put("parentTaskId", session.getParentTaskId());
+                }
+
                 jsonArray.put(jsonObject);
             }
             
@@ -101,7 +108,13 @@ public class ChatRepository {
                 session.setTotalPromptTokens(jsonObject.optInt("totalPromptTokens", 0));
                 session.setTotalCompletionTokens(jsonObject.optInt("totalCompletionTokens", 0));
                 session.setTotalToolCalls(jsonObject.optInt("totalToolCalls", 0));
-                
+
+                // Load session type and visibility
+                session.setSessionType(jsonObject.optInt("sessionType", SessionType.NORMAL));
+                if (jsonObject.has("parentTaskId") && !jsonObject.isNull("parentTaskId")) {
+                    session.setParentTaskId(jsonObject.getString("parentTaskId"));
+                }
+
                 sessions.add(session);
             }
             
@@ -309,5 +322,50 @@ public class ChatRepository {
     public void clearAllMessages() {
         prefs.edit().clear().apply();
         Log.d(TAG, "Cleared all saved messages");
+    }
+
+    // ==================== HIDDEN SESSION SUPPORT ====================
+
+    /**
+     * Get only visible (normal) sessions.
+     * Filters out hidden sessions used for background tasks.
+     */
+    public List<ChatSession> getVisibleSessions() {
+        List<ChatSession> allSessions = loadSessions();
+        List<ChatSession> visible = new ArrayList<>();
+
+        for (ChatSession session : allSessions) {
+            if (!session.isHidden()) {
+                visible.add(session);
+            }
+        }
+
+        Log.d(TAG, "Returning " + visible.size() + " visible sessions (filtered from " + allSessions.size() + " total)");
+        return visible;
+    }
+
+    /**
+     * Get a hidden session by task ID.
+     * Used for debugging background task sessions.
+     */
+    public ChatSession getHiddenSession(String taskId) {
+        List<ChatSession> allSessions = loadSessions();
+
+        for (ChatSession session : allSessions) {
+            if (session.isHidden() && taskId.equals(session.getParentTaskId())) {
+                return session;
+            }
+        }
+
+        Log.d(TAG, "No hidden session found for task: " + taskId);
+        return null;
+    }
+
+    /**
+     * Get all sessions including hidden ones.
+     * Use with caution - hidden sessions should not appear in UI.
+     */
+    public List<ChatSession> getAllSessionsIncludingHidden() {
+        return loadSessions();
     }
 }
