@@ -63,9 +63,11 @@ public class CronJobScheduler {
                 .putString("job_id", job.getId())
                 .build();
 
-        // Set constraints: require network for API calls
+        // Set constraints: require network for API calls, optimize for battery
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)  // Don't run when battery is low
+                .setRequiresCharging(false)       // Can run on battery
                 .build();
 
         // Create periodic work request
@@ -111,8 +113,10 @@ public class CronJobScheduler {
                 .putString("job_id", jobId)
                 .build();
 
+        // Set constraints for manual execution (also battery optimized)
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
                 .build();
 
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(CronJobWorker.class)

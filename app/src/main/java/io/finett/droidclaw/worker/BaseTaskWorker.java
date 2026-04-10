@@ -8,6 +8,8 @@ import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import com.google.gson.JsonObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +31,8 @@ import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.repository.TaskRepository;
 import io.finett.droidclaw.tool.ToolRegistry;
+import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
+import io.finett.droidclaw.util.DeviceStateHelper;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
@@ -150,6 +154,16 @@ public abstract class BaseTaskWorker extends Worker {
         TaskExecutionRecord executionRecord = new TaskExecutionRecord(taskId, session.getId(), taskType, startTime);
         TaskResult result;
 
+        // Check device state before executing
+        if (!DeviceStateHelper.shouldExecuteTask(appContext)) {
+            String skipReason = buildSkipReason();
+            Log.w(TAG, "Skipping task execution due to device state: " + skipReason);
+            executionRecord.fail(startTime, skipReason);
+            result = createFailureResult(taskId, taskType, startTime, skipReason);
+            taskRepository.saveExecutionRecord(executionRecord);
+            return result;
+        }
+
         try {
             // Setup agent loop
             LlmApiService apiService = createApiService();
@@ -239,7 +253,7 @@ public abstract class BaseTaskWorker extends Worker {
 
                 // Extract and cache agent-generated notification content
                 result = createSuccessResult(taskId, taskType, endTime, response, history);
-                extractAndCacheNotificationContent(result, response);
+                extractAndCacheNotificationContent(result, response, history);
 
                 // Save conversation history
                 if (history != null && !history.isEmpty()) {
@@ -259,6 +273,25 @@ public abstract class BaseTaskWorker extends Worker {
         taskRepository.saveExecutionRecord(executionRecord);
 
         return result;
+    }
+
+    /**
+     * Build human-readable reason why task was skipped.
+     */
+    private String buildSkipReason() {
+        StringBuilder sb = new StringBuilder("Task skipped due to device state: ");
+        
+        if (DeviceStateHelper.isAirplaneModeOn(appContext)) {
+            sb.append("Airplane mode is ON");
+        } else if (DeviceStateHelper.isBatteryCritical(appContext)) {
+            sb.append("Battery is critically low (").append(DeviceStateHelper.getBatteryLevel(appContext)).append("%)");
+        } else if (DeviceStateHelper.isStorageCritical(appContext)) {
+            sb.append("Storage is critically low");
+        } else {
+            sb.append("Device conditions not suitable");
+        }
+        
+        return sb.toString();
     }
 
     /**
@@ -375,16 +408,36 @@ public abstract class BaseTaskWorker extends Worker {
 
     /**
      * Extract agent-generated notification content from the response and cache it in metadata.
-     * Looks for structured content in the format:
-     *   TITLE: <title>
-     *   SUMMARY: <summary>
-     *
-     * If not found, falls back to generic content generation.
+     * 
+     * Priority order:
+     * 1. Check for submit_notification tool call in conversation history (structured, guaranteed format)
+     * 2. Parse TITLE: and SUMMARY: markers from text response (legacy fallback)
      *
      * @param result The task result to update
      * @param response The agent's response text
+     * @param history Full conversation history including tool calls
      */
-    private void extractAndCacheNotificationContent(TaskResult result, String response) {
+    private void extractAndCacheNotificationContent(TaskResult result, String response, List<ChatMessage> history) {
+        // Priority 1: Check for submit_notification tool call
+        JsonObject notification = SubmitNotificationTool.getLastNotification();
+        if (notification != null && notification.has("title") && notification.has("summary")) {
+            result.putMetadata("notification_title", notification.get("title").getAsString());
+            result.putMetadata("notification_summary", notification.get("summary").getAsString());
+            
+            String status = "success";
+            if (notification.has("status")) {
+                status = notification.get("status").getAsString();
+            }
+            result.putMetadata("notification_status", status);
+            
+            Log.d(TAG, "Extracted notification from submit_notification tool: " + notification.get("title").getAsString());
+            
+            // Clear to prevent stale data
+            SubmitNotificationTool.clearLastNotification();
+            return;
+        }
+
+        // Priority 2: Legacy fallback - parse TITLE: and SUMMARY: markers from text
         if (response == null || response.isEmpty()) {
             return;
         }
@@ -410,12 +463,12 @@ public abstract class BaseTaskWorker extends Worker {
         // Cache in metadata for notification system
         if (notificationTitle != null && !notificationTitle.isEmpty()) {
             result.putMetadata("notification_title", notificationTitle);
-            Log.d(TAG, "Extracted notification title: " + notificationTitle);
+            Log.d(TAG, "Extracted notification title from text: " + notificationTitle);
         }
 
         if (notificationSummary != null && !notificationSummary.isEmpty()) {
             result.putMetadata("notification_summary", notificationSummary);
-            Log.d(TAG, "Extracted notification summary: " + notificationSummary);
+            Log.d(TAG, "Extracted notification summary from text: " + notificationSummary);
         }
     }
 

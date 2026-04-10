@@ -48,8 +48,11 @@ public class TaskScheduler {
         long intervalMillis = Math.max(config.getIntervalMillis(), 15 * 60 * 1000L);
         long intervalMinutes = intervalMillis / (60 * 1000L);
 
+        // Optimize constraints for battery efficiency
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)  // Don't run when battery is low
+                .setRequiresCharging(false)       // Can run on battery
                 .build();
 
         Data inputData = new Data.Builder()
@@ -103,8 +106,11 @@ public class TaskScheduler {
         intervalMillis = Math.max(intervalMillis, 15 * 60 * 1000L);
         long intervalMinutes = intervalMillis / (60 * 1000L);
 
+        // Optimize constraints for battery efficiency
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)  // Don't run when battery is low
+                .setRequiresCharging(false)       // Can run on battery
                 .build();
 
         Data inputData = new Data.Builder()

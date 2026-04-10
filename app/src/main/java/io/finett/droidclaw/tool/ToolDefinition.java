@@ -65,6 +65,7 @@ public class ToolDefinition {
             json.addProperty("name", name);
             json.addProperty("description", description);
             json.add("parameters", parameters);
+            json.addProperty("strict", true);
             return json;
         }
     }
@@ -149,11 +150,13 @@ public class ToolDefinition {
 
         /**
          * Builds the parameters schema.
-         * 
+         * Adds additionalProperties: false for Structured Output compliance.
+         *
          * @return JsonObject schema
          */
         public JsonObject build() {
             schema.add("properties", properties);
+            schema.addProperty("additionalProperties", false);
             return schema;
         }
     }

@@ -29,6 +29,7 @@
     <string name="settings_agent_subtitle">Configure agent behavior</string>
     <string name="settings_heartbeat">Background Monitoring</string>
     <string name="settings_heartbeat_subtitle">Configure heartbeat health checks</string>
+    <string name="settings_cron_jobs_subtitle">Manage scheduled automated tasks</string>
     <string name="settings_reset_onboarding">Reset Onboarding</string>
     <string name="settings_reset_onboarding_subtitle">Start fresh setup</string>
     <string name="settings_reset_onboarding_confirm">Are you sure you want to reset onboarding? This will restart the setup process.</string>

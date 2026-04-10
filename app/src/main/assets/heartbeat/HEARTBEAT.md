@@ -12,10 +12,12 @@ Perform a comprehensive system health check. Review the following areas:
 
 ## Response Guidelines
 
-If **all items are normal** and nothing requires attention, respond with:
-```
-HEARTBEAT_OK
-```
+At the end of your check, **always call the `submit_notification` tool** with:
+- **title**: Short status (e.g., "Heartbeat - All Clear", "Heartbeat - Issues Detected")
+- **summary**: Brief description of findings
+- **status**: "success" if all normal, "warning" if minor concerns, "error" if critical issues
+
+If **all items are normal**, also include `HEARTBEAT_OK` in your text response.
 
 If **anything needs attention**, describe what requires review:
 - What specific area needs attention

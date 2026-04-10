@@ -363,6 +363,18 @@ public class WorkspaceManager {
     }
 
     /**
+     * Gets the HEARTBEAT.md File object.
+     *
+     * @return File object for HEARTBEAT.md, or null if workspace not initialized
+     */
+    public File getHeartbeatFile() {
+        if (workspaceRoot == null) {
+            return null;
+        }
+        return new File(workspaceRoot, HEARTBEAT_FILE);
+    }
+
+    /**
      * Clears the temporary directory.
      *
      * @return true if successful

@@ -36,6 +36,9 @@ public class CronJobDetailFragment extends Fragment {
     private TextView textLastRun;
     private MaterialButton buttonViewHistory;
     private MaterialButton buttonRunNow;
+    private MaterialButton buttonPauseResume;
+    private MaterialButton buttonEdit;
+    private MaterialButton buttonDelete;
 
     private CronJob job;
     private TaskRepository taskRepository;
@@ -84,6 +87,9 @@ public class CronJobDetailFragment extends Fragment {
         textLastRun = view.findViewById(R.id.text_last_run);
         buttonViewHistory = view.findViewById(R.id.button_view_history);
         buttonRunNow = view.findViewById(R.id.button_run_now);
+        buttonPauseResume = view.findViewById(R.id.button_pause_resume);
+        buttonEdit = view.findViewById(R.id.button_edit);
+        buttonDelete = view.findViewById(R.id.button_delete);
     }
 
     private void displayJobDetails() {
@@ -132,6 +138,9 @@ public class CronJobDetailFragment extends Fragment {
         } else {
             textLastRun.setText(R.string.cron_never_run);
         }
+
+        // Update pause/resume button text
+        updatePauseResumeButton();
     }
 
     private void setupButtons() {
@@ -146,6 +155,66 @@ public class CronJobDetailFragment extends Fragment {
             scheduler.executeJobNow(job.getId());
             Toast.makeText(requireContext(), "Job queued for execution", Toast.LENGTH_SHORT).show();
         });
+
+        buttonPauseResume.setOnClickListener(v -> {
+            if (job.isPaused()) {
+                resumeJob();
+            } else {
+                pauseJob();
+            }
+        });
+
+        buttonEdit.setOnClickListener(v -> {
+            // Navigate back to cron job list and open editor
+            // For now, show a toast
+            Toast.makeText(requireContext(), "Edit feature coming soon", Toast.LENGTH_SHORT).show();
+        });
+
+        buttonDelete.setOnClickListener(v -> {
+            showDeleteConfirmation();
+        });
+    }
+
+    private void pauseJob() {
+        job.setPaused(true);
+        taskRepository.updateCronJob(job);
+        scheduler.cancelJob(job.getId());
+        updatePauseResumeButton();
+        Toast.makeText(requireContext(), "Job paused", Toast.LENGTH_SHORT).show();
+    }
+
+    private void resumeJob() {
+        job.setPaused(false);
+        job.setEnabled(true);
+        taskRepository.updateCronJob(job);
+        scheduler.scheduleJob(job);
+        updatePauseResumeButton();
+        Toast.makeText(requireContext(), "Job resumed", Toast.LENGTH_SHORT).show();
+    }
+
+    private void updatePauseResumeButton() {
+        if (job.isPaused()) {
+            buttonPauseResume.setText("Resume");
+        } else {
+            buttonPauseResume.setText("Pause");
+        }
+    }
+
+    private void showDeleteConfirmation() {
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Delete Task")
+                .setMessage("Are you sure you want to delete '" + job.getName() + "'? This action cannot be undone and will delete all execution history.")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    taskRepository.deleteCronJob(job.getId());
+                    taskRepository.deleteExecutionRecords(job.getId());
+                    scheduler.cancelJob(job.getId());
+                    Toast.makeText(requireContext(), "Task deleted", Toast.LENGTH_SHORT).show();
+                    // Navigate back
+                    NavController navController = Navigation.findNavController(requireView());
+                    navController.popBackStack();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private String formatRelativeTime(long timestamp) {
