@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import io.finett.droidclaw.model.CronJob;
@@ -154,7 +155,7 @@ public class CronJobScheduler {
             return TimeUnit.HOURS.toMillis(1); // Default: 1 hour
         }
 
-        String normalized = schedule.trim().toLowerCase();
+        String normalized = schedule.trim().toLowerCase(Locale.ROOT);
 
         try {
             // Try parsing as numeric milliseconds
@@ -279,7 +280,7 @@ public class CronJobScheduler {
             return "Unknown";
         }
 
-        String normalized = schedule.trim().toLowerCase();
+        String normalized = schedule.trim().toLowerCase(Locale.ROOT);
 
         if (normalized.equals("hourly")) {
             return "Every hour";
@@ -324,7 +325,7 @@ public class CronJobScheduler {
             int displayHour = hour % 12;
             if (displayHour == 0) displayHour = 12;
 
-            return String.format("%d:%02d %s", displayHour, minute, period);
+            return String.format(Locale.US, "%d:%02d %s", displayHour, minute, period);
         } catch (Exception e) {
             return timeStr;
         }
@@ -335,7 +336,7 @@ public class CronJobScheduler {
      */
     private static String capitalizeFirst(String str) {
         if (str == null || str.isEmpty()) return str;
-        return str.substring(0, 1).toUpperCase() + str.substring(1);
+        return str.substring(0, 1).toUpperCase(Locale.ROOT) + str.substring(1);
     }
 
     /**

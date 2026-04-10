@@ -20,6 +20,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.adapter.TaskExecutionAdapter;
@@ -181,20 +182,20 @@ public class TaskHistoryFragment extends Fragment implements TaskExecutionAdapte
         int successRate = (successCount * 100) / total;
         long avgDuration = durationCount > 0 ? totalDuration / durationCount : 0;
 
-        textTotalExecutions.setText("Total: " + total);
-        textSuccessRate.setText("Success: " + successRate + "%");
+        textTotalExecutions.setText(requireContext().getString(R.string.stats_total_fmt, total));
+        textSuccessRate.setText(requireContext().getString(R.string.stats_success_fmt, successRate));
 
         // Format average duration
         String avgDurationText;
         long avgSec = avgDuration / 1000;
         if (avgSec < 60) {
-            avgDurationText = String.format("%.1fs", avgDuration / 1000.0);
+            avgDurationText = String.format(Locale.US, "%.1fs", avgDuration / 1000.0);
         } else {
             long minutes = avgSec / 60;
             long seconds = avgSec % 60;
             avgDurationText = minutes + "m " + seconds + "s";
         }
-        textAvgDuration.setText("Avg: " + avgDurationText);
+        textAvgDuration.setText(requireContext().getString(R.string.stats_avg_fmt, avgDurationText));
     }
 
     @Override

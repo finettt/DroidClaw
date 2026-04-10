@@ -19,6 +19,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.util.Locale;
 import java.util.UUID;
 
 import io.finett.droidclaw.R;
@@ -70,7 +71,7 @@ public class CronJobEditorDialog extends DialogFragment {
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_cron_job_editor, null);
+        View view = getLayoutInflater().inflate(R.layout.dialog_cron_job_editor, null);
 
         initializeViews(view);
         setupSpinners();
@@ -168,7 +169,7 @@ public class CronJobEditorDialog extends DialogFragment {
             return;
         }
 
-        String normalized = schedule.trim().toLowerCase();
+        String normalized = schedule.trim().toLowerCase(Locale.ROOT);
 
         if (normalized.equals("hourly")) {
             radioHourly.setChecked(true);
@@ -183,7 +184,7 @@ public class CronJobEditorDialog extends DialogFragment {
             if (normalized.startsWith("weekly@")) {
                 String[] parts = schedule.substring(7).split("@");
                 if (parts.length == 2) {
-                    String day = parts[0].toLowerCase();
+                    String day = parts[0].toLowerCase(Locale.ROOT);
                     String time = parts[1];
                     editWeeklyTime.setText(time);
 
@@ -287,12 +288,12 @@ public class CronJobEditorDialog extends DialogFragment {
             String time = editDailyTime.getText() != null ? editDailyTime.getText().toString().trim() : "09:00";
             return "daily@" + time;
         } else if (checkedId == R.id.radio_weekly) {
-            String day = spinnerWeeklyDay.getSelectedItem().toString().toLowerCase();
+            String day = spinnerWeeklyDay.getSelectedItem().toString().toLowerCase(Locale.ROOT);
             String time = editWeeklyTime.getText() != null ? editWeeklyTime.getText().toString().trim() : "09:00";
             return "weekly@" + day + "@" + time;
         } else if (checkedId == R.id.radio_custom) {
             String value = editCustomValue.getText() != null ? editCustomValue.getText().toString().trim() : "1";
-            String unit = spinnerCustomUnit.getSelectedItem().toString().toLowerCase();
+            String unit = spinnerCustomUnit.getSelectedItem().toString().toLowerCase(Locale.ROOT);
             return "every_" + value + "_" + unit;
         }
 

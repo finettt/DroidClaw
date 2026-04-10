@@ -213,4 +213,21 @@
     <string name="view_details">View Details</string>
     <string name="cron_job_detail">Job Details</string>
     <string name="cron_job_detail_title">Cron Job Detail</string>
+    <string name="cron_never_run">Never run</string>
+    <string name="cron_error_prefix">Error: %s</string>
+    <string name="execution_error_prefix">Error: %s</string>
+    <string name="execution_detail">Tap to view full execution details</string>
+    <string name="execution_datetime_fmt">%1$s at %2$s</string>
+    <string name="stats_total_fmt">Total: %d</string>
+    <string name="stats_success_fmt">Success: %d%%</string>
+    <string name="stats_avg_fmt">Avg: %s</string>
+    <string name="cron_status_paused_fmt">Status: Paused</string>
+    <string name="cron_status_active_fmt">Status: Active</string>
+    <string name="cron_status_disabled_fmt">Status: Disabled</string>
+    <string name="cron_created_fmt">Created: %s</string>
+    <string name="cron_success_rate_fmt">Success Rate: %d%%</string>
+    <string name="cron_avg_duration_fmt">Avg Duration: %s</string>
+    <string name="cron_avg_duration_na">N/A</string>
+    <string name="cron_total_runs_fmt">Total Runs: %d</string>
+    <string name="cron_last_run_fmt">Last Run: %s</string>
 </resources>

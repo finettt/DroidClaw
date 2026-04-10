@@ -6,13 +6,13 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.chip.Chip;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -55,9 +55,37 @@ public class CronJobAdapter extends RecyclerView.Adapter<CronJobAdapter.CronJobV
     }
 
     public void submitList(List<CronJob> newJobs) {
+        DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return jobs.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return newJobs.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                return jobs.get(oldItemPosition).getId().equals(newJobs.get(newItemPosition).getId());
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                CronJob oldItem = jobs.get(oldItemPosition);
+                CronJob newItem = newJobs.get(newItemPosition);
+                return oldItem.getName().equals(newItem.getName()) &&
+                        oldItem.isEnabled() == newItem.isEnabled() &&
+                        oldItem.isPaused() == newItem.isPaused() &&
+                        oldItem.getLastRunTimestamp() == newItem.getLastRunTimestamp() &&
+                        oldItem.getSuccessRate() == newItem.getSuccessRate();
+            }
+        });
+
         jobs.clear();
         jobs.addAll(newJobs);
-        notifyDataSetChanged();
+        result.dispatchUpdatesTo(this);
     }
 
     public CronJob getJobAt(int position) {
@@ -101,7 +129,7 @@ public class CronJobAdapter extends RecyclerView.Adapter<CronJobAdapter.CronJobV
                 textLastRun.setText(itemView.getContext().getString(R.string.cron_last_run, lastRunText));
                 textLastRun.setVisibility(View.VISIBLE);
             } else {
-                textLastRun.setText("Never run");
+                textLastRun.setText(R.string.cron_never_run);
                 textLastRun.setVisibility(View.VISIBLE);
             }
 
@@ -110,7 +138,7 @@ public class CronJobAdapter extends RecyclerView.Adapter<CronJobAdapter.CronJobV
 
             // Error message
             if (job.getLastError() != null && !job.getLastError().isEmpty() && job.getRetryCount() > 0) {
-                textErrorMessage.setText("Error: " + job.getLastError());
+                textErrorMessage.setText(itemView.getContext().getString(R.string.cron_error_prefix, job.getLastError()));
                 textErrorMessage.setVisibility(View.VISIBLE);
             } else {
                 textErrorMessage.setVisibility(View.GONE);

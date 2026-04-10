@@ -94,43 +94,43 @@ public class CronJobDetailFragment extends Fragment {
         // Status
         String status;
         if (job.isPaused()) {
-            status = "Status: Paused";
+            status = requireContext().getString(R.string.cron_status_paused_fmt);
         } else if (job.isEnabled()) {
-            status = "Status: Active";
+            status = requireContext().getString(R.string.cron_status_active_fmt);
         } else {
-            status = "Status: Disabled";
+            status = requireContext().getString(R.string.cron_status_disabled_fmt);
         }
         textStatus.setText(status);
 
         // Created date
-        textCreated.setText("Created: " + dateFormat.format(job.getCreatedAt()));
+        textCreated.setText(requireContext().getString(R.string.cron_created_fmt, dateFormat.format(job.getCreatedAt())));
 
         // Metrics
-        textSuccessRate.setText("Success Rate: " + job.getSuccessRate() + "%");
+        textSuccessRate.setText(requireContext().getString(R.string.cron_success_rate_fmt, job.getSuccessRate()));
 
         long avgMs = job.getAverageExecutionTime();
         String avgText;
         if (avgMs > 0) {
             long avgSec = avgMs / 1000;
             if (avgSec < 60) {
-                avgText = String.format("%.1fs", avgMs / 1000.0);
+                avgText = String.format(Locale.US, "%.1fs", avgMs / 1000.0);
             } else {
                 long minutes = avgSec / 60;
                 long seconds = avgSec % 60;
                 avgText = minutes + "m " + seconds + "s";
             }
         } else {
-            avgText = "N/A";
+            avgText = requireContext().getString(R.string.cron_avg_duration_na);
         }
-        textAvgDuration.setText("Avg Duration: " + avgText);
+        textAvgDuration.setText(requireContext().getString(R.string.cron_avg_duration_fmt, avgText));
 
         int totalRuns = job.getSuccessCount() + job.getFailureCount();
-        textTotalRuns.setText("Total Runs: " + totalRuns);
+        textTotalRuns.setText(requireContext().getString(R.string.cron_total_runs_fmt, totalRuns));
 
         if (job.getLastRunTimestamp() > 0) {
-            textLastRun.setText("Last Run: " + formatRelativeTime(job.getLastRunTimestamp()));
+            textLastRun.setText(requireContext().getString(R.string.cron_last_run_fmt, formatRelativeTime(job.getLastRunTimestamp())));
         } else {
-            textLastRun.setText("Last Run: Never");
+            textLastRun.setText(R.string.cron_never_run);
         }
     }
 

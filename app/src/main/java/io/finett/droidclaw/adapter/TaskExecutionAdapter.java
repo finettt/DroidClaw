@@ -6,6 +6,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.chip.Chip;
@@ -52,9 +53,36 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
     }
 
     public void submitList(List<TaskExecutionRecord> newRecords) {
+        DiffUtil.DiffResult result = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return records.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return newRecords.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                return records.get(oldItemPosition).getSessionId()
+                        .equals(newRecords.get(newItemPosition).getSessionId());
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                TaskExecutionRecord oldItem = records.get(oldItemPosition);
+                TaskExecutionRecord newItem = newRecords.get(newItemPosition);
+                return oldItem.isSuccess() == newItem.isSuccess() &&
+                        oldItem.getStartTime() == newItem.getStartTime() &&
+                        oldItem.getDurationMillis() == newItem.getDurationMillis();
+            }
+        });
+
         records.clear();
         records.addAll(newRecords);
-        notifyDataSetChanged();
+        result.dispatchUpdatesTo(this);
     }
 
     class TaskExecutionViewHolder extends RecyclerView.ViewHolder {
@@ -81,7 +109,7 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
             // Format date and time
             String date = dateFormat.format(record.getStartTime());
             String time = timeFormat.format(record.getStartTime());
-            textExecutionTime.setText(date + " " + time);
+            textExecutionTime.setText(itemView.getContext().getString(R.string.execution_datetime_fmt, date, time));
 
             // Status chip
             if (record.isSuccess()) {
@@ -106,7 +134,7 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
             int tokens = record.getTokensUsed();
             String tokenText;
             if (tokens >= 1000) {
-                tokenText = String.format("%.1fk", tokens / 1000.0);
+                tokenText = String.format(Locale.US, "%.1fk", tokens / 1000.0);
             } else {
                 tokenText = String.valueOf(tokens);
             }
@@ -117,13 +145,13 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
 
             // Error message
             if (!record.isSuccess() && record.getErrorMessage() != null && !record.getErrorMessage().isEmpty()) {
-                textErrorMessage.setText("Error: " + record.getErrorMessage());
+                textErrorMessage.setText(itemView.getContext().getString(R.string.execution_error_prefix, record.getErrorMessage()));
                 textErrorMessage.setVisibility(View.VISIBLE);
                 textPreviewContent.setVisibility(View.GONE);
             } else {
                 textErrorMessage.setVisibility(View.GONE);
                 textPreviewContent.setVisibility(View.VISIBLE);
-                textPreviewContent.setText("Tap to view full execution details");
+                textPreviewContent.setText(R.string.execution_detail);
             }
 
             // Click listener
