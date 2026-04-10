@@ -90,6 +90,19 @@ public class TaskRepository {
     }
 
     /**
+     * Get the most recent heartbeat task result.
+     *
+     * @return Latest heartbeat TaskResult or null if none exists
+     */
+    public TaskResult getLastHeartbeatResult() {
+        List<TaskResult> heartbeatResults = getTaskResults(TaskResult.TYPE_HEARTBEAT, 1);
+        if (heartbeatResults.isEmpty()) {
+            return null;
+        }
+        return heartbeatResults.get(0);
+    }
+
+    /**
      * Delete a task result by ID.
      */
     public void deleteTaskResult(String id) {

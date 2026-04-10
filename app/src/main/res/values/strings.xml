@@ -27,6 +27,8 @@
     <string name="settings_providers_subtitle">%d providers configured</string>
     <string name="settings_agent">Agent</string>
     <string name="settings_agent_subtitle">Configure agent behavior</string>
+    <string name="settings_heartbeat">Background Monitoring</string>
+    <string name="settings_heartbeat_subtitle">Configure heartbeat health checks</string>
     <string name="settings_reset_onboarding">Reset Onboarding</string>
     <string name="settings_reset_onboarding_subtitle">Start fresh setup</string>
     <string name="settings_reset_onboarding_confirm">Are you sure you want to reset onboarding? This will restart the setup process.</string>
@@ -150,4 +152,17 @@
     <string name="chat_continuation_existing">Add to Existing Chat</string>
     <string name="chat_continuation_picker_title">How would you like to continue?</string>
     <string name="chat_continuation_agent_prompt">I\'ve added the %1$s results above. What would you like to clarify or explore?</string>
+
+    <!-- Heartbeat Settings -->
+    <string name="heartbeat_enabled">Enable Heartbeat</string>
+    <string name="heartbeat_enabled_description">Periodic system health checks</string>
+    <string name="heartbeat_interval">Check Interval</string>
+    <string name="heartbeat_status">Status</string>
+    <string name="heartbeat_last_run">Last Run</string>
+    <string name="heartbeat_last_status">Last Status</string>
+    <string name="heartbeat_never">Never</string>
+    <string name="heartbeat_no_data">No data available</string>
+    <string name="heartbeat_actions">Actions</string>
+    <string name="heartbeat_run_now">Run Heartbeat Now</string>
+    <string name="heartbeat_edit_template">Edit HEARTBEAT.md</string>
 </resources>

@@ -39,6 +39,7 @@ public class WorkspaceManager {
     // Identity files
     private static final String SOUL_FILE = ".agent/soul.md";
     private static final String USER_FILE = ".agent/user.md";
+    private static final String HEARTBEAT_FILE = ".agent/HEARTBEAT.md";
 
     private final Context context;
     private final File workspaceRoot;
@@ -181,6 +182,7 @@ public class WorkspaceManager {
     private void createIdentityFiles() throws IOException {
         createIdentityFile(SOUL_FILE, "identity/soul.md");
         createIdentityFile(USER_FILE, "identity/user.md");
+        createHeartbeatTemplate();
     }
 
     /**
@@ -192,18 +194,44 @@ public class WorkspaceManager {
      */
     private void createIdentityFile(String workspacePath, String assetPath) throws IOException {
         File file = new File(workspaceRoot, workspacePath);
-        
+
         // Skip if file already exists
         if (file.exists()) {
             Log.d(TAG, "Identity file already exists: " + workspacePath);
             return;
         }
-        
+
         Log.d(TAG, "Creating identity file: " + workspacePath);
-        
+
         try (InputStream inputStream = context.getAssets().open(assetPath)) {
             copyInputStreamToFile(inputStream, file);
             Log.d(TAG, "Created identity file: " + workspacePath);
+        }
+    }
+
+    /**
+     * Creates the HEARTBEAT.md template from app assets if it doesn't exist.
+     *
+     * @throws IOException if file creation fails
+     */
+    private void createHeartbeatTemplate() throws IOException {
+        File file = new File(workspaceRoot, HEARTBEAT_FILE);
+
+        // Skip if file already exists
+        if (file.exists()) {
+            Log.d(TAG, "Heartbeat template already exists: " + HEARTBEAT_FILE);
+            return;
+        }
+
+        Log.d(TAG, "Creating heartbeat template: " + HEARTBEAT_FILE);
+
+        try (InputStream inputStream = context.getAssets().open("heartbeat/HEARTBEAT.md")) {
+            copyInputStreamToFile(inputStream, file);
+            Log.d(TAG, "Created heartbeat template: " + HEARTBEAT_FILE);
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to copy heartbeat template, using empty file", e);
+            // Create empty file if asset is missing
+            file.createNewFile();
         }
     }
 
@@ -323,6 +351,15 @@ public class WorkspaceManager {
      */
     public static String getUserFilePath() {
         return USER_FILE;
+    }
+
+    /**
+     * Gets the HEARTBEAT.md file path.
+     *
+     * @return Heartbeat file path relative to workspace
+     */
+    public static String getHeartbeatFilePath() {
+        return HEARTBEAT_FILE;
     }
 
     /**

@@ -4,8 +4,6 @@ import android.content.Context;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.work.Data;
-import androidx.work.ListenableWorker;
 import androidx.work.WorkerParameters;
 
 import java.io.BufferedReader;
@@ -18,6 +16,7 @@ import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.model.SessionType;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.HeartbeatConfigRepository;
+import io.finett.droidclaw.util.NotificationHelper;
 
 /**
  * Worker that executes heartbeat checks in the background.
@@ -27,14 +26,15 @@ import io.finett.droidclaw.repository.HeartbeatConfigRepository;
 public class HeartbeatWorker extends BaseTaskWorker {
 
     private static final String TAG = "HeartbeatWorker";
-    private static final String HEARTBEAT_FILE = ".agent/HEARTBEAT.md";
     private static final String HEARTBEAT_OK_MARKER = "HEARTBEAT_OK";
 
     private final HeartbeatConfigRepository heartbeatConfigRepo;
+    private final NotificationHelper notificationHelper;
 
     public HeartbeatWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
         this.heartbeatConfigRepo = new HeartbeatConfigRepository(appContext);
+        this.notificationHelper = new NotificationHelper(appContext);
     }
 
     @NonNull
@@ -73,7 +73,7 @@ public class HeartbeatWorker extends BaseTaskWorker {
             // Save task result
             taskRepository.saveTaskResult(result);
 
-            // Check for HEARTBEAT_OK marker
+            // Check for HEARTBEAT_OK marker with enhanced detection
             boolean isHealthy = checkHeartbeatOk(result.getContent());
             result.putMetadata("healthy", String.valueOf(isHealthy));
             taskRepository.saveTaskResult(result);
@@ -81,17 +81,22 @@ public class HeartbeatWorker extends BaseTaskWorker {
             // Update last run timestamp
             heartbeatConfigRepo.updateLastRun(currentTime);
 
-            // Generate notification content if needed
+            // Handle notification based on heartbeat status
             if (isHealthy) {
                 Log.d(TAG, "Heartbeat completed successfully - system healthy");
+                // Silent - no notification needed when system is healthy
             } else {
-                Log.w(TAG, "Heartbeat completed - potential issues detected");
+                Log.w(TAG, "Heartbeat completed - potential issues detected, showing notification");
+                String notificationContent = generateNotificationContent(result);
+                notificationHelper.showHeartbeatNotification(notificationContent);
             }
 
             return Result.success();
 
         } catch (Exception e) {
             Log.e(TAG, "Heartbeat worker failed", e);
+            // Show error notification
+            notificationHelper.showHeartbeatError("Heartbeat failed: " + e.getMessage());
             return Result.failure();
         }
     }
@@ -104,7 +109,7 @@ public class HeartbeatWorker extends BaseTaskWorker {
     private String readHeartbeatFile() {
         try {
             File workspaceRoot = workspaceManager.getWorkspaceRoot();
-            File heartbeatFile = new File(workspaceRoot, HEARTBEAT_FILE);
+            File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
 
             if (!heartbeatFile.exists()) {
                 Log.d(TAG, "HEARTBEAT.md not found in workspace");
@@ -130,6 +135,8 @@ public class HeartbeatWorker extends BaseTaskWorker {
 
     /**
      * Check if the heartbeat result contains the HEARTBEAT_OK marker.
+     * Uses enhanced detection: checks start of response, end of response,
+     * and anywhere in the content.
      *
      * @param content The heartbeat result content
      * @return true if HEARTBEAT_OK marker is found
@@ -138,7 +145,29 @@ public class HeartbeatWorker extends BaseTaskWorker {
         if (content == null || content.isEmpty()) {
             return false;
         }
-        return content.contains(HEARTBEAT_OK_MARKER);
+
+        String trimmed = content.trim();
+
+        // Check if content starts with HEARTBEAT_OK
+        if (trimmed.startsWith(HEARTBEAT_OK_MARKER)) {
+            Log.d(TAG, "HEARTBEAT_OK detected at start of response");
+            return true;
+        }
+
+        // Check if content ends with HEARTBEAT_OK
+        if (trimmed.endsWith(HEARTBEAT_OK_MARKER)) {
+            Log.d(TAG, "HEARTBEAT_OK detected at end of response");
+            return true;
+        }
+
+        // Check anywhere in content
+        if (content.contains(HEARTBEAT_OK_MARKER)) {
+            Log.d(TAG, "HEARTBEAT_OK detected in response");
+            return true;
+        }
+
+        Log.d(TAG, "HEARTBEAT_OK not found - issues may need attention");
+        return false;
     }
 
     /**
@@ -148,7 +177,7 @@ public class HeartbeatWorker extends BaseTaskWorker {
         return "Perform a system health check. Review the current state of the workspace, " +
                "check for any pending tasks or incomplete work, and verify that all systems " +
                "are functioning correctly. Report your findings.\n\n" +
-               "If everything is healthy and ready, include the marker HEARTBEAT_OK in your response.";
+               "If everything is healthy and ready, respond with ONLY: HEARTBEAT_OK";
     }
 
     @Override

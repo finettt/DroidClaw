@@ -44,6 +44,13 @@
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
         <action
+            android:id="@+id/action_settingsFragment_to_heartbeatSettingsFragment"
+            app:destination="@id/heartbeatSettingsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
             android:id="@+id/action_settingsFragment_to_skillsBrowserFragment"
             app:destination="@id/skillsBrowserFragment"
             app:enterAnim="@anim/slide_in_right"
@@ -108,6 +115,19 @@
         android:id="@+id/agentSettingsFragment"
         android:name="io.finett.droidclaw.fragment.AgentSettingsFragment"
         android:label="Agent Settings" />
+
+    <fragment
+        android:id="@+id/heartbeatSettingsFragment"
+        android:name="io.finett.droidclaw.fragment.HeartbeatSettingsFragment"
+        android:label="Background Monitoring">
+        <action
+            android:id="@+id/action_heartbeatSettingsFragment_to_fileBrowserFragment"
+            app:destination="@id/fileBrowserFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
 
     <fragment
         android:id="@+id/onboardingFragment"
