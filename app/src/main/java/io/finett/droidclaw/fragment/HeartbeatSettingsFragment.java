@@ -28,6 +28,7 @@ import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.HeartbeatConfigRepository;
 import io.finett.droidclaw.repository.TaskRepository;
 import io.finett.droidclaw.service.TaskScheduler;
+import io.finett.droidclaw.util.NotificationPermissionHelper;
 
 public class HeartbeatSettingsFragment extends Fragment {
 
@@ -49,6 +50,7 @@ public class HeartbeatSettingsFragment extends Fragment {
     private HeartbeatConfigRepository configRepository;
     private TaskRepository taskRepository;
     private TaskScheduler taskScheduler;
+    private NotificationPermissionHelper permissionHelper;
     private HeartbeatConfig config;
 
     private final long[] intervalOptions = {
@@ -64,6 +66,7 @@ public class HeartbeatSettingsFragment extends Fragment {
         configRepository = new HeartbeatConfigRepository(requireContext());
         taskRepository = new TaskRepository(requireContext());
         taskScheduler = new TaskScheduler(requireContext());
+        permissionHelper = new NotificationPermissionHelper(requireContext());
         config = configRepository.getConfig();
     }
 
@@ -81,6 +84,12 @@ public class HeartbeatSettingsFragment extends Fragment {
         setupIntervalDropdown();
         loadHeartbeatSettings();
         setupListeners();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        // This will be handled by the permission helper callback
     }
 
     private void initViews(View view) {
@@ -166,13 +175,24 @@ public class HeartbeatSettingsFragment extends Fragment {
     private void setupListeners() {
         // Save on toggle change
         switchHeartbeatEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            config.setEnabled(isChecked);
-            configRepository.updateConfig(config);
-
             if (isChecked) {
-                taskScheduler.scheduleHeartbeat(config);
-                Toast.makeText(requireContext(), "Heartbeat enabled", Toast.LENGTH_SHORT).show();
+                // Check notification permission before enabling
+                permissionHelper.checkAndRequestPermission(requireActivity(), new NotificationPermissionHelper.PermissionCallback() {
+                    @Override
+                    public void onPermissionGranted() {
+                        enableHeartbeat();
+                    }
+
+                    @Override
+                    public void onPermissionDenied() {
+                        // Still enable heartbeat, but without notifications
+                        Toast.makeText(requireContext(), "Heartbeat enabled (notifications disabled)", Toast.LENGTH_SHORT).show();
+                        enableHeartbeat();
+                    }
+                });
             } else {
+                config.setEnabled(false);
+                configRepository.updateConfig(config);
                 taskScheduler.cancelHeartbeat();
                 Toast.makeText(requireContext(), "Heartbeat disabled", Toast.LENGTH_SHORT).show();
             }
@@ -205,5 +225,15 @@ public class HeartbeatSettingsFragment extends Fragment {
             Navigation.findNavController(requireView())
                     .navigate(R.id.action_heartbeatSettingsFragment_to_fileBrowserFragment, bundle);
         });
+    }
+
+    /**
+     * Enable heartbeat after permission is granted.
+     */
+    private void enableHeartbeat() {
+        config.setEnabled(true);
+        configRepository.updateConfig(config);
+        taskScheduler.scheduleHeartbeat(config);
+        Toast.makeText(requireContext(), "Heartbeat enabled", Toast.LENGTH_SHORT).show();
     }
 }

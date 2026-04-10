@@ -230,4 +230,18 @@
     <string name="cron_avg_duration_na">N/A</string>
     <string name="cron_total_runs_fmt">Total Runs: %d</string>
     <string name="cron_last_run_fmt">Last Run: %s</string>
+
+    <!-- Notification Permissions -->
+    <string name="notification_permission_title">Enable Notifications</string>
+    <string name="notification_permission_message">DroidClaw can send you notifications about background task results, system health alerts, and scheduled job completions. Would you like to enable this feature?</string>
+    <string name="allow">Allow</string>
+    <string name="not_now">Not Now</string>
+
+    <!-- Notification Channels -->
+    <string name="notification_channel_heartbeat_alerts">Heartbeat Alerts</string>
+    <string name="notification_channel_heartbeat_alerts_desc">High priority alerts when heartbeat detects issues</string>
+    <string name="notification_channel_task_results">Task Results</string>
+    <string name="notification_channel_task_results_desc">Results from scheduled cron jobs and manual tasks</string>
+    <string name="notification_channel_task_errors">Task Errors</string>
+    <string name="notification_channel_task_errors_desc">Error notifications when tasks fail</string>
 </resources>

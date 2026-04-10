@@ -11,6 +11,7 @@ import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.model.SessionType;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.scheduler.CronJobScheduler;
+import io.finett.droidclaw.util.NotificationManager;
 
 /**
  * Worker that executes cron jobs in the background.
@@ -21,8 +22,11 @@ public class CronJobWorker extends BaseTaskWorker {
 
     private static final String TAG = "CronJobWorker";
 
+    private NotificationManager notificationManager;
+
     public CronJobWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+        this.notificationManager = new NotificationManager(appContext);
     }
 
     @NonNull
@@ -95,15 +99,18 @@ public class CronJobWorker extends BaseTaskWorker {
             // Save task result
             taskRepository.saveTaskResult(result);
 
-            // Generate notification content
-            String notificationContent = generateNotificationContent(result);
-            Log.d(TAG, "Cron job completed: " + job.getName() + " - " + notificationContent);
+            // Send notification for cron job completion
+            notificationManager.sendTaskNotification(result);
+            Log.d(TAG, "Cron job completed: " + job.getName());
 
             // Cron jobs always return success (job continues)
             return Result.success();
 
         } catch (Exception e) {
             Log.e(TAG, "Cron job worker failed: " + jobId, e);
+
+            // Show error notification
+            notificationManager.showErrorNotification("Cron Job Failed", "Job " + jobId + ": " + e.getMessage());
 
             // Try to update job with error
             try {

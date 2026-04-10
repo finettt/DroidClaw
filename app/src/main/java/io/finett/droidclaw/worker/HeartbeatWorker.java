@@ -16,7 +16,7 @@ import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.model.SessionType;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.HeartbeatConfigRepository;
-import io.finett.droidclaw.util.NotificationHelper;
+import io.finett.droidclaw.util.NotificationManager;
 
 /**
  * Worker that executes heartbeat checks in the background.
@@ -29,12 +29,12 @@ public class HeartbeatWorker extends BaseTaskWorker {
     private static final String HEARTBEAT_OK_MARKER = "HEARTBEAT_OK";
 
     private final HeartbeatConfigRepository heartbeatConfigRepo;
-    private final NotificationHelper notificationHelper;
+    private final NotificationManager notificationManager;
 
     public HeartbeatWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
         this.heartbeatConfigRepo = new HeartbeatConfigRepository(appContext);
-        this.notificationHelper = new NotificationHelper(appContext);
+        this.notificationManager = new NotificationManager(appContext);
     }
 
     @NonNull
@@ -87,8 +87,7 @@ public class HeartbeatWorker extends BaseTaskWorker {
                 // Silent - no notification needed when system is healthy
             } else {
                 Log.w(TAG, "Heartbeat completed - potential issues detected, showing notification");
-                String notificationContent = generateNotificationContent(result);
-                notificationHelper.showHeartbeatNotification(notificationContent);
+                notificationManager.sendTaskNotification(result);
             }
 
             return Result.success();
@@ -96,7 +95,7 @@ public class HeartbeatWorker extends BaseTaskWorker {
         } catch (Exception e) {
             Log.e(TAG, "Heartbeat worker failed", e);
             // Show error notification
-            notificationHelper.showHeartbeatError("Heartbeat failed: " + e.getMessage());
+            notificationManager.showErrorNotification("Heartbeat Failed", "Heartbeat failed: " + e.getMessage());
             return Result.failure();
         }
     }

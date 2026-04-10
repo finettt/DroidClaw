@@ -1,5 +1,6 @@
 package io.finett.droidclaw;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -82,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
             );
             drawerLayout.addDrawerListener(drawerToggle);
             drawerToggle.syncState();
-            
+
             // On fresh app launch, check onboarding status
             // Post navigation to ensure NavController is fully initialized
             if (savedInstanceState == null) {
@@ -92,24 +93,75 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, "Onboarding not completed, navigating to onboarding screen");
                         navController.navigate(R.id.onboardingFragment);
                     } else {
-                        // Open the most recent persisted session or create one if none exist
-                        ChatSession initialSession;
-                        if (chatSessions.isEmpty()) {
-                            initialSession = addNewChatSession();
-                            Log.d(TAG, "No saved sessions found. Created initial session: " + initialSession.getId());
+                        // Check if launched from notification deep link
+                        TaskResult deepLinkTask = getDeepLinkTaskFromIntent(getIntent());
+                        if (deepLinkTask != null) {
+                            Log.d(TAG, "Launched from notification deep link, navigating to ZenResultFragment");
+                            navigateToZenResult(deepLinkTask);
                         } else {
-                            initialSession = chatSessions.get(0);
-                            Log.d(TAG, "Opening most recent saved session: " + initialSession.getId());
-                        }
+                            // Open the most recent persisted session or create one if none exist
+                            ChatSession initialSession;
+                            if (chatSessions.isEmpty()) {
+                                initialSession = addNewChatSession();
+                                Log.d(TAG, "No saved sessions found. Created initial session: " + initialSession.getId());
+                            } else {
+                                initialSession = chatSessions.get(0);
+                                Log.d(TAG, "Opening most recent saved session: " + initialSession.getId());
+                            }
 
-                        currentSessionId = initialSession.getId();
-                        Bundle args = new Bundle();
-                        args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
-                        navController.navigate(R.id.chatFragment, args);
+                            currentSessionId = initialSession.getId();
+                            Bundle args = new Bundle();
+                            args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
+                            navController.navigate(R.id.chatFragment, args);
+                        }
                     }
                 });
             }
         }
+    }
+
+    /**
+     * Handle deep link intents from notifications.
+     * Called when activity is already running and receives a new intent.
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+
+        TaskResult deepLinkTask = getDeepLinkTaskFromIntent(intent);
+        if (deepLinkTask != null) {
+            Log.d(TAG, "Received deep link intent while activity is running, navigating to ZenResultFragment");
+            navigateToZenResult(deepLinkTask);
+        }
+    }
+
+    /**
+     * Extract TaskResult from deep link intent.
+     */
+    private TaskResult getDeepLinkTaskFromIntent(Intent intent) {
+        if (intent == null) {
+            return null;
+        }
+        String destination = intent.getStringExtra("deep_link_destination");
+        if (!"zen_result".equals(destination)) {
+            return null;
+        }
+        return (TaskResult) intent.getSerializableExtra("task_result");
+    }
+
+    /**
+     * Navigate to ZenResultFragment with the task result.
+     */
+    private void navigateToZenResult(TaskResult taskResult) {
+        if (navController == null || taskResult == null) {
+            Log.w(TAG, "Cannot navigate to ZenResultFragment: navController or taskResult is null");
+            return;
+        }
+
+        Bundle args = new Bundle();
+        args.putSerializable("task_result", taskResult);
+        navController.navigate(R.id.zenResultFragment, args);
     }
 
     private void setupDrawerContent() {

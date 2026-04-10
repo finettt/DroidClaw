@@ -237,7 +237,9 @@ public abstract class BaseTaskWorker extends Worker {
                 executionRecord.setIterations(countIterations(history));
                 executionRecord.setTokensUsed(estimateTokens(response));
 
+                // Extract and cache agent-generated notification content
                 result = createSuccessResult(taskId, taskType, endTime, response, history);
+                extractAndCacheNotificationContent(result, response);
 
                 // Save conversation history
                 if (history != null && !history.isEmpty()) {
@@ -369,6 +371,52 @@ public abstract class BaseTaskWorker extends Worker {
         result.putMetadata("status", "failed");
         result.putMetadata("error", errorMessage);
         return result;
+    }
+
+    /**
+     * Extract agent-generated notification content from the response and cache it in metadata.
+     * Looks for structured content in the format:
+     *   TITLE: <title>
+     *   SUMMARY: <summary>
+     *
+     * If not found, falls back to generic content generation.
+     *
+     * @param result The task result to update
+     * @param response The agent's response text
+     */
+    private void extractAndCacheNotificationContent(TaskResult result, String response) {
+        if (response == null || response.isEmpty()) {
+            return;
+        }
+
+        String notificationTitle = null;
+        String notificationSummary = null;
+
+        // Try to parse TITLE: and SUMMARY: markers (use first occurrence)
+        String[] lines = response.split("\n");
+        for (String line : lines) {
+            line = line.trim();
+            if (notificationTitle == null && line.startsWith("TITLE:")) {
+                notificationTitle = line.substring(6).trim();
+            } else if (notificationSummary == null && line.startsWith("SUMMARY:")) {
+                notificationSummary = line.substring(8).trim();
+            }
+            // Stop when both are found
+            if (notificationTitle != null && notificationSummary != null) {
+                break;
+            }
+        }
+
+        // Cache in metadata for notification system
+        if (notificationTitle != null && !notificationTitle.isEmpty()) {
+            result.putMetadata("notification_title", notificationTitle);
+            Log.d(TAG, "Extracted notification title: " + notificationTitle);
+        }
+
+        if (notificationSummary != null && !notificationSummary.isEmpty()) {
+            result.putMetadata("notification_summary", notificationSummary);
+            Log.d(TAG, "Extracted notification summary: " + notificationSummary);
+        }
     }
 
     /**
