@@ -102,6 +102,57 @@ public class LlmApiService {
         void onError(String error);
     }
 
+    /**
+     * Represents a refusal from the LLM when using Structured Outputs.
+     */
+    public static class StructuredResponse {
+        private final String content;
+        private final String refusal;
+        private final List<ToolCall> toolCalls;
+        private final boolean hasToolCalls;
+        private final TokenUsage usage;
+
+        public StructuredResponse(String content, String refusal, List<ToolCall> toolCalls, TokenUsage usage) {
+            this.content = content;
+            this.refusal = refusal;
+            this.toolCalls = toolCalls != null ? toolCalls : new ArrayList<>();
+            this.hasToolCalls = !this.toolCalls.isEmpty();
+            this.usage = usage;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public String getRefusal() {
+            return refusal;
+        }
+
+        public boolean isRefusal() {
+            return refusal != null && !refusal.isEmpty();
+        }
+
+        public List<ToolCall> getToolCalls() {
+            return toolCalls;
+        }
+
+        public boolean hasToolCalls() {
+            return hasToolCalls;
+        }
+
+        public TokenUsage getUsage() {
+            return usage;
+        }
+    }
+
+    /**
+     * Callback for structured response with refusals and tool calls.
+     */
+    public interface StructuredResponseCallback {
+        void onSuccess(StructuredResponse response);
+        void onError(String error);
+    }
+
     public interface ChatCallbackWithTools {
         void onSuccess(LlmResponse response);
         void onError(String error);
@@ -247,6 +298,91 @@ public class LlmApiService {
         });
     }
 
+    /**
+     * Send a message with structured outputs support.
+     * Uses OpenAI's Structured Outputs feature to guarantee JSON schema adherence.
+     *
+     * @param conversationHistory Full conversation history
+     * @param tools Tool definitions (can be null)
+     * @param identityMessages System messages for identity context (soul.md, user.md)
+     * @param responseSchema JSON Schema for Structured Outputs
+     * @param callback Callback with StructuredResponse containing content, tool calls, and refusal
+     */
+    public void sendMessageStructured(List<ChatMessage> conversationHistory, JsonArray tools,
+                                      List<ChatMessage> identityMessages,
+                                      JsonObject responseSchema, StructuredResponseCallback callback) {
+        if (!settingsManager.isConfigured()) {
+            mainHandler.post(() -> callback.onError("API key not configured. Please set it in Settings."));
+            return;
+        }
+
+        JsonObject requestBody = buildRequestBodyWithStructuredOutput(conversationHistory, tools, identityMessages, responseSchema);
+        String jsonBody = gson.toJson(requestBody);
+
+        Request.Builder requestBuilder = new Request.Builder()
+                .url(settingsManager.getApiUrl())
+                .addHeader("Content-Type", "application/json");
+
+        String apiKey = settingsManager.getApiKey();
+        if (apiKey != null && !apiKey.trim().isEmpty() && !"lm-studio".equalsIgnoreCase(apiKey.trim())) {
+            requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
+        }
+
+        Request request = requestBuilder
+                .post(RequestBody.create(jsonBody, JSON))
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e(TAG, "Network error", e);
+                mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+
+                    if (!response.isSuccessful()) {
+                        Log.e(TAG, "API error: " + response.code() + " - " + responseBody);
+                        mainHandler.post(() -> callback.onError("API error: " + response.code() + " - " + responseBody));
+                        return;
+                    }
+
+                    StructuredResponse structuredResponse = parseStructuredResponse(responseBody);
+                    mainHandler.post(() -> callback.onSuccess(structuredResponse));
+                } catch (Exception e) {
+                    Log.e(TAG, "Parse error", e);
+                    mainHandler.post(() -> callback.onError("Parse error: " + e.getMessage()));
+                }
+            }
+        });
+    }
+
+    /**
+     * Build request body with Structured Outputs support.
+     * Adds response_format with json_schema and strict: true.
+     */
+    private JsonObject buildRequestBodyWithStructuredOutput(List<ChatMessage> conversationHistory, JsonArray tools,
+                                                             List<ChatMessage> identityMessages,
+                                                             JsonObject responseSchema) {
+        JsonObject requestBody = buildRequestBody(conversationHistory, tools, identityMessages);
+
+        // Add Structured Outputs response_format
+        JsonObject responseFormat = new JsonObject();
+        responseFormat.addProperty("type", "json_schema");
+
+        JsonObject jsonSchema = new JsonObject();
+        jsonSchema.addProperty("strict", true);
+        jsonSchema.add("schema", responseSchema);
+        responseFormat.add("json_schema", jsonSchema);
+
+        requestBody.add("response_format", responseFormat);
+
+        return requestBody;
+    }
+
     private JsonObject buildRequestBody(List<ChatMessage> conversationHistory, JsonArray tools,
                                         List<ChatMessage> identityMessages) {
         JsonObject requestBody = new JsonObject();
@@ -353,6 +489,70 @@ public class LlmApiService {
         }
 
         return new LlmResponse(content, toolCalls, usage);
+    }
+
+    /**
+     * Parse a response with Structured Outputs support, including refusal detection.
+     *
+     * @param responseBody JSON response from API
+     * @return StructuredResponse with content, refusal, and tool calls
+     */
+    private StructuredResponse parseStructuredResponse(String responseBody) {
+        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
+        JsonArray choices = jsonResponse.getAsJsonArray("choices");
+
+        if (choices == null || choices.size() == 0) {
+            return new StructuredResponse("No response received", null, null, null);
+        }
+
+        JsonObject firstChoice = choices.get(0).getAsJsonObject();
+        JsonObject message = firstChoice.getAsJsonObject("message");
+
+        if (message == null) {
+            return new StructuredResponse("No message in response", null, null, null);
+        }
+
+        // Extract content (may be null if there are tool calls or refusal)
+        String content = null;
+        if (message.has("content") && !message.get("content").isJsonNull()) {
+            content = message.get("content").getAsString();
+        }
+
+        // Extract refusal if present
+        String refusal = null;
+        if (message.has("refusal") && !message.get("refusal").isJsonNull()) {
+            refusal = message.get("refusal").getAsString();
+        }
+
+        // Extract tool calls if present
+        List<ToolCall> toolCalls = null;
+        if (message.has("tool_calls")) {
+            JsonArray toolCallsArray = message.getAsJsonArray("tool_calls");
+            toolCalls = new ArrayList<>();
+
+            for (JsonElement toolCallElement : toolCallsArray) {
+                JsonObject toolCallObj = toolCallElement.getAsJsonObject();
+                String id = toolCallObj.get("id").getAsString();
+                JsonObject function = toolCallObj.getAsJsonObject("function");
+                String name = function.get("name").getAsString();
+                String argumentsStr = function.get("arguments").getAsString();
+
+                JsonObject arguments = gson.fromJson(argumentsStr, JsonObject.class);
+                toolCalls.add(new ToolCall(id, name, arguments));
+            }
+        }
+
+        // Extract token usage
+        TokenUsage usage = null;
+        if (jsonResponse.has("usage")) {
+            JsonObject usageObj = jsonResponse.getAsJsonObject("usage");
+            int totalTokens = usageObj.has("total_tokens") ? usageObj.get("total_tokens").getAsInt() : 0;
+            int promptTokens = usageObj.has("prompt_tokens") ? usageObj.get("prompt_tokens").getAsInt() : 0;
+            int completionTokens = usageObj.has("completion_tokens") ? usageObj.get("completion_tokens").getAsInt() : 0;
+            usage = new TokenUsage(totalTokens, promptTokens, completionTokens);
+        }
+
+        return new StructuredResponse(content, refusal, toolCalls, usage);
     }
 
     public void cancelAllRequests() {

@@ -39,7 +39,8 @@ public class AgentLoop {
     private int maxIterations;
     private boolean requireApproval;
     private List<ChatMessage> identityMessages;
-    
+    private JsonObject responseSchema;
+
     // Token tracking - "Last Usage" algorithm
     // Current context tokens (from last API response - this is the ACTUAL context size)
     private int currentContextTokens = 0;
@@ -129,6 +130,17 @@ public class AgentLoop {
     }
 
     /**
+     * Sets a JSON Schema for Structured Outputs.
+     * When set, the model's final text response will adhere to the provided schema.
+     *
+     * @param schema JSON Schema for Structured Outputs (null to disable)
+     */
+    public void setResponseSchema(JsonObject schema) {
+        this.responseSchema = schema;
+        Log.d(TAG, "Response schema set: " + (schema != null ? "enabled" : "disabled"));
+    }
+
+    /**
      * Start the agent loop with a user message.
      *
      * @param conversationHistory Full conversation history including the new user message
@@ -199,12 +211,12 @@ public class AgentLoop {
     private void continueIteration(List<ChatMessage> conversationHistory, AgentCallback callback) {
         // Build context messages (identity + memory)
         List<ChatMessage> contextMessages = new ArrayList<>();
-        
+
         // Add identity messages
         if (identityMessages != null) {
             contextMessages.addAll(identityMessages);
         }
-        
+
         // Add memory context (if available)
         if (memoryContext != null) {
             String memoryCtx = memoryContext.buildMemoryContext();
@@ -217,7 +229,59 @@ public class AgentLoop {
         // Get tool definitions
         JsonArray tools = toolRegistry.getToolDefinitions();
 
-        // Send message to LLM with tools and context
+        // Use structured outputs if a schema is set
+        if (responseSchema != null) {
+            sendStructuredMessage(conversationHistory, tools, contextMessages, callback);
+        } else {
+            sendStandardMessage(conversationHistory, tools, contextMessages, callback);
+        }
+    }
+
+    /**
+     * Send message using structured outputs API.
+     */
+    private void sendStructuredMessage(List<ChatMessage> conversationHistory, JsonArray tools,
+                                       List<ChatMessage> contextMessages, AgentCallback callback) {
+        apiService.sendMessageStructured(conversationHistory, tools, contextMessages, responseSchema,
+                new LlmApiService.StructuredResponseCallback() {
+            @Override
+            public void onSuccess(LlmApiService.StructuredResponse response) {
+                // Update token tracking
+                if (response.getUsage() != null && response.getUsage().isAvailable()) {
+                    currentContextTokens = response.getUsage().getTotalTokens();
+                    currentPromptTokens = response.getUsage().getPromptTokens();
+                    currentCompletionTokens = response.getUsage().getCompletionTokens();
+
+                    totalTokens += response.getUsage().getTotalTokens();
+                    totalPromptTokens += response.getUsage().getPromptTokens();
+                    totalCompletionTokens += response.getUsage().getCompletionTokens();
+
+                    Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
+                          ", Session total: " + totalTokens);
+                }
+
+                // Check for refusal
+                if (response.isRefusal()) {
+                    Log.w(TAG, "Model refused to respond: " + response.getRefusal());
+                    handleRefusal(response, conversationHistory, callback);
+                    return;
+                }
+
+                handleStructuredLlmResponse(response, conversationHistory, callback);
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    /**
+     * Send message using standard API.
+     */
+    private void sendStandardMessage(List<ChatMessage> conversationHistory, JsonArray tools,
+                                     List<ChatMessage> contextMessages, AgentCallback callback) {
         apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, new LlmApiService.ChatCallbackWithTools() {
             @Override
             public void onSuccess(LlmApiService.LlmResponse response) {
@@ -227,16 +291,16 @@ public class AgentLoop {
                     currentContextTokens = response.getUsage().getTotalTokens();
                     currentPromptTokens = response.getUsage().getPromptTokens();
                     currentCompletionTokens = response.getUsage().getCompletionTokens();
-                    
+
                     // Session cumulative stats (total spent across all requests)
                     totalTokens += response.getUsage().getTotalTokens();
                     totalPromptTokens += response.getUsage().getPromptTokens();
                     totalCompletionTokens += response.getUsage().getCompletionTokens();
-                    
+
                     Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
                           ", Session total: " + totalTokens);
                 }
-                
+
                 handleLlmResponse(response, conversationHistory, callback);
             }
 
@@ -375,18 +439,65 @@ public class AgentLoop {
      */
     private void handleFinalResponse(LlmApiService.LlmResponse response, List<ChatMessage> conversationHistory, AgentCallback callback) {
         String content = response.getContent();
-        
+
         if (content == null || content.isEmpty()) {
             content = "No response from assistant.";
         }
 
         Log.d(TAG, "Agent loop completed in " + iterationCount + " iteration(s)");
-        
+
         // Add final assistant response to history
         ChatMessage assistantMessage = new ChatMessage(content, ChatMessage.TYPE_ASSISTANT);
         conversationHistory.add(assistantMessage);
 
         callback.onComplete(content, conversationHistory);
+    }
+
+    /**
+     * Handle a structured response from the LLM (with schema adherence).
+     * Processes tool calls or treats content as final response.
+     */
+    private void handleStructuredLlmResponse(LlmApiService.StructuredResponse response,
+                                              List<ChatMessage> conversationHistory,
+                                              AgentCallback callback) {
+        if (response.hasToolCalls()) {
+            // Convert StructuredResponse to LlmResponse for tool handling
+            LlmApiService.LlmResponse llmResponse = new LlmApiService.LlmResponse(
+                    response.getContent(), response.getToolCalls(), response.getUsage());
+            handleToolCalls(llmResponse, conversationHistory, callback);
+        } else {
+            // Final text response - content adheres to the schema
+            String content = response.getContent();
+
+            if (content == null || content.isEmpty()) {
+                content = "No response from assistant.";
+            }
+
+            Log.d(TAG, "Agent loop completed in " + iterationCount + " iteration(s) (structured output)");
+
+            ChatMessage assistantMessage = new ChatMessage(content, ChatMessage.TYPE_ASSISTANT);
+            conversationHistory.add(assistantMessage);
+
+            callback.onComplete(content, conversationHistory);
+        }
+    }
+
+    /**
+     * Handle a refusal from the LLM when using Structured Outputs.
+     */
+    private void handleRefusal(LlmApiService.StructuredResponse response,
+                               List<ChatMessage> conversationHistory,
+                               AgentCallback callback) {
+        String refusalMessage = response.getRefusal() != null ? response.getRefusal() : "Model refused to respond";
+
+        Log.w(TAG, "Handling refusal: " + refusalMessage);
+
+        // Add refusal to conversation history
+        ChatMessage refusalMsg = new ChatMessage("Refusal: " + refusalMessage, ChatMessage.TYPE_ASSISTANT);
+        conversationHistory.add(refusalMsg);
+
+        // Notify callback of completion with refusal indicator
+        callback.onComplete("[REFUSAL] " + refusalMessage, conversationHistory);
     }
 
     /**

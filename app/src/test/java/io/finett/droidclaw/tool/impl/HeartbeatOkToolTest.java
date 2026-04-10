@@ -73,8 +73,8 @@ public class HeartbeatOkToolTest {
 
         assertTrue("Should succeed", result.isSuccess());
         assertNotNull("Content should not be null", result.getContent());
-        assertTrue("Content should contain HEARTBEAT_OK",
-                result.getContent().contains("HEARTBEAT_OK"));
+        assertTrue("Content should contain HEARTBEAT_OK JSON",
+                result.getContent().contains("{\"HEARTBEAT_OK\": true}"));
     }
 
     @Test
@@ -92,9 +92,9 @@ public class HeartbeatOkToolTest {
 
         String content = result.getContent();
         assertTrue("Should contain success message",
-                content.contains("System health check passed"));
-        assertTrue("Should contain HEARTBEAT_OK marker",
                 content.contains("HEARTBEAT_OK"));
+        assertTrue("Should contain JSON format",
+                content.contains("{\"HEARTBEAT_OK\": true}"));
     }
 
     @Test

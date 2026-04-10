@@ -6,13 +6,20 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.work.WorkerParameters;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import io.finett.droidclaw.agent.AgentLoop;
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.HeartbeatConfig;
+import io.finett.droidclaw.model.HeartbeatResponse;
 import io.finett.droidclaw.model.SessionType;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.HeartbeatConfigRepository;
@@ -21,12 +28,26 @@ import io.finett.droidclaw.util.NotificationManager;
 /**
  * Worker that executes heartbeat checks in the background.
  * Reads HEARTBEAT.md from workspace, executes it in an isolated session,
- * and checks for HEARTBEAT_OK marker in the result.
+ * and uses Structured Outputs to guarantee valid JSON schema adherence.
+ *
+ * The model responds with a structured JSON object:
+ * {
+ *   "healthy": boolean,
+ *   "summary": string,
+ *   "issues": [{"category": string, "description": string, "severity": "low"|"medium"|"high"}]
+ * }
+ *
+ * Falls back to regex detection for backward compatibility with non-structured responses.
  */
 public class HeartbeatWorker extends BaseTaskWorker {
 
     private static final String TAG = "HeartbeatWorker";
-    private static final String HEARTBEAT_OK_MARKER = "HEARTBEAT_OK";
+
+    // Fallback regex pattern for backward compatibility
+    private static final Pattern HEARTBEAT_JSON_PATTERN = Pattern.compile(
+            "\\{\\s*\"HEARTBEAT_OK\"\\s*:\\s*(true|false)\\s*\\}",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private final HeartbeatConfigRepository heartbeatConfigRepo;
     private final NotificationManager notificationManager;
@@ -35,6 +56,12 @@ public class HeartbeatWorker extends BaseTaskWorker {
         super(context, workerParams);
         this.heartbeatConfigRepo = new HeartbeatConfigRepository(appContext);
         this.notificationManager = new NotificationManager(appContext);
+    }
+
+    @Override
+    protected void customizeAgentLoop(AgentLoop agentLoop) {
+        // Enable Structured Outputs for heartbeat responses
+        agentLoop.setResponseSchema(HeartbeatResponse.getJsonSchema());
     }
 
     @NonNull
@@ -133,39 +160,55 @@ public class HeartbeatWorker extends BaseTaskWorker {
     }
 
     /**
-     * Check if the heartbeat result contains the HEARTBEAT_OK marker.
-     * Uses enhanced detection: checks start of response, end of response,
-     * and anywhere in the content.
+     * Check if the heartbeat result indicates a healthy system.
+     * First tries to parse as Structured Output (HeartbeatResponse),
+     * then falls back to legacy {"HEARTBEAT_OK": bool} regex detection.
      *
      * @param content The heartbeat result content
-     * @return true if HEARTBEAT_OK marker is found
+     * @return true if the system is healthy
      */
     private boolean checkHeartbeatOk(String content) {
         if (content == null || content.isEmpty()) {
+            Log.d(TAG, "Heartbeat content is null or empty - assuming unhealthy");
             return false;
         }
 
-        String trimmed = content.trim();
-
-        // Check if content starts with HEARTBEAT_OK
-        if (trimmed.startsWith(HEARTBEAT_OK_MARKER)) {
-            Log.d(TAG, "HEARTBEAT_OK detected at start of response");
-            return true;
+        // Handle refusal
+        if (content.startsWith("[REFUSAL]")) {
+            Log.w(TAG, "Model refused to respond: " + content);
+            return false;
         }
 
-        // Check if content ends with HEARTBEAT_OK
-        if (trimmed.endsWith(HEARTBEAT_OK_MARKER)) {
-            Log.d(TAG, "HEARTBEAT_OK detected at end of response");
-            return true;
+        // Try parsing as Structured Output first
+        try {
+            HeartbeatResponse response = HeartbeatResponse.fromJson(content);
+            Log.d(TAG, "Parsed structured heartbeat: healthy=" + response.isHealthy() +
+                    ", summary=" + response.getSummary() +
+                    ", issues=" + response.getIssues().size());
+            return response.isHealthy();
+        } catch (Exception e) {
+            Log.d(TAG, "Not a structured heartbeat, trying regex: " + e.getMessage());
         }
 
-        // Check anywhere in content
-        if (content.contains(HEARTBEAT_OK_MARKER)) {
-            Log.d(TAG, "HEARTBEAT_OK detected in response");
-            return true;
+        // Fallback to legacy regex detection
+        Matcher matcher = HEARTBEAT_JSON_PATTERN.matcher(content);
+        if (matcher.find()) {
+            String jsonStr = matcher.group(0);
+            Log.d(TAG, "Found legacy heartbeat JSON: " + jsonStr);
+
+            try {
+                JsonObject json = JsonParser.parseString(jsonStr).getAsJsonObject();
+                if (json.has("HEARTBEAT_OK")) {
+                    boolean isOk = json.get("HEARTBEAT_OK").getAsBoolean();
+                    Log.d(TAG, "HEARTBEAT_OK value: " + isOk);
+                    return isOk;
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to parse legacy heartbeat JSON", e);
+            }
         }
 
-        Log.d(TAG, "HEARTBEAT_OK not found - issues may need attention");
+        Log.d(TAG, "No heartbeat marker found - assuming issues need attention");
         return false;
     }
 
@@ -176,7 +219,11 @@ public class HeartbeatWorker extends BaseTaskWorker {
         return "Perform a system health check. Review the current state of the workspace, " +
                "check for any pending tasks or incomplete work, and verify that all systems " +
                "are functioning correctly. Report your findings.\n\n" +
-               "If everything is healthy and ready, respond with ONLY: HEARTBEAT_OK";
+               "Respond with a JSON object containing:\n" +
+               "- \"healthy\": true if everything is healthy, false otherwise\n" +
+               "- \"summary\": A brief summary of the system status\n" +
+               "- \"issues\": An array of any issues found, each with category, description, and severity (low/medium/high)\n\n" +
+               "If everything is healthy, set healthy to true and list no issues.";
     }
 
     @Override

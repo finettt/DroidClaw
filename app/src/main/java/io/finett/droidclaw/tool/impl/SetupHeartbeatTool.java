@@ -212,6 +212,10 @@ public class SetupHeartbeatTool implements Tool {
                 "Provide a concise status report:\n" +
                 "- Overall health: OK or Issues Detected\n" +
                 "- Key metrics or concerns\n" +
-                "- Recommended actions (if any)";
+                "- Recommended actions (if any)\n\n" +
+                "Respond with a JSON object containing:\n" +
+                "- \"healthy\": true if all normal, false if issues detected\n" +
+                "- \"summary\": Brief summary of findings\n" +
+                "- \"issues\": Array of issues (empty if all normal), each with category, description, and severity (low/medium/high)";
     }
 }

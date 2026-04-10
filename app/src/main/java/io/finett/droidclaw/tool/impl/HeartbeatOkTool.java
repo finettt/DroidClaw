@@ -11,7 +11,7 @@ import io.finett.droidclaw.tool.ToolResult;
  * When the agent determines all systems are normal, it can call this tool
  * to explicitly set the HEARTBEAT_OK status.
  *
- * This provides an alternative to including HEARTBEAT_OK in the text response.
+ * This provides an alternative to including {"HEARTBEAT_OK": true} in the text response.
  */
 public class HeartbeatOkTool implements Tool {
 
@@ -47,6 +47,6 @@ public class HeartbeatOkTool implements Tool {
     public ToolResult execute(JsonObject arguments) {
         // Return success - the HeartbeatWorker will detect this tool result
         // and mark the heartbeat as healthy
-        return ToolResult.success("HEARTBEAT_OK: System health check passed. All systems normal.");
+        return ToolResult.success("{\"HEARTBEAT_OK\": true}");
     }
 }

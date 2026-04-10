@@ -74,7 +74,7 @@ public class WorkspaceManagerHeartbeatTest {
                 "- [ ] Assess pending actions\n\n" +
                 "## Response Guidelines\n\n" +
                 "If **all items are normal**, respond with:\n" +
-                "```\nHEARTBEAT_OK\n```\n";
+                "```json\n{\"HEARTBEAT_OK\": true}\n```\n";
 
         java.nio.file.Files.write(heartbeatFile.toPath(), templateContent.getBytes());
 
@@ -143,7 +143,7 @@ public class WorkspaceManagerHeartbeatTest {
         File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
 
         // 1. Write content
-        String originalContent = "# Test Heartbeat\n\n- [x] Check A\n- [x] Check B\n\nHEARTBEAT_OK";
+        String originalContent = "# Test Heartbeat\n\n- [x] Check A\n- [x] Check B\n\n{\"HEARTBEAT_OK\": true}";
         java.nio.file.Files.write(heartbeatFile.toPath(), originalContent.getBytes());
 
         // 2. Read content
@@ -159,7 +159,7 @@ public class WorkspaceManagerHeartbeatTest {
         String readStr = readContent.toString();
         assertTrue("Should contain title", readStr.contains("Test Heartbeat"));
         assertTrue("Should contain checks", readStr.contains("[x]"));
-        assertTrue("Should contain HEARTBEAT_OK", readStr.contains("HEARTBEAT_OK"));
+        assertTrue("Should contain HEARTBEAT_OK JSON", readStr.contains("\"HEARTBEAT_OK\": true"));
     }
 
     @Test
@@ -173,7 +173,7 @@ public class WorkspaceManagerHeartbeatTest {
         java.nio.file.Files.write(heartbeatFile.toPath(), "# Initial\n".getBytes());
 
         // 2. Modify file
-        String modifiedContent = "# Modified\n\n- [x] All checks passed\n\nHEARTBEAT_OK";
+        String modifiedContent = "# Modified\n\n- [x] All checks passed\n\n{\"HEARTBEAT_OK\": true}";
         java.nio.file.Files.write(heartbeatFile.toPath(), modifiedContent.getBytes());
 
         // 3. Read modified content
@@ -248,7 +248,7 @@ public class WorkspaceManagerHeartbeatTest {
         for (int i = 0; i < 1000; i++) {
             sb.append("- [ ] Check item ").append(i).append("\n");
         }
-        sb.append("\nHEARTBEAT_OK if all normal");
+        sb.append("\n{\"HEARTBEAT_OK\": true} if all normal");
 
         java.nio.file.Files.write(heartbeatFile.toPath(), sb.toString().getBytes());
 

@@ -17,9 +17,17 @@ At the end of your check, **always call the `submit_notification` tool** with:
 - **summary**: Brief description of findings
 - **status**: "success" if all normal, "warning" if minor concerns, "error" if critical issues
 
-If **all items are normal**, also include `HEARTBEAT_OK` in your text response.
+Respond with a JSON object containing:
+- `"healthy"`: `true` if all items are normal, `false` if anything needs attention
+- `"summary"`: A brief summary of the system health status
+- `"issues"`: An array of issues found (empty if all normal), each with:
+  - `"category"`: The area affected (e.g., "workspace", "memory", "tasks")
+  - `"description"`: What needs attention
+  - `"severity"`: "low", "medium", or "high"
 
-If **anything needs attention**, describe what requires review:
+If all items are normal, set `healthy` to `true` with an empty issues array and a brief summary.
+
+If anything needs attention, set `healthy` to `false` and describe each issue:
 - What specific area needs attention
 - Why it matters
 - Suggested next steps

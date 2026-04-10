@@ -171,6 +171,9 @@ public abstract class BaseTaskWorker extends Worker {
 
             AgentLoop agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager);
 
+            // Allow subclasses to customize the agent loop (e.g., set response schema)
+            customizeAgentLoop(agentLoop);
+
             // Prepare conversation with identity context
             List<ChatMessage> contextMessages = loadFreshContext(session);
             agentLoop.setIdentityContext(contextMessages);
@@ -486,6 +489,16 @@ public abstract class BaseTaskWorker extends Worker {
      * Get the task type constant for this worker.
      */
     protected abstract int getTaskType();
+
+    /**
+     * Hook method for subclasses to customize the AgentLoop before execution.
+     * Default implementation does nothing.
+     *
+     * @param agentLoop The AgentLoop instance to customize
+     */
+    protected void customizeAgentLoop(AgentLoop agentLoop) {
+        // No-op by default
+    }
 
     /**
      * Execute the worker's specific task logic.

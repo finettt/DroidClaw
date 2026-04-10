@@ -122,13 +122,44 @@ public class HeartbeatWorkerInstrumentedTest {
     }
 
     @Test
-    public void checkHeartbeatOk_withMarker_returnsTrue() {
-        String content = "System is healthy. All checks passed.\n\nHEARTBEAT_OK";
-        
-        // Test the logic inline (private method in worker)
-        boolean hasMarker = content != null && content.contains("HEARTBEAT_OK");
-        
+    public void checkHeartbeatOk_withStructuredResponse_returnsTrue() {
+        String content = "{\"healthy\":true,\"summary\":\"All systems normal\",\"issues\":[]}";
+
+        // Test structured output parsing
+        io.finett.droidclaw.model.HeartbeatResponse response =
+                io.finett.droidclaw.model.HeartbeatResponse.fromJson(content);
+
+        assertTrue("Should be healthy", response.isHealthy());
+    }
+
+    @Test
+    public void checkHeartbeatOk_withStructuredResponse_returnsFalse() {
+        String content = "{\"healthy\":false,\"summary\":\"Issues found\",\"issues\":[{\"category\":\"workspace\",\"description\":\"Incomplete tasks\",\"severity\":\"low\"}]}";
+
+        io.finett.droidclaw.model.HeartbeatResponse response =
+                io.finett.droidclaw.model.HeartbeatResponse.fromJson(content);
+
+        assertFalse("Should not be healthy", response.isHealthy());
+    }
+
+    @Test
+    public void checkHeartbeatOk_withLegacyMarker_returnsTrue() {
+        String content = "System is healthy. All checks passed.\n\n{\"HEARTBEAT_OK\": true}";
+
+        // Test the legacy detection logic
+        boolean hasMarker = content != null && content.contains("HEARTBEAT_OK") && content.contains("true");
+
         assertTrue("Should detect HEARTBEAT_OK marker", hasMarker);
+    }
+
+    @Test
+    public void checkHeartbeatOk_withRefusal_returnsFalse() {
+        String content = "[REFUSAL] I'm sorry, I cannot assist with that request.";
+
+        // Refusal should be treated as unhealthy
+        boolean isHealthy = !content.startsWith("[REFUSAL]");
+
+        assertFalse("Should return false for refusal", isHealthy);
     }
 
     @Test
@@ -208,15 +239,20 @@ public class HeartbeatWorkerInstrumentedTest {
     // ==================== DEFAULT PROMPT TESTS ====================
 
     @Test
-    public void getDefaultHeartbeatPrompt_containsRequiredMarker() {
-        // This tests that the default prompt mentions HEARTBEAT_OK
+    public void getDefaultHeartbeatPrompt_containsRequiredFields() {
         String defaultPrompt = "Perform a system health check. Review the current state of the workspace, " +
                "check for any pending tasks or incomplete work, and verify that all systems " +
                "are functioning correctly. Report your findings.\n\n" +
-               "If everything is healthy and ready, include the marker HEARTBEAT_OK in your response.";
+               "Respond with a JSON object containing:\n" +
+               "- \"healthy\": true if everything is healthy, false otherwise\n" +
+               "- \"summary\": A brief summary of the system status\n" +
+               "- \"issues\": An array of any issues found, each with category, description, and severity (low/medium/high)\n\n" +
+               "If everything is healthy, set healthy to true and list no issues.";
 
-        assertTrue("Default prompt should mention HEARTBEAT_OK", defaultPrompt.contains("HEARTBEAT_OK"));
-        assertTrue("Default prompt should mention system health", defaultPrompt.toLowerCase().contains("health"));
+        assertTrue("Default prompt should mention healthy", defaultPrompt.contains("healthy"));
+        assertTrue("Default prompt should mention summary", defaultPrompt.contains("summary"));
+        assertTrue("Default prompt should mention issues", defaultPrompt.contains("issues"));
+        assertTrue("Default prompt should mention severity", defaultPrompt.contains("severity"));
     }
 
     // ==================== WORKER RESULT TESTS ====================
