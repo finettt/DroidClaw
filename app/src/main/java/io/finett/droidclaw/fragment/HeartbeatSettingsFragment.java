@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
@@ -135,14 +136,14 @@ public class HeartbeatSettingsFragment extends Fragment {
             String healthy = lastResult.getMetadataValue("healthy");
             if ("true".equals(healthy)) {
                 textLastStatus.setText("✓ System Healthy");
-                textLastStatus.setTextColor(getColor(android.R.color.holo_green_dark));
+                textLastStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark));
             } else {
                 textLastStatus.setText("⚠ Issues Detected");
-                textLastStatus.setTextColor(getColor(android.R.color.holo_orange_dark));
+                textLastStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_dark));
             }
         } else {
             textLastStatus.setText(R.string.heartbeat_no_data);
-            textLastStatus.setTextColor(getColor(android.R.color.darker_gray));
+            textLastStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray));
         }
     }
 

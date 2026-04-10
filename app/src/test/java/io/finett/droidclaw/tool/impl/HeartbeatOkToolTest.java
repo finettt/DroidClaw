@@ -43,13 +43,13 @@ public class HeartbeatOkToolTest {
     @Test
     public void getDefinition_hasCorrectName() {
         ToolDefinition definition = heartbeatOkTool.getDefinition();
-        assertEquals("heartbeat_ok", definition.getName());
+        assertEquals("heartbeat_ok", definition.getFunction().getName());
     }
 
     @Test
     public void getDefinition_hasDescription() {
         ToolDefinition definition = heartbeatOkTool.getDefinition();
-        String description = definition.getDescription();
+        String description = definition.getFunction().getDescription();
 
         assertNotNull("Description should not be null", description);
         assertFalse("Description should not be empty", description.isEmpty());
@@ -60,11 +60,9 @@ public class HeartbeatOkToolTest {
     @Test
     public void getDefinition_hasNoParameters() {
         ToolDefinition definition = heartbeatOkTool.getDefinition();
-        // The tool should have no required parameters
-        JsonObject parameters = definition.getParameters();
-        // Parameters can be null for tools with no arguments
-        assertTrue("Parameters should be null or empty for heartbeat_ok",
-                parameters == null || parameters.size() == 0);
+        // The tool should have no required parameters (parameters is null for no-arg tools)
+        JsonObject parameters = definition.getFunction().getParameters();
+        assertTrue("Parameters should be null for heartbeat_ok", parameters == null);
     }
 
     // ==================== TOOL EXECUTION TESTS ====================

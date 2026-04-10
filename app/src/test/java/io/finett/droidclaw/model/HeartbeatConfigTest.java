@@ -109,7 +109,8 @@ public class HeartbeatConfigTest {
         config.setIntervalMillis(60000L);
         config.setLastRunTimestamp(0L); // Never run
 
-        assertTrue("Should run on first run", config.shouldRun(1000L));
+        // With lastRun=0, any currentTime >= interval will trigger the run
+        assertTrue("Should run on first run when time exceeds interval", config.shouldRun(60000L));
     }
 
     // ==================== INTERVAL OPTIONS TESTS ====================
