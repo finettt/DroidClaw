@@ -257,8 +257,17 @@ public class TaskRepository {
                 job.setPrompt(jsonObject.optString("prompt", ""));
                 job.setSchedule(jsonObject.optString("schedule", ""));
                 job.setEnabled(jsonObject.optBoolean("enabled", false));
+                job.setPaused(jsonObject.optBoolean("paused", false));
                 job.setLastRunTimestamp(jsonObject.optLong("lastRunTimestamp", 0));
+                job.setLastSuccessTimestamp(jsonObject.optLong("lastSuccessTimestamp", 0));
+                job.setCreatedAt(jsonObject.optLong("createdAt", System.currentTimeMillis()));
+                job.setRetryCount(jsonObject.optInt("retryCount", 0));
+                job.setMaxRetries(jsonObject.optInt("maxRetries", 3));
+                job.setLastError(jsonObject.optString("lastError", ""));
                 job.setModelReference(jsonObject.optString("modelReference", ""));
+                job.setSuccessCount(jsonObject.optInt("successCount", 0));
+                job.setFailureCount(jsonObject.optInt("failureCount", 0));
+                job.setTotalExecutionTime(jsonObject.optLong("totalExecutionTime", 0));
 
                 jobs.add(job);
             }
@@ -280,8 +289,17 @@ public class TaskRepository {
                 jsonObject.put("prompt", job.getPrompt());
                 jsonObject.put("schedule", job.getSchedule());
                 jsonObject.put("enabled", job.isEnabled());
+                jsonObject.put("paused", job.isPaused());
                 jsonObject.put("lastRunTimestamp", job.getLastRunTimestamp());
+                jsonObject.put("lastSuccessTimestamp", job.getLastSuccessTimestamp());
+                jsonObject.put("createdAt", job.getCreatedAt());
+                jsonObject.put("retryCount", job.getRetryCount());
+                jsonObject.put("maxRetries", job.getMaxRetries());
+                jsonObject.put("lastError", job.getLastError() != null ? job.getLastError() : "");
                 jsonObject.put("modelReference", job.getModelReference() != null ? job.getModelReference() : "");
+                jsonObject.put("successCount", job.getSuccessCount());
+                jsonObject.put("failureCount", job.getFailureCount());
+                jsonObject.put("totalExecutionTime", job.getTotalExecutionTime());
 
                 jsonArray.put(jsonObject);
             }

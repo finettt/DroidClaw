@@ -30,6 +30,15 @@ public class TaskResult implements Serializable {
         this.metadata = new HashMap<>();
     }
 
+    /**
+     * Check if this result indicates success.
+     */
+    public boolean isSuccess() {
+        if (metadata == null) return false;
+        String status = metadata.get("status");
+        return "success".equals(status);
+    }
+
     public String getId() {
         return id;
     }

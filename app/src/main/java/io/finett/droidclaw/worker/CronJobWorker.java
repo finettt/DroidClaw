@@ -10,11 +10,12 @@ import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.model.SessionType;
 import io.finett.droidclaw.model.TaskResult;
+import io.finett.droidclaw.scheduler.CronJobScheduler;
 
 /**
  * Worker that executes cron jobs in the background.
  * Loads the cron job from repository, executes its prompt in an isolated session,
- * and saves the execution record.
+ * and saves the execution record with retry logic.
  */
 public class CronJobWorker extends BaseTaskWorker {
 
@@ -29,7 +30,7 @@ public class CronJobWorker extends BaseTaskWorker {
     public Result doWork() {
         // Get job ID from input data
         String jobId = getInputData().getString("job_id");
-        
+
         if (jobId == null || jobId.isEmpty()) {
             Log.w(TAG, "No job ID provided, skipping");
             return Result.failure();
@@ -45,16 +46,9 @@ public class CronJobWorker extends BaseTaskWorker {
                 return Result.failure();
             }
 
-            // Check if job is enabled
-            if (!job.isEnabled()) {
-                Log.d(TAG, "Cron job is disabled, skipping: " + jobId);
-                return Result.success();
-            }
-
-            // Check if job should run based on schedule
-            long currentTime = System.currentTimeMillis();
-            if (!job.shouldRun(currentTime)) {
-                Log.d(TAG, "Cron job interval not elapsed, skipping: " + jobId);
+            // Check if job is enabled and not paused
+            if (!job.isEnabled() || job.isPaused()) {
+                Log.d(TAG, "Cron job is disabled or paused, skipping: " + jobId);
                 return Result.success();
             }
 
@@ -65,6 +59,8 @@ public class CronJobWorker extends BaseTaskWorker {
                 return Result.failure();
             }
 
+            long startTime = System.currentTimeMillis();
+
             // Create isolated session for this cron job
             ChatSession session = createIsolatedSession(SessionType.HIDDEN_CRON);
             session.setParentTaskId(job.getId());
@@ -72,12 +68,32 @@ public class CronJobWorker extends BaseTaskWorker {
             // Execute the job prompt in sandbox
             TaskResult result = executeWithSandbox(session, prompt);
 
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+
+            // Record success or failure on the job
+            if (result.isSuccess()) {
+                job.recordSuccess(duration);
+                job.setLastRunTimestamp(System.currentTimeMillis());
+            } else {
+                job.recordFailure(result.getContent());
+                job.setLastRunTimestamp(System.currentTimeMillis());
+
+                // Schedule retry if needed
+                if (job.canRetry()) {
+                    Log.d(TAG, "Scheduling retry for job: " + jobId + " (attempt " + job.getRetryCount() + ")");
+                    CronJobScheduler scheduler = new CronJobScheduler(appContext);
+                    scheduler.executeJobNow(jobId);
+                } else {
+                    Log.w(TAG, "Job exceeded max retries: " + jobId);
+                }
+            }
+
+            // Update job in repository
+            taskRepository.updateCronJob(job);
+
             // Save task result
             taskRepository.saveTaskResult(result);
-
-            // Update job's last run timestamp
-            job.setLastRunTimestamp(currentTime);
-            taskRepository.updateCronJob(job);
 
             // Generate notification content
             String notificationContent = generateNotificationContent(result);
@@ -88,6 +104,19 @@ public class CronJobWorker extends BaseTaskWorker {
 
         } catch (Exception e) {
             Log.e(TAG, "Cron job worker failed: " + jobId, e);
+
+            // Try to update job with error
+            try {
+                CronJob job = taskRepository.getCronJob(jobId);
+                if (job != null) {
+                    job.recordFailure(e.getMessage());
+                    job.setLastRunTimestamp(System.currentTimeMillis());
+                    taskRepository.updateCronJob(job);
+                }
+            } catch (Exception ex) {
+                Log.e(TAG, "Failed to update job error state", ex);
+            }
+
             return Result.failure();
         }
     }
