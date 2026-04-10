@@ -44,6 +44,7 @@ public class HeartbeatSettingsFragment extends Fragment {
     private AutoCompleteTextView dropdownInterval;
     private TextView textLastRun;
     private TextView textLastStatus;
+    private TextView textStalenessStatus;
     private MaterialButton buttonRunNow;
     private MaterialButton buttonEditHeartbeat;
 
@@ -97,6 +98,7 @@ public class HeartbeatSettingsFragment extends Fragment {
         dropdownInterval = view.findViewById(R.id.dropdown_interval);
         textLastRun = view.findViewById(R.id.text_last_run);
         textLastStatus = view.findViewById(R.id.text_last_status);
+        textStalenessStatus = view.findViewById(R.id.text_staleness_status);
         buttonRunNow = view.findViewById(R.id.button_run_now);
         buttonEditHeartbeat = view.findViewById(R.id.button_edit_heartbeat);
     }
@@ -136,6 +138,7 @@ public class HeartbeatSettingsFragment extends Fragment {
 
         // Load last status
         loadLastStatus();
+        loadStalenessStatus();
     }
 
     private void loadLastStatus() {
@@ -154,6 +157,41 @@ public class HeartbeatSettingsFragment extends Fragment {
             textLastStatus.setText(R.string.heartbeat_no_data);
             textLastStatus.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.darker_gray));
         }
+    }
+
+    private void loadStalenessStatus() {
+        HeartbeatConfig.StalenessLevel level = config.getStalenessLevel(System.currentTimeMillis());
+        double ratio = config.getStalenessRatio(System.currentTimeMillis());
+
+        String stalenessText;
+        int colorRes;
+        switch (level) {
+            case FRESH:
+                if (config.getLastRunTimestamp() == 0) {
+                    stalenessText = "Monitoring system ready — never run";
+                } else {
+                    stalenessText = "✓ Monitoring system active";
+                }
+                colorRes = android.R.color.holo_green_dark;
+                break;
+            case SLIGHTLY_LATE:
+                stalenessText = String.format(Locale.US,
+                        "⚠ Slightly late (%.1fx interval)", ratio);
+                colorRes = android.R.color.holo_orange_dark;
+                break;
+            case DEAD:
+                stalenessText = String.format(Locale.US,
+                        "✕ Monitoring system may be broken (%.1fx interval overdue)", ratio);
+                colorRes = android.R.color.holo_red_dark;
+                break;
+            default:
+                // Should never happen since enum has only 3 values
+                stalenessText = "Unknown status";
+                colorRes = android.R.color.darker_gray;
+                break;
+        }
+        textStalenessStatus.setText(stalenessText);
+        textStalenessStatus.setTextColor(ContextCompat.getColor(requireContext(), colorRes));
     }
 
     private String getIntervalLabel(long interval) {

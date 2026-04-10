@@ -39,12 +39,14 @@ public class NotificationManager {
     private static final int NOTIFICATION_ID_ERROR = 1002;
     private static final int NOTIFICATION_ID_CRON_JOB = 1003;
     private static final int NOTIFICATION_ID_MANUAL_TASK = 1004;
+    private static final int NOTIFICATION_ID_WARNING = 1005;
 
     // PendingIntent request codes (must be unique for each pending intent)
     private static final int PENDING_INTENT_HEARTBEAT = 2001;
     private static final int PENDING_INTENT_ERROR = 2002;
     private static final int PENDING_INTENT_CRON_JOB = 2003;
     private static final int PENDING_INTENT_MANUAL_TASK = 2004;
+    private static final int PENDING_INTENT_WARNING = 2005;
 
     private final Context context;
     private final android.app.NotificationManager systemNotificationManager;
@@ -295,6 +297,33 @@ public class NotificationManager {
     }
 
     /**
+     * Show a warning notification for non-critical issues.
+     * Uses the task results channel with elevated priority.
+     */
+    public void sendWarningNotification(String title, String warningMessage) {
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context,
+                PENDING_INTENT_WARNING,
+                intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_TASK_RESULTS)
+                .setSmallIcon(R.drawable.ic_notification_heartbeat)
+                .setContentTitle(title)
+                .setContentText(truncate(warningMessage, 100))
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(warningMessage))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true);
+
+        systemNotificationManager.notify(NOTIFICATION_ID_WARNING, builder.build());
+    }
+
+    /**
      * Show an error notification for failed tasks (high priority).
      */
     public void showErrorNotification(String title, String errorMessage) {
@@ -340,6 +369,7 @@ public class NotificationManager {
         systemNotificationManager.cancel(NOTIFICATION_ID_ERROR);
         systemNotificationManager.cancel(NOTIFICATION_ID_CRON_JOB);
         systemNotificationManager.cancel(NOTIFICATION_ID_MANUAL_TASK);
+        systemNotificationManager.cancel(NOTIFICATION_ID_WARNING);
     }
 
     /**

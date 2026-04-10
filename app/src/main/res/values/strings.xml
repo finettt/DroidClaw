@@ -161,6 +161,7 @@
     <string name="heartbeat_status">Status</string>
     <string name="heartbeat_last_run">Last Run</string>
     <string name="heartbeat_last_status">Last Status</string>
+    <string name="heartbeat_staleness">Monitoring System Status</string>
     <string name="heartbeat_never">Never</string>
     <string name="heartbeat_no_data">No data available</string>
     <string name="heartbeat_actions">Actions</string>

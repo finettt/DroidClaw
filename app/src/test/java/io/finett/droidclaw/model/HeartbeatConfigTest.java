@@ -7,6 +7,8 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.finett.droidclaw.model.HeartbeatConfig.StalenessLevel;
+
 /**
  * Unit tests for HeartbeatConfig model.
  */
@@ -159,5 +161,141 @@ public class HeartbeatConfigTest {
         // They should be different instances
         config1.setEnabled(true);
         assertFalse("Should be independent instances", config2.isEnabled());
+    }
+
+    // ==================== STALENESS RATIO TESTS ====================
+
+    @Test
+    public void getStalenessRatio_zeroWhenNeverRun() {
+        config.setLastRunTimestamp(0L);
+        config.setIntervalMillis(30 * 60 * 1000L);
+
+        assertEquals("Should be 0 when never run", 0.0, config.getStalenessRatio(60000L), 0.001);
+    }
+
+    @Test
+    public void getStalenessRatio_oneIntervalExactlyOnTime() {
+        config.setIntervalMillis(30 * 60 * 1000L); // 30 min
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        // 30 min after last run = exactly 1.0 ratio
+        assertEquals("Should be 1.0 at exactly one interval",
+                1.0, config.getStalenessRatio(baseTime + 30 * 60 * 1000L), 0.001);
+    }
+
+    @Test
+    public void getStalenessRatio_halfIntervalEarly() {
+        config.setIntervalMillis(30 * 60 * 1000L); // 30 min
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        // 15 min after last run = 0.5 ratio
+        assertEquals("Should be 0.5 at half interval",
+                0.5, config.getStalenessRatio(baseTime + 15 * 60 * 1000L), 0.001);
+    }
+
+    @Test
+    public void getStalenessRatio_twoIntervalsLate() {
+        config.setIntervalMillis(30 * 60 * 1000L); // 30 min
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        // 60 min after last run = 2.0 ratio
+        assertEquals("Should be 2.0 after two intervals",
+                2.0, config.getStalenessRatio(baseTime + 60 * 60 * 1000L), 0.001);
+    }
+
+    @Test
+    public void getStalenessRatio_fourIntervalsVeryLate() {
+        config.setIntervalMillis(30 * 60 * 1000L); // 30 min
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        // 120 min after last run = 4.0 ratio
+        assertEquals("Should be 4.0 after four intervals",
+                4.0, config.getStalenessRatio(baseTime + 120 * 60 * 1000L), 0.001);
+    }
+
+    @Test
+    public void getStalenessRatio_handlesArbitraryLastRun() {
+        config.setIntervalMillis(30 * 60 * 1000L); // 30 min
+        long lastRun = 1000000L;
+        config.setLastRunTimestamp(lastRun);
+
+        // 30 min after last run
+        assertEquals("Should be 1.0 regardless of base timestamp",
+                1.0, config.getStalenessRatio(lastRun + 30 * 60 * 1000L), 0.001);
+    }
+
+    // ==================== STALENESS LEVEL TESTS ====================
+
+    @Test
+    public void getStalenessLevel_freshWhenNeverRun() {
+        config.setLastRunTimestamp(0L);
+        assertEquals("Should be FRESH when never run",
+                StalenessLevel.FRESH, config.getStalenessLevel(System.currentTimeMillis()));
+    }
+
+    @Test
+    public void getStalenessLevel_freshWhenWithinInterval() {
+        config.setIntervalMillis(30 * 60 * 1000L);
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        assertEquals("Should be FRESH at half interval",
+                StalenessLevel.FRESH, config.getStalenessLevel(baseTime + 15 * 60 * 1000L));
+    }
+
+    @Test
+    public void getStalenessLevel_slightlyLateAtOneInterval() {
+        config.setIntervalMillis(30 * 60 * 1000L);
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        assertEquals("Should be SLIGHTLY_LATE at exactly 1.0",
+                StalenessLevel.SLIGHTLY_LATE, config.getStalenessLevel(baseTime + 30 * 60 * 1000L));
+    }
+
+    @Test
+    public void getStalenessLevel_slightlyLateAtTwoIntervals() {
+        config.setIntervalMillis(30 * 60 * 1000L);
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        assertEquals("Should be SLIGHTLY_LATE at 2.0",
+                StalenessLevel.SLIGHTLY_LATE, config.getStalenessLevel(baseTime + 60 * 60 * 1000L));
+    }
+
+    @Test
+    public void getStalenessLevel_deadAtFourIntervals() {
+        config.setIntervalMillis(30 * 60 * 1000L);
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        assertEquals("Should be DEAD at 4.0",
+                StalenessLevel.DEAD, config.getStalenessLevel(baseTime + 120 * 60 * 1000L));
+    }
+
+    @Test
+    public void getStalenessLevel_deadAtExactlyThreeIntervals() {
+        config.setIntervalMillis(30 * 60 * 1000L);
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        // At exactly 3.0, it's the boundary. We use <= 3.0 for SLIGHTLY_LATE.
+        assertEquals("Should be SLIGHTLY_LATE at exactly 3.0",
+                StalenessLevel.SLIGHTLY_LATE, config.getStalenessLevel(baseTime + 90 * 60 * 1000L));
+    }
+
+    @Test
+    public void getStalenessLevel_deadJustOverThreeIntervals() {
+        config.setIntervalMillis(30 * 60 * 1000L);
+        long baseTime = 1000000L;
+        config.setLastRunTimestamp(baseTime);
+
+        // 91 min / 30 min = 3.033...
+        assertEquals("Should be DEAD just over 3.0",
+                StalenessLevel.DEAD, config.getStalenessLevel(baseTime + 91 * 60 * 1000L));
     }
 }

@@ -77,8 +77,27 @@ public class HeartbeatWorker extends BaseTaskWorker {
                 return Result.success();
             }
 
-            // Check if we should run based on interval
+            // Check staleness of the heartbeat system itself
             long currentTime = System.currentTimeMillis();
+            HeartbeatConfig.StalenessLevel staleness = config.getStalenessLevel(currentTime);
+            double stalenessRatio = config.getStalenessRatio(currentTime);
+
+            if (staleness == HeartbeatConfig.StalenessLevel.DEAD) {
+                String msg = String.format(
+                        "Heartbeat system has been non-functional for %.1f intervals. "
+                        + "The monitoring system itself may be broken.",
+                        stalenessRatio);
+                Log.e(TAG, msg);
+                notificationManager.showErrorNotification("Heartbeat System Dead", msg);
+            } else if (staleness == HeartbeatConfig.StalenessLevel.SLIGHTLY_LATE) {
+                String msg = String.format(
+                        "Heartbeat is running late (%.1f intervals since last run).",
+                        stalenessRatio);
+                Log.w(TAG, msg);
+                notificationManager.sendWarningNotification("Heartbeat Delayed", msg);
+            }
+
+            // Check if we should run based on interval
             if (!config.shouldRun(currentTime)) {
                 Log.d(TAG, "Heartbeat interval not elapsed, skipping");
                 return Result.success();
@@ -97,8 +116,9 @@ public class HeartbeatWorker extends BaseTaskWorker {
             // Execute heartbeat prompt in sandbox
             TaskResult result = executeWithSandbox(session, heartbeatPrompt);
 
-            // Save task result
-            taskRepository.saveTaskResult(result);
+            // Save task result with staleness metadata
+            result.putMetadata("staleness_ratio", String.valueOf(stalenessRatio));
+            result.putMetadata("staleness_level", staleness.name());
 
             // Check for HEARTBEAT_OK marker with enhanced detection
             boolean isHealthy = checkHeartbeatOk(result.getContent());
