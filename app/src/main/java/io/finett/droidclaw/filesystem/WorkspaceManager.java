@@ -21,7 +21,8 @@ public class WorkspaceManager {
         "web_search",
         "code_analysis",
         "data_processing",
-        "task_automation"
+        "task_automation",
+        "document_editor"
     };
     private static final String WORKSPACE_DIR = "workspace";
     

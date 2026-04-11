@@ -18,7 +18,7 @@ android {
 
     defaultConfig {
         applicationId = "io.finett.droidclaw"
-        minSdk = 22
+        minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -61,10 +61,12 @@ chaquopy {
 
         pip {
             // Common packages installed at build time
-            // Note: lxml removed due to native dependency requirements
+            install("lxml==5.3.0")
             install("requests")
             install("beautifulsoup4")
             install("python-dateutil")
+            install("openpyxl")
+            install("python-docx")
         }
     }
 }
