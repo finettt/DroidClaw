@@ -109,12 +109,34 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           script: |
+            # Wait for emulator to fully boot and stabilize
+            adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'
+            
+            # Dismiss system dialogs and keyguard
             adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS
-            adb shell locksettings set-disabled true || true
-            adb shell input keyevent 82
+            adb shell wm dismiss-keyguard 2>/dev/null || true
+            
+            # Unlock screen (KEYCODE_MENU works more reliably than 82 on newer APIs)
+            adb shell input keyevent 26  # Power button to wake
+            sleep 2
+            adb shell input keyevent 82  # Menu to unlock
+            
+            # Keep screen on and disable lock settings
             adb shell svc power stayon true
-            sleep 5
-            ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} --stacktrace
+            adb shell locksettings set-disabled true 2>/dev/null || true
+            
+            # Wait for UI to settle
+            sleep 8
+            
+            # Verify focus before running tests (debug helper)
+            adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" || true
+            
+            # Run tests with additional JVM args for Espresso timeout
+            ./gradlew connectedAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} \
+              -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} \
+              -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g" \
+              --stacktrace --no-daemon
         timeout-minutes: 25
 
       - name: Upload test results
