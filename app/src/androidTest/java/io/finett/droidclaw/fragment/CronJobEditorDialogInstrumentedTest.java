@@ -3,6 +3,7 @@ package io.finett.droidclaw.fragment;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 import android.view.View;
 import android.widget.RadioButton;
@@ -23,6 +24,7 @@ import org.junit.runner.RunWith;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.CronJob;
+import io.finett.droidclaw.scheduler.CronJobScheduler;
 import io.finett.droidclaw.util.TestThemeHelper;
 
 /**

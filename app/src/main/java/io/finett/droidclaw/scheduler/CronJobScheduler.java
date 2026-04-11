@@ -319,7 +319,7 @@ public class CronJobScheduler {
     /**
      * Format time string from "HH:MM" to readable format.
      */
-    private static String formatTime(String timeStr) {
+    public static String formatTime(String timeStr) {
         try {
             String[] parts = timeStr.split(":");
             int hour = Integer.parseInt(parts[0]);
@@ -338,7 +338,7 @@ public class CronJobScheduler {
     /**
      * Capitalize first letter of string.
      */
-    private static String capitalizeFirst(String str) {
+    static String capitalizeFirst(String str) {
         if (str == null || str.isEmpty()) return str;
         return str.substring(0, 1).toUpperCase(Locale.ROOT) + str.substring(1);
     }
@@ -346,7 +346,7 @@ public class CronJobScheduler {
     /**
      * Get unique work name for a job.
      */
-    private static String getWorkName(String jobId) {
+    static String getWorkName(String jobId) {
         return CRON_WORK_PREFIX + jobId;
     }
 

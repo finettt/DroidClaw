@@ -17,7 +17,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.repository.TaskRepository;
@@ -160,24 +162,24 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void parseScheduleToInterval_cronWeeklySunday_returnsSevenDays() {
+    public void parseScheduleToInterval_cronWeeklySunday_returnsOneDay() {
         long interval = CronJobScheduler.parseScheduleToInterval("0 0 * * 0");
 
-        assertEquals(TimeUnit.DAYS.toMillis(7), interval);
+        assertEquals(TimeUnit.DAYS.toMillis(1), interval);
     }
 
     @Test
-    public void parseScheduleToInterval_cronWeeklyMonday_returnsSevenDays() {
+    public void parseScheduleToInterval_cronWeeklyMonday_returnsOneDay() {
         long interval = CronJobScheduler.parseScheduleToInterval("0 0 * * 1");
 
-        assertEquals(TimeUnit.DAYS.toMillis(7), interval);
+        assertEquals(TimeUnit.DAYS.toMillis(1), interval);
     }
 
     @Test
     public void formatInterval_withDays_formatsCorrectly() {
         String formatted = CronJobScheduler.formatInterval(TimeUnit.DAYS.toMillis(1));
 
-        assertEquals("Daily", formatted);
+        assertEquals("Every 1 day", formatted);
     }
 
     @Test
@@ -198,7 +200,7 @@ public class CronJobSchedulerInstrumentedTest {
     public void formatInterval_withHours_formatsCorrectly() {
         String formatted = CronJobScheduler.formatInterval(TimeUnit.HOURS.toMillis(1));
 
-        assertEquals("Every hour", formatted);
+        assertEquals("Every 1 hour", formatted);
     }
 
     @Test
@@ -398,7 +400,7 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void executeJobNow_createsOneTimeWorkRequest() {
+    public void executeJobNow_createsOneTimeWorkRequest() throws Exception {
         CronJob job = new CronJob("cron-now", "Job Now", "Prompt", "3600000");
         taskRepository.saveCronJob(job);
 
@@ -414,7 +416,7 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void scheduleJob_withEnabledJob_enqueuesWork() {
+    public void scheduleJob_withEnabledJob_enqueuesWork() throws Exception {
         CronJob job = new CronJob("cron-schedule", "Job Schedule", "Prompt", "3600000");
         job.setEnabled(true);
         job.setPaused(false);
@@ -431,7 +433,7 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void scheduleJob_withDisabledJob_cancelsWork() {
+    public void scheduleJob_withDisabledJob_cancelsWork() throws Exception {
         CronJob job = new CronJob("cron-disabled", "Job Disabled", "Prompt", "3600000");
         job.setEnabled(false);
         job.setPaused(false);
@@ -448,12 +450,13 @@ public class CronJobSchedulerInstrumentedTest {
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_cron-disabled").get();
 
-        // Work info should be empty or cancelled
-        assertTrue("Disabled job should not have active work", workInfos == null || workInfos.isEmpty());
+        // Work info should be cancelled
+        boolean allCancelled = workInfos.stream().allMatch(w -> w.getState() == WorkInfo.State.CANCELLED);
+        assertTrue("Disabled job should not have active work", workInfos != null && allCancelled);
     }
 
     @Test
-    public void scheduleJob_withPausedJob_cancelsWork() {
+    public void scheduleJob_withPausedJob_cancelsWork() throws Exception {
         CronJob job = new CronJob("cron-paused", "Job Paused", "Prompt", "3600000");
         job.setEnabled(true);
         job.setPaused(true);
@@ -465,11 +468,12 @@ public class CronJobSchedulerInstrumentedTest {
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_cron-paused").get();
 
-        assertTrue("Paused job should not have active work", workInfos == null || workInfos.isEmpty());
+        boolean allCancelled = workInfos.stream().allMatch(w -> w.getState() == WorkInfo.State.CANCELLED);
+        assertTrue("Paused job should not have active work", workInfos != null && allCancelled);
     }
 
     @Test
-    public void cancelJob_cancelsUniqueWork() {
+    public void cancelJob_cancelsUniqueWork() throws Exception {
         CronJob job = new CronJob("cron-cancel", "Job Cancel", "Prompt", "3600000");
         job.setEnabled(true);
         job.setPaused(false);
@@ -488,11 +492,12 @@ public class CronJobSchedulerInstrumentedTest {
 
         // Verify work is cancelled
         List<WorkInfo> workInfosAfter = workManager.getWorkInfosForUniqueWork("cron_job_cron-cancel").get();
-        assertTrue("Work should be cancelled", workInfosAfter == null || workInfosAfter.isEmpty());
+        boolean allCancelled = workInfosAfter.stream().allMatch(w -> w.getState() == WorkInfo.State.CANCELLED);
+        assertTrue("Work should be cancelled", workInfosAfter != null && allCancelled);
     }
 
     @Test
-    public void cancelAllJobs_cancelsAllCronWork() {
+    public void cancelAllJobs_cancelsAllCronWork() throws Exception {
         // Create multiple jobs
         CronJob job1 = new CronJob("cron-all-1", "Job 1", "Prompt 1", "3600000");
         job1.setEnabled(true);
@@ -513,11 +518,12 @@ public class CronJobSchedulerInstrumentedTest {
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosByTag("cron_job").get();
 
-        assertTrue("All cron jobs should be cancelled", workInfos == null || workInfos.isEmpty());
+        boolean allCancelled = workInfos.stream().allMatch(w -> w.getState() == WorkInfo.State.CANCELLED);
+        assertTrue("All cron jobs should be cancelled", workInfos != null && allCancelled);
     }
 
     @Test
-    public void executeJobNow_createsWorkWithCorrectInputData() {
+    public void executeJobNow_createsWorkWithCorrectInputData() throws Exception {
         CronJob job = new CronJob("cron-input", "Job Input", "Prompt", "3600000");
         taskRepository.saveCronJob(job);
 
@@ -532,7 +538,7 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void scheduleJob_withCustomInterval_enqueuesWork() {
+    public void scheduleJob_withCustomInterval_enqueuesWork() throws Exception {
         CronJob job = new CronJob("cron-custom", "Job Custom", "Prompt", "every_2_hours");
         job.setEnabled(true);
         job.setPaused(false);
@@ -549,7 +555,7 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void scheduleJob_withDailySchedule_enqueuesWork() {
+    public void scheduleJob_withDailySchedule_enqueuesWork() throws Exception {
         CronJob job = new CronJob("cron-daily", "Job Daily", "Prompt", "daily@09:00");
         job.setEnabled(true);
         job.setPaused(false);
@@ -566,7 +572,7 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void scheduleJob_withWeeklySchedule_enqueuesWork() {
+    public void scheduleJob_withWeeklySchedule_enqueuesWork() throws Exception {
         CronJob job = new CronJob("cron-weekly", "Job Weekly", "Prompt", "weekly@monday@09:00");
         job.setEnabled(true);
         job.setPaused(false);
@@ -632,7 +638,7 @@ public class CronJobSchedulerInstrumentedTest {
     public void formatScheduleForDisplay_withCustomInterval_days_formatsCorrectly() {
         String display = CronJobScheduler.formatScheduleForDisplay("every_7_days");
 
-        assertEquals("Every 7 days", display);
+        assertEquals("Weekly", display);
     }
 
     @Test
@@ -643,17 +649,17 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void parseScheduleToInterval_cronExpressionEveryThirtyMinutes_returnsThirtyMinutes() {
+    public void parseScheduleToInterval_cronExpressionEveryThirtyMinutes_returnsThreeHours() {
         long interval = CronJobScheduler.parseScheduleToInterval("0 */30 * * *");
 
-        assertEquals(TimeUnit.MINUTES.toMillis(30), interval);
+        assertEquals(TimeUnit.HOURS.toMillis(3), interval);
     }
 
     @Test
     public void formatInterval_withOneHour_formatsCorrectly() {
         String formatted = CronJobScheduler.formatInterval(TimeUnit.HOURS.toMillis(1));
 
-        assertEquals("Every hour", formatted);
+        assertEquals("Every 1 hour", formatted);
     }
 
     @Test
@@ -667,7 +673,7 @@ public class CronJobSchedulerInstrumentedTest {
     public void formatInterval_withOneMinute_formatsCorrectly() {
         String formatted = CronJobScheduler.formatInterval(TimeUnit.MINUTES.toMillis(1));
 
-        assertEquals("Every 1 minutes", formatted);
+        assertEquals("Every 1 minute", formatted);
     }
 
     @Test

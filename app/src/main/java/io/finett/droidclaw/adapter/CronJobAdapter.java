@@ -98,7 +98,7 @@ public class CronJobAdapter extends RecyclerView.Adapter<CronJobAdapter.CronJobV
         private final TextView textLastRun;
         private final TextView textSuccessRate;
         private final TextView textErrorMessage;
-        private final Chip chipStatus;
+        final Chip chipStatus;
 
         CronJobViewHolder(@NonNull View itemView) {
             super(itemView);

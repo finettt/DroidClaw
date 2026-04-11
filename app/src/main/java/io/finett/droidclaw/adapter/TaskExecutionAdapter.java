@@ -92,7 +92,7 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
         private final TextView textIterations;
         private final TextView textErrorMessage;
         private final TextView textPreviewContent;
-        private final Chip chipExecutionStatus;
+        final Chip chipExecutionStatus;
 
         TaskExecutionViewHolder(@NonNull View itemView) {
             super(itemView);
