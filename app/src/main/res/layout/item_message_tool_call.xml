@@ -43,7 +43,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
                     android:textStyle="bold"
-                    android:textColor="#1976D2" />
+                    android:textColor="?attr/colorPrimary" />
 
             </LinearLayout>
 

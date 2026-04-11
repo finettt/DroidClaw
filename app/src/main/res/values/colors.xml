@@ -2,6 +2,4 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="user_message_bg">#FF6200EE</color>
-    <color name="assistant_message_bg">#FFE0E0E0</color>
 </resources>

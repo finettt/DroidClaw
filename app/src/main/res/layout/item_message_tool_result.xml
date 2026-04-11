@@ -46,7 +46,7 @@
                     android:text="Tool result"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    android:textColor="#388E3C" />
+                    android:textColor="?attr/colorPrimary" />
 
                 <TextView
                     android:id="@+id/toolResultToggle"
