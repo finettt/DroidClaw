@@ -61,7 +61,8 @@ chaquopy {
 
         pip {
             // Common packages installed at build time
-            // Note: lxml removed due to native dependency requirements
+            install("https://chaquo.com/pypi-13.1/lxml/lxml-5.3.0-0-cp311-cp311-android_24_arm64_v8a.whl")
+            install("https://chaquo.com/pypi-13.1/lxml/lxml-5.3.0-0-cp311-cp311-android_24_x86_64.whl")
             install("requests")
             install("beautifulsoup4")
             install("python-dateutil")
