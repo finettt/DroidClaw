@@ -65,6 +65,8 @@ chaquopy {
             install("requests")
             install("beautifulsoup4")
             install("python-dateutil")
+            install("openpyxl")
+            install("python-docx")
         }
     }
 }
