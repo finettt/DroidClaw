@@ -23,7 +23,7 @@
         android:maxWidth="280dp"
         android:paddingHorizontal="20dp"
         android:paddingVertical="10dp"
-        android:textColor="@android:color/white"
+        android:textColor="?attr/colorOnPrimaryContainer"
         android:textSize="16sp" />
 
 </LinearLayout>
