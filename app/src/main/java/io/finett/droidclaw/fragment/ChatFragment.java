@@ -8,7 +8,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,6 +24,7 @@ import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.chip.Chip;
 import com.google.gson.JsonObject;
 
 import java.io.IOException;
@@ -56,6 +59,8 @@ public class ChatFragment extends Fragment {
     private ImageButton sendButton;
     private ImageButton attachButton;
     private View statusContainer;
+    private HorizontalScrollView attachmentBarContainer;
+    private LinearLayout attachmentBar;
     private ProgressBar progressBar;
     private TextView statusText;
     private TextView statusSubText;
@@ -183,6 +188,8 @@ public class ChatFragment extends Fragment {
         sendButton = view.findViewById(R.id.sendButton);
         attachButton = view.findViewById(R.id.attachButton);
         statusContainer = view.findViewById(R.id.statusContainer);
+        attachmentBarContainer = view.findViewById(R.id.attachmentBarContainer);
+        attachmentBar = view.findViewById(R.id.attachmentBar);
         progressBar = view.findViewById(R.id.progressBar);
         statusText = view.findViewById(R.id.statusText);
         statusSubText = view.findViewById(R.id.statusSubText);
@@ -310,6 +317,7 @@ public class ChatFragment extends Fragment {
 
                 requireActivity().runOnUiThread(() -> {
                     pendingAttachments.add(attachment);
+                    renderPendingAttachments();
                     Toast.makeText(requireContext(),
                         "Attached: " + result.getOriginalName(),
                         Toast.LENGTH_SHORT).show();
@@ -332,7 +340,64 @@ public class ChatFragment extends Fragment {
     private List<FileAttachment> consumePendingAttachments() {
         List<FileAttachment> copy = new ArrayList<>(pendingAttachments);
         pendingAttachments.clear();
+        renderPendingAttachments();
         return copy;
+    }
+
+    /**
+     * Renders pending attachment chips in the bar above the input.
+     */
+    private void renderPendingAttachments() {
+        if (attachmentBar == null || attachmentBarContainer == null) return;
+
+        attachmentBar.removeAllViews();
+
+        if (pendingAttachments.isEmpty()) {
+            attachmentBarContainer.setVisibility(View.GONE);
+            return;
+        }
+
+        attachmentBarContainer.setVisibility(View.VISIBLE);
+
+        for (int i = 0; i < pendingAttachments.size(); i++) {
+            final int index = i;
+            FileAttachment attachment = pendingAttachments.get(i);
+
+            Chip chip = (Chip) LayoutInflater.from(requireContext())
+                    .inflate(R.layout.item_pending_attachment_chip, attachmentBar, false);
+
+            String icon = attachment.getDisplayIcon();
+            String displayName = truncateName(attachment.getOriginalName());
+            chip.setText(icon + " " + displayName);
+
+            chip.setCloseIconVisible(true);
+            chip.setOnCloseIconClickListener(v -> removePendingAttachment(index));
+
+            attachmentBar.addView(chip);
+        }
+    }
+
+    /**
+     * Removes a pending attachment at the given index.
+     */
+    private void removePendingAttachment(int index) {
+        if (index >= 0 && index < pendingAttachments.size()) {
+            String name = pendingAttachments.get(index).getOriginalName();
+            pendingAttachments.remove(index);
+            renderPendingAttachments();
+            Toast.makeText(requireContext(), "Removed: " + name, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Truncates a filename to 15 characters with "..." if longer.
+     */
+    private String truncateName(String name) {
+        if (name == null) return "";
+        if (name.length() > 15) {
+            return name.substring(0, 15) + "...";
+        }
+        return name;
     }
 
     private void sendMessage() {
