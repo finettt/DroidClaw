@@ -128,6 +128,17 @@
     <string name="file_browser_error">Error: %1$s</string>
     <string name="file_browser_directory">Directory</string>
     <string name="file_browser_parent_directory">Parent directory</string>
+
+    <!-- File Viewer -->
+    <string name="file_viewer_open_title">Open %1$s</string>
+    <string name="file_viewer_view_internal">View in app</string>
+    <string name="file_viewer_open_external">Open with external app</string>
+    <string name="file_viewer_close">Close</string>
+    <string name="file_viewer_error">Error reading file: %1$s</string>
+    <string name="file_viewer_file_not_found">File not found: %1$s</string>
+    <string name="file_viewer_no_app_found">No app found to open this file</string>
+    <string name="file_viewer_open_error">Error opening file: %1$s</string>
+    <string name="file_viewer_open_with">Open with</string>
     <string name="settings_skills">Skills</string>
     <string name="settings_skills_subtitle">View and manage agent skills</string>
     

@@ -1,17 +1,24 @@
 package io.finett.droidclaw.fragment;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -90,6 +97,8 @@ public class FileBrowserFragment extends Fragment {
         adapter.setOnItemClickListener(item -> {
             if (item.isDirectory()) {
                 navigateInto(item.getPath());
+            } else {
+                showFileOpenOptions(item.getPath());
             }
         });
     }
@@ -161,6 +170,133 @@ public class FileBrowserFragment extends Fragment {
         }
         VirtualFileSystem.FileInfo parent = navigationStack.remove(navigationStack.size() - 1);
         loadDirectory(parent.getPath());
+    }
+
+    /**
+     * Shows a dialog with options to view file internally or open in external app.
+     */
+    private void showFileOpenOptions(String filePath) {
+        String fileName = getFileName(filePath);
+        String[] options = {
+            getString(R.string.file_viewer_view_internal),
+            getString(R.string.file_viewer_open_external)
+        };
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext());
+        builder.setTitle(getString(R.string.file_viewer_open_title, fileName))
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0:
+                            openFileInternal(filePath);
+                            break;
+                        case 1:
+                            openFileExternal(filePath);
+                            break;
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    /**
+     * Opens file in the internal viewer dialog.
+     */
+    private void openFileInternal(String filePath) {
+        FileViewerDialog dialog = FileViewerDialog.newInstance(filePath);
+        dialog.show(getChildFragmentManager(), "FileViewerDialog");
+    }
+
+    /**
+     * Opens file in an external app using Intent.ACTION_VIEW.
+     */
+    private void openFileExternal(String filePath) {
+        try {
+            WorkspaceManager workspaceManager = new WorkspaceManager(requireContext());
+            File workspaceDir = workspaceManager.getWorkspaceRoot();
+            File file = new File(workspaceDir, filePath);
+
+            if (!file.exists()) {
+                Toast.makeText(requireContext(), 
+                    getString(R.string.file_viewer_file_not_found, filePath), 
+                    Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Uri fileUri = FileProvider.getUriForFile(
+                requireContext(),
+                requireContext().getPackageName() + ".fileprovider",
+                file
+            );
+            String mimeType = getMimeType(filePath);
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(fileUri, mimeType);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            startActivity(Intent.createChooser(intent, 
+                getString(R.string.file_viewer_open_with)));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(requireContext(), 
+                getString(R.string.file_viewer_no_app_found), 
+                Toast.LENGTH_LONG).show();
+            Log.e(TAG, "No app found to handle file", e);
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), 
+                getString(R.string.file_viewer_open_error, e.getMessage()), 
+                Toast.LENGTH_LONG).show();
+            Log.e(TAG, "Failed to open file externally", e);
+        }
+    }
+
+    /**
+     * Determines MIME type based on file extension.
+     */
+    private String getMimeType(String filePath) {
+        String extension = "";
+        int lastDot = filePath.lastIndexOf('.');
+        if (lastDot > 0) {
+            extension = filePath.substring(lastDot + 1).toLowerCase();
+        }
+
+        switch (extension) {
+            case "txt":
+            case "md":
+            case "csv":
+            case "log":
+                return "text/plain";
+            case "json":
+                return "application/json";
+            case "xml":
+                return "text/xml";
+            case "html":
+            case "htm":
+                return "text/html";
+            case "py":
+                return "text/x-python";
+            case "js":
+                return "text/javascript";
+            case "java":
+                return "text/x-java";
+            case "kt":
+                return "text/x-kotlin";
+            case "sh":
+            case "bash":
+                return "text/x-shellscript";
+            case "yaml":
+            case "yml":
+                return "text/yaml";
+            case "pdf":
+                return "application/pdf";
+            case "jpg":
+            case "jpeg":
+                return "image/jpeg";
+            case "png":
+                return "image/png";
+            case "gif":
+                return "image/gif";
+            default:
+                return "*/*";
+        }
     }
 
     private String getParentPath(String path) {
