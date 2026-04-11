@@ -34,8 +34,10 @@ import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
+import io.finett.droidclaw.service.ChatContinuationService;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -59,16 +61,28 @@ public class ChatFragment extends Fragment {
     private AgentLoop agentLoop;
     private IdentityManager identityManager;
     private WorkspaceManager workspaceManager;
+    private ChatContinuationService continuationService;
     private String currentSessionId;
+    private TaskResult pendingTaskResult;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        
+
         settingsManager = new SettingsManager(requireContext());
         apiService = new LlmApiService(settingsManager);
         chatRepository = new ChatRepository(requireContext());
-        
+        continuationService = new ChatContinuationService(requireContext());
+
+        // Check for task result in arguments
+        Bundle taskArgs = getArguments();
+        if (taskArgs != null) {
+            pendingTaskResult = (TaskResult) taskArgs.getSerializable(ZenResultFragment.ARG_TASK_RESULT);
+            if (pendingTaskResult != null) {
+                Log.d(TAG, "Received task result for continuation: " + pendingTaskResult.getId());
+            }
+        }
+
         // Initialize workspace and identity
         workspaceManager = new WorkspaceManager(requireContext());
         try {
@@ -163,7 +177,7 @@ public class ChatFragment extends Fragment {
             Log.w(TAG, "loadChatHistory: No session ID, cannot load messages");
             return;
         }
-        
+
         List<ChatMessage> savedMessages = chatRepository.loadMessages(currentSessionId);
         if (!savedMessages.isEmpty()) {
             chatAdapter.setMessages(savedMessages);
@@ -171,7 +185,41 @@ public class ChatFragment extends Fragment {
             scrollToBottom();
         } else {
             Log.d(TAG, "loadChatHistory: No saved messages for session: " + currentSessionId);
+            
+            // If we have a pending task result, add context messages
+            if (pendingTaskResult != null) {
+                Log.d(TAG, "loadChatHistory: Adding task result context messages");
+                addTaskResultContext(pendingTaskResult);
+                pendingTaskResult = null; // Clear after use
+            }
         }
+    }
+
+    /**
+     * Add task result context messages to a new chat session.
+     */
+    private void addTaskResultContext(TaskResult taskResult) {
+        List<ChatMessage> messages = new ArrayList<>();
+        
+        // Add context card
+        ChatMessage contextCard = continuationService.createContextMessage(taskResult);
+        messages.add(contextCard);
+        chatAdapter.addMessage(contextCard);
+        
+        // Add agent prompt
+        ChatMessage agentPrompt = new ChatMessage(
+            String.format("I've added the %s results above. What would you like to clarify or explore?", 
+                         TaskResult.typeToString(taskResult.getType()).toLowerCase()),
+            ChatMessage.TYPE_SYSTEM
+        );
+        messages.add(agentPrompt);
+        chatAdapter.addMessage(agentPrompt);
+        
+        // Save messages
+        saveMessages();
+        scrollToBottom();
+        
+        Log.d(TAG, "Added task result context: " + messages.size() + " messages");
     }
     
     private void saveMessages() {

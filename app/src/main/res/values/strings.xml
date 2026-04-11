@@ -27,6 +27,9 @@
     <string name="settings_providers_subtitle">%d providers configured</string>
     <string name="settings_agent">Agent</string>
     <string name="settings_agent_subtitle">Configure agent behavior</string>
+    <string name="settings_heartbeat">Background Monitoring</string>
+    <string name="settings_heartbeat_subtitle">Configure heartbeat health checks</string>
+    <string name="settings_cron_jobs_subtitle">Manage scheduled automated tasks</string>
     <string name="settings_reset_onboarding">Reset Onboarding</string>
     <string name="settings_reset_onboarding_subtitle">Start fresh setup</string>
     <string name="settings_reset_onboarding_confirm">Are you sure you want to reset onboarding? This will restart the setup process.</string>
@@ -138,4 +141,109 @@
     <string name="validation_required">This field is required</string>
     <string name="validation_invalid_url">Please enter a valid URL</string>
     <string name="validation_invalid_number">Please enter a valid number</string>
+
+    <!-- Zen Result -->
+    <string name="chat_about_this">Chat about this</string>
+    <string name="share_result">Share result</string>
+    <string name="result_share_title">Task Result</string>
+    <string name="result_type_heartbeat">Heartbeat</string>
+    <string name="result_type_cron">Cron Job</string>
+    <string name="result_type_manual">Manual Task</string>
+    <string name="chat_continuation_new">New Chat</string>
+    <string name="chat_continuation_existing">Add to Existing Chat</string>
+    <string name="chat_continuation_picker_title">How would you like to continue?</string>
+    <string name="chat_continuation_agent_prompt">I\'ve added the %1$s results above. What would you like to clarify or explore?</string>
+
+    <!-- Heartbeat Settings -->
+    <string name="heartbeat_enabled">Enable Heartbeat</string>
+    <string name="heartbeat_enabled_description">Periodic system health checks</string>
+    <string name="heartbeat_interval">Check Interval</string>
+    <string name="heartbeat_status">Status</string>
+    <string name="heartbeat_last_run">Last Run</string>
+    <string name="heartbeat_last_status">Last Status</string>
+    <string name="heartbeat_staleness">Monitoring System Status</string>
+    <string name="heartbeat_never">Never</string>
+    <string name="heartbeat_no_data">No data available</string>
+    <string name="heartbeat_actions">Actions</string>
+    <string name="heartbeat_run_now">Run Heartbeat Now</string>
+    <string name="heartbeat_edit_template">Edit HEARTBEAT.md</string>
+
+    <!-- Cron Jobs -->
+    <string name="cron_jobs">Scheduled Tasks</string>
+    <string name="cron_jobs_empty_state">No scheduled tasks yet.\nTap + to create your first cron job.</string>
+    <string name="add_cron_job">Add Cron Job</string>
+    <string name="cron_job_name">Job Name</string>
+    <string name="cron_job_prompt">Prompt / Instructions</string>
+    <string name="cron_schedule">Schedule</string>
+    <string name="cron_schedule_daily">Daily</string>
+    <string name="cron_schedule_weekly">Weekly</string>
+    <string name="cron_schedule_hourly">Hourly</string>
+    <string name="cron_schedule_custom">Custom Interval</string>
+    <string name="cron_daily_at_time">Time (HH:MM)</string>
+    <string name="cron_weekly_day_time">Day &amp; Time</string>
+    <string name="cron_custom_interval_value">Interval</string>
+    <string name="cron_status_active">Active</string>
+    <string name="cron_status_paused">Paused</string>
+    <string name="cron_status_disabled">Disabled</string>
+    <string name="cron_last_run">Last run: %s</string>
+    <string name="cron_success_rate">Success: %d%%</string>
+    <string name="cron_job_created">Cron job created</string>
+    <string name="cron_job_updated">Cron job updated</string>
+    <string name="cron_job_deleted">Cron job deleted</string>
+    <string name="cron_job_run_now">Run Now</string>
+    <string name="cron_job_pause">Pause</string>
+    <string name="cron_job_resume">Resume</string>
+    <string name="cron_job_delete">Delete</string>
+    <string name="cron_job_edit">Edit</string>
+    <string name="cron_job_history">View History</string>
+    <string name="cron_delete_confirm">Are you sure you want to delete this cron job? This will also remove its execution history.</string>
+    <string name="cron_validation_name_required">Job name is required</string>
+    <string name="cron_validation_prompt_required">Prompt is required</string>
+
+    <!-- Task History -->
+    <string name="task_history">Task History</string>
+    <string name="task_history_stats">Execution Statistics</string>
+    <string name="task_history_empty">No execution history yet.</string>
+    <string name="task_history_filter_all">All Tasks</string>
+    <string name="status_success">Success</string>
+    <string name="status_failed">Failed</string>
+    <string name="execution_duration">Duration: %s</string>
+    <string name="execution_tokens">Tokens: %s</string>
+    <string name="execution_iterations">Steps: %d</string>
+    <string name="execution_time_format">%1$s at %2$s</string>
+    <string name="refresh">Refresh</string>
+    <string name="view_details">View Details</string>
+    <string name="cron_job_detail">Job Details</string>
+    <string name="cron_job_detail_title">Cron Job Detail</string>
+    <string name="cron_never_run">Never run</string>
+    <string name="cron_error_prefix">Error: %s</string>
+    <string name="execution_error_prefix">Error: %s</string>
+    <string name="execution_detail">Tap to view full execution details</string>
+    <string name="execution_datetime_fmt">%1$s at %2$s</string>
+    <string name="stats_total_fmt">Total: %d</string>
+    <string name="stats_success_fmt">Success: %d%%</string>
+    <string name="stats_avg_fmt">Avg: %s</string>
+    <string name="cron_status_paused_fmt">Status: Paused</string>
+    <string name="cron_status_active_fmt">Status: Active</string>
+    <string name="cron_status_disabled_fmt">Status: Disabled</string>
+    <string name="cron_created_fmt">Created: %s</string>
+    <string name="cron_success_rate_fmt">Success Rate: %d%%</string>
+    <string name="cron_avg_duration_fmt">Avg Duration: %s</string>
+    <string name="cron_avg_duration_na">N/A</string>
+    <string name="cron_total_runs_fmt">Total Runs: %d</string>
+    <string name="cron_last_run_fmt">Last Run: %s</string>
+
+    <!-- Notification Permissions -->
+    <string name="notification_permission_title">Enable Notifications</string>
+    <string name="notification_permission_message">DroidClaw can send you notifications about background task results, system health alerts, and scheduled job completions. Would you like to enable this feature?</string>
+    <string name="allow">Allow</string>
+    <string name="not_now">Not Now</string>
+
+    <!-- Notification Channels -->
+    <string name="notification_channel_heartbeat_alerts">Heartbeat Alerts</string>
+    <string name="notification_channel_heartbeat_alerts_desc">High priority alerts when heartbeat detects issues</string>
+    <string name="notification_channel_task_results">Task Results</string>
+    <string name="notification_channel_task_results_desc">Results from scheduled cron jobs and manual tasks</string>
+    <string name="notification_channel_task_errors">Task Errors</string>
+    <string name="notification_channel_task_errors_desc">Error notifications when tasks fail</string>
 </resources>

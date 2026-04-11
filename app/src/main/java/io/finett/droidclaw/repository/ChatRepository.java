@@ -18,6 +18,7 @@ import java.util.List;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.ChatSession;
+import io.finett.droidclaw.model.SessionType;
 
 public class ChatRepository {
     private static final String TAG = "ChatRepository";
@@ -55,7 +56,13 @@ public class ChatRepository {
                 jsonObject.put("totalPromptTokens", session.getTotalPromptTokens());
                 jsonObject.put("totalCompletionTokens", session.getTotalCompletionTokens());
                 jsonObject.put("totalToolCalls", session.getTotalToolCalls());
-                
+
+                // Save session type and visibility
+                jsonObject.put("sessionType", session.getSessionType());
+                if (session.getParentTaskId() != null) {
+                    jsonObject.put("parentTaskId", session.getParentTaskId());
+                }
+
                 jsonArray.put(jsonObject);
             }
             
@@ -101,7 +108,13 @@ public class ChatRepository {
                 session.setTotalPromptTokens(jsonObject.optInt("totalPromptTokens", 0));
                 session.setTotalCompletionTokens(jsonObject.optInt("totalCompletionTokens", 0));
                 session.setTotalToolCalls(jsonObject.optInt("totalToolCalls", 0));
-                
+
+                // Load session type and visibility
+                session.setSessionType(jsonObject.optInt("sessionType", SessionType.NORMAL));
+                if (jsonObject.has("parentTaskId") && !jsonObject.isNull("parentTaskId")) {
+                    session.setParentTaskId(jsonObject.getString("parentTaskId"));
+                }
+
                 sessions.add(session);
             }
             
@@ -199,13 +212,24 @@ public class ChatRepository {
                         Log.w(TAG, "Tool call message has null or empty toolCalls list!");
                     }
                 }
-                
+
                 if (message.getType() == ChatMessage.TYPE_TOOL_RESULT) {
                     if (message.getToolCallId() != null) {
                         jsonObject.put("toolCallId", message.getToolCallId());
                     }
                     if (message.getToolName() != null) {
                         jsonObject.put("toolName", message.getToolName());
+                    }
+                }
+
+                // Save context card fields
+                if (message.getType() == ChatMessage.TYPE_CONTEXT_CARD) {
+                    jsonObject.put("isContextCard", message.isContextCard());
+                    if (message.getContextType() != null) {
+                        jsonObject.put("contextType", message.getContextType());
+                    }
+                    if (message.getOriginalTaskId() != null) {
+                        jsonObject.put("originalTaskId", message.getOriginalTaskId());
                     }
                 }
                 
@@ -249,7 +273,7 @@ public class ChatRepository {
                     long timestamp = jsonObject.getLong("timestamp");
                     
                     ChatMessage message;
-                    
+
                     if (type == ChatMessage.TYPE_TOOL_CALL && jsonObject.has("toolCalls")) {
                         // Restore tool calls
                         JSONArray toolCallsArray = jsonObject.getJSONArray("toolCalls");
@@ -274,6 +298,17 @@ public class ChatRepository {
                             : null;
                         message = ChatMessage.createToolResultMessage(toolCallId, toolName, content);
                         Log.d(TAG, "Restored tool result message for tool: " + toolName);
+                    } else if (type == ChatMessage.TYPE_CONTEXT_CARD) {
+                        // Restore context card
+                        message = new ChatMessage(content, type);
+                        message.setIsContextCard(jsonObject.optBoolean("isContextCard", true));
+                        if (jsonObject.has("contextType") && !jsonObject.isNull("contextType")) {
+                            message.setContextType(jsonObject.getString("contextType"));
+                        }
+                        if (jsonObject.has("originalTaskId") && !jsonObject.isNull("originalTaskId")) {
+                            message.setOriginalTaskId(jsonObject.getString("originalTaskId"));
+                        }
+                        Log.d(TAG, "Restored context card message for task: " + message.getOriginalTaskId());
                     } else {
                         message = new ChatMessage(content, type);
                     }
@@ -309,5 +344,50 @@ public class ChatRepository {
     public void clearAllMessages() {
         prefs.edit().clear().apply();
         Log.d(TAG, "Cleared all saved messages");
+    }
+
+    // ==================== HIDDEN SESSION SUPPORT ====================
+
+    /**
+     * Get only visible (normal) sessions.
+     * Filters out hidden sessions used for background tasks.
+     */
+    public List<ChatSession> getVisibleSessions() {
+        List<ChatSession> allSessions = loadSessions();
+        List<ChatSession> visible = new ArrayList<>();
+
+        for (ChatSession session : allSessions) {
+            if (!session.isHidden()) {
+                visible.add(session);
+            }
+        }
+
+        Log.d(TAG, "Returning " + visible.size() + " visible sessions (filtered from " + allSessions.size() + " total)");
+        return visible;
+    }
+
+    /**
+     * Get a hidden session by task ID.
+     * Used for debugging background task sessions.
+     */
+    public ChatSession getHiddenSession(String taskId) {
+        List<ChatSession> allSessions = loadSessions();
+
+        for (ChatSession session : allSessions) {
+            if (session.isHidden() && taskId.equals(session.getParentTaskId())) {
+                return session;
+            }
+        }
+
+        Log.d(TAG, "No hidden session found for task: " + taskId);
+        return null;
+    }
+
+    /**
+     * Get all sessions including hidden ones.
+     * Use with caution - hidden sessions should not appear in UI.
+     */
+    public List<ChatSession> getAllSessionsIncludingHidden() {
+        return loadSessions();
     }
 }

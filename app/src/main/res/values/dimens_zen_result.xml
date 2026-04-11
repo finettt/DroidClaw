@@ -1,0 +1,5 @@
+<resources>
+    <!-- Zen Result Fragment dimensions -->
+    <dimen name="zen_result_padding">24dp</dimen>
+    <dimen name="zen_result_fab_margin">16dp</dimen>
+</resources>

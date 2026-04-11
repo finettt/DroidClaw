@@ -48,15 +48,15 @@ public class ToolRegistryTest {
     @Test
     public void testGetToolCount() {
         int toolCount = toolRegistry.getToolCount();
-        // Should have 9 tools: 7 file tools + shell + python
-        assertEquals("Should have exactly 9 tools", 9, toolCount);
+        // Should have 19 tools: 7 file tools + shell + python + heartbeat_ok + 9 automation/notification tools
+        assertEquals("Should have exactly 19 tools", 19, toolCount);
     }
 
     @Test
     public void testGetAllTools() {
         List<Tool> tools = toolRegistry.getAllTools();
         assertNotNull("Tools list should not be null", tools);
-        assertEquals("Should return all registered tools", 9, tools.size());
+        assertEquals("Should return all registered tools", 19, tools.size());
     }
 
     @Test
@@ -144,7 +144,7 @@ public class ToolRegistryTest {
     public void testGetToolDefinitions() {
         JsonArray definitions = toolRegistry.getToolDefinitions();
         assertNotNull("Tool definitions should not be null", definitions);
-        assertEquals("Should have definitions for all tools", 9, definitions.size());
+        assertEquals("Should have definitions for all tools", 19, definitions.size());
         
         // Verify structure of first definition
         JsonObject firstDef = definitions.get(0).getAsJsonObject();
@@ -156,6 +156,7 @@ public class ToolRegistryTest {
         assertTrue("Function should have 'name'", function.has("name"));
         assertTrue("Function should have 'description'", function.has("description"));
         assertTrue("Function should have 'parameters'", function.has("parameters"));
+        assertTrue("Function should have 'strict' for Structured Output", function.has("strict"));
     }
 
     @Test
@@ -211,29 +212,38 @@ public class ToolRegistryTest {
     @Test
     public void testToolDefinitions_AllHaveValidStructure() {
         JsonArray definitions = toolRegistry.getToolDefinitions();
-        
+
         for (int i = 0; i < definitions.size(); i++) {
             JsonObject def = definitions.get(i).getAsJsonObject();
-            
+
             assertTrue("Definition " + i + " should have 'type'", def.has("type"));
-            assertEquals("Definition " + i + " type should be 'function'", 
+            assertEquals("Definition " + i + " type should be 'function'",
                 "function", def.get("type").getAsString());
-            
+
             assertTrue("Definition " + i + " should have 'function'", def.has("function"));
             JsonObject function = def.getAsJsonObject("function");
-            
+
             assertTrue("Function should have 'name'", function.has("name"));
             assertTrue("Function should have 'description'", function.has("description"));
             assertTrue("Function should have 'parameters'", function.has("parameters"));
-            
+            assertTrue("Function should have 'strict' for Structured Output", function.has("strict"));
+            assertTrue("Strict should be true", function.get("strict").getAsBoolean());
+
             String name = function.get("name").getAsString();
             assertNotNull("Function name should not be null", name);
             assertFalse("Function name should not be empty", name.isEmpty());
-            
-            JsonObject parameters = function.getAsJsonObject("parameters");
-            assertTrue("Parameters should have 'type'", parameters.has("type"));
-            assertEquals("Parameters type should be 'object'", 
-                "object", parameters.get("type").getAsString());
+
+            // Parameters can be null for tools with no parameters (e.g., heartbeat_ok)
+            if (function.has("parameters") && !function.get("parameters").isJsonNull()) {
+                JsonObject parameters = function.getAsJsonObject("parameters");
+                assertTrue("Parameters should have 'type'", parameters.has("type"));
+                assertEquals("Parameters type should be 'object'",
+                    "object", parameters.get("type").getAsString());
+                assertTrue("Parameters should have 'additionalProperties' for Structured Output",
+                    parameters.has("additionalProperties"));
+                assertFalse("additionalProperties should be false",
+                    parameters.get("additionalProperties").getAsBoolean());
+            }
         }
     }
 
@@ -273,8 +283,8 @@ public class ToolRegistryTest {
         t2.start();
         t1.join();
         t2.join();
-        
+
         // Should complete without errors
-        assertEquals("Tool count should remain consistent", 9, toolRegistry.getToolCount());
+        assertEquals("Tool count should remain consistent", 19, toolRegistry.getToolCount());
     }
 }

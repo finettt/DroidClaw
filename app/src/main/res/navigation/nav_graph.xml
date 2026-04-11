@@ -8,6 +8,11 @@
         android:id="@+id/chatFragment"
         android:name="io.finett.droidclaw.fragment.ChatFragment"
         android:label="DroidClaw">
+        <argument
+            android:name="task_result"
+            app:argType="java.io.Serializable"
+            app:nullable="true"
+            android:defaultValue="@null" />
         <action
             android:id="@+id/action_chatFragment_to_settingsFragment"
             app:destination="@id/settingsFragment"
@@ -34,6 +39,13 @@
         <action
             android:id="@+id/action_settingsFragment_to_agentSettingsFragment"
             app:destination="@id/agentSettingsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_settingsFragment_to_heartbeatSettingsFragment"
+            app:destination="@id/heartbeatSettingsFragment"
             app:enterAnim="@anim/slide_in_right"
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
@@ -105,6 +117,19 @@
         android:label="Agent Settings" />
 
     <fragment
+        android:id="@+id/heartbeatSettingsFragment"
+        android:name="io.finett.droidclaw.fragment.HeartbeatSettingsFragment"
+        android:label="Background Monitoring">
+        <action
+            android:id="@+id/action_heartbeatSettingsFragment_to_fileBrowserFragment"
+            app:destination="@id/fileBrowserFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
         android:id="@+id/onboardingFragment"
         android:name="io.finett.droidclaw.fragment.OnboardingFragment"
         android:label="Welcome">
@@ -134,5 +159,48 @@
         android:id="@+id/memoryBrowserFragment"
         android:name="io.finett.droidclaw.fragment.MemoryBrowserFragment"
         android:label="Memory" />
+
+    <fragment
+        android:id="@+id/zenResultFragment"
+        android:name="io.finett.droidclaw.fragment.ZenResultFragment"
+        android:label="Task Result">
+        <argument
+            android:name="task_result"
+            app:argType="java.io.Serializable"
+            app:nullable="true"
+            android:defaultValue="@null" />
+        <action
+            android:id="@+id/action_zenResultFragment_to_chatFragment"
+            app:destination="@id/chatFragment"
+            app:popUpTo="@id/zenResultFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/cronJobListFragment"
+        android:name="io.finett.droidclaw.fragment.CronJobListFragment"
+        android:label="@string/cron_jobs" />
+
+    <fragment
+        android:id="@+id/cronJobDetailFragment"
+        android:name="io.finett.droidclaw.fragment.CronJobDetailFragment"
+        android:label="@string/cron_job_detail">
+        <argument
+            android:name="job_id"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/taskHistoryFragment"
+        android:name="io.finett.droidclaw.fragment.TaskHistoryFragment"
+        android:label="@string/task_history">
+        <argument
+            android:name="job_id"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="@null" />
+    </fragment>
 
 </navigation>

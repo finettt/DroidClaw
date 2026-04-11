@@ -1,5 +1,6 @@
 package io.finett.droidclaw;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -31,6 +32,8 @@ import java.util.UUID;
 import io.finett.droidclaw.adapter.ChatSessionAdapter;
 import io.finett.droidclaw.fragment.ChatFragment;
 import io.finett.droidclaw.model.ChatSession;
+import io.finett.droidclaw.model.SessionType;
+import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -80,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
             );
             drawerLayout.addDrawerListener(drawerToggle);
             drawerToggle.syncState();
-            
+
             // On fresh app launch, check onboarding status
             // Post navigation to ensure NavController is fully initialized
             if (savedInstanceState == null) {
@@ -90,30 +93,82 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, "Onboarding not completed, navigating to onboarding screen");
                         navController.navigate(R.id.onboardingFragment);
                     } else {
-                        // Open the most recent persisted session or create one if none exist
-                        ChatSession initialSession;
-                        if (chatSessions.isEmpty()) {
-                            initialSession = addNewChatSession();
-                            Log.d(TAG, "No saved sessions found. Created initial session: " + initialSession.getId());
+                        // Check if launched from notification deep link
+                        TaskResult deepLinkTask = getDeepLinkTaskFromIntent(getIntent());
+                        if (deepLinkTask != null) {
+                            Log.d(TAG, "Launched from notification deep link, navigating to ZenResultFragment");
+                            navigateToZenResult(deepLinkTask);
                         } else {
-                            initialSession = chatSessions.get(0);
-                            Log.d(TAG, "Opening most recent saved session: " + initialSession.getId());
-                        }
+                            // Open the most recent persisted session or create one if none exist
+                            ChatSession initialSession;
+                            if (chatSessions.isEmpty()) {
+                                initialSession = addNewChatSession();
+                                Log.d(TAG, "No saved sessions found. Created initial session: " + initialSession.getId());
+                            } else {
+                                initialSession = chatSessions.get(0);
+                                Log.d(TAG, "Opening most recent saved session: " + initialSession.getId());
+                            }
 
-                        currentSessionId = initialSession.getId();
-                        Bundle args = new Bundle();
-                        args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
-                        navController.navigate(R.id.chatFragment, args);
+                            currentSessionId = initialSession.getId();
+                            Bundle args = new Bundle();
+                            args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
+                            navController.navigate(R.id.chatFragment, args);
+                        }
                     }
                 });
             }
         }
     }
 
+    /**
+     * Handle deep link intents from notifications.
+     * Called when activity is already running and receives a new intent.
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+
+        TaskResult deepLinkTask = getDeepLinkTaskFromIntent(intent);
+        if (deepLinkTask != null) {
+            Log.d(TAG, "Received deep link intent while activity is running, navigating to ZenResultFragment");
+            navigateToZenResult(deepLinkTask);
+        }
+    }
+
+    /**
+     * Extract TaskResult from deep link intent.
+     */
+    private TaskResult getDeepLinkTaskFromIntent(Intent intent) {
+        if (intent == null) {
+            return null;
+        }
+        String destination = intent.getStringExtra("deep_link_destination");
+        if (!"zen_result".equals(destination)) {
+            return null;
+        }
+        return (TaskResult) intent.getSerializableExtra("task_result");
+    }
+
+    /**
+     * Navigate to ZenResultFragment with the task result.
+     */
+    private void navigateToZenResult(TaskResult taskResult) {
+        if (navController == null || taskResult == null) {
+            Log.w(TAG, "Cannot navigate to ZenResultFragment: navController or taskResult is null");
+            return;
+        }
+
+        Bundle args = new Bundle();
+        args.putSerializable("task_result", taskResult);
+        navController.navigate(R.id.zenResultFragment, args);
+    }
+
     private void setupDrawerContent() {
         MaterialButton newChatButton = findViewById(R.id.button_new_chat);
         MaterialButton filesButton = findViewById(R.id.button_files);
         MaterialButton memoryButton = findViewById(R.id.button_memory);
+        MaterialButton scheduledTasksButton = findViewById(R.id.button_scheduled_tasks);
         MaterialButton settingsButton = findViewById(R.id.button_settings);
         RecyclerView chatSessionsRecyclerView = findViewById(R.id.recycler_chat_sessions);
 
@@ -171,6 +226,13 @@ public class MainActivity extends AppCompatActivity {
             drawerLayout.closeDrawer(GravityCompat.START);
         });
 
+        scheduledTasksButton.setOnClickListener(v -> {
+            if (navController != null) {
+                navController.navigate(R.id.cronJobListFragment);
+            }
+            drawerLayout.closeDrawer(GravityCompat.START);
+        });
+
         settingsButton.setOnClickListener(v -> {
             if (navController != null) {
                 navController.navigate(R.id.settingsFragment);
@@ -197,6 +259,55 @@ public class MainActivity extends AppCompatActivity {
         chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
         Log.d(TAG, "Created and saved new chat session: " + newSession.getId());
         return newSession;
+    }
+
+    /**
+     * Create a new chat session linked to a task result.
+     * Used for chat continuation from task results.
+     */
+    public ChatSession addNewChatSessionWithTask(TaskResult taskResult, String title) {
+        ChatSession newSession = new ChatSession(
+                UUID.randomUUID().toString(),
+                title,
+                System.currentTimeMillis()
+        );
+        
+        // Link to task
+        if (taskResult != null) {
+            newSession.setParentTaskId(taskResult.getId());
+            // Set session type based on task type
+            if (taskResult.getType() == TaskResult.TYPE_HEARTBEAT) {
+                newSession.setSessionType(SessionType.HIDDEN_HEARTBEAT);
+            } else if (taskResult.getType() == TaskResult.TYPE_CRON_JOB) {
+                newSession.setSessionType(SessionType.HIDDEN_CRON);
+            }
+        }
+        
+        chatSessions.add(0, newSession);
+        chatRepository.saveSessions(chatSessions);
+        chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
+        Log.d(TAG, "Created task-linked chat session: " + newSession.getId());
+        return newSession;
+    }
+
+    /**
+     * Get the most recent chat session for continuation.
+     */
+    public ChatSession getMostRecentChatSession() {
+        if (chatSessions.isEmpty()) {
+            return null;
+        }
+        return chatSessions.get(0);
+    }
+
+    /**
+     * Add a chat session to the list (used by continuation service).
+     */
+    public void addChatSessionToList(ChatSession session) {
+        chatSessions.add(0, session);
+        chatRepository.saveSessions(chatSessions);
+        chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
+        Log.d(TAG, "Added chat session to list: " + session.getId());
     }
     
     public void updateSessionMetadata(String sessionId, String firstUserMessage, long updatedAt) {

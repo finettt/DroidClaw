@@ -25,6 +25,8 @@ public class SettingsFragment extends Fragment {
 
     private static final String ITEM_PROVIDERS = "providers";
     private static final String ITEM_AGENT = "agent";
+    private static final String ITEM_HEARTBEAT = "heartbeat";
+    private static final String ITEM_CRON_JOBS = "cron_jobs";
     private static final String ITEM_SKILLS = "skills";
     private static final String ITEM_RESET_ONBOARDING = "reset_onboarding";
 
@@ -88,6 +90,24 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
+        // Heartbeat / Background Monitoring item
+        items.add(new SettingsAdapter.SettingsItem(
+                ITEM_HEARTBEAT,
+                "💓",
+                getString(R.string.settings_heartbeat),
+                getString(R.string.settings_heartbeat_subtitle),
+                true
+        ));
+
+        // Cron Jobs item
+        items.add(new SettingsAdapter.SettingsItem(
+                ITEM_CRON_JOBS,
+                "⏰",
+                getString(R.string.cron_jobs),
+                getString(R.string.settings_cron_jobs_subtitle),
+                true
+        ));
+
         // Skills item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_SKILLS,
@@ -118,6 +138,14 @@ public class SettingsFragment extends Fragment {
             case ITEM_AGENT:
                 Navigation.findNavController(requireView())
                         .navigate(R.id.action_settingsFragment_to_agentSettingsFragment);
+                break;
+            case ITEM_HEARTBEAT:
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.action_settingsFragment_to_heartbeatSettingsFragment);
+                break;
+            case ITEM_CRON_JOBS:
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.cronJobListFragment);
                 break;
             case ITEM_SKILLS:
                 Navigation.findNavController(requireView())

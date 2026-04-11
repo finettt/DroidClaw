@@ -81,6 +81,10 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.gson)
     
+    // WorkManager for background task execution
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    androidTestImplementation("androidx.work:work-testing:2.9.0")
+    
     // Markwon for markdown rendering
     implementation(libs.markwon.core) {
         exclude(group = "org.jetbrains", module = "annotations-java5")

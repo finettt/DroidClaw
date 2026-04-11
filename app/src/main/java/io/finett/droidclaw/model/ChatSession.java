@@ -22,6 +22,10 @@ public class ChatSession {
     private int totalCompletionTokens;
     private int totalToolCalls;
 
+    // Session type and visibility
+    private int sessionType; // SessionType.NORMAL, HIDDEN_HEARTBEAT, HIDDEN_CRON
+    private String parentTaskId; // Links to cron job or background task
+
     public ChatSession(String id, String title, long updatedAt) {
         this.id = id;
         this.title = title;
@@ -33,6 +37,8 @@ public class ChatSession {
         this.totalPromptTokens = 0;
         this.totalCompletionTokens = 0;
         this.totalToolCalls = 0;
+        this.sessionType = SessionType.NORMAL;
+        this.parentTaskId = null;
     }
 
     public String getId() {
@@ -115,5 +121,30 @@ public class ChatSession {
     
     public void setTotalToolCalls(int totalToolCalls) {
         this.totalToolCalls = totalToolCalls;
+    }
+
+    // Session type and visibility
+    public int getSessionType() {
+        return sessionType;
+    }
+
+    public void setSessionType(int sessionType) {
+        this.sessionType = sessionType;
+    }
+
+    /**
+     * Check if this session is hidden from the UI.
+     * Hidden sessions include background tasks like heartbeat and cron jobs.
+     */
+    public boolean isHidden() {
+        return sessionType != SessionType.NORMAL;
+    }
+
+    public String getParentTaskId() {
+        return parentTaskId;
+    }
+
+    public void setParentTaskId(String parentTaskId) {
+        this.parentTaskId = parentTaskId;
     }
 }

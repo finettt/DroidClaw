@@ -26,8 +26,18 @@ import io.finett.droidclaw.tool.impl.FileListTool;
 import io.finett.droidclaw.tool.impl.FileReadTool;
 import io.finett.droidclaw.tool.impl.FileSearchTool;
 import io.finett.droidclaw.tool.impl.FileWriteTool;
+import io.finett.droidclaw.tool.impl.HeartbeatOkTool;
 import io.finett.droidclaw.tool.impl.PythonTool;
 import io.finett.droidclaw.tool.impl.ShellTool;
+import io.finett.droidclaw.tool.impl.CreateTaskTool;
+import io.finett.droidclaw.tool.impl.ListTasksTool;
+import io.finett.droidclaw.tool.impl.PauseTaskTool;
+import io.finett.droidclaw.tool.impl.ResumeTaskTool;
+import io.finett.droidclaw.tool.impl.DeleteTaskTool;
+import io.finett.droidclaw.tool.impl.ViewTaskHistoryTool;
+import io.finett.droidclaw.tool.impl.TaskStatsTool;
+import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
+import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
@@ -103,6 +113,22 @@ public class ToolRegistry {
         // Execution tools (always registered, but execution may be blocked by settings)
         registerTool(new ShellTool(workspaceManager.getPathValidator(), ShellConfig.createDefault()));
         registerTool(new PythonTool(context, workspaceManager.getWorkspaceRoot(), PythonConfig.createDefault()));
+
+        // Heartbeat tool
+        registerTool(new HeartbeatOkTool());
+
+        // Automation management tools
+        registerTool(new CreateTaskTool(context));
+        registerTool(new ListTasksTool(context));
+        registerTool(new PauseTaskTool(context));
+        registerTool(new ResumeTaskTool(context));
+        registerTool(new DeleteTaskTool(context));
+        registerTool(new ViewTaskHistoryTool(context));
+        registerTool(new TaskStatsTool(context));
+        registerTool(new SetupHeartbeatTool(context));
+
+        // Notification tool for background tasks
+        registerTool(new SubmitNotificationTool(context));
     }
     
     /**
