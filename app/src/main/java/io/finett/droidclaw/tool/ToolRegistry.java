@@ -5,6 +5,7 @@ import android.content.Context;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -241,11 +242,20 @@ public class ToolRegistry {
 
     /**
      * Get the virtual file system instance.
-     * 
+     *
      * @return VirtualFileSystem instance
      */
     public VirtualFileSystem getVirtualFileSystem() {
         return vfs;
+    }
+
+    /**
+     * Get the workspace root directory.
+     *
+     * @return Workspace root File
+     */
+    public File getWorkspaceRoot() {
+        return workspaceManager.getWorkspaceRoot();
     }
 
     /**

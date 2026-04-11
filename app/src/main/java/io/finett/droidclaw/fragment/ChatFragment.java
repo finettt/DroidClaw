@@ -1,6 +1,7 @@
 package io.finett.droidclaw.fragment;
 
 import android.app.AlertDialog;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,6 +13,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -21,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.gson.JsonObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,8 +36,10 @@ import io.finett.droidclaw.agent.ConversationSummarizer;
 import io.finett.droidclaw.agent.IdentityManager;
 import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.api.LlmApiService;
+import io.finett.droidclaw.filesystem.FileUploadManager;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
@@ -44,10 +50,11 @@ import io.finett.droidclaw.util.SettingsManager;
 public class ChatFragment extends Fragment {
     private static final String TAG = "ChatFragment";
     public static final String ARG_SESSION_ID = "session_id";
-    
+
     private RecyclerView recyclerView;
     private EditText messageInput;
     private ImageButton sendButton;
+    private ImageButton attachButton;
     private View statusContainer;
     private ProgressBar progressBar;
     private TextView statusText;
@@ -61,9 +68,16 @@ public class ChatFragment extends Fragment {
     private AgentLoop agentLoop;
     private IdentityManager identityManager;
     private WorkspaceManager workspaceManager;
+    private FileUploadManager fileUploadManager;
     private ChatContinuationService continuationService;
     private String currentSessionId;
     private TaskResult pendingTaskResult;
+
+    // Pending file attachments (selected but not yet sent)
+    private List<FileAttachment> pendingAttachments = new ArrayList<>();
+
+    // File picker launcher
+    private ActivityResultLauncher<String> filePickerLauncher;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -91,7 +105,20 @@ public class ChatFragment extends Fragment {
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize workspace", e);
         }
-        
+
+        // Initialize file upload manager
+        fileUploadManager = new FileUploadManager(requireContext(), workspaceManager);
+
+        // Register file picker launcher
+        filePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri != null) {
+                    uploadSelectedFile(uri);
+                }
+            }
+        );
+
         identityManager = new IdentityManager(requireContext(), workspaceManager);
         
         // Initialize memory system
@@ -154,6 +181,7 @@ public class ChatFragment extends Fragment {
         recyclerView = view.findViewById(R.id.recyclerView);
         messageInput = view.findViewById(R.id.messageInput);
         sendButton = view.findViewById(R.id.sendButton);
+        attachButton = view.findViewById(R.id.attachButton);
         statusContainer = view.findViewById(R.id.statusContainer);
         progressBar = view.findViewById(R.id.progressBar);
         statusText = view.findViewById(R.id.statusText);
@@ -246,10 +274,65 @@ public class ChatFragment extends Fragment {
     private void setupClickListeners() {
         sendButton.setOnClickListener(v -> sendMessage());
 
+        attachButton.setOnClickListener(v -> launchFilePicker());
+
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
             return true;
         });
+    }
+
+    /**
+     * Launch the system file picker to select a file for attachment.
+     */
+    private void launchFilePicker() {
+        filePickerLauncher.launch("*/*");
+    }
+
+    /**
+     * Handle the selected file from the picker. Uploads it to the workspace uploads directory.
+     */
+    private void uploadSelectedFile(Uri uri) {
+        if (fileUploadManager == null) {
+            Toast.makeText(requireContext(), "File upload not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                FileUploadManager.UploadResult result = fileUploadManager.uploadFile(uri, null);
+                FileAttachment attachment = new FileAttachment(
+                    result.getFilename(),
+                    result.getOriginalName(),
+                    result.getAbsolutePath(),
+                    result.getMimeType()
+                );
+
+                requireActivity().runOnUiThread(() -> {
+                    pendingAttachments.add(attachment);
+                    Toast.makeText(requireContext(),
+                        "Attached: " + result.getOriginalName(),
+                        Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "File attached: " + result.getOriginalName() + " -> " + result.getFilename());
+                });
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to upload file", e);
+                requireActivity().runOnUiThread(() ->
+                    Toast.makeText(requireContext(),
+                        "Failed to attach file: " + e.getMessage(),
+                        Toast.LENGTH_LONG).show()
+                );
+            }
+        }).start();
+    }
+
+    /**
+     * Clear pending attachments and return a copy (consumed when sending message).
+     */
+    private List<FileAttachment> consumePendingAttachments() {
+        List<FileAttachment> copy = new ArrayList<>(pendingAttachments);
+        pendingAttachments.clear();
+        return copy;
     }
 
     private void sendMessage() {
@@ -265,7 +348,15 @@ public class ChatFragment extends Fragment {
             return;
         }
 
-        ChatMessage userMessage = new ChatMessage(messageText, ChatMessage.TYPE_USER);
+        // Consume pending attachments
+        List<FileAttachment> attachments = consumePendingAttachments();
+
+        ChatMessage userMessage;
+        if (!attachments.isEmpty()) {
+            userMessage = ChatMessage.createUserMessageWithAttachments(messageText, attachments);
+        } else {
+            userMessage = new ChatMessage(messageText, ChatMessage.TYPE_USER);
+        }
         chatAdapter.addMessage(userMessage);
         scrollToBottom();
         

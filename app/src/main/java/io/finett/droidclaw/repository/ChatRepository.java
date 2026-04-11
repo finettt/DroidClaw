@@ -232,7 +232,34 @@ public class ChatRepository {
                         jsonObject.put("originalTaskId", message.getOriginalTaskId());
                     }
                 }
-                
+
+                // Save attachment fields (user messages with file uploads)
+                if (message.hasAttachments()) {
+                    JSONArray attachmentsArray = new JSONArray();
+                    for (io.finett.droidclaw.model.FileAttachment attachment : message.getAttachments()) {
+                        JSONObject attObj = new JSONObject();
+                        attObj.put("filename", attachment.getFilename());
+                        attObj.put("originalName", attachment.getOriginalName());
+                        attObj.put("absolutePath", attachment.getAbsolutePath());
+                        attObj.put("mimeType", attachment.getMimeType());
+                        attachmentsArray.put(attObj);
+                    }
+                    jsonObject.put("attachments", attachmentsArray);
+                }
+
+                // Save TYPE_ATTACHMENT fields
+                if (message.getType() == ChatMessage.TYPE_ATTACHMENT) {
+                    if (message.getFilePath() != null) {
+                        jsonObject.put("filePath", message.getFilePath());
+                    }
+                    if (message.getFileMimeType() != null) {
+                        jsonObject.put("fileMimeType", message.getFileMimeType());
+                    }
+                    if (message.getDisplayName() != null) {
+                        jsonObject.put("displayName", message.getDisplayName());
+                    }
+                }
+
                 jsonArray.put(jsonObject);
             }
             
@@ -312,7 +339,38 @@ public class ChatRepository {
                     } else {
                         message = new ChatMessage(content, type);
                     }
-                    
+
+                    // Restore attachments (for user messages with file uploads)
+                    if (jsonObject.has("attachments")) {
+                        JSONArray attachmentsArray = jsonObject.getJSONArray("attachments");
+                        List<io.finett.droidclaw.model.FileAttachment> attachments = new ArrayList<>();
+                        for (int j = 0; j < attachmentsArray.length(); j++) {
+                            JSONObject attObj = attachmentsArray.getJSONObject(j);
+                            io.finett.droidclaw.model.FileAttachment attachment =
+                                new io.finett.droidclaw.model.FileAttachment(
+                                    attObj.optString("filename", ""),
+                                    attObj.optString("originalName", ""),
+                                    attObj.optString("absolutePath", ""),
+                                    attObj.optString("mimeType", "")
+                                );
+                            attachments.add(attachment);
+                        }
+                        message.setAttachments(attachments);
+                    }
+
+                    // Restore TYPE_ATTACHMENT fields
+                    if (type == ChatMessage.TYPE_ATTACHMENT) {
+                        if (jsonObject.has("filePath") && !jsonObject.isNull("filePath")) {
+                            message.setFilePath(jsonObject.getString("filePath"));
+                        }
+                        if (jsonObject.has("fileMimeType") && !jsonObject.isNull("fileMimeType")) {
+                            message.setFileMimeType(jsonObject.getString("fileMimeType"));
+                        }
+                        if (jsonObject.has("displayName") && !jsonObject.isNull("displayName")) {
+                            message.setDisplayName(jsonObject.getString("displayName"));
+                        }
+                    }
+
                     message.setTimestamp(timestamp);
                     messages.add(message);
                 } catch (Exception e) {
