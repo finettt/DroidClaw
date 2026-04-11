@@ -132,11 +132,7 @@ jobs:
             adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" || true
             
             # Run tests with additional JVM args for Espresso timeout
-            ./gradlew connectedAndroidTest \
-              -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} \
-              -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} \
-              -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g" \
-              --stacktrace --no-daemon
+            ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g" --stacktrace --no-daemon
         timeout-minutes: 25
 
       - name: Upload test results
