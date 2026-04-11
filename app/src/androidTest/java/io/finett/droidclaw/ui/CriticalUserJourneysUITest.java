@@ -35,6 +35,7 @@ import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
+import io.finett.droidclaw.util.ActivityLaunchHelper;
 import io.finett.droidclaw.util.SettingsManager;
 import io.finett.droidclaw.util.TestUtils;
 
@@ -77,7 +78,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_firstLaunch_showsMainChatInterface() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -103,7 +104,7 @@ public class CriticalUserJourneysUITest {
     public void userJourney_sendMessage_completeFlow() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -125,7 +126,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_createMultipleChats_switchBetween() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -169,7 +170,7 @@ public class CriticalUserJourneysUITest {
     public void userJourney_navigateToSettings_viewSettingsList() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -191,7 +192,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_drawerInteraction_openCloseMultipleTimes() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -222,7 +223,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_emptyMessageAttempt_validation() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -250,7 +251,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_settingsWithoutApiKey_showsValidation() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -271,7 +272,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_rapidActions_stressTest() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -305,7 +306,7 @@ public class CriticalUserJourneysUITest {
     public void userJourney_longTextInput_handlesCorrectly() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -335,7 +336,7 @@ public class CriticalUserJourneysUITest {
         configureSettings();
 
         // First launch - create chat
-        try (ActivityScenario<MainActivity> scenario1 = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario1 = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             TestUtils.waitForUiReady();
             onView(withId(R.id.drawer_layout))
                     .perform(open());
@@ -346,7 +347,7 @@ public class CriticalUserJourneysUITest {
         }
 
         // Second launch - verify chat persisted
-        try (ActivityScenario<MainActivity> scenario2 = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario2 = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             TestUtils.waitForUiReady();
             onView(withId(R.id.drawer_layout))
                     .perform(open());
@@ -360,7 +361,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_settingsNavigation_backButton() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -383,7 +384,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_multipleSessionsWorkflow_comprehensive() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -431,7 +432,7 @@ public class CriticalUserJourneysUITest {
 
     @Test
     public void userJourney_toolbarNavigation_hamburgerMenu() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -460,7 +461,7 @@ public class CriticalUserJourneysUITest {
     public void userJourney_specialCharacters_inMessageInput() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             

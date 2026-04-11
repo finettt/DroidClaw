@@ -31,6 +31,7 @@ import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
+import io.finett.droidclaw.util.ActivityLaunchHelper;
 import io.finett.droidclaw.util.SettingsManager;
 import io.finett.droidclaw.util.TestUtils;
 
@@ -71,7 +72,7 @@ public class UserFlowIntegrationTest {
 
     @Test
     public void completeFlow_firstTimeUser_canNavigateToSettings() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -96,7 +97,7 @@ public class UserFlowIntegrationTest {
     public void completeFlow_createMultipleSessions_switchBetweenThem() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -150,7 +151,7 @@ public class UserFlowIntegrationTest {
     public void completeFlow_sendMessage_withoutApi_showsError() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -176,7 +177,7 @@ public class UserFlowIntegrationTest {
     public void completeFlow_navigateSettings_viewSettingsList() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -200,7 +201,7 @@ public class UserFlowIntegrationTest {
     public void completeFlow_emptyMessage_doesNotSend() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -223,7 +224,7 @@ public class UserFlowIntegrationTest {
     public void completeFlow_whitespaceMessage_doesNotSend() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -244,7 +245,7 @@ public class UserFlowIntegrationTest {
 
     @Test
     public void completeFlow_drawerNavigation_opensAndCloses() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -267,7 +268,7 @@ public class UserFlowIntegrationTest {
     public void completeFlow_rotateDevice_maintainsState() {
         configureSettings();
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -289,7 +290,7 @@ public class UserFlowIntegrationTest {
 
     @Test
     public void completeFlow_multipleNewChats_allPersist() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -316,7 +317,7 @@ public class UserFlowIntegrationTest {
 
     @Test
     public void completeFlow_backNavigation_handledCorrectly() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -338,7 +339,7 @@ public class UserFlowIntegrationTest {
 
     @Test
     public void completeFlow_rapidClicks_handledGracefully() {
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
@@ -374,7 +375,7 @@ public class UserFlowIntegrationTest {
         // Mark onboarding as completed
         settingsManager.setOnboardingCompleted(true);
 
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+        try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             // Wait for UI to be fully ready
             TestUtils.waitForUiReady();
             
