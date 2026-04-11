@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
+import androidx.navigation.NavDestination;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
@@ -68,7 +69,13 @@ public class MainActivity extends AppCompatActivity {
 
         if (navHostFragment != null) {
             navController = navHostFragment.getNavController();
-            appBarConfiguration = new AppBarConfiguration.Builder(R.id.chatFragment)
+            appBarConfiguration = new AppBarConfiguration.Builder(
+                    R.id.chatFragment,
+                    R.id.settingsFragment,
+                    R.id.fileBrowserFragment,
+                    R.id.memoryBrowserFragment,
+                    R.id.cronJobListFragment
+            )
                     .setOpenableLayout(drawerLayout)
                     .build();
 
@@ -83,6 +90,27 @@ public class MainActivity extends AppCompatActivity {
             );
             drawerLayout.addDrawerListener(drawerToggle);
             drawerToggle.syncState();
+
+            // Update toolbar icon and behavior when destination changes
+            navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+                if (appBarConfiguration.getTopLevelDestinations().contains(destination.getId())) {
+                    // Top-level destination: show hamburger icon
+                    drawerToggle.setDrawerIndicatorEnabled(true);
+                } else {
+                    // Sub-screen: show back arrow and override click to navigate up
+                    drawerToggle.setDrawerIndicatorEnabled(false);
+                    toolbar.setNavigationIcon(com.google.android.material.R.drawable.abc_ic_ab_back_material);
+                    toolbar.setNavigationOnClickListener(v -> {
+                        NavController nc = controller;
+                        if (nc.getPreviousBackStackEntry() != null) {
+                            nc.navigateUp();
+                        } else {
+                            // Fallback: open drawer
+                            drawerLayout.openDrawer(GravityCompat.START);
+                        }
+                    });
+                }
+            });
 
             // On fresh app launch, check onboarding status
             // Post navigation to ensure NavController is fully initialized
