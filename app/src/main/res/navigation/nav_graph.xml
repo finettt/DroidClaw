@@ -77,6 +77,11 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_providersListFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
     <fragment
@@ -95,6 +100,11 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_providerDetailFragment_to_providersListFragment"
+            app:destination="@id/providersListFragment"
+            app:popUpTo="@id/providersListFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
     <fragment
@@ -109,17 +119,33 @@
             app:argType="string"
             app:nullable="true"
             android:defaultValue="@null" />
+        <action
+            android:id="@+id/action_modelDetailFragment_to_providerDetailFragment"
+            app:destination="@id/providerDetailFragment"
+            app:popUpTo="@id/providerDetailFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
     <fragment
         android:id="@+id/agentSettingsFragment"
         android:name="io.finett.droidclaw.fragment.AgentSettingsFragment"
-        android:label="Agent Settings" />
+        android:label="Agent Settings">
+        <action
+            android:id="@+id/action_agentSettingsFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
 
     <fragment
         android:id="@+id/heartbeatSettingsFragment"
         android:name="io.finett.droidclaw.fragment.HeartbeatSettingsFragment"
         android:label="Background Monitoring">
+        <action
+            android:id="@+id/action_heartbeatSettingsFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
         <action
             android:id="@+id/action_heartbeatSettingsFragment_to_fileBrowserFragment"
             app:destination="@id/fileBrowserFragment"
@@ -148,7 +174,13 @@
     <fragment
         android:id="@+id/skillContentFragment"
         android:name="io.finett.droidclaw.fragment.SkillContentFragment"
-        android:label="Skill Details" />
+        android:label="Skill Details">
+        <action
+            android:id="@+id/action_skillContentFragment_to_skillsBrowserFragment"
+            app:destination="@id/skillsBrowserFragment"
+            app:popUpTo="@id/skillsBrowserFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
 
     <fragment
         android:id="@+id/fileBrowserFragment"
@@ -158,7 +190,13 @@
     <fragment
         android:id="@+id/memoryBrowserFragment"
         android:name="io.finett.droidclaw.fragment.MemoryBrowserFragment"
-        android:label="Memory" />
+        android:label="Memory">
+        <action
+            android:id="@+id/action_memoryBrowserFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
 
     <fragment
         android:id="@+id/zenResultFragment"
@@ -190,6 +228,11 @@
             app:argType="string"
             app:nullable="true"
             android:defaultValue="@null" />
+        <action
+            android:id="@+id/action_cronJobDetailFragment_to_cronJobListFragment"
+            app:destination="@id/cronJobListFragment"
+            app:popUpTo="@id/cronJobListFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
     <fragment
@@ -201,6 +244,11 @@
             app:argType="string"
             app:nullable="true"
             android:defaultValue="@null" />
+        <action
+            android:id="@+id/action_taskHistoryFragment_to_cronJobDetailFragment"
+            app:destination="@id/cronJobDetailFragment"
+            app:popUpTo="@id/cronJobDetailFragment"
+            app:popUpToInclusive="false" />
     </fragment>
 
 </navigation>
