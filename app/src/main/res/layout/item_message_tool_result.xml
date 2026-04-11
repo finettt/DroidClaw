@@ -71,6 +71,15 @@
                 android:maxLines="15"
                 android:ellipsize="end" />
 
+            <!-- Container for file references detected in tool results -->
+            <LinearLayout
+                android:id="@+id/toolResultFilesContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="6dp"
+                android:visibility="gone" />
+
         </LinearLayout>
 
     </com.google.android.material.card.MaterialCardView>

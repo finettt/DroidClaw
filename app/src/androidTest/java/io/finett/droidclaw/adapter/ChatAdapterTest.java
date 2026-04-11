@@ -861,4 +861,164 @@ public class ChatAdapterTest {
             assertNotNull("ViewHolder for type " + i + " should not be null", viewHolder);
         }
     }
+
+    // ==================== ATTACHMENT TESTS ====================
+
+    @Test
+    public void addMessage_attachmentMessage_increasesCount() {
+        ChatMessage attachment = ChatMessage.createAttachmentMessage(
+                "/path/to/file.txt", "file.txt", "text/plain");
+        adapter.addMessage(attachment);
+
+        assertEquals(1, adapter.getItemCount());
+    }
+
+    @Test
+    public void getItemViewType_attachmentMessage_returnsAttachmentType() {
+        adapter.addMessage(ChatMessage.createAttachmentMessage(
+                "/path/to/file.txt", "file.txt", "text/plain"));
+
+        int viewType = adapter.getItemViewType(0);
+
+        assertEquals(ChatMessage.TYPE_ATTACHMENT, viewType);
+    }
+
+    @Test
+    public void onCreateViewHolder_attachmentMessage_createsCorrectViewHolder() {
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_ATTACHMENT
+        );
+
+        assertNotNull(viewHolder);
+        assertNotNull(viewHolder.itemView);
+    }
+
+    @Test
+    public void onBindViewHolder_attachmentMessage_bindsCorrectly() {
+        ChatMessage attachment = ChatMessage.createAttachmentMessage(
+                "/path/to/report.pdf", "report.pdf", "application/pdf");
+        adapter.addMessage(attachment);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_ATTACHMENT
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        // AttachmentMessageViewHolder uses Chip as the root view
+        com.google.android.material.chip.Chip chip = (com.google.android.material.chip.Chip) viewHolder.itemView;
+        assertNotNull(chip.getText());
+        assertTrue("Chip text should contain filename",
+                chip.getText().toString().contains("report.pdf"));
+    }
+
+    @Test
+    public void addMessage_userMessageWithAttachments_showsAttachments() {
+        java.util.List<io.finett.droidclaw.model.FileAttachment> attachments = new java.util.ArrayList<>();
+        attachments.add(new io.finett.droidclaw.model.FileAttachment(
+                "abc_test.png", "test.png", "/tmp/abc_test.png", "image/png"));
+
+        ChatMessage message = ChatMessage.createUserMessageWithAttachments("Look at this", attachments);
+        adapter.addMessage(message);
+
+        assertEquals(1, adapter.getItemCount());
+        assertTrue(adapter.getMessages().get(0).hasAttachments());
+    }
+
+    @Test
+    public void onBindViewHolder_userMessageWithAttachments_bindsAttachments() {
+        java.util.List<io.finett.droidclaw.model.FileAttachment> attachments = new java.util.ArrayList<>();
+        attachments.add(new io.finett.droidclaw.model.FileAttachment(
+                "abc_test.txt", "test.txt", "/tmp/abc_test.txt", "text/plain"));
+
+        ChatMessage message = ChatMessage.createUserMessageWithAttachments("Check this", attachments);
+        adapter.addMessage(message);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_USER
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        // Verify attachments container exists
+        android.widget.LinearLayout attachmentsContainer = viewHolder.itemView.findViewById(R.id.attachmentsContainer);
+        assertNotNull(attachmentsContainer);
+    }
+
+    @Test
+    public void onBindViewHolder_toolResultMessage_hasFilesContainer() {
+        ChatMessage toolResult = ChatMessage.createToolResultMessage("call-123", "write_file",
+                "File created: `report.txt`");
+        adapter.addMessage(toolResult);
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView,
+                ChatMessage.TYPE_TOOL_RESULT
+        );
+
+        adapter.onBindViewHolder(viewHolder, 0);
+
+        // Verify files container exists in tool result
+        android.widget.LinearLayout filesContainer = viewHolder.itemView.findViewById(R.id.toolResultFilesContainer);
+        assertNotNull(filesContainer);
+    }
+
+    @Test
+    public void allMessageTypes_includingAttachment_viewHolderCreation() {
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+
+        // Add all message types
+        adapter.addMessage(new ChatMessage("System", ChatMessage.TYPE_SYSTEM));
+        adapter.addMessage(new ChatMessage("User", ChatMessage.TYPE_USER));
+        adapter.addMessage(new ChatMessage("Assistant", ChatMessage.TYPE_ASSISTANT));
+        adapter.addMessage(ChatMessage.createToolCallMessage(null));
+        adapter.addMessage(ChatMessage.createToolResultMessage("c1", "tool", "result"));
+        ChatMessage ctx = new ChatMessage("Context", ChatMessage.TYPE_CONTEXT_CARD);
+        ctx.setIsContextCard(true);
+        ctx.setContextType("heartbeat");
+        ctx.setTimestamp(1000L);
+        adapter.addMessage(ctx);
+        adapter.addMessage(ChatMessage.createAttachmentMessage("/path/f.txt", "f.txt", "text/plain"));
+
+        assertEquals(7, adapter.getItemCount());
+
+        // Verify all view types
+        int[] expectedTypes = {
+                ChatMessage.TYPE_SYSTEM,
+                ChatMessage.TYPE_USER,
+                ChatMessage.TYPE_ASSISTANT,
+                ChatMessage.TYPE_TOOL_CALL,
+                ChatMessage.TYPE_TOOL_RESULT,
+                ChatMessage.TYPE_CONTEXT_CARD,
+                ChatMessage.TYPE_ATTACHMENT
+        };
+
+        for (int i = 0; i < 7; i++) {
+            assertEquals(expectedTypes[i], adapter.getItemViewType(i));
+
+            ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                    recyclerView,
+                    adapter.getItemViewType(i)
+            );
+            assertNotNull("ViewHolder for type " + i + " should not be null", viewHolder);
+        }
+    }
 }

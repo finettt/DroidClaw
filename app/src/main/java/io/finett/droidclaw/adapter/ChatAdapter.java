@@ -1,20 +1,31 @@
 package io.finett.droidclaw.adapter;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.chip.Chip;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.util.MarkdownRenderer;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHolder> {
@@ -23,6 +34,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     private static final int VIEW_TYPE_TOOL_CALL = 2;
     private static final int VIEW_TYPE_TOOL_RESULT = 3;
     private static final int VIEW_TYPE_CONTEXT_CARD = 5;
+    private static final int VIEW_TYPE_ATTACHMENT = 6;
 
     private final List<ChatMessage> messages = new ArrayList<>();
 
@@ -60,6 +72,11 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 view = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.item_message_context_card, parent, false);
                 return new ContextCardMessageViewHolder(view);
+
+            case VIEW_TYPE_ATTACHMENT:
+                view = LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.item_attachment_chip, parent, false);
+                return new AttachmentMessageViewHolder(view);
 
             default:
                 view = LayoutInflater.from(parent.getContext())
@@ -117,11 +134,13 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
     static class UserMessageViewHolder extends MessageViewHolder {
         private final TextView messageText;
+        private final LinearLayout attachmentsContainer;
         private final Context context;
 
         UserMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             messageText = itemView.findViewById(R.id.messageText);
+            attachmentsContainer = itemView.findViewById(R.id.attachmentsContainer);
             context = itemView.getContext();
         }
 
@@ -132,6 +151,79 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 MarkdownRenderer.render(context, messageText, content);
             } else {
                 messageText.setText(content);
+            }
+
+            // Display attachments if present
+            renderAttachments(message);
+        }
+
+        /**
+         * Renders file attachment chips for the message.
+         */
+        private void renderAttachments(ChatMessage message) {
+            attachmentsContainer.removeAllViews();
+
+            if (!message.hasAttachments()) {
+                attachmentsContainer.setVisibility(View.GONE);
+                return;
+            }
+
+            attachmentsContainer.setVisibility(View.VISIBLE);
+
+            for (FileAttachment attachment : message.getAttachments()) {
+                Chip chip = (Chip) LayoutInflater.from(context)
+                        .inflate(R.layout.item_attachment_chip, attachmentsContainer, false);
+
+                String icon = attachment.getDisplayIcon();
+                chip.setText(icon + " " + attachment.getOriginalName());
+
+                // Click to open file
+                chip.setOnClickListener(v -> openFile(attachment));
+
+                attachmentsContainer.addView(chip);
+            }
+        }
+
+        /**
+         * Opens the attached file with an external app.
+         */
+        private void openFile(FileAttachment attachment) {
+            File file = new File(attachment.getAbsolutePath());
+            if (!file.exists()) {
+                Toast.makeText(context, "File not found: " + attachment.getOriginalName(),
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            try {
+                Uri fileUri = FileProvider.getUriForFile(context,
+                        context.getPackageName() + ".fileprovider", file);
+
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(fileUri, attachment.getMimeType());
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                // Check if there's an app to handle this intent
+                if (intent.resolveActivity(context.getPackageManager()) != null) {
+                    context.startActivity(intent);
+                } else {
+                    // No app found - show chooser with "Open with" prompt
+                    Intent chooser = Intent.createChooser(intent,
+                            context.getString(R.string.file_viewer_open_with));
+                    if (chooser.resolveActivity(context.getPackageManager()) != null) {
+                        context.startActivity(chooser);
+                    } else {
+                        Toast.makeText(context,
+                                context.getString(R.string.file_viewer_no_app_found,
+                                        attachment.getOriginalName()),
+                                Toast.LENGTH_LONG).show();
+                    }
+                }
+            } catch (Exception e) {
+                Toast.makeText(context,
+                        context.getString(R.string.file_viewer_open_error,
+                                attachment.getOriginalName()),
+                        Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -242,7 +334,13 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         private final TextView toolResultLabel;
         private final TextView toolResultToggle;
         private final TextView toolResultContent;
+        private final LinearLayout filesContainer;
         private boolean isExpanded = false;
+
+        // Pattern to detect file paths in tool results
+        private static final Pattern FILE_REF_PATTERN = Pattern.compile(
+            "`([^`]+)`|(/data/data/[^\\s]+|uploads/[^\\s]+)"
+        );
 
         ToolResultMessageViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -251,7 +349,8 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             toolResultLabel = itemView.findViewById(R.id.toolResultLabel);
             toolResultToggle = itemView.findViewById(R.id.toolResultToggle);
             toolResultContent = itemView.findViewById(R.id.toolResultContent);
-            
+            filesContainer = itemView.findViewById(R.id.toolResultFilesContainer);
+
             // Set up click listener for expand/collapse
             toolResultHeader.setOnClickListener(v -> toggleExpanded());
         }
@@ -296,6 +395,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 toolResultToggle.setVisibility(View.GONE);
                 toolResultContent.setMaxLines(Integer.MAX_VALUE);
             }
+
+            // Detect and render file references
+            renderFileReferences(content);
         }
         
         private void toggleExpanded() {
@@ -325,6 +427,124 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                         .append(part.substring(1).toLowerCase());
             }
             return formatted.toString();
+        }
+
+        /**
+         * Detects file references in tool result content and displays them as clickable chips.
+         */
+        private void renderFileReferences(String content) {
+            filesContainer.removeAllViews();
+
+            if (content == null) {
+                filesContainer.setVisibility(View.GONE);
+                return;
+            }
+
+            java.util.Set<String> foundFiles = new java.util.HashSet<>();
+            Matcher matcher = FILE_REF_PATTERN.matcher(content);
+            while (matcher.find()) {
+                String rawPath = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+                if (rawPath == null || rawPath.isEmpty()) continue;
+
+                // Skip common non-file patterns
+                if (rawPath.contains("```") || rawPath.contains("\n") ||
+                    rawPath.startsWith("[") || rawPath.startsWith("(")) continue;
+
+                foundFiles.add(rawPath);
+            }
+
+            if (foundFiles.isEmpty()) {
+                filesContainer.setVisibility(View.GONE);
+                return;
+            }
+
+            filesContainer.setVisibility(View.VISIBLE);
+
+            for (String rawPath : foundFiles) {
+                File file = resolveFile(rawPath);
+                if (file == null || !file.exists()) continue;
+
+                String displayName = file.getName();
+                String mimeType = io.finett.droidclaw.filesystem.FileUploadManager.resolveMimeType(displayName);
+
+                Chip chip = (Chip) LayoutInflater.from(itemView.getContext())
+                        .inflate(R.layout.item_attachment_chip, filesContainer, false);
+
+                String icon = "📎";
+                if (mimeType != null) {
+                    if (mimeType.startsWith("image/")) icon = "🖼️";
+                    else if (mimeType.startsWith("text/")) icon = "📄";
+                    else if (mimeType.contains("pdf")) icon = "📕";
+                    else if (mimeType.contains("spreadsheet")) icon = "📊";
+                }
+
+                chip.setText(icon + " " + displayName);
+                chip.setOnClickListener(v -> openFile(file, displayName, mimeType));
+
+                filesContainer.addView(chip);
+            }
+        }
+
+        /**
+         * Resolves a file reference path to an actual File object.
+         */
+        private File resolveFile(String rawPath) {
+            if (rawPath.startsWith("/")) {
+                return new File(rawPath);
+            }
+
+            // Try workspace directories
+            String[] searchDirs = {"uploads", "home", "home/documents", "home/scripts", "home/notes", "tmp"};
+            File filesDir = itemView.getContext().getFilesDir();
+            File workspaceRoot = new File(filesDir, "workspace");
+
+            // Direct path under workspace
+            File directFile = new File(workspaceRoot, rawPath);
+            if (directFile.exists()) return directFile;
+
+            // Search in subdirectories
+            for (String dir : searchDirs) {
+                File file = new File(workspaceRoot, dir + "/" + rawPath);
+                if (file.exists()) return file;
+            }
+
+            // Just the filename - search uploads first
+            File uploadFile = new File(new File(workspaceRoot, "uploads"), rawPath);
+            if (uploadFile.exists()) return uploadFile;
+
+            return null;
+        }
+
+        /**
+         * Opens a file with an external app.
+         */
+        private void openFile(File file, String displayName, String mimeType) {
+            try {
+                Uri fileUri = FileProvider.getUriForFile(itemView.getContext(),
+                        itemView.getContext().getPackageName() + ".fileprovider", file);
+
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setDataAndType(fileUri, mimeType != null ? mimeType : "*/*");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                if (intent.resolveActivity(itemView.getContext().getPackageManager()) != null) {
+                    itemView.getContext().startActivity(intent);
+                } else {
+                    Intent chooser = Intent.createChooser(intent,
+                            itemView.getContext().getString(R.string.file_viewer_open_with));
+                    if (chooser.resolveActivity(itemView.getContext().getPackageManager()) != null) {
+                        itemView.getContext().startActivity(chooser);
+                    } else {
+                        Toast.makeText(itemView.getContext(),
+                                itemView.getContext().getString(R.string.file_viewer_no_app_found, displayName),
+                                Toast.LENGTH_LONG).show();
+                    }
+                }
+            } catch (Exception e) {
+                Toast.makeText(itemView.getContext(),
+                        itemView.getContext().getString(R.string.file_viewer_open_error, displayName),
+                        Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -438,6 +658,94 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 default:
                     return "Task Result";
             }
+        }
+    }
+
+    /**
+     * ViewHolder for agent-referenced file attachment messages (TYPE_ATTACHMENT).
+     * Displays a clickable chip that opens the file in an external app.
+     */
+    static class AttachmentMessageViewHolder extends MessageViewHolder {
+        private final Chip attachmentChip;
+        private final Context context;
+
+        AttachmentMessageViewHolder(@NonNull View itemView) {
+            super(itemView);
+            attachmentChip = (Chip) itemView;
+            context = itemView.getContext();
+        }
+
+        @Override
+        void bind(ChatMessage message) {
+            String rawDisplayName = message.getDisplayName();
+            final String mimeType = message.getFileMimeType();
+            final String filePath = message.getFilePath();
+
+            final String displayName;
+            if (rawDisplayName == null || rawDisplayName.isEmpty()) {
+                if (filePath != null) {
+                    displayName = new File(filePath).getName();
+                } else {
+                    displayName = "Unknown file";
+                }
+            } else {
+                displayName = rawDisplayName;
+            }
+
+            String icon = "📎";
+            if (mimeType != null) {
+                if (mimeType.startsWith("image/")) icon = "🖼️";
+                else if (mimeType.startsWith("text/")) icon = "📄";
+                else if (mimeType.contains("pdf")) icon = "📕";
+                else if (mimeType.contains("spreadsheet") || mimeType.contains("excel")) icon = "📊";
+                else if (mimeType.contains("document")) icon = "📘";
+            }
+
+            final String finalIcon = icon;
+            attachmentChip.setText(finalIcon + " " + displayName);
+
+            attachmentChip.setOnClickListener(v -> {
+                if (filePath == null) {
+                    Toast.makeText(context, "File path not available",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                File file = new File(filePath);
+                if (!file.exists()) {
+                    Toast.makeText(context, "File not found: " + displayName,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                try {
+                    Uri fileUri = FileProvider.getUriForFile(context,
+                            context.getPackageName() + ".fileprovider", file);
+
+                    String actualMimeType = mimeType != null ? mimeType : "*/*";
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setDataAndType(fileUri, actualMimeType);
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                    if (intent.resolveActivity(context.getPackageManager()) != null) {
+                        context.startActivity(intent);
+                    } else {
+                        Intent chooser = Intent.createChooser(intent,
+                                context.getString(R.string.file_viewer_open_with));
+                        if (chooser.resolveActivity(context.getPackageManager()) != null) {
+                            context.startActivity(chooser);
+                        } else {
+                            Toast.makeText(context,
+                                    context.getString(R.string.file_viewer_no_app_found, displayName),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(context,
+                            context.getString(R.string.file_viewer_open_error, displayName),
+                            Toast.LENGTH_LONG).show();
+                }
+            });
         }
     }
 }

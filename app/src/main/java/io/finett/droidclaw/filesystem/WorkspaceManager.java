@@ -36,6 +36,7 @@ public class WorkspaceManager {
     private static final String MEMORY_DIR = ".agent/memory";
     private static final String SKILLS_DIR = ".agent/skills";
     private static final String CONFIG_DIR = ".agent/config";
+    private static final String UPLOADS_DIR = "uploads";
     
     // Identity files
     private static final String SOUL_FILE = ".agent/soul.md";
@@ -77,7 +78,8 @@ public class WorkspaceManager {
             AGENT_DIR,
             MEMORY_DIR,
             SKILLS_DIR,
-            CONFIG_DIR
+            CONFIG_DIR,
+            UPLOADS_DIR
         };
 
         for (String dirPath : standardDirs) {
@@ -334,6 +336,15 @@ public class WorkspaceManager {
      */
     public File getConfigDirectory() {
         return new File(workspaceRoot, CONFIG_DIR);
+    }
+
+    /**
+     * Gets the uploads directory where user-uploaded files are stored.
+     *
+     * @return Uploads directory file
+     */
+    public File getUploadsDirectory() {
+        return new File(workspaceRoot, UPLOADS_DIR);
     }
 
     /**

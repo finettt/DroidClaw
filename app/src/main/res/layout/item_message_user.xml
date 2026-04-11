@@ -1,8 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:orientation="vertical"
     android:paddingVertical="4dp">
+
+    <LinearLayout
+        android:id="@+id/attachmentsContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:orientation="vertical"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/messageText"
@@ -16,4 +26,4 @@
         android:textColor="@android:color/white"
         android:textSize="16sp" />
 
-</FrameLayout>
+</LinearLayout>

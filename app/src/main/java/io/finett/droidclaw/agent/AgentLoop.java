@@ -5,11 +5,15 @@ import android.util.Log;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.tool.ToolResult;
@@ -29,6 +33,13 @@ import io.finett.droidclaw.repository.MemoryRepository;
 public class AgentLoop {
     private static final String TAG = "AgentLoop";
     private static final int DEFAULT_MAX_ITERATIONS = 20;
+
+    // Pattern to detect file paths in agent responses (workspace paths)
+    // Matches: /data/data/.../workspace/... or relative paths like uploads/filename.ext
+    // Also matches backtick-quoted paths like `filename.ext`
+    private static final Pattern FILE_PATH_PATTERN = Pattern.compile(
+        "(?:`([^`]+)`|(/data/data/[^\\s]+|uploads/[^\\s]+|home/[^\\s]+|tmp/[^\\s]+))"
+    );
 
     private final LlmApiService apiService;
     private final ToolRegistry toolRegistry;
@@ -450,7 +461,104 @@ public class AgentLoop {
         ChatMessage assistantMessage = new ChatMessage(content, ChatMessage.TYPE_ASSISTANT);
         conversationHistory.add(assistantMessage);
 
+        // Detect file references in the response and create attachment messages
+        detectAndAddFileReferences(content, conversationHistory);
+
         callback.onComplete(content, conversationHistory);
+    }
+
+    /**
+     * Scans the assistant response for file references and creates TYPE_ATTACHMENT messages.
+     * Detects backtick-quoted filenames and workspace paths.
+     */
+    private void detectAndAddFileReferences(String content, List<ChatMessage> conversationHistory) {
+        if (content == null) return;
+
+        Matcher matcher = FILE_PATH_PATTERN.matcher(content);
+        while (matcher.find()) {
+            String rawPath = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+            if (rawPath == null || rawPath.isEmpty()) continue;
+
+            // Skip if it looks like a code example (has common code markers)
+            if (rawPath.contains("```") || rawPath.contains("\n")) continue;
+
+            String displayName = rawPath;
+            String filePath = rawPath;
+            String mimeType = null;
+
+            // Resolve relative paths to absolute
+            if (!rawPath.startsWith("/")) {
+                // Try to find the file in workspace
+                File workspaceFile = findFileInWorkspace(rawPath);
+                if (workspaceFile != null && workspaceFile.exists()) {
+                    filePath = workspaceFile.getAbsolutePath();
+                    displayName = workspaceFile.getName();
+                    mimeType = io.finett.droidclaw.filesystem.FileUploadManager.resolveMimeType(displayName);
+                }
+            } else if (rawPath.startsWith("/data/data/")) {
+                // Absolute workspace path
+                File file = new File(rawPath);
+                if (file.exists()) {
+                    displayName = file.getName();
+                    mimeType = io.finett.droidclaw.filesystem.FileUploadManager.resolveMimeType(displayName);
+                }
+            }
+
+            // Only create attachment message if file exists
+            File file = new File(filePath);
+            if (file.exists()) {
+                ChatMessage attachmentMsg = ChatMessage.createAttachmentMessage(
+                    filePath, displayName, mimeType);
+                conversationHistory.add(attachmentMsg);
+                Log.d(TAG, "Detected file reference: " + displayName);
+            }
+        }
+    }
+
+    /**
+     * Attempts to find a file in the workspace directories.
+     */
+    private File findFileInWorkspace(String relativePath) {
+        // Try common workspace directories
+        String[] searchDirs = {
+            "uploads",
+            "home",
+            "home/documents",
+            "home/scripts",
+            "home/notes",
+            "tmp"
+        };
+
+        // First try direct path under workspace
+        File workspaceRoot = getWorkspaceRoot();
+        if (workspaceRoot != null) {
+            File directFile = new File(workspaceRoot, relativePath);
+            if (directFile.exists()) {
+                return directFile;
+            }
+
+            // Search in standard directories
+            for (String dir : searchDirs) {
+                File file = new File(workspaceRoot, dir + "/" + relativePath);
+                if (file.exists()) {
+                    return file;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Gets the workspace root from the tool registry.
+     * Returns null if not available.
+     */
+    private File getWorkspaceRoot() {
+        try {
+            return toolRegistry.getWorkspaceRoot();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**

@@ -2,6 +2,7 @@
     <string name="app_name">DroidClaw</string>
     <string name="type_message">Type a message…</string>
     <string name="send">Send</string>
+    <string name="attach_file">Attach file</string>
     <string name="menu">Menu</string>
     <string name="new_chat">New Chat</string>
     <string name="chats">Chats</string>
@@ -136,7 +137,7 @@
     <string name="file_viewer_close">Close</string>
     <string name="file_viewer_error">Error reading file: %1$s</string>
     <string name="file_viewer_file_not_found">File not found: %1$s</string>
-    <string name="file_viewer_no_app_found">No app found to open this file</string>
+    <string name="file_viewer_no_app_found">No app found to open: %1$s</string>
     <string name="file_viewer_open_error">Error opening file: %1$s</string>
     <string name="file_viewer_open_with">Open with</string>
     <string name="settings_skills">Skills</string>
