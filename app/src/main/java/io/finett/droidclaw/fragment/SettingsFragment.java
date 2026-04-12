@@ -28,6 +28,7 @@ public class SettingsFragment extends Fragment {
     private static final String ITEM_HEARTBEAT = "heartbeat";
     private static final String ITEM_CRON_JOBS = "cron_jobs";
     private static final String ITEM_SKILLS = "skills";
+    private static final String ITEM_INFO = "info";
     private static final String ITEM_RESET_ONBOARDING = "reset_onboarding";
 
     private RecyclerView recyclerView;
@@ -117,6 +118,15 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
+        // Info item
+        items.add(new SettingsAdapter.SettingsItem(
+                ITEM_INFO,
+                R.drawable.ic_action_info,
+                getString(R.string.settings_info),
+                getString(R.string.settings_info_subtitle),
+                true
+        ));
+
         // Reset Onboarding item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_RESET_ONBOARDING,
@@ -150,6 +160,10 @@ public class SettingsFragment extends Fragment {
             case ITEM_SKILLS:
                 Navigation.findNavController(requireView())
                         .navigate(R.id.action_settingsFragment_to_skillsBrowserFragment);
+                break;
+            case ITEM_INFO:
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.action_settingsFragment_to_infoFragment);
                 break;
             case ITEM_RESET_ONBOARDING:
                 showResetOnboardingConfirmation();
