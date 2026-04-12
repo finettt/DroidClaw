@@ -10,6 +10,8 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.finett.droidclaw.R;
+
 import static org.junit.Assert.*;
 
 /**
@@ -185,8 +187,8 @@ public class ChatMessageAttachmentTest {
 
     @Test
     public void testFileAttachment_DisplayIcons() {
-        assertEquals("🖼️", imageAttachment.getDisplayIcon());
-        assertEquals("📕", pdfAttachment.getDisplayIcon());
-        assertEquals("📄", textAttachment.getDisplayIcon());
+        assertEquals(R.drawable.ic_file_image, imageAttachment.getDisplayIconResId());
+        assertEquals(R.drawable.ic_file_text, pdfAttachment.getDisplayIconResId());
+        assertEquals(R.drawable.ic_file_text, textAttachment.getDisplayIconResId());
     }
 }
