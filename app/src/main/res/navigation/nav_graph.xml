@@ -64,6 +64,13 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_settingsFragment_to_infoFragment"
+            app:destination="@id/infoFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -170,6 +177,11 @@
         android:id="@+id/skillsBrowserFragment"
         android:name="io.finett.droidclaw.fragment.SkillsBrowserFragment"
         android:label="Skills" />
+
+    <fragment
+        android:id="@+id/infoFragment"
+        android:name="io.finett.droidclaw.fragment.InfoFragment"
+        android:label="@string/info_screen_title" />
 
     <fragment
         android:id="@+id/skillContentFragment"

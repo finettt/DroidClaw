@@ -64,7 +64,7 @@ jobs:
           echo "Updated to versionName=${VERSION}, versionCode=${VERSION_CODE}"
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease -PappVersion=${{ steps.version.outputs.version }} --no-daemon
 
       - name: Find APK file
         id: find_apk

@@ -1,3 +1,6 @@
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
 plugins {
     alias(libs.plugins.android.application)
     id("com.chaquo.python")
@@ -24,7 +27,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
 
         // Chaquopy configuration - ABI filters
         ndk {
@@ -32,9 +35,25 @@ android {
         }
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     buildTypes {
+        debug {
+            val gitHash = try {
+                val result = providers.exec {
+                    commandLine("git", "rev-parse", "--short", "HEAD")
+                }.standardOutput.asText.get().trim()
+                result.ifEmpty { "dev" }
+            } catch (e: Exception) {
+                "dev"
+            }
+            buildConfigField("String", "APP_VERSION", "\"${project.findProperty("appVersion") ?: gitHash}\"")
+        }
         release {
             isMinifyEnabled = false
+            buildConfigField("String", "APP_VERSION", "\"${project.findProperty("appVersion") ?: "dev"}\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
