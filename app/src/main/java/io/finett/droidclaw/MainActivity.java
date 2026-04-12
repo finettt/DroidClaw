@@ -32,6 +32,7 @@ import java.util.UUID;
 
 import io.finett.droidclaw.adapter.ChatSessionAdapter;
 import io.finett.droidclaw.fragment.ChatFragment;
+import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.SessionType;
 import io.finett.droidclaw.model.TaskResult;
@@ -457,6 +458,61 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         // Reload chat sessions when returning to the activity
         loadPersistedChatSessions();
+    }
+
+    /**
+     * Update the toolbar title to reflect the current chat session name.
+     * Called from ChatFragment when a session is loaded or renamed.
+     */
+    public void setToolbarTitle(String title) {
+        if (title != null && !title.isEmpty()) {
+            getSupportActionBar().setTitle(title);
+        } else {
+            getSupportActionBar().setTitle(R.string.app_name);
+        }
+    }
+
+    /**
+     * Get the title of the current chat session for LLM-based title generation.
+     */
+    public String getCurrentSessionTitle() {
+        if (currentSessionId == null) return null;
+        for (ChatSession session : chatSessions) {
+            if (session.getId().equals(currentSessionId)) {
+                return session.getTitle();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the messages of the current chat session for LLM-based title generation.
+     */
+    public List<ChatMessage> getCurrentSessionMessages() {
+        if (currentSessionId == null) return null;
+        return chatRepository.loadMessages(currentSessionId);
+    }
+
+    /**
+     * Update the title of a specific session and notify the adapter.
+     */
+    public void updateSessionTitle(String sessionId, String newTitle) {
+        if (sessionId == null || newTitle == null || newTitle.trim().isEmpty()) {
+            return;
+        }
+
+        for (ChatSession session : chatSessions) {
+            if (session.getId().equals(sessionId)) {
+                session.setTitle(newTitle.trim());
+                session.setUpdatedAt(System.currentTimeMillis());
+                break;
+            }
+        }
+
+        Collections.sort(chatSessions, (s1, s2) -> Long.compare(s2.getUpdatedAt(), s1.getUpdatedAt()));
+        chatRepository.saveSessions(chatSessions);
+        chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
+        Log.d(TAG, "Updated session title: " + sessionId + " -> " + newTitle);
     }
 
     @Override
