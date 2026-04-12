@@ -75,7 +75,7 @@ public class SettingsFragment extends Fragment {
         String providerSubtitle = getString(R.string.settings_providers_subtitle, providerCount);
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_PROVIDERS,
-                "🔌",
+                R.drawable.ic_settings_provider,
                 getString(R.string.settings_providers),
                 providerSubtitle,
                 true
@@ -84,7 +84,7 @@ public class SettingsFragment extends Fragment {
         // Agent item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_AGENT,
-                "⚙️",
+                R.drawable.ic_settings_agent,
                 getString(R.string.settings_agent),
                 getString(R.string.settings_agent_subtitle),
                 true
@@ -93,7 +93,7 @@ public class SettingsFragment extends Fragment {
         // Heartbeat / Background Monitoring item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_HEARTBEAT,
-                "💓",
+                R.drawable.ic_settings_heartbeat,
                 getString(R.string.settings_heartbeat),
                 getString(R.string.settings_heartbeat_subtitle),
                 true
@@ -102,7 +102,7 @@ public class SettingsFragment extends Fragment {
         // Cron Jobs item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_CRON_JOBS,
-                "⏰",
+                R.drawable.ic_settings_cron,
                 getString(R.string.cron_jobs),
                 getString(R.string.settings_cron_jobs_subtitle),
                 true
@@ -111,7 +111,7 @@ public class SettingsFragment extends Fragment {
         // Skills item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_SKILLS,
-                "🧠",
+                R.drawable.ic_tool_generic,
                 getString(R.string.settings_skills),
                 getString(R.string.settings_skills_subtitle),
                 true
@@ -120,7 +120,7 @@ public class SettingsFragment extends Fragment {
         // Reset Onboarding item
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_RESET_ONBOARDING,
-                "🔄",
+                R.drawable.ic_settings_reset,
                 getString(R.string.settings_reset_onboarding),
                 getString(R.string.settings_reset_onboarding_subtitle),
                 false

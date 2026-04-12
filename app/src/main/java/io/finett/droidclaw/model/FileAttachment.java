@@ -1,5 +1,7 @@
 package io.finett.droidclaw.model;
 
+import io.finett.droidclaw.R;
+
 /**
  * Represents a file attachment associated with a chat message.
  */
@@ -52,18 +54,21 @@ public class FileAttachment {
         return mimeType != null && mimeType.startsWith("image/");
     }
 
-    public String getDisplayIcon() {
-        if (mimeType == null) return "📎";
-        if (mimeType.startsWith("image/")) return "🖼️";
-        if (mimeType.startsWith("text/")) return "📄";
-        if (mimeType.contains("pdf")) return "📕";
-        if (mimeType.contains("spreadsheet") || mimeType.contains("excel")) return "📊";
-        if (mimeType.contains("document") || mimeType.contains("word")) return "📘";
-        if (mimeType.startsWith("video/")) return "🎬";
-        if (mimeType.startsWith("audio/")) return "🎵";
+    /**
+     * Returns the drawable resource ID for the attachment icon based on MIME type.
+     */
+    public int getDisplayIconResId() {
+        if (mimeType == null) return R.drawable.ic_attachment;
+        if (mimeType.startsWith("image/")) return R.drawable.ic_file_image;
+        if (mimeType.startsWith("text/")) return R.drawable.ic_file_text;
+        if (mimeType.contains("pdf")) return R.drawable.ic_file_text;
+        if (mimeType.contains("spreadsheet") || mimeType.contains("excel")) return R.drawable.ic_file_spreadsheet;
+        if (mimeType.contains("document") || mimeType.contains("word")) return R.drawable.ic_file_text;
+        if (mimeType.startsWith("video/")) return R.drawable.ic_file_video;
+        if (mimeType.startsWith("audio/")) return R.drawable.ic_file_audio;
         if (mimeType.contains("zip") || mimeType.contains("archive") || mimeType.contains("rar") ||
-            mimeType.contains("tar") || mimeType.contains("compressed")) return "📦";
-        if (mimeType.contains("json") || mimeType.contains("xml")) return "📋";
-        return "📎";
+            mimeType.contains("tar") || mimeType.contains("compressed")) return R.drawable.ic_file_archive;
+        if (mimeType.contains("json") || mimeType.contains("xml")) return R.drawable.ic_file_text;
+        return R.drawable.ic_attachment;
     }
 }

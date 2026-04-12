@@ -54,8 +54,8 @@ public class SettingsAdapterTest {
     @Test
     public void setItems_withItems_updatesCount() {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(
-            new SettingsAdapter.SettingsItem("providers", "🔌", "Providers", "2 providers configured", true),
-            new SettingsAdapter.SettingsItem("models", "🧠", "Models", "5 models available", true)
+            new SettingsAdapter.SettingsItem("providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true),
+            new SettingsAdapter.SettingsItem("models", R.drawable.ic_settings_provider, "Models", "5 models available", true)
         );
 
         adapter.setItems(items);
@@ -66,7 +66,7 @@ public class SettingsAdapterTest {
     @Test
     public void setItems_withEmptyList_clearsAdapter() {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(
-            new SettingsAdapter.SettingsItem("providers", "🔌", "Providers", "2 providers configured", true)
+            new SettingsAdapter.SettingsItem("providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true)
         );
         adapter.setItems(items);
 
@@ -78,7 +78,7 @@ public class SettingsAdapterTest {
     @Test
     public void setItems_withNull_clearsAdapter() {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(
-            new SettingsAdapter.SettingsItem("providers", "🔌", "Providers", "2 providers configured", true)
+            new SettingsAdapter.SettingsItem("providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true)
         );
         adapter.setItems(items);
 
@@ -90,13 +90,13 @@ public class SettingsAdapterTest {
     @Test
     public void setItems_replacesExistingList() {
         List<SettingsAdapter.SettingsItem> items1 = Arrays.asList(
-            new SettingsAdapter.SettingsItem("providers", "🔌", "Providers", "2 providers configured", true)
+            new SettingsAdapter.SettingsItem("providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true)
         );
         adapter.setItems(items1);
 
         List<SettingsAdapter.SettingsItem> items2 = Arrays.asList(
-            new SettingsAdapter.SettingsItem("models", "🧠", "Models", "5 models available", true),
-            new SettingsAdapter.SettingsItem("agent", "🤖", "Agent", "Default configuration", true)
+            new SettingsAdapter.SettingsItem("models", R.drawable.ic_settings_provider, "Models", "5 models available", true),
+            new SettingsAdapter.SettingsItem("agent", R.drawable.ic_settings_agent, "Agent", "Default configuration", true)
         );
         adapter.setItems(items2);
 
@@ -125,7 +125,7 @@ public class SettingsAdapterTest {
 
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
 
-        assertNotNull(viewHolder.itemView.findViewById(R.id.text_icon));
+        assertNotNull(viewHolder.itemView.findViewById(R.id.icon_image));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_title));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_subtitle));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_chevron));
@@ -136,7 +136,7 @@ public class SettingsAdapterTest {
     @Test
     public void onBindViewHolder_bindsIcon() {
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "providers", "🔌", "Providers", "2 providers configured", true
+            "providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true
         );
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
@@ -148,14 +148,14 @@ public class SettingsAdapterTest {
 
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
-        TextView iconText = viewHolder.itemView.findViewById(R.id.text_icon);
-        assertEquals("🔌", iconText.getText().toString());
+        // Icon is now an ImageView, not TextView
+        assertNotNull(viewHolder.itemView.findViewById(R.id.icon_image));
     }
 
     @Test
     public void onBindViewHolder_bindsTitle() {
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "models", "🧠", "Models Configuration", "Manage your AI models", true
+            "models", R.drawable.ic_settings_provider, "Models Configuration", "Manage your AI models", true
         );
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
@@ -174,7 +174,7 @@ public class SettingsAdapterTest {
     @Test
     public void onBindViewHolder_bindsSubtitle() {
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "agent", "🤖", "Agent Settings", "Default configuration with 20 max iterations", true
+            "agent", R.drawable.ic_settings_agent, "Agent Settings", "Default configuration with 20 max iterations", true
         );
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
@@ -193,7 +193,7 @@ public class SettingsAdapterTest {
     @Test
     public void onBindViewHolder_bindsChevronVisibility_whenShowChevronIsTrue() {
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "providers", "🔌", "Providers", "2 providers configured", true
+            "providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true
         );
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
@@ -212,7 +212,7 @@ public class SettingsAdapterTest {
     @Test
     public void onBindViewHolder_bindsChevronVisibility_whenShowChevronIsFalse() {
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "done", "✅", "Done", "All settings saved", false
+            "done", R.drawable.ic_settings_provider, "Done", "All settings saved", false
         );
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item);
         adapter.setItems(items);
@@ -231,10 +231,10 @@ public class SettingsAdapterTest {
     @Test
     public void onBindViewHolder_multipleItems_bindsCorrectly() {
         SettingsAdapter.SettingsItem item1 = new SettingsAdapter.SettingsItem(
-            "providers", "🔌", "Providers", "2 providers configured", true
+            "providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true
         );
         SettingsAdapter.SettingsItem item2 = new SettingsAdapter.SettingsItem(
-            "models", "🧠", "Models", "5 models available", true
+            "models", R.drawable.ic_settings_provider, "Models", "5 models available", true
         );
 
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item1, item2);
@@ -270,7 +270,7 @@ public class SettingsAdapterTest {
         });
 
         SettingsAdapter.SettingsItem testItem = new SettingsAdapter.SettingsItem(
-            "providers", "🔌", "Providers", "2 providers configured", true
+            "providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true
         );
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(testItem);
         adapter.setItems(items);
@@ -300,7 +300,7 @@ public class SettingsAdapterTest {
     @Test
     public void clickListener_whenNotSet_doesNotCrash() {
         SettingsAdapter.SettingsItem testItem = new SettingsAdapter.SettingsItem(
-            "providers", "🔌", "Providers", "2 providers configured", true
+            "providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true
         );
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(testItem);
         adapter.setItems(items);
@@ -318,7 +318,7 @@ public class SettingsAdapterTest {
     @Test
     public void clickListener_withNullListener_doesNotCrash() {
         SettingsAdapter.SettingsItem testItem = new SettingsAdapter.SettingsItem(
-            "providers", "🔌", "Providers", "2 providers configured", true
+            "providers", R.drawable.ic_settings_provider, "Providers", "2 providers configured", true
         );
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(testItem);
         adapter.setItems(items);
@@ -343,7 +343,7 @@ public class SettingsAdapterTest {
         String longTitle = "This is a very long settings title that should test whether " +
                 "the adapter can handle long text content properly without any issues";
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "long", "📌", longTitle, "Subtitle", true
+            "long", R.drawable.ic_settings_provider, longTitle, "Subtitle", true
         );
         adapter.setItems(Arrays.asList(item));
 
@@ -362,7 +362,7 @@ public class SettingsAdapterTest {
         String longSubtitle = "This is a very long settings subtitle that should test whether " +
                 "the adapter can handle long text content properly without any issues";
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "long", "📌", "Title", longSubtitle, true
+            "long", R.drawable.ic_settings_provider, "Title", longSubtitle, true
         );
         adapter.setItems(Arrays.asList(item));
 
@@ -380,7 +380,7 @@ public class SettingsAdapterTest {
     public void setItems_withSpecialCharactersInTitle_handlesCorrectly() {
         String specialTitle = "Settings™ with Special©Characters® & <html>";
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "special", "📌", specialTitle, "Subtitle", true
+            "special", R.drawable.ic_settings_provider, specialTitle, "Subtitle", true
         );
         adapter.setItems(Arrays.asList(item));
 
@@ -398,7 +398,7 @@ public class SettingsAdapterTest {
     public void setItems_withSpecialCharactersInSubtitle_handlesCorrectly() {
         String specialSubtitle = "Subtitle™ with Special©Characters® & <html>";
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "special", "📌", "Title", specialSubtitle, true
+            "special", R.drawable.ic_settings_provider, "Title", specialSubtitle, true
         );
         adapter.setItems(Arrays.asList(item));
 
@@ -415,7 +415,7 @@ public class SettingsAdapterTest {
     @Test
     public void setItems_withEmptyTitle_handlesCorrectly() {
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "empty", "📌", "", "Subtitle", true
+            "empty", R.drawable.ic_settings_provider, "", "Subtitle", true
         );
         adapter.setItems(Arrays.asList(item));
 
@@ -432,7 +432,7 @@ public class SettingsAdapterTest {
     @Test
     public void setItems_withEmptySubtitle_handlesCorrectly() {
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
-            "empty", "📌", "Title", "", true
+            "empty", R.drawable.ic_settings_provider, "Title", "", true
         );
         adapter.setItems(Arrays.asList(item));
 
@@ -452,7 +452,7 @@ public class SettingsAdapterTest {
         for (int i = 0; i < 50; i++) {
             items.add(new SettingsAdapter.SettingsItem(
                 "item-" + i,
-                "📌",
+                R.drawable.ic_settings_provider,
                 "Item " + i,
                 "Subtitle for item " + i,
                 true
@@ -467,15 +467,15 @@ public class SettingsAdapterTest {
     public void setItems_multipleUpdates_maintainsCorrectState() {
         // First update
         List<SettingsAdapter.SettingsItem> items1 = Arrays.asList(
-            new SettingsAdapter.SettingsItem("providers", "🔌", "Providers", "2 providers", true)
+            new SettingsAdapter.SettingsItem("providers", R.drawable.ic_settings_provider, "Providers", "2 providers", true)
         );
         adapter.setItems(items1);
         assertEquals(1, adapter.getItemCount());
 
         // Second update
         List<SettingsAdapter.SettingsItem> items2 = Arrays.asList(
-            new SettingsAdapter.SettingsItem("providers", "🔌", "Providers", "2 providers", true),
-            new SettingsAdapter.SettingsItem("models", "🧠", "Models", "5 models", true)
+            new SettingsAdapter.SettingsItem("providers", R.drawable.ic_settings_provider, "Providers", "2 providers", true),
+            new SettingsAdapter.SettingsItem("models", R.drawable.ic_settings_provider, "Models", "5 models", true)
         );
         adapter.setItems(items2);
         assertEquals(2, adapter.getItemCount());
@@ -492,10 +492,10 @@ public class SettingsAdapterTest {
     @Test
     public void setItems_withDifferentChevronStates_handlesCorrectly() {
         SettingsAdapter.SettingsItem item1 = new SettingsAdapter.SettingsItem(
-            "expandable", "📌", "Expandable", "Has chevron", true
+            "expandable", R.drawable.ic_settings_provider, "Expandable", "Has chevron", true
         );
         SettingsAdapter.SettingsItem item2 = new SettingsAdapter.SettingsItem(
-            "non-expandable", "📌", "Non-Expandable", "No chevron", false
+            "non-expandable", R.drawable.ic_settings_provider, "Non-Expandable", "No chevron", false
         );
 
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(item1, item2);

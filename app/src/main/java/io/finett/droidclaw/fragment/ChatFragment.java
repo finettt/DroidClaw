@@ -366,9 +366,10 @@ public class ChatFragment extends Fragment {
             Chip chip = (Chip) LayoutInflater.from(requireContext())
                     .inflate(R.layout.item_pending_attachment_chip, attachmentBar, false);
 
-            String icon = attachment.getDisplayIcon();
+            int iconRes = attachment.getDisplayIconResId();
             String displayName = truncateName(attachment.getOriginalName());
-            chip.setText(icon + " " + displayName);
+            chip.setText(displayName);
+            chip.setChipIconResource(iconRes);
 
             chip.setCloseIconVisible(true);
             chip.setOnCloseIconClickListener(v -> removePendingAttachment(index));
@@ -553,37 +554,37 @@ public class ChatFragment extends Fragment {
     private String getToolStatusMessage(String toolName, String arguments) {
         // Check for skill-related tools
         if (toolName.equals("list_files") && arguments.contains(".agent/skills")) {
-            return "🔍 Discovering available skills...";
+            return "Discovering available skills...";
         } else if (toolName.equals("read_file") && arguments.contains(".agent/skills")) {
-            return "📖 Loading skill definition...";
+            return "Loading skill definition...";
         } else if (toolName.equals("read_file") && arguments.contains("SKILL.md")) {
-            return "📖 Reading skill instructions...";
+            return "Reading skill instructions...";
         }
-        
+
         // Tool-specific messages
         switch (toolName) {
             case "execute_shell":
-                return "💻 Running shell command...";
+                return "Running shell command...";
             case "execute_python":
-                return "🐍 Executing Python script...";
+                return "Executing Python script...";
             case "pip_install":
-                return "📦 Installing Python package...";
+                return "Installing Python package...";
             case "read_file":
-                return "📄 Reading file...";
+                return "Reading file...";
             case "write_file":
-                return "✏️ Writing file...";
+                return "Writing file...";
             case "edit_file":
-                return "✏️ Editing file...";
+                return "Editing file...";
             case "list_files":
-                return "📋 Listing directory...";
+                return "Listing directory...";
             case "search_files":
-                return "🔍 Searching files...";
+                return "Searching files...";
             case "delete_file":
-                return "🗑️ Deleting file...";
+                return "Deleting file...";
             case "file_info":
-                return "ℹ️ Getting file info...";
+                return "Getting file info...";
             default:
-                return "🔧 Executing: " + formatToolName(toolName);
+                return "Executing: " + formatToolName(toolName);
         }
     }
     

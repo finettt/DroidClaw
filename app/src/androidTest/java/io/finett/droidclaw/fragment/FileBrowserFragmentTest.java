@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.fragment.app.testing.FragmentScenario;
@@ -24,6 +25,7 @@ import java.io.FileWriter;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
+import io.finett.droidclaw.util.TestUtils;
 
 @RunWith(AndroidJUnit4.class)
 public class FileBrowserFragmentTest {
@@ -427,8 +429,8 @@ public class FileBrowserFragmentTest {
                     TextView fileName = firstItem.findViewById(R.id.fileName);
                     assertEquals("First item should be parent directory", "..", fileName.getText().toString());
 
-                    TextView fileIcon = firstItem.findViewById(R.id.fileIcon);
-                    assertEquals("Parent directory should have up arrow icon", "⬆️", fileIcon.getText().toString());
+                    ImageView fileIcon = firstItem.findViewById(R.id.fileIcon);
+                    assertNotNull("Parent directory should have an icon", fileIcon.getDrawable());
 
                     TextView fileDetails = firstItem.findViewById(R.id.fileDetails);
                     assertEquals("Parent directory should show correct label",

@@ -3,6 +3,7 @@ package io.finett.droidclaw.adapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,14 +18,14 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.Settin
 
     public static class SettingsItem {
         private final String id;
-        private final String icon;
+        private final int iconResId;
         private final String title;
         private final String subtitle;
         private final boolean showChevron;
 
-        public SettingsItem(String id, String icon, String title, String subtitle, boolean showChevron) {
+        public SettingsItem(String id, int iconResId, String title, String subtitle, boolean showChevron) {
             this.id = id;
-            this.icon = icon;
+            this.iconResId = iconResId;
             this.title = title;
             this.subtitle = subtitle;
             this.showChevron = showChevron;
@@ -34,8 +35,8 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.Settin
             return id;
         }
 
-        public String getIcon() {
-            return icon;
+        public int getIconResId() {
+            return iconResId;
         }
 
         public String getTitle() {
@@ -93,14 +94,14 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.Settin
     }
 
     class SettingsViewHolder extends RecyclerView.ViewHolder {
-        private final TextView iconText;
+        private final ImageView iconImage;
         private final TextView titleText;
         private final TextView subtitleText;
         private final TextView chevronText;
 
         SettingsViewHolder(@NonNull View itemView) {
             super(itemView);
-            iconText = itemView.findViewById(R.id.text_icon);
+            iconImage = itemView.findViewById(R.id.icon_image);
             titleText = itemView.findViewById(R.id.text_title);
             subtitleText = itemView.findViewById(R.id.text_subtitle);
             chevronText = itemView.findViewById(R.id.text_chevron);
@@ -114,7 +115,7 @@ public class SettingsAdapter extends RecyclerView.Adapter<SettingsAdapter.Settin
         }
 
         void bind(SettingsItem item) {
-            iconText.setText(item.getIcon());
+            iconImage.setImageResource(item.getIconResId());
             titleText.setText(item.getTitle());
             subtitleText.setText(item.getSubtitle());
             chevronText.setVisibility(item.isShowChevron() ? View.VISIBLE : View.GONE);

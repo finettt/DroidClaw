@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -319,22 +320,6 @@ public class FileBrowserFragment extends Fragment {
         return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
     }
 
-    private String getIconForFile(VirtualFileSystem.FileInfo file) {
-        if (file.isDirectory()) {
-            return "📁";
-        }
-        String name = getFileName(file.getPath()).toLowerCase();
-        if (name.endsWith(".md")) return "📝";
-        if (name.endsWith(".py")) return "🐍";
-        if (name.endsWith(".js")) return "📜";
-        if (name.endsWith(".json")) return "📋";
-        if (name.endsWith(".txt")) return "📄";
-        if (name.endsWith(".xml")) return "📰";
-        if (name.endsWith(".sh")) return "⚙️";
-        if (name.endsWith(".yaml") || name.endsWith(".yml")) return "⚙️";
-        return "📄";
-    }
-
     private String getDetailsForFile(VirtualFileSystem.FileInfo file) {
         if (file.isDirectory()) {
             return getString(R.string.file_browser_directory);
@@ -425,7 +410,7 @@ public class FileBrowserFragment extends Fragment {
         }
 
         class FileViewHolder extends RecyclerView.ViewHolder {
-            private final TextView fileIcon;
+            private final ImageView fileIcon;
             private final TextView fileName;
             private final TextView fileDetails;
             private final TextView fileChevron;
@@ -441,7 +426,7 @@ public class FileBrowserFragment extends Fragment {
             void bind(VirtualFileSystem.FileInfo file) {
                 // Check if this is a parent directory entry
                 boolean isParentDir = file instanceof ParentDirectoryEntry;
-                
+
                 // Extract just the name for display
                 String name;
                 if (isParentDir) {
@@ -451,28 +436,28 @@ public class FileBrowserFragment extends Fragment {
                     int lastSlash = path.lastIndexOf('/');
                     name = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
                 }
-                
+
                 fileName.setText(name);
 
                 // Set icon based on file type
-                String icon;
+                int iconRes;
                 if (isParentDir) {
-                    icon = "⬆️";
+                    iconRes = R.drawable.ic_folder;
                 } else if (file.isDirectory()) {
-                    icon = "📁";
+                    iconRes = R.drawable.ic_folder;
                 } else {
                     String nameLower = name.toLowerCase();
-                    if (nameLower.endsWith(".md")) icon = "📝";
-                    else if (nameLower.endsWith(".py")) icon = "🐍";
-                    else if (nameLower.endsWith(".js")) icon = "📜";
-                    else if (nameLower.endsWith(".json")) icon = "📋";
-                    else if (nameLower.endsWith(".txt")) icon = "📄";
-                    else if (nameLower.endsWith(".xml")) icon = "📰";
-                    else if (nameLower.endsWith(".sh")) icon = "⚙️";
-                    else if (nameLower.endsWith(".yaml") || nameLower.endsWith(".yml")) icon = "⚙️";
-                    else icon = "📄";
+                    if (nameLower.endsWith(".md")) iconRes = R.drawable.ic_file_text;
+                    else if (nameLower.endsWith(".py")) iconRes = R.drawable.ic_tool_python;
+                    else if (nameLower.endsWith(".js")) iconRes = R.drawable.ic_tool_python;
+                    else if (nameLower.endsWith(".json")) iconRes = R.drawable.ic_file_text;
+                    else if (nameLower.endsWith(".txt")) iconRes = R.drawable.ic_file_text;
+                    else if (nameLower.endsWith(".xml")) iconRes = R.drawable.ic_tool_python;
+                    else if (nameLower.endsWith(".sh")) iconRes = R.drawable.ic_settings_agent;
+                    else if (nameLower.endsWith(".yaml") || nameLower.endsWith(".yml")) iconRes = R.drawable.ic_settings_agent;
+                    else iconRes = R.drawable.ic_file_text;
                 }
-                fileIcon.setText(icon);
+                fileIcon.setImageResource(iconRes);
 
                 // Set details
                 if (isParentDir) {
