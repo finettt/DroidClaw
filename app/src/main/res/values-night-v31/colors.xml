@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Monet dynamic color - dark mode -->
+    <color name="launcher_bg_primary">@android:color/system_neutral1_900</color>
+    <color name="launcher_fg_primary">@android:color/system_accent1_200</color>
+</resources>

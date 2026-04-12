@@ -2,4 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Launcher icon colors (fallback for pre-Android-12) -->
+    <color name="launcher_bg_primary">#FF000000</color>
+    <color name="launcher_fg_primary">#E53935</color>
 </resources>
