@@ -7,8 +7,10 @@ import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
 
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.View;
+import android.widget.ImageView;
 
 import androidx.test.espresso.IdlingRegistry;
 import androidx.test.espresso.IdlingResource;
@@ -202,6 +204,54 @@ public class TestUtils {
             onIdle();
         } finally {
             IdlingRegistry.getInstance().unregister(idlingResource);
+        }
+    }
+
+    /**
+     * Gets the drawable resource ID from an ImageView.
+     * Useful for testing which drawable is set on an ImageView.
+     *
+     * @param imageView The ImageView to check
+     * @return The drawable resource ID, or -1 if not set or cannot be determined
+     */
+    public static int getDrawableResourceId(ImageView imageView) {
+        if (imageView == null) {
+            return -1;
+        }
+        Drawable drawable = imageView.getDrawable();
+        if (drawable == null) {
+            return -1;
+        }
+        // Try to get the resource ID from the drawable
+        // This works for resources set via setImageResource()
+        try {
+            String resourceName = imageView.getResources().getResourceEntryName(
+                    imageView.getResources().getIdentifier(
+                            drawable.toString(),
+                            "drawable",
+                            imageView.getContext().getPackageName()));
+            // This approach doesn't work well, so let's use reflection
+            return getDrawableResIdViaReflection(imageView);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Gets the drawable resource ID from an ImageView using reflection.
+     *
+     * @param imageView The ImageView to check
+     * @return The drawable resource ID, or -1 if not set
+     */
+    private static int getDrawableResIdViaReflection(ImageView imageView) {
+        try {
+            // Get the mResource field from the Drawable
+            Drawable drawable = imageView.getDrawable();
+            java.lang.reflect.Field field = drawable.getClass().getDeclaredField("mResource");
+            field.setAccessible(true);
+            return field.getInt(drawable);
+        } catch (Exception e) {
+            return -1;
         }
     }
 }
