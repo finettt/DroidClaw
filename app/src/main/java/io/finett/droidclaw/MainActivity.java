@@ -71,7 +71,6 @@ public class MainActivity extends AppCompatActivity {
             navController = navHostFragment.getNavController();
             appBarConfiguration = new AppBarConfiguration.Builder(
                     R.id.chatFragment,
-                    R.id.settingsFragment,
                     R.id.fileBrowserFragment,
                     R.id.memoryBrowserFragment,
                     R.id.cronJobListFragment
