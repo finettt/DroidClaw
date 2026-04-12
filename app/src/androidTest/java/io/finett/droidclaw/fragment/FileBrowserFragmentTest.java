@@ -22,13 +22,16 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
-import io.finett.droidclaw.util.TestUtils;
 
 @RunWith(AndroidJUnit4.class)
 public class FileBrowserFragmentTest {
+
+    private static final long WAIT_TIMEOUT_MS = 3000;
+    private static final long POLL_INTERVAL_MS = 100;
 
     private WorkspaceManager workspaceManager;
 
@@ -55,6 +58,44 @@ public class FileBrowserFragmentTest {
             }
         }
         file.delete();
+    }
+
+    /**
+     * Polls until the RecyclerView adapter has at least minItems, or times out.
+     * This is more reliable than a fixed Thread.sleep() for async operations.
+     */
+    private void waitForAdapterItems(FragmentScenario<FileBrowserFragment> scenario, int minItems) {
+        long startTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() - startTime < WAIT_TIMEOUT_MS) {
+            AtomicInteger itemCount = new AtomicInteger(0);
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                if (fileList.getAdapter() != null) {
+                    itemCount.set(fileList.getAdapter().getItemCount());
+                }
+            });
+            if (itemCount.get() >= minItems) {
+                return;
+            }
+            try {
+                Thread.sleep(POLL_INTERVAL_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+
+    /**
+     * Wait for async operations to complete. More reliable than fixed sleep.
+     */
+    private void waitForLoading() {
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        try {
+            Thread.sleep(100); // Small buffer after idle
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Test
@@ -96,13 +137,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForLoading();
 
             scenario.onFragment(fragment -> {
                 TextView emptyText = fragment.requireView().findViewById(R.id.emptyText);
@@ -128,13 +163,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 2);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
@@ -163,13 +192,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 1);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
@@ -202,13 +225,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForLoading();
 
             // Recreate fragment
             scenario.recreate();
@@ -217,13 +234,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for loading after recreate
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForLoading();
 
             scenario.onFragment(fragment -> {
                 TextView pathText = fragment.requireView().findViewById(R.id.pathText);
@@ -244,17 +255,11 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 1);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
-                
+
                 // Click on first item (directory)
                 if (fileList.getAdapter().getItemCount() > 0) {
                     View firstItem = fileList.getLayoutManager().findViewByPosition(0);
@@ -264,13 +269,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            // Wait for click processing
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForLoading();
 
             scenario.onFragment(fragment -> {
                 TextView pathText = fragment.requireView().findViewById(R.id.pathText);
@@ -294,13 +293,8 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            // Wait for background loading with polling instead of fixed sleep
+            waitForAdapterItems(scenario, 2);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
@@ -333,13 +327,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForLoading();
 
             scenario.onFragment(fragment -> {
                 // Fragment should still be functional
@@ -363,13 +351,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 5);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
@@ -390,13 +372,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 1);
 
             // Click on directory to navigate into it
             scenario.onFragment(fragment -> {
@@ -409,13 +385,8 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            // Wait for navigation
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            // Wait for parent directory entry to appear
+            waitForAdapterItems(scenario, 1);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
@@ -448,13 +419,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForLoading();
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
@@ -486,13 +451,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 1);
 
             // Navigate into parent_dir
             scenario.onFragment(fragment -> {
@@ -503,12 +462,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 1);
 
             // Navigate into child_dir
             scenario.onFragment(fragment -> {
@@ -520,12 +474,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForLoading();
 
             // Verify we're in child_dir
             scenario.onFragment(fragment -> {
@@ -545,12 +494,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForLoading();
 
             // Verify we're back in parent_dir
             scenario.onFragment(fragment -> {
@@ -576,13 +520,7 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 1);
 
             // Navigate into directory
             scenario.onFragment(fragment -> {
@@ -593,12 +531,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            waitForAdapterItems(scenario, 1);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
