@@ -145,6 +145,18 @@ public class SettingsManager {
         config.setMaxIterations(json.optInt("maxIterations", 20));
         config.setRequireApproval(json.optBoolean("requireApproval", true));
         config.setShellTimeout(json.optInt("shellTimeout", 30));
+
+        // Agent accessibility settings (optional, defaults handled by AgentConfig)
+        if (json.has("agentAccessibilityEnabled")) {
+            config.setAgentAccessibilityEnabled(json.optBoolean("agentAccessibilityEnabled", true));
+        }
+        if (json.has("agentAutoConnect")) {
+            config.setAgentAutoConnect(json.optBoolean("agentAutoConnect", true));
+        }
+        if (json.has("agentDiscoverable")) {
+            config.setAgentDiscoverable(json.optBoolean("agentDiscoverable", false));
+        }
+
         return config;
     }
 
@@ -220,6 +232,9 @@ public class SettingsManager {
         json.put("maxIterations", config.getMaxIterations());
         json.put("requireApproval", config.isRequireApproval());
         json.put("shellTimeout", config.getShellTimeout());
+        json.put("agentAccessibilityEnabled", config.isAgentAccessibilityEnabled());
+        json.put("agentAutoConnect", config.isAgentAutoConnect());
+        json.put("agentDiscoverable", config.isAgentDiscoverable());
         return json;
     }
 
@@ -363,6 +378,35 @@ public class SettingsManager {
 
     public void setShellTimeoutSeconds(int seconds) {
         agentConfig.setShellTimeout(seconds);
+        saveToJson();
+    }
+
+    // ==================== Agent Accessibility Settings ====================
+
+    public boolean isAgentAccessibilityEnabled() {
+        return agentConfig.isAgentAccessibilityEnabled();
+    }
+
+    public void setAgentAccessibilityEnabled(boolean enabled) {
+        agentConfig.setAgentAccessibilityEnabled(enabled);
+        saveToJson();
+    }
+
+    public boolean isAgentAutoConnect() {
+        return agentConfig.isAgentAutoConnect();
+    }
+
+    public void setAgentAutoConnect(boolean enabled) {
+        agentConfig.setAgentAutoConnect(enabled);
+        saveToJson();
+    }
+
+    public boolean isAgentDiscoverable() {
+        return agentConfig.isAgentDiscoverable();
+    }
+
+    public void setAgentDiscoverable(boolean discoverable) {
+        agentConfig.setAgentDiscoverable(discoverable);
         saveToJson();
     }
 

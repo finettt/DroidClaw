@@ -41,6 +41,7 @@ public class WorkspaceManager {
     // Identity files
     private static final String SOUL_FILE = ".agent/soul.md";
     private static final String USER_FILE = ".agent/user.md";
+    private static final String RELATIONSHIPS_FILE = ".agent/relationships.md";
     private static final String HEARTBEAT_FILE = ".agent/HEARTBEAT.md";
 
     private final Context context;
@@ -178,13 +179,14 @@ public class WorkspaceManager {
     }
 
     /**
-     * Creates identity files (soul.md and user.md) from app assets if they don't exist.
+     * Creates identity files (soul.md, user.md, and relationships.md) from app assets if they don't exist.
      *
      * @throws IOException if file creation fails
      */
     private void createIdentityFiles() throws IOException {
         createIdentityFile(SOUL_FILE, "identity/soul.md");
         createIdentityFile(USER_FILE, "identity/user.md");
+        createIdentityFile(RELATIONSHIPS_FILE, "identity/relationships.md");
         createHeartbeatTemplate();
     }
 
@@ -363,6 +365,15 @@ public class WorkspaceManager {
      */
     public static String getUserFilePath() {
         return USER_FILE;
+    }
+
+    /**
+     * Gets the relationships.md identity file path.
+     *
+     * @return Relationships file path relative to workspace
+     */
+    public static String getRelationshipsFilePath() {
+        return RELATIONSHIPS_FILE;
     }
 
     /**

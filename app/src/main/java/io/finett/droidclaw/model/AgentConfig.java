@@ -8,18 +8,36 @@ public class AgentConfig {
     private boolean requireApproval;
     private int shellTimeout;
 
+    // Bluetooth/Agent connectivity settings
+    private boolean agentAccessibilityEnabled; // Can other agents connect to this agent?
+    private boolean agentAutoConnect; // Can this agent initiate connections to nearby agents?
+    private boolean agentDiscoverable; // Is this agent visible during Bluetooth discovery?
+
     public AgentConfig() {
         // Default constructor for JSON deserialization
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
                        int maxIterations, boolean requireApproval, int shellTimeout) {
+        this(defaultModel, shellAccess, sandboxMode, maxIterations, requireApproval, shellTimeout,
+                true, // agentAccessibilityEnabled by default
+                true, // agentAutoConnect by default
+                false // agentDiscoverable by default (user must enable)
+        );
+    }
+
+    public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
+                       int maxIterations, boolean requireApproval, int shellTimeout,
+                       boolean agentAccessibilityEnabled, boolean agentAutoConnect, boolean agentDiscoverable) {
         this.defaultModel = defaultModel;
         this.shellAccess = shellAccess;
         this.sandboxMode = sandboxMode;
         this.maxIterations = maxIterations;
         this.requireApproval = requireApproval;
         this.shellTimeout = shellTimeout;
+        this.agentAccessibilityEnabled = agentAccessibilityEnabled;
+        this.agentAutoConnect = agentAutoConnect;
+        this.agentDiscoverable = agentDiscoverable;
     }
 
     public static AgentConfig getDefaults() {
@@ -29,7 +47,10 @@ public class AgentConfig {
                 "strict", // Strict sandbox mode
                 20, // Max 20 iterations
                 true, // Require approval
-                30 // 30 seconds timeout
+                30, // 30 seconds timeout
+                true, // agentAccessibilityEnabled by default
+                true, // agentAutoConnect by default
+                false // agentDiscoverable by default (user must enable)
         );
     }
 
@@ -79,6 +100,32 @@ public class AgentConfig {
 
     public void setShellTimeout(int shellTimeout) {
         this.shellTimeout = shellTimeout;
+    }
+
+    // ==================== Agent Accessibility Settings ====================
+
+    public boolean isAgentAccessibilityEnabled() {
+        return agentAccessibilityEnabled;
+    }
+
+    public void setAgentAccessibilityEnabled(boolean agentAccessibilityEnabled) {
+        this.agentAccessibilityEnabled = agentAccessibilityEnabled;
+    }
+
+    public boolean isAgentAutoConnect() {
+        return agentAutoConnect;
+    }
+
+    public void setAgentAutoConnect(boolean agentAutoConnect) {
+        this.agentAutoConnect = agentAutoConnect;
+    }
+
+    public boolean isAgentDiscoverable() {
+        return agentDiscoverable;
+    }
+
+    public void setAgentDiscoverable(boolean agentDiscoverable) {
+        this.agentDiscoverable = agentDiscoverable;
     }
 
     // Helper methods to parse provider and model from defaultModel string
