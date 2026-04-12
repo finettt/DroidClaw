@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -174,8 +175,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 Chip chip = (Chip) LayoutInflater.from(context)
                         .inflate(R.layout.item_attachment_chip, attachmentsContainer, false);
 
-                String icon = attachment.getDisplayIcon();
-                chip.setText(icon + " " + attachment.getOriginalName());
+                chip.setText(attachment.getOriginalName());
+                int iconRes = attachment.getDisplayIconResId();
+                chip.setChipIconResource(iconRes);
 
                 // Click to open file
                 chip.setOnClickListener(v -> openFile(attachment));
@@ -251,7 +253,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     }
 
     static class ToolCallMessageViewHolder extends MessageViewHolder {
-        private final TextView toolCallIcon;
+        private final ImageView toolCallIcon;
         private final TextView toolCallText;
         private final TextView toolCallArgs;
 
@@ -268,11 +270,11 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 // Show the first tool call's name as the main text
                 LlmApiService.ToolCall firstToolCall = message.getToolCalls().get(0);
                 String toolName = firstToolCall.getName();
-                
+
                 // Set icon based on tool type
-                String icon = getToolIcon(toolName);
-                toolCallIcon.setText(icon);
-                
+                int iconRes = getToolIcon(toolName);
+                toolCallIcon.setImageResource(iconRes);
+
                 // Format tool name for display
                 toolCallText.setText(formatToolName(toolName));
 
@@ -288,20 +290,20 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 toolCallArgs.setText(argsBuilder.toString().trim());
             }
         }
-        
-        private String getToolIcon(String toolName) {
+
+        private int getToolIcon(String toolName) {
             if (toolName.contains("shell") || toolName.contains("execute")) {
-                return "💻";
+                return R.drawable.ic_tool_shell;
             } else if (toolName.contains("file") || toolName.contains("read") || toolName.contains("write")) {
-                return "📁";
+                return R.drawable.ic_folder;
             } else if (toolName.contains("python") || toolName.contains("pip")) {
-                return "🐍";
+                return R.drawable.ic_tool_python;
             } else if (toolName.contains("search")) {
-                return "🔍";
+                return R.drawable.ic_tool_search;
             } else if (toolName.contains("list")) {
-                return "📋";
+                return R.drawable.ic_tool_list;
             } else {
-                return "🔧";
+                return R.drawable.ic_tool_generic;
             }
         }
         
@@ -330,7 +332,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
     static class ToolResultMessageViewHolder extends MessageViewHolder {
         private final View toolResultHeader;
-        private final TextView toolResultIcon;
+        private final ImageView toolResultIcon;
         private final TextView toolResultLabel;
         private final TextView toolResultToggle;
         private final TextView toolResultContent;
@@ -360,20 +362,20 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             String content = message.getContent();
             String toolName = message.getToolName();
             Context context = itemView.getContext();
-            
+
             // Set label with tool name
             if (toolName != null) {
                 toolResultLabel.setText(formatToolName(toolName) + " result");
             } else {
                 toolResultLabel.setText("Tool result");
             }
-            
+
             // Determine if result indicates success or error
             boolean isError = content != null && (content.toLowerCase().contains("error:")
                     || content.toLowerCase().startsWith("error"));
-            
+
             // Set icon based on success/error
-            toolResultIcon.setText(isError ? "❌" : "✅");
+            toolResultIcon.setImageResource(isError ? R.drawable.ic_status_error : R.drawable.ic_status_success);
             
             // Set content with markdown rendering if applicable
             if (content != null) {
@@ -470,15 +472,16 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 Chip chip = (Chip) LayoutInflater.from(itemView.getContext())
                         .inflate(R.layout.item_attachment_chip, filesContainer, false);
 
-                String icon = "📎";
+                int iconRes = R.drawable.ic_attachment;
                 if (mimeType != null) {
-                    if (mimeType.startsWith("image/")) icon = "🖼️";
-                    else if (mimeType.startsWith("text/")) icon = "📄";
-                    else if (mimeType.contains("pdf")) icon = "📕";
-                    else if (mimeType.contains("spreadsheet")) icon = "📊";
+                    if (mimeType.startsWith("image/")) iconRes = R.drawable.ic_file_image;
+                    else if (mimeType.startsWith("text/")) iconRes = R.drawable.ic_file_text;
+                    else if (mimeType.contains("pdf")) iconRes = R.drawable.ic_file_text;
+                    else if (mimeType.contains("spreadsheet")) iconRes = R.drawable.ic_file_spreadsheet;
                 }
 
-                chip.setText(icon + " " + displayName);
+                chip.setText(displayName);
+                chip.setChipIconResource(iconRes);
                 chip.setOnClickListener(v -> openFile(file, displayName, mimeType));
 
                 filesContainer.addView(chip);
@@ -550,7 +553,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
     static class ContextCardMessageViewHolder extends MessageViewHolder {
         private final View contextCardHeader;
-        private final TextView contextCardIcon;
+        private final ImageView contextCardIcon;
         private final TextView contextCardTitle;
         private final TextView contextCardTimestamp;
         private final TextView contextCardToggle;
@@ -576,8 +579,8 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
             // Set icon based on context type
             String contextType = message.getContextType();
-            String icon = getContextIcon(contextType);
-            contextCardIcon.setText(icon);
+            int iconRes = getContextIcon(contextType);
+            contextCardIcon.setImageResource(iconRes);
 
             // Set title
             String title = getContextTitle(contextType, context);
@@ -630,18 +633,18 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             }
         }
 
-        private String getContextIcon(String contextType) {
-            if (contextType == null) return "📋";
-            
+        private int getContextIcon(String contextType) {
+            if (contextType == null) return R.drawable.ic_tool_list;
+
             switch (contextType.toLowerCase()) {
                 case "heartbeat":
-                    return "💓";
+                    return R.drawable.ic_settings_heartbeat;
                 case "cron_job":
-                    return "⏰";
+                    return R.drawable.ic_settings_cron;
                 case "manual":
-                    return "🔧";
+                    return R.drawable.ic_tool_generic;
                 default:
-                    return "📋";
+                    return R.drawable.ic_tool_list;
             }
         }
 
@@ -692,17 +695,17 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 displayName = rawDisplayName;
             }
 
-            String icon = "📎";
+            int iconRes = R.drawable.ic_attachment;
             if (mimeType != null) {
-                if (mimeType.startsWith("image/")) icon = "🖼️";
-                else if (mimeType.startsWith("text/")) icon = "📄";
-                else if (mimeType.contains("pdf")) icon = "📕";
-                else if (mimeType.contains("spreadsheet") || mimeType.contains("excel")) icon = "📊";
-                else if (mimeType.contains("document")) icon = "📘";
+                if (mimeType.startsWith("image/")) iconRes = R.drawable.ic_file_image;
+                else if (mimeType.startsWith("text/")) iconRes = R.drawable.ic_file_text;
+                else if (mimeType.contains("pdf")) iconRes = R.drawable.ic_file_text;
+                else if (mimeType.contains("spreadsheet") || mimeType.contains("excel")) iconRes = R.drawable.ic_file_spreadsheet;
+                else if (mimeType.contains("document")) iconRes = R.drawable.ic_file_text;
             }
 
-            final String finalIcon = icon;
-            attachmentChip.setText(finalIcon + " " + displayName);
+            attachmentChip.setText(displayName);
+            attachmentChip.setChipIconResource(iconRes);
 
             attachmentChip.setOnClickListener(v -> {
                 if (filePath == null) {
