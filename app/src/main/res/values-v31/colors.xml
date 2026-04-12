@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Monet dynamic color - resolves to wallpaper accent color (API 31+) -->
+    <color name="launcher_bg_primary">@android:color/system_neutral1_900</color>
+    <color name="launcher_fg_primary">@android:color/system_accent1_100</color>
+</resources>

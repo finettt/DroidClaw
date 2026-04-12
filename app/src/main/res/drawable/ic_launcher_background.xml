@@ -6,34 +6,6 @@
 
     <!-- Base background -->
     <path
-        android:fillColor="#0F1115"
+        android:fillColor="@color/launcher_bg_primary"
         android:pathData="M0,0h108v108h-108z" />
-
-    <!-- Vertical grid lines -->
-    <path
-        android:strokeColor="#1F2937"
-        android:strokeWidth="0.6"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M12,0L12,108
-                          M24,0L24,108
-                          M36,0L36,108
-                          M48,0L48,108
-                          M60,0L60,108
-                          M72,0L72,108
-                          M84,0L84,108
-                          M96,0L96,108" />
-
-    <!-- Horizontal grid lines -->
-    <path
-        android:strokeColor="#1F2937"
-        android:strokeWidth="0.6"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M0,12L108,12
-                          M0,24L108,24
-                          M0,36L108,36
-                          M0,48L108,48
-                          M0,60L108,60
-                          M0,72L108,72
-                          M0,84L108,84
-                          M0,96L108,96" />
 </vector>
