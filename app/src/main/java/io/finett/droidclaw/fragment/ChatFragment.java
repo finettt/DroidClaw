@@ -218,16 +218,33 @@ public class ChatFragment extends Fragment {
             chatAdapter.setMessages(savedMessages);
             Log.d(TAG, "loadChatHistory: Loaded " + savedMessages.size() + " messages for session: " + currentSessionId);
             scrollToBottom();
+
+            // Update toolbar with session title
+            updateToolbarTitle();
         } else {
             Log.d(TAG, "loadChatHistory: No saved messages for session: " + currentSessionId);
-            
+
             // If we have a pending task result, add context messages
             if (pendingTaskResult != null) {
                 Log.d(TAG, "loadChatHistory: Adding task result context messages");
                 addTaskResultContext(pendingTaskResult);
                 pendingTaskResult = null; // Clear after use
             }
+
+            // Update toolbar with session title (likely "New Chat")
+            updateToolbarTitle();
         }
+    }
+
+    /**
+     * Update the toolbar title with the current session's title.
+     */
+    private void updateToolbarTitle() {
+        if (!(requireActivity() instanceof MainActivity)) {
+            return;
+        }
+        String title = ((MainActivity) requireActivity()).getCurrentSessionTitle();
+        ((MainActivity) requireActivity()).setToolbarTitle(title);
     }
 
     /**
@@ -276,6 +293,64 @@ public class ChatFragment extends Fragment {
                 firstUserMessage,
                 System.currentTimeMillis()
         );
+    }
+
+    /**
+     * Generate an LLM-based title if the session still has a default title.
+     * Called after the first assistant response.
+     */
+    private void generateTitleIfNeeded(List<ChatMessage> updatedHistory) {
+        if (!(requireActivity() instanceof MainActivity)) {
+            return;
+        }
+
+        MainActivity activity = (MainActivity) requireActivity();
+        String currentTitle = activity.getCurrentSessionTitle();
+
+        // Only generate if still using a default title
+        boolean isDefaultTitle = currentTitle == null
+                || currentTitle.trim().isEmpty()
+                || getString(R.string.new_chat).equals(currentTitle);
+
+        if (!isDefaultTitle) {
+            return;
+        }
+
+        String fallbackTitle = chatRepository.generateTitleFromMessage(
+                getFirstUserMessageContent(updatedHistory)
+        );
+
+        chatRepository.generateTitleWithLLM(apiService, updatedHistory, fallbackTitle,
+                new ChatRepository.TitleGenerationCallback() {
+                    @Override
+                    public void onTitleGenerated(String title) {
+                        if (isAdded() && getContext() != null) {
+                            // Update the session title directly in the activity
+                            activity.updateSessionTitle(currentSessionId, title);
+                            // Update the toolbar
+                            updateToolbarTitle();
+                        }
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        // Fallback already applied in callback
+                        Log.w(TAG, "Title generation error: " + error);
+                    }
+                });
+    }
+
+    /**
+     * Get the content of the first user message from the history.
+     */
+    private String getFirstUserMessageContent(List<ChatMessage> messages) {
+        if (messages == null) return null;
+        for (ChatMessage msg : messages) {
+            if (msg.getType() == ChatMessage.TYPE_USER) {
+                return msg.getContent();
+            }
+        }
+        return null;
     }
 
     private void setupClickListeners() {
@@ -466,15 +541,21 @@ public class ChatFragment extends Fragment {
             @Override
             public void onComplete(String finalResponse, List<ChatMessage> updatedHistory) {
                 setLoading(false);
-                
+
                 // Update adapter with the full conversation history from the agent
                 chatAdapter.setMessages(updatedHistory);
                 scrollToBottom();
-                
+
                 // Save after adding assistant message
                 saveMessages();
                 updateSessionMetadata(null);
                 Log.d(TAG, "onComplete: Agent completed. Total messages: " + chatAdapter.getItemCount());
+
+                // Generate LLM-based title if this is the first assistant response
+                generateTitleIfNeeded(updatedHistory);
+
+                // Update toolbar title in case the session was renamed
+                updateToolbarTitle();
             }
 
             @Override

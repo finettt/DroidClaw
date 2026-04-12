@@ -25,8 +25,16 @@ public class ChatRepository {
     private static final String PREFS_NAME = "chat_messages";
     private static final String KEY_PREFIX = "session_";
     private static final String KEY_SESSIONS = "chat_sessions";
-    
+
     private final SharedPreferences prefs;
+
+    /**
+     * Callback interface for async title generation.
+     */
+    public interface TitleGenerationCallback {
+        void onTitleGenerated(String title);
+        void onError(String error);
+    }
 
     public ChatRepository(Context context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -180,7 +188,88 @@ public class ChatRepository {
         
         return trimmed.substring(0, 27) + "...";
     }
-    
+
+    /**
+     * Generate a chat title using the LLM to summarize the conversation.
+     * Falls back to generateTitleFromMessage if the LLM call fails.
+     *
+     * @param apiService   The LLM API service
+     * @param messages     The conversation messages to summarize
+     * @param fallbackTitle Title to use if LLM generation fails
+     * @param callback     Callback for the generated title
+     */
+    public void generateTitleWithLLM(LlmApiService apiService, List<ChatMessage> messages,
+                                     String fallbackTitle, TitleGenerationCallback callback) {
+        if (messages == null || messages.isEmpty()) {
+            callback.onTitleGenerated(fallbackTitle);
+            return;
+        }
+
+        // Build a concise message list for title generation (first user message + first assistant response)
+        List<ChatMessage> titleMessages = new ArrayList<>();
+
+        // Find the first user message
+        ChatMessage firstUserMessage = null;
+        for (ChatMessage msg : messages) {
+            if (msg.getType() == ChatMessage.TYPE_USER) {
+                firstUserMessage = msg;
+                break;
+            }
+        }
+
+        if (firstUserMessage == null) {
+            callback.onTitleGenerated(fallbackTitle);
+            return;
+        }
+
+        // Create a system prompt for title generation
+        ChatMessage systemPrompt = new ChatMessage(
+            "Generate a concise, descriptive title for this conversation. " +
+            "The title must be at most 50 characters. " +
+            "Respond with ONLY the title text, nothing else.",
+            ChatMessage.TYPE_SYSTEM
+        );
+        titleMessages.add(systemPrompt);
+        titleMessages.add(new ChatMessage(firstUserMessage.getContent(), ChatMessage.TYPE_USER));
+
+        // Use low temperature for deterministic output
+        apiService.sendMessage(titleMessages, new LlmApiService.ChatCallback() {
+            @Override
+            public void onSuccess(String response) {
+                if (response != null && !response.isEmpty() && !response.equals("No response received")) {
+                    String title = response.trim();
+                    // Remove surrounding quotes if present
+                    if (title.startsWith("\"") && title.endsWith("\"")) {
+                        title = title.substring(1, title.length() - 1);
+                    }
+                    // Enforce 50 character limit
+                    if (title.length() > 50) {
+                        int lastSpace = title.lastIndexOf(' ', 47);
+                        if (lastSpace > 20) {
+                            title = title.substring(0, lastSpace);
+                        } else {
+                            title = title.substring(0, 47) + "...";
+                        }
+                    }
+                    if (title.isEmpty()) {
+                        title = fallbackTitle;
+                    }
+                    Log.d(TAG, "LLM-generated title: " + title);
+                    callback.onTitleGenerated(title);
+                } else {
+                    Log.w(TAG, "LLM returned empty response, using fallback");
+                    callback.onTitleGenerated(fallbackTitle);
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.w(TAG, "LLM title generation failed: " + error + ", using fallback");
+                callback.onTitleGenerated(fallbackTitle);
+            }
+        });
+    }
+
     // ==================== MESSAGE PERSISTENCE ====================
 
     /**

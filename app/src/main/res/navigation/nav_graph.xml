@@ -7,7 +7,7 @@
     <fragment
         android:id="@+id/chatFragment"
         android:name="io.finett.droidclaw.fragment.ChatFragment"
-        android:label="DroidClaw">
+        android:label="">
         <argument
             android:name="task_result"
             app:argType="java.io.Serializable"
