@@ -442,6 +442,23 @@ public class SettingsManager {
     }
 
     /**
+     * Get API type for current default model.
+     * Returns the API type (e.g., "anthropic", "openai-completions", "openai-responses", "google").
+     */
+    public String getApiType() {
+        Object[] selected = getSelectedProviderAndModel();
+        if (selected != null) {
+            Model model = (Model) selected[1];
+            String modelApi = model.getApi();
+            if (modelApi != null && !modelApi.isEmpty()) {
+                return modelApi;
+            }
+            return ((Provider) selected[0]).getApi();
+        }
+        return "openai-completions";
+    }
+
+    /**
      * Get API key for current default model.
      */
     public String getApiKey() {

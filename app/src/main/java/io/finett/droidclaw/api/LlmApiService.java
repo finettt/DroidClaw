@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Model;
+import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.util.SettingsManager;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -27,6 +29,10 @@ import okhttp3.Response;
 public class LlmApiService {
     private static final String TAG = "LlmApiService";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
+
+    // Anthropic API constants
+    private static final String ANTHROPIC_API_VERSION = "2023-06-01";
+    private static final String ANTHROPIC_API_BASE_URL = "https://api.anthropic.com/v1/messages";
 
     private final OkHttpClient client;
     private final Gson gson;
@@ -169,6 +175,42 @@ public class LlmApiService {
                 .build();
     }
 
+    /**
+     * Check if the current API configuration is using Anthropic API.
+     */
+    private boolean isAnthropicApi() {
+        return "anthropic".equalsIgnoreCase(settingsManager.getApiType());
+    }
+
+    /**
+     * Get the API URL to use based on the API type.
+     * For Anthropic API, uses the standard Anthropic messages endpoint.
+     */
+    private String getApiUrl() {
+        if (isAnthropicApi()) {
+            return ANTHROPIC_API_BASE_URL;
+        }
+        return settingsManager.getApiUrl();
+    }
+
+    /**
+     * Build request headers with support for Anthropic-specific headers.
+     */
+    private void addRequestHeaders(Request.Builder requestBuilder) {
+        requestBuilder.addHeader("Content-Type", "application/json");
+
+        String apiKey = settingsManager.getApiKey();
+        if (apiKey != null && !apiKey.trim().isEmpty() && !"lm-studio".equalsIgnoreCase(apiKey.trim())) {
+            requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
+        }
+
+        // Add Anthropic-specific headers if using Anthropic API
+        if (isAnthropicApi()) {
+            requestBuilder.addHeader("anthropic-version", ANTHROPIC_API_VERSION);
+            requestBuilder.addHeader("anthropic-beta", "tools-2024-12-16");
+        }
+    }
+
     public void sendMessage(List<ChatMessage> conversationHistory, ChatCallback callback) {
         sendMessage(conversationHistory, null, null, callback);
     }
@@ -188,13 +230,9 @@ public class LlmApiService {
         String jsonBody = gson.toJson(requestBody);
 
         Request.Builder requestBuilder = new Request.Builder()
-                .url(settingsManager.getApiUrl())
-                .addHeader("Content-Type", "application/json");
+                .url(getApiUrl());
 
-        String apiKey = settingsManager.getApiKey();
-        if (apiKey != null && !apiKey.trim().isEmpty() && !"lm-studio".equalsIgnoreCase(apiKey.trim())) {
-            requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
-        }
+        addRequestHeaders(requestBuilder);
 
         Request request = requestBuilder
                 .post(RequestBody.create(jsonBody, JSON))
@@ -258,13 +296,9 @@ public class LlmApiService {
         String jsonBody = gson.toJson(requestBody);
 
         Request.Builder requestBuilder = new Request.Builder()
-                .url(settingsManager.getApiUrl())
-                .addHeader("Content-Type", "application/json");
+                .url(getApiUrl());
 
-        String apiKey = settingsManager.getApiKey();
-        if (apiKey != null && !apiKey.trim().isEmpty() && !"lm-studio".equalsIgnoreCase(apiKey.trim())) {
-            requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
-        }
+        addRequestHeaders(requestBuilder);
 
         Request request = requestBuilder
                 .post(RequestBody.create(jsonBody, JSON))
@@ -320,13 +354,9 @@ public class LlmApiService {
         String jsonBody = gson.toJson(requestBody);
 
         Request.Builder requestBuilder = new Request.Builder()
-                .url(settingsManager.getApiUrl())
-                .addHeader("Content-Type", "application/json");
+                .url(getApiUrl());
 
-        String apiKey = settingsManager.getApiKey();
-        if (apiKey != null && !apiKey.trim().isEmpty() && !"lm-studio".equalsIgnoreCase(apiKey.trim())) {
-            requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
-        }
+        addRequestHeaders(requestBuilder);
 
         Request request = requestBuilder
                 .post(RequestBody.create(jsonBody, JSON))
@@ -390,12 +420,19 @@ public class LlmApiService {
         requestBody.addProperty("max_tokens", settingsManager.getMaxTokens());
         requestBody.addProperty("temperature", 0.7f);
 
+        // For Anthropic API, add system messages as a separate field instead of in messages array
         JsonArray messages = new JsonArray();
+        JsonArray anthropicSystemMessages = new JsonArray();
 
         // Add identity messages FIRST (system messages with soul.md and user.md)
         if (identityMessages != null) {
             for (ChatMessage identityMessage : identityMessages) {
-                messages.add(identityMessage.toApiMessage());
+                if (isAnthropicApi()) {
+                    // For Anthropic, system messages go in a separate field
+                    anthropicSystemMessages.add(identityMessage.toApiMessage());
+                } else {
+                    messages.add(identityMessage.toApiMessage());
+                }
             }
         }
 
@@ -405,14 +442,62 @@ public class LlmApiService {
         }
 
         requestBody.add("messages", messages);
-        
+
+        // Add system messages for Anthropic API
+        if (isAnthropicApi() && anthropicSystemMessages.size() > 0) {
+            requestBody.add("system", anthropicSystemMessages);
+        }
+
         // Add tools if provided
         if (tools != null && tools.size() > 0) {
-            requestBody.add("tools", tools);
-            requestBody.addProperty("tool_choice", "auto");
+            if (isAnthropicApi()) {
+                // Anthropic uses "tools" array with specific format
+                // Convert OpenAI-style tools to Anthropic format if needed
+                requestBody.add("tools", convertToolsToAnthropicFormat(tools));
+                requestBody.addProperty("tool_choice", new JsonObject());
+            } else {
+                requestBody.add("tools", tools);
+                requestBody.addProperty("tool_choice", "auto");
+            }
         }
-        
+
         return requestBody;
+    }
+
+    /**
+     * Convert tools from OpenAI format to Anthropic format.
+     * Anthropic tools require a "tool_type" field and have slightly different structure.
+     *
+     * @param openaiTools Tools in OpenAI format
+     * @return Tools in Anthropic format
+     */
+    private JsonArray convertToolsToAnthropicFormat(JsonArray openaiTools) {
+        JsonArray anthropicTools = new JsonArray();
+        for (JsonElement toolElement : openaiTools) {
+            JsonObject openaiTool = toolElement.getAsJsonObject();
+            JsonObject anthropicTool = new JsonObject();
+
+            // Copy name
+            if (openaiTool.has("name")) {
+                anthropicTool.addProperty("name", openaiTool.get("name").getAsString());
+            }
+
+            // Copy description
+            if (openaiTool.has("description")) {
+                anthropicTool.addProperty("description", openaiTool.get("description").getAsString());
+            }
+
+            // Copy and convert parameters (OpenAI uses "parameters", Anthropic uses "input_schema")
+            if (openaiTool.has("parameters")) {
+                anthropicTool.add("input_schema", openaiTool.get("parameters"));
+            }
+
+            // Add tool_type for Anthropic (optional but can help with tool validation)
+            anthropicTool.addProperty("tool_type", "computer_20241022");
+
+            anthropicTools.add(anthropicTool);
+        }
+        return anthropicTools;
     }
 
     private String parseResponse(String responseBody) {
@@ -439,15 +524,21 @@ public class LlmApiService {
      */
     private LlmResponse parseResponseWithTools(String responseBody) {
         JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
+
+        // Check if this is an Anthropic response (different structure - no "choices" array)
+        if (isAnthropicApi() && jsonResponse.has("content")) {
+            return parseAnthropicResponse(responseBody);
+        }
+
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
-        
+
         if (choices == null || choices.size() == 0) {
             return new LlmResponse("No response received", null, null);
         }
 
         JsonObject firstChoice = choices.get(0).getAsJsonObject();
         JsonObject message = firstChoice.getAsJsonObject("message");
-        
+
         if (message == null) {
             return new LlmResponse("No message in response", null, null);
         }
@@ -463,17 +554,17 @@ public class LlmApiService {
         if (message.has("tool_calls")) {
             JsonArray toolCallsArray = message.getAsJsonArray("tool_calls");
             toolCalls = new ArrayList<>();
-            
+
             for (JsonElement toolCallElement : toolCallsArray) {
                 JsonObject toolCallObj = toolCallElement.getAsJsonObject();
                 String id = toolCallObj.get("id").getAsString();
                 JsonObject function = toolCallObj.getAsJsonObject("function");
                 String name = function.get("name").getAsString();
                 String argumentsStr = function.get("arguments").getAsString();
-                
+
                 // Parse arguments string to JsonObject
                 JsonObject arguments = gson.fromJson(argumentsStr, JsonObject.class);
-                
+
                 toolCalls.add(new ToolCall(id, name, arguments));
             }
         }
@@ -492,6 +583,62 @@ public class LlmApiService {
     }
 
     /**
+     * Parse Anthropic-specific response format.
+     * Anthropic responses have different structure than OpenAI-compatible APIs.
+     *
+     * @param responseBody JSON response from Anthropic API
+     * @return LlmResponse with content and tool calls
+     */
+    private LlmResponse parseAnthropicResponse(String responseBody) {
+        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
+
+        // Extract content
+        String content = null;
+        JsonArray contentArray = jsonResponse.getAsJsonArray("content");
+        if (contentArray != null && contentArray.size() > 0) {
+            JsonObject firstContent = contentArray.get(0).getAsJsonObject();
+            if (firstContent.has("text")) {
+                content = firstContent.get("text").getAsString();
+            }
+        }
+
+        // Extract tool calls from Anthropic response
+        List<ToolCall> toolCalls = null;
+        if (contentArray != null) {
+            toolCalls = new ArrayList<>();
+            for (JsonElement contentElement : contentArray) {
+                JsonObject contentObj = contentElement.getAsJsonObject();
+                String type = contentObj.has("type") ? contentObj.get("type").getAsString() : "";
+
+                if ("tool_use".equals(type)) {
+                    String id = contentObj.has("id") ? contentObj.get("id").getAsString() : "";
+                    String name = contentObj.has("name") ? contentObj.get("name").getAsString() : "";
+                    JsonObject inputObj = contentObj.getAsJsonObject("input");
+
+                    toolCalls.add(new ToolCall(id, name, inputObj));
+                }
+            }
+        }
+
+        // Extract stop reason (Anthropic-specific field)
+        String stopReason = null;
+        if (jsonResponse.has("stop_reason")) {
+            stopReason = jsonResponse.get("stop_reason").getAsString();
+        }
+
+        // Extract token usage - Anthropic uses different field names
+        TokenUsage usage = null;
+        if (jsonResponse.has("usage")) {
+            JsonObject usageObj = jsonResponse.getAsJsonObject("usage");
+            int inputTokens = usageObj.has("input_tokens") ? usageObj.get("input_tokens").getAsInt() : 0;
+            int outputTokens = usageObj.has("output_tokens") ? usageObj.get("output_tokens").getAsInt() : 0;
+            usage = new TokenUsage(inputTokens + outputTokens, inputTokens, outputTokens);
+        }
+
+        return new LlmResponse(content, toolCalls, usage);
+    }
+
+    /**
      * Parse a response with Structured Outputs support, including refusal detection.
      *
      * @param responseBody JSON response from API
@@ -499,6 +646,12 @@ public class LlmApiService {
      */
     private StructuredResponse parseStructuredResponse(String responseBody) {
         JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
+
+        // Check if this is an Anthropic response (different structure - no "choices" array)
+        if (isAnthropicApi() && jsonResponse.has("content")) {
+            return parseAnthropicStructuredResponse(responseBody);
+        }
+
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
 
         if (choices == null || choices.size() == 0) {
@@ -553,6 +706,56 @@ public class LlmApiService {
         }
 
         return new StructuredResponse(content, refusal, toolCalls, usage);
+    }
+
+    /**
+     * Parse Anthropic-specific structured response format.
+     * Anthropic responses have different structure than OpenAI-compatible APIs.
+     *
+     * @param responseBody JSON response from Anthropic API
+     * @return StructuredResponse with content and tool calls
+     */
+    private StructuredResponse parseAnthropicStructuredResponse(String responseBody) {
+        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
+
+        // Extract content
+        String content = null;
+        JsonArray contentArray = jsonResponse.getAsJsonArray("content");
+        if (contentArray != null && contentArray.size() > 0) {
+            JsonObject firstContent = contentArray.get(0).getAsJsonObject();
+            if (firstContent.has("text")) {
+                content = firstContent.get("text").getAsString();
+            }
+        }
+
+        // Extract tool calls from Anthropic response
+        List<ToolCall> toolCalls = null;
+        if (contentArray != null) {
+            toolCalls = new ArrayList<>();
+            for (JsonElement contentElement : contentArray) {
+                JsonObject contentObj = contentElement.getAsJsonObject();
+                String type = contentObj.has("type") ? contentObj.get("type").getAsString() : "";
+
+                if ("tool_use".equals(type)) {
+                    String id = contentObj.has("id") ? contentObj.get("id").getAsString() : "";
+                    String name = contentObj.has("name") ? contentObj.get("name").getAsString() : "";
+                    JsonObject inputObj = contentObj.getAsJsonObject("input");
+
+                    toolCalls.add(new ToolCall(id, name, inputObj));
+                }
+            }
+        }
+
+        // Extract token usage - Anthropic uses different field names
+        TokenUsage usage = null;
+        if (jsonResponse.has("usage")) {
+            JsonObject usageObj = jsonResponse.getAsJsonObject("usage");
+            int inputTokens = usageObj.has("input_tokens") ? usageObj.get("input_tokens").getAsInt() : 0;
+            int outputTokens = usageObj.has("output_tokens") ? usageObj.get("output_tokens").getAsInt() : 0;
+            usage = new TokenUsage(inputTokens + outputTokens, inputTokens, outputTokens);
+        }
+
+        return new StructuredResponse(content, null, toolCalls, usage);
     }
 
     public void cancelAllRequests() {
