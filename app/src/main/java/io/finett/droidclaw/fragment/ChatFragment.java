@@ -704,6 +704,23 @@ public class ChatFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        // Reload settings in case the user changed provider/model in the Settings screen
+        settingsManager = new SettingsManager(requireContext());
+        apiService = new LlmApiService(settingsManager);
+        // Propagate the refreshed service to the agent loop components
+        // (ConversationSummarizer and AgentLoop hold their own apiService reference)
+        int contextWindow = getModelContextWindow();
+        io.finett.droidclaw.agent.ConversationSummarizer summarizer =
+                new io.finett.droidclaw.agent.ConversationSummarizer(apiService, memoryRepository, contextWindow);
+        io.finett.droidclaw.agent.MemoryContextBuilder memoryContext =
+                new io.finett.droidclaw.agent.MemoryContextBuilder(memoryRepository);
+        agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);
+        loadIdentityContext();
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         apiService.cancelAllRequests();
