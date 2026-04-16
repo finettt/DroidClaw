@@ -453,6 +453,22 @@ public class SettingsManager {
     }
 
     /**
+     * Get the API type string for the currently selected provider.
+     * Returns {@code "anthropic-messages"} for Anthropic providers,
+     * or {@code "openai-completions"} for OpenAI-compatible providers.
+     */
+    public String getApiType() {
+        Object[] selected = getSelectedProviderAndModel();
+        if (selected != null) {
+            String api = ((Provider) selected[0]).getApi();
+            if (api != null && !api.isEmpty()) {
+                return api;
+            }
+        }
+        return "openai-completions";
+    }
+
+    /**
      * Get model name for current default model.
      */
     public String getModelName() {
