@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit;
 
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.Model;
-import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.util.SettingsManager;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -30,14 +29,13 @@ public class LlmApiService {
     private static final String TAG = "LlmApiService";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
-    // Anthropic API constants
-    private static final String ANTHROPIC_API_VERSION = "2023-06-01";
-    private static final String ANTHROPIC_API_BASE_URL = "https://api.anthropic.com/v1/messages";
-
     private final OkHttpClient client;
     private final Gson gson;
     private final SettingsManager settingsManager;
     private final Handler mainHandler;
+
+    // Cached provider instance
+    private Provider currentProvider;
 
     /**
      * Represents a tool call from the LLM.
@@ -176,38 +174,94 @@ public class LlmApiService {
     }
 
     /**
-     * Check if the current API configuration is using Anthropic API.
+     * Get the current provider based on API configuration.
      */
-    private boolean isAnthropicApi() {
-        return "anthropic".equalsIgnoreCase(settingsManager.getApiType());
+    private Provider getProvider() {
+        if (currentProvider != null) {
+            return currentProvider;
+        }
+
+        String apiType = settingsManager.getApiType();
+        String providerId = settingsManager.getDefaultProviderId();
+
+        if ("anthropic".equalsIgnoreCase(apiType)) {
+            Object[] selected = settingsManager.getSelectedProviderAndModel();
+            if (selected != null) {
+                Model model = (Model) selected[1];
+                String baseUrl = settingsManager.getApiUrl();
+                String apiKey = settingsManager.getApiKey();
+                currentProvider = new AnthropicProvider(
+                        providerId != null ? providerId : "anthropic",
+                        "Anthropic",
+                        baseUrl != null ? baseUrl : "https://api.anthropic.com/v1/messages",
+                        apiKey,
+                        apiType,
+                        model
+                );
+            } else {
+                currentProvider = new AnthropicProvider(
+                        "anthropic",
+                        "Anthropic",
+                        "https://api.anthropic.com/v1/messages",
+                        "",
+                        "anthropic",
+                        null
+                );
+            }
+        } else {
+            // OpenAI-compatible
+            Object[] selected = settingsManager.getSelectedProviderAndModel();
+            if (selected != null) {
+                Model model = (Model) selected[1];
+                String baseUrl = settingsManager.getApiUrl();
+                String apiKey = settingsManager.getApiKey();
+                currentProvider = new OpenAICompatibleProvider(
+                        providerId != null ? providerId : "openai",
+                        "OpenAI",
+                        baseUrl != null ? baseUrl : "",
+                        apiKey,
+                        apiType,
+                        model
+                );
+            } else {
+                currentProvider = new OpenAICompatibleProvider(
+                        "openai",
+                        "OpenAI",
+                        "",
+                        "",
+                        apiType != null ? apiType : "openai-completions",
+                        null
+                );
+            }
+        }
+
+        return currentProvider;
     }
 
     /**
-     * Get the API URL to use based on the API type.
-     * For Anthropic API, uses the standard Anthropic messages endpoint.
+     * Get the API URL to use based on the provider.
      */
     private String getApiUrl() {
-        if (isAnthropicApi()) {
-            return ANTHROPIC_API_BASE_URL;
+        Provider provider = getProvider();
+        if (provider != null) {
+            return provider.getBaseUrl();
         }
         return settingsManager.getApiUrl();
     }
 
     /**
-     * Build request headers with support for Anthropic-specific headers.
+     * Build request headers with provider-specific headers.
      */
     private void addRequestHeaders(Request.Builder requestBuilder) {
-        requestBuilder.addHeader("Content-Type", "application/json");
-
-        String apiKey = settingsManager.getApiKey();
-        if (apiKey != null && !apiKey.trim().isEmpty() && !"lm-studio".equalsIgnoreCase(apiKey.trim())) {
-            requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
-        }
-
-        // Add Anthropic-specific headers if using Anthropic API
-        if (isAnthropicApi()) {
-            requestBuilder.addHeader("anthropic-version", ANTHROPIC_API_VERSION);
-            requestBuilder.addHeader("anthropic-beta", "tools-2024-12-16");
+        Provider provider = getProvider();
+        if (provider != null) {
+            provider.addRequestHeaders(requestBuilder);
+        } else {
+            requestBuilder.addHeader("Content-Type", "application/json");
+            String apiKey = settingsManager.getApiKey();
+            if (apiKey != null && !apiKey.trim().isEmpty() && !"lm-studio".equalsIgnoreCase(apiKey.trim())) {
+                requestBuilder.addHeader("Authorization", "Bearer " + apiKey);
+            }
         }
     }
 
@@ -415,24 +469,27 @@ public class LlmApiService {
 
     private JsonObject buildRequestBody(List<ChatMessage> conversationHistory, JsonArray tools,
                                         List<ChatMessage> identityMessages) {
+        Provider provider = getProvider();
+        if (provider != null) {
+            return provider.buildRequestBody(conversationHistory, tools, identityMessages);
+        }
+        // Fallback to default OpenAI format
+        return buildDefaultRequestBody(conversationHistory, tools, identityMessages);
+    }
+
+    private JsonObject buildDefaultRequestBody(List<ChatMessage> conversationHistory, JsonArray tools,
+                                               List<ChatMessage> identityMessages) {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", settingsManager.getModelName());
         requestBody.addProperty("max_tokens", settingsManager.getMaxTokens());
         requestBody.addProperty("temperature", 0.7f);
 
-        // For Anthropic API, add system messages as a separate field instead of in messages array
         JsonArray messages = new JsonArray();
-        JsonArray anthropicSystemMessages = new JsonArray();
 
         // Add identity messages FIRST (system messages with soul.md and user.md)
         if (identityMessages != null) {
             for (ChatMessage identityMessage : identityMessages) {
-                if (isAnthropicApi()) {
-                    // For Anthropic, system messages go in a separate field
-                    anthropicSystemMessages.add(identityMessage.toApiMessage());
-                } else {
-                    messages.add(identityMessage.toApiMessage());
-                }
+                messages.add(identityMessage.toApiMessage());
             }
         }
 
@@ -443,64 +500,55 @@ public class LlmApiService {
 
         requestBody.add("messages", messages);
 
-        // Add system messages for Anthropic API
-        if (isAnthropicApi() && anthropicSystemMessages.size() > 0) {
-            requestBody.add("system", anthropicSystemMessages);
-        }
-
-        // Add tools if provided
+        // Add tools if provided (OpenAI format)
         if (tools != null && tools.size() > 0) {
-            if (isAnthropicApi()) {
-                // Anthropic uses "tools" array with specific format
-                // Convert OpenAI-style tools to Anthropic format if needed
-                requestBody.add("tools", convertToolsToAnthropicFormat(tools));
-                requestBody.addProperty("tool_choice", new JsonObject());
-            } else {
-                requestBody.add("tools", tools);
-                requestBody.addProperty("tool_choice", "auto");
-            }
+            requestBody.add("tools", tools);
+            requestBody.addProperty("tool_choice", "auto");
         }
 
         return requestBody;
     }
 
-    /**
-     * Convert tools from OpenAI format to Anthropic format.
-     * Anthropic tools require a "tool_type" field and have slightly different structure.
-     *
-     * @param openaiTools Tools in OpenAI format
-     * @return Tools in Anthropic format
-     */
-    private JsonArray convertToolsToAnthropicFormat(JsonArray openaiTools) {
-        JsonArray anthropicTools = new JsonArray();
-        for (JsonElement toolElement : openaiTools) {
-            JsonObject openaiTool = toolElement.getAsJsonObject();
-            JsonObject anthropicTool = new JsonObject();
-
-            // Copy name
-            if (openaiTool.has("name")) {
-                anthropicTool.addProperty("name", openaiTool.get("name").getAsString());
-            }
-
-            // Copy description
-            if (openaiTool.has("description")) {
-                anthropicTool.addProperty("description", openaiTool.get("description").getAsString());
-            }
-
-            // Copy and convert parameters (OpenAI uses "parameters", Anthropic uses "input_schema")
-            if (openaiTool.has("parameters")) {
-                anthropicTool.add("input_schema", openaiTool.get("parameters"));
-            }
-
-            // Add tool_type for Anthropic (optional but can help with tool validation)
-            anthropicTool.addProperty("tool_type", "computer_20241022");
-
-            anthropicTools.add(anthropicTool);
+    private JsonObject buildRequestBodyWithStructuredOutput(List<ChatMessage> conversationHistory, JsonArray tools,
+                                                            List<ChatMessage> identityMessages,
+                                                            JsonObject responseSchema) {
+        Provider provider = getProvider();
+        if (provider != null) {
+            return provider.buildRequestBodyWithStructuredOutput(conversationHistory, tools, identityMessages, responseSchema);
         }
-        return anthropicTools;
+        // Fallback to default OpenAI format
+        return buildDefaultRequestBodyWithStructuredOutput(conversationHistory, tools, identityMessages, responseSchema);
+    }
+
+    private JsonObject buildDefaultRequestBodyWithStructuredOutput(List<ChatMessage> conversationHistory, JsonArray tools,
+                                                                   List<ChatMessage> identityMessages,
+                                                                   JsonObject responseSchema) {
+        JsonObject requestBody = buildDefaultRequestBody(conversationHistory, tools, identityMessages);
+
+        // Add Structured Outputs response_format
+        JsonObject responseFormat = new JsonObject();
+        responseFormat.addProperty("type", "json_schema");
+
+        JsonObject jsonSchema = new JsonObject();
+        jsonSchema.addProperty("strict", true);
+        jsonSchema.add("schema", responseSchema);
+        responseFormat.add("json_schema", jsonSchema);
+
+        requestBody.add("response_format", responseFormat);
+
+        return requestBody;
     }
 
     private String parseResponse(String responseBody) {
+        Provider provider = getProvider();
+        if (provider != null) {
+            return provider.parseResponse(responseBody);
+        }
+        // Fallback to default parsing
+        return parseDefaultResponse(responseBody);
+    }
+
+    private String parseDefaultResponse(String responseBody) {
         JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
         if (choices != null && choices.size() > 0) {
@@ -523,12 +571,16 @@ public class LlmApiService {
      * @return LlmResponse with content and tool calls
      */
     private LlmResponse parseResponseWithTools(String responseBody) {
-        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
-
-        // Check if this is an Anthropic response (different structure - no "choices" array)
-        if (isAnthropicApi() && jsonResponse.has("content")) {
-            return parseAnthropicResponse(responseBody);
+        Provider provider = getProvider();
+        if (provider != null) {
+            return provider.parseResponseWithTools(responseBody);
         }
+        // Fallback to default parsing
+        return parseDefaultResponseWithTools(responseBody);
+    }
+
+    private LlmResponse parseDefaultResponseWithTools(String responseBody) {
+        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
 
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
 
@@ -583,74 +635,22 @@ public class LlmApiService {
     }
 
     /**
-     * Parse Anthropic-specific response format.
-     * Anthropic responses have different structure than OpenAI-compatible APIs.
-     *
-     * @param responseBody JSON response from Anthropic API
-     * @return LlmResponse with content and tool calls
-     */
-    private LlmResponse parseAnthropicResponse(String responseBody) {
-        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
-
-        // Extract content
-        String content = null;
-        JsonArray contentArray = jsonResponse.getAsJsonArray("content");
-        if (contentArray != null && contentArray.size() > 0) {
-            JsonObject firstContent = contentArray.get(0).getAsJsonObject();
-            if (firstContent.has("text")) {
-                content = firstContent.get("text").getAsString();
-            }
-        }
-
-        // Extract tool calls from Anthropic response
-        List<ToolCall> toolCalls = null;
-        if (contentArray != null) {
-            toolCalls = new ArrayList<>();
-            for (JsonElement contentElement : contentArray) {
-                JsonObject contentObj = contentElement.getAsJsonObject();
-                String type = contentObj.has("type") ? contentObj.get("type").getAsString() : "";
-
-                if ("tool_use".equals(type)) {
-                    String id = contentObj.has("id") ? contentObj.get("id").getAsString() : "";
-                    String name = contentObj.has("name") ? contentObj.get("name").getAsString() : "";
-                    JsonObject inputObj = contentObj.getAsJsonObject("input");
-
-                    toolCalls.add(new ToolCall(id, name, inputObj));
-                }
-            }
-        }
-
-        // Extract stop reason (Anthropic-specific field)
-        String stopReason = null;
-        if (jsonResponse.has("stop_reason")) {
-            stopReason = jsonResponse.get("stop_reason").getAsString();
-        }
-
-        // Extract token usage - Anthropic uses different field names
-        TokenUsage usage = null;
-        if (jsonResponse.has("usage")) {
-            JsonObject usageObj = jsonResponse.getAsJsonObject("usage");
-            int inputTokens = usageObj.has("input_tokens") ? usageObj.get("input_tokens").getAsInt() : 0;
-            int outputTokens = usageObj.has("output_tokens") ? usageObj.get("output_tokens").getAsInt() : 0;
-            usage = new TokenUsage(inputTokens + outputTokens, inputTokens, outputTokens);
-        }
-
-        return new LlmResponse(content, toolCalls, usage);
-    }
-
-    /**
      * Parse a response with Structured Outputs support, including refusal detection.
      *
      * @param responseBody JSON response from API
      * @return StructuredResponse with content, refusal, and tool calls
      */
     private StructuredResponse parseStructuredResponse(String responseBody) {
-        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
-
-        // Check if this is an Anthropic response (different structure - no "choices" array)
-        if (isAnthropicApi() && jsonResponse.has("content")) {
-            return parseAnthropicStructuredResponse(responseBody);
+        Provider provider = getProvider();
+        if (provider != null) {
+            return provider.parseStructuredResponse(responseBody);
         }
+        // Fallback to default parsing
+        return parseDefaultStructuredResponse(responseBody);
+    }
+
+    private StructuredResponse parseDefaultStructuredResponse(String responseBody) {
+        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
 
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
 
@@ -706,56 +706,6 @@ public class LlmApiService {
         }
 
         return new StructuredResponse(content, refusal, toolCalls, usage);
-    }
-
-    /**
-     * Parse Anthropic-specific structured response format.
-     * Anthropic responses have different structure than OpenAI-compatible APIs.
-     *
-     * @param responseBody JSON response from Anthropic API
-     * @return StructuredResponse with content and tool calls
-     */
-    private StructuredResponse parseAnthropicStructuredResponse(String responseBody) {
-        JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
-
-        // Extract content
-        String content = null;
-        JsonArray contentArray = jsonResponse.getAsJsonArray("content");
-        if (contentArray != null && contentArray.size() > 0) {
-            JsonObject firstContent = contentArray.get(0).getAsJsonObject();
-            if (firstContent.has("text")) {
-                content = firstContent.get("text").getAsString();
-            }
-        }
-
-        // Extract tool calls from Anthropic response
-        List<ToolCall> toolCalls = null;
-        if (contentArray != null) {
-            toolCalls = new ArrayList<>();
-            for (JsonElement contentElement : contentArray) {
-                JsonObject contentObj = contentElement.getAsJsonObject();
-                String type = contentObj.has("type") ? contentObj.get("type").getAsString() : "";
-
-                if ("tool_use".equals(type)) {
-                    String id = contentObj.has("id") ? contentObj.get("id").getAsString() : "";
-                    String name = contentObj.has("name") ? contentObj.get("name").getAsString() : "";
-                    JsonObject inputObj = contentObj.getAsJsonObject("input");
-
-                    toolCalls.add(new ToolCall(id, name, inputObj));
-                }
-            }
-        }
-
-        // Extract token usage - Anthropic uses different field names
-        TokenUsage usage = null;
-        if (jsonResponse.has("usage")) {
-            JsonObject usageObj = jsonResponse.getAsJsonObject("usage");
-            int inputTokens = usageObj.has("input_tokens") ? usageObj.get("input_tokens").getAsInt() : 0;
-            int outputTokens = usageObj.has("output_tokens") ? usageObj.get("output_tokens").getAsInt() : 0;
-            usage = new TokenUsage(inputTokens + outputTokens, inputTokens, outputTokens);
-        }
-
-        return new StructuredResponse(content, null, toolCalls, usage);
     }
 
     public void cancelAllRequests() {

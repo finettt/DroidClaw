@@ -417,6 +417,10 @@ public class SettingsManager {
         String providerId = agentConfig.getDefaultProviderId();
         String modelId = agentConfig.getDefaultModelId();
 
+        if (providerId == null || modelId == null) {
+            return null;
+        }
+
         Provider provider = providers.get(providerId);
         if (provider == null) {
             return null;
@@ -428,6 +432,20 @@ public class SettingsManager {
         }
 
         return new Object[]{provider, model};
+    }
+
+    /**
+     * Get provider ID from default model string.
+     */
+    public String getDefaultProviderId() {
+        return agentConfig.getDefaultProviderId();
+    }
+
+    /**
+     * Get model ID from default model string.
+     */
+    public String getDefaultModelId() {
+        return agentConfig.getDefaultModelId();
     }
 
     /**
