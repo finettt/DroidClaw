@@ -79,8 +79,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_firstLaunch_showsMainChatInterface() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready
+            TestUtils.waitForChatFragment();
             
             // User launches app for first time
             // Should see main chat interface
@@ -105,8 +105,8 @@ public class CriticalUserJourneysUITest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready
+            TestUtils.waitForChatFragment();
             
             // User types a message
             onView(withId(R.id.messageInput))
@@ -127,8 +127,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_createMultipleChats_switchBetween() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready (ensures navigation settled)
+            TestUtils.waitForChatFragment();
             
             // User creates first chat
             onView(withId(R.id.drawer_layout))
@@ -171,8 +171,8 @@ public class CriticalUserJourneysUITest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready (ensures navigation settled before opening drawer)
+            TestUtils.waitForChatFragment();
             
             // User opens drawer
             onView(withId(R.id.drawer_layout))
@@ -193,8 +193,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_drawerInteraction_openCloseMultipleTimes() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready (ensures navigation settled)
+            TestUtils.waitForChatFragment();
             
             // User explores drawer multiple times
             for (int i = 0; i < 3; i++) {
@@ -224,8 +224,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_emptyMessageAttempt_validation() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready
+            TestUtils.waitForChatFragment();
             
             // User tries to send empty message
             onView(withId(R.id.sendButton))
@@ -252,8 +252,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_settingsWithoutApiKey_showsValidation() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready
+            TestUtils.waitForChatFragment();
             
             // User tries to send message without configuring API
             onView(withId(R.id.messageInput))
@@ -273,8 +273,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_rapidActions_stressTest() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready
+            TestUtils.waitForChatFragment();
             
             // User performs rapid actions
             for (int i = 0; i < 5; i++) {
@@ -307,8 +307,8 @@ public class CriticalUserJourneysUITest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready
+            TestUtils.waitForChatFragment();
             
             // User types very long message
             String longMessage = "This is a very long message that tests the input handling capabilities. " +
@@ -337,7 +337,7 @@ public class CriticalUserJourneysUITest {
 
         // First launch - create chat
         try (ActivityScenario<MainActivity> scenario1 = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            TestUtils.waitForUiReady();
+            TestUtils.waitForChatFragment();
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
@@ -348,7 +348,7 @@ public class CriticalUserJourneysUITest {
 
         // Second launch - verify chat persisted
         try (ActivityScenario<MainActivity> scenario2 = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            TestUtils.waitForUiReady();
+            TestUtils.waitForChatFragment();
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
@@ -362,8 +362,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_settingsNavigation_backButton() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready (ensures navigation settled)
+            TestUtils.waitForChatFragment();
             
             // Navigate to settings
             onView(withId(R.id.drawer_layout))
@@ -385,8 +385,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_multipleSessionsWorkflow_comprehensive() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready (ensures navigation settled)
+            TestUtils.waitForChatFragment();
             
             // Create Session 1
             onView(withId(R.id.drawer_layout)).perform(open());
@@ -433,8 +433,8 @@ public class CriticalUserJourneysUITest {
     @Test
     public void userJourney_toolbarNavigation_hamburgerMenu() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready (ensures navigation settled)
+            TestUtils.waitForChatFragment();
             
             // Drawer should be closed initially
             onView(withId(R.id.drawer_layout))
@@ -462,8 +462,8 @@ public class CriticalUserJourneysUITest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready
-            TestUtils.waitForUiReady();
+            // Wait for ChatFragment to be fully ready
+            TestUtils.waitForChatFragment();
             
             // User types message with special characters
             String specialMessage = "Hello! Test message with numbers 123";

@@ -39,6 +39,8 @@ import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.util.SettingsManager;
 
+import org.woheller69.freeDroidWarn.FreeDroidWarn;
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
@@ -55,6 +57,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Show FreeDroidWarn deprecation notice about Google developer verification
+        // Skip during instrumentation tests to avoid blocking Espresso interactions
+        if (!isInstrumentationTest()) {
+            FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
+        }
 
         drawerLayout = findViewById(R.id.drawer_layout);
         chatRepository = new ChatRepository(this);
@@ -190,6 +198,19 @@ public class MainActivity extends AppCompatActivity {
         Bundle args = new Bundle();
         args.putSerializable("task_result", taskResult);
         navController.navigate(R.id.zenResultFragment, args);
+    }
+
+    private boolean isInstrumentationTest() {
+        try {
+            Class<?> instrumentationRegistryClass =
+                    Class.forName("androidx.test.platform.app.InstrumentationRegistry");
+            Object instrumentation = instrumentationRegistryClass
+                    .getMethod("getInstrumentation")
+                    .invoke(null);
+            return instrumentation != null;
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return false;
+        }
     }
 
     private void setupDrawerContent() {
