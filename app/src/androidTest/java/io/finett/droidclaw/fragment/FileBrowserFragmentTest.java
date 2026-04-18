@@ -474,7 +474,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            waitForLoading();
+            waitForAdapterItems(scenario, 1);
 
             // Verify we're in child_dir
             scenario.onFragment(fragment -> {
@@ -494,7 +494,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            waitForLoading();
+            waitForAdapterItems(scenario, 1);
 
             // Verify we're back in parent_dir
             scenario.onFragment(fragment -> {
