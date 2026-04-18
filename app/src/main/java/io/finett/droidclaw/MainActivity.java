@@ -59,7 +59,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // Show FreeDroidWarn deprecation notice about Google developer verification
-        FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
+        // Skip during instrumentation tests to avoid blocking Espresso interactions
+        if (!isInstrumentationTest()) {
+            FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
+        }
 
         drawerLayout = findViewById(R.id.drawer_layout);
         chatRepository = new ChatRepository(this);
@@ -195,6 +198,19 @@ public class MainActivity extends AppCompatActivity {
         Bundle args = new Bundle();
         args.putSerializable("task_result", taskResult);
         navController.navigate(R.id.zenResultFragment, args);
+    }
+
+    private boolean isInstrumentationTest() {
+        try {
+            Class<?> instrumentationRegistryClass =
+                    Class.forName("androidx.test.platform.app.InstrumentationRegistry");
+            Object instrumentation = instrumentationRegistryClass
+                    .getMethod("getInstrumentation")
+                    .invoke(null);
+            return instrumentation != null;
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return false;
+        }
     }
 
     private void setupDrawerContent() {
