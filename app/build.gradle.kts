@@ -91,6 +91,9 @@ chaquopy {
 }
 
 dependencies {
+    // FreeDroidWarn – warn users about Google developer verification requirement
+    implementation("com.github.woheller69:FreeDroidWarn:V1.+")
+
     coreLibraryDesugaring(libs.desugaring)
     implementation(libs.appcompat)
     implementation(libs.material)

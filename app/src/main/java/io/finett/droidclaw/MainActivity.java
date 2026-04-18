@@ -39,6 +39,8 @@ import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.util.SettingsManager;
 
+import org.woheller69.freeDroidWarn.FreeDroidWarn;
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
 
@@ -55,6 +57,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Show FreeDroidWarn deprecation notice about Google developer verification
+        FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
 
         drawerLayout = findViewById(R.id.drawer_layout);
         chatRepository = new ChatRepository(this);
