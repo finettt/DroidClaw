@@ -5,6 +5,7 @@ import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.isRoot;
+import static androidx.test.espresso.matcher.ViewMatchers.withId;
 
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
@@ -16,6 +17,8 @@ import androidx.test.espresso.IdlingRegistry;
 import androidx.test.espresso.IdlingResource;
 import androidx.test.espresso.NoMatchingRootException;
 import androidx.test.platform.app.InstrumentationRegistry;
+
+import io.finett.droidclaw.R;
 
 /**
  * Utility class for Android instrumented tests.
@@ -123,6 +126,43 @@ public class TestUtils {
     public static void waitForUiReady() {
         waitForWindowFocus();
         onIdle();
+    }
+
+    /**
+     * Waits specifically for the chat screen to be ready by polling for
+     * the message input view from ChatFragment.
+     *
+     * This is more reliable than a generic idle wait because MainActivity
+     * performs some navigation work asynchronously after launch.
+     */
+    public static void waitForChatFragment() {
+        waitForChatFragment(DEFAULT_TIMEOUT_MS);
+    }
+
+    /**
+     * Waits specifically for the chat screen to be ready by polling for
+     * the message input view from ChatFragment.
+     *
+     * @param timeoutMs Maximum time to wait in milliseconds
+     */
+    public static void waitForChatFragment(long timeoutMs) {
+        waitForUiReady();
+
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                onView(withId(R.id.messageInput)).check(matches(isDisplayed()));
+                Log.d(TAG, "ChatFragment is displayed");
+                onIdle();
+                sleep(300);
+                return;
+            } catch (Exception e) {
+                Log.d(TAG, "Waiting for ChatFragment: " + e.getMessage());
+                sleep(POLL_INTERVAL_MS);
+            }
+        }
+
+        Log.w(TAG, "ChatFragment was not displayed within timeout");
     }
 
     /**
