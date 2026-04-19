@@ -1,7 +1,7 @@
 # 🦞 DroidClaw — Мобильный ИИ-ассистент
 
 <div align="center">
-	<img src="assets/icon.svg" width="200" height="200" style="border-radius: 15%" />
+	<img src="assets/icon.svg" width="200" height="200"/>
 	<div>
 		<h4>
 			<strong>
