@@ -32,7 +32,7 @@ You can download the latest stable version from the [releases page](https://gith
 
 # Setup (TL;DR)
 
-Go through the onboarding screen, and you are ready to go! If you want to set up things in more detail, see `docs/settings.md`.
+Go through the onboarding screen, and you are ready to go! If you want to set up things in more detail, see `docs/user/settings.md`.
 
 # Highlights
 
