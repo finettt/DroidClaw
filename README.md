@@ -1,177 +1,56 @@
-# DroidClaw - LLM Chat Application
+# 🦞 DroidClaw — Mobile AI Assistant
 
-[![Android CI](https://github.com/finettt/DroidClaw/actions/workflows/android.yml/badge.svg)](https://github.com/finettt/DroidClaw/actions/workflows/android.yml)
+<div align="center">
+	<img src="assets/icon.svg" width="200" height="200" style="border-radius: 15%" />
+	<div>
+		<h4>
+			<strong>
+			Your agent needs to be yours.
+			</strong>
+		</h4>
+	</div>
+	<a href="https://github.com/finettt/DroidClaw/actions/workflows/android.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/finettt/DroidClaw/android.yml?branch=main&style=for-the-badge" alt="CI status"></a>
+	<a href="https://github.com/finettt/DroidClaw/releases"><img src="https://img.shields.io/github/v/release/finettt/DroidClaw?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
+	<p>
+		<a href="README.ru.md" style="font-size: 1.1em;">🇷🇺 Русский</a>
+	</p>
+</div>
 
-An Android application for chatting with Large Language Models (LLMs) with a clean, modern interface. DroidClaw includes Python 3.11 runtime support via Chaquopy, enabling the AI agent to execute Python scripts as part of its skills system.
+**DroidClaw** is a personal AI assistant that runs on your phone **without root**, as a native Android/Java app. You don't need to download enormous Node.js builds. ~40MB is all you need (even with an embedded Python interpreter).
 
-## Features
+DroidClaw is designed to be more than just an assistant; it is designed to be a work partner.
 
-- **Chat Interface**: Clean chat UI with message bubbles for user and assistant messages
-- **Settings Screen**: Configure your LLM API settings including:
-  - API Key
-  - API URL (supports OpenAI-compatible endpoints)
-  - Model selection
-  - System prompt customization
-  - Max tokens configuration
-  - Temperature control (0.0 - 2.0)
-- **Navigation**: Seamless navigation between Chat and Settings screens
-- **Persistent Settings**: All settings are saved locally using SharedPreferences
-- **Python Execution**: Run Python scripts and code as agent skills with runtime pip support
+You can connect any provider/model to the app. It supports both the OpenAI and Anthropic APIs, so you can easily start working with your favorite model. We support: OpenAI, Anthropic, OpenRouter, Moonshot, Fireworks, Llama.cpp, vLLM, **and much more!**
 
-## Screenshots
+# Story
 
-### Chat Screen
-- Send messages to the LLM
-- View conversation history
-- Clear chat option in menu
-- Settings access from menu
+It all starts with an idea. For me, that idea came from wanting to make money. A friend and I wanted to create an all-in-one service with LLMs and image generation models. The biggest advantage of our product was its low price and *file operations*—the agent could create basic text files for you. It could have been a real breakthrough in the agent era. But, due to certain circumstances, the project was closed. About 4 months later, OpenClaw was released. DroidClaw doesn't claim to be an OpenClaw competitor; it is just an educational project.
 
-### Settings Screen
-- Configure API endpoint
-- Set model parameters
-- Customize system prompt
-- Adjust temperature with slider
+# Installation
 
-## Setup
+You can download the latest stable version from the [releases page](https://github.com/finettt/DroidClaw/releases/latest) or you can clone and build it manually (see the developer guide).
 
-1. Clone the repository
-2. Open in Android Studio
-3. Sync Gradle dependencies
-4. Run the app on an emulator or physical device
+# Setup (TL;DR)
 
-## Configuration
+Go through the onboarding screen, and you are ready to go! If you want to set up things in more detail, see `docs/settings.md`.
 
-Before using the app, you need to configure the API settings:
+# Highlights
 
-1. Open the app
-2. Tap the menu (three dots) and select "Settings"
-3. Enter your API Key (required)
-4. Configure the API URL (defaults to OpenAI's endpoint)
-5. Set your preferred model name (e.g., "gpt-3.5-turbo", "gpt-4")
-6. Customize the system prompt if desired
-7. Tap "Save Settings"
+- **Bundled Python 3.11:** The agent can execute any scripts to help you.
+- **Sandboxed environment:** The agent works in its own filesystem and can't touch your data.
+- **Onboarding:** Users can configure the app for its first run with just a couple of questions.
 
-## API Compatibility
+# Docs
 
-The app is designed to work with OpenAI-compatible APIs, including:
-- OpenAI ChatGPT API
-- Azure OpenAI Service
-- Other compatible endpoints (LocalAI, Ollama with OpenAI compatibility, etc.)
+All documentation is stored in the `docs` directory.
 
-## Python Capabilities
+# FAQ
 
-DroidClaw includes Python 3.11 runtime support via Chaquopy, enabling:
+- Why should **I**, as a user, use your app?
+> If you want to try the OpenClaw experience but don't have the hardware (even a Raspberry Pi), you can turn your phone into an agent.
 
-- Execute Python scripts as agent skills
-- Install packages dynamically via pip
-- Access Python's rich ecosystem for data processing, web scraping, etc.
-- Create custom Python-based skills
+- If I find a **bug**, where can I report it?
+> You can create an issue and I'll work on it.
 
-### Using Python
-
-The agent can execute Python code through the `execute_python` tool:
-
-1. **Inline Code**: Execute Python code directly
-2. **Script Files**: Run Python scripts from the workspace
-3. **Package Management**: Install packages at runtime
-
-### Python Configuration
-
-Python is configured via the app's `build.gradle.kts`:
-
-```kotlin
-chaquopy {
-    defaultConfig {
-        version = "3.11"
-        pip {
-            install("requests")
-            install("beautifulsoup4")
-            install("lxml")
-        }
-    }
-}
-```
-
-## Technical Details
-
-- **Language**: Java
-- **Minimum SDK**: 22 (Android 5.1)
-- **Target SDK**: 35
-- **Architecture**: Fragment-based with Navigation Component
-- **Python Runtime**: Python 3.11 via Chaquopy 15.0.1
-- **Dependencies**:
-  - AndroidX Navigation
-  - Material Design Components
-  - RecyclerView
-  - OkHttp for network requests
-  - Gson for JSON parsing
-  - Chaquopy for Python execution
-
-## Project Structure
-
-```
-app/src/main/java/io/finett/droidclaw/
-├── api/
-│   └── LlmApiService.java          # Handles API communication
-├── adapter/
-│   └── ChatAdapter.java            # RecyclerView adapter for messages
-├── fragment/
-│   ├── ChatFragment.java           # Main chat interface
-│   └── SettingsFragment.java      # Settings configuration
-├── model/
-│   └── ChatMessage.java            # Message data model
-├── python/
-│   ├── PythonConfig.java           # Python execution configuration
-│   ├── PythonExecutor.java         # Main Python execution wrapper
-│   ├── PythonResult.java           # Execution result container
-│   └── PipManager.java             # Runtime pip package management
-├── tool/
-│   ├── Tool.java                   # Tool interface
-│   ├── ToolDefinition.java         # Tool schema definition
-│   ├── ToolResult.java             # Tool execution result
-│   └── impl/
-│       ├── FileReadTool.java       # File reading tool
-│       ├── FileWriteTool.java      # File writing tool
-│       ├── FileEditTool.java       # File editing tool
-│       ├── FileListTool.java       # Directory listing tool
-│       ├── FileSearchTool.java     # File search tool
-│       ├── FileDeleteTool.java     # File deletion tool
-│       ├── FileInfoTool.java       # File info tool
-│       ├── ShellTool.java          # Shell command execution
-│       └── PythonTool.java         # Python execution tool
-├── shell/
-│   ├── ShellConfig.java            # Shell execution configuration
-│   ├── ShellExecutor.java          # Shell command executor
-│   └── ShellResult.java            # Shell result container
-├── filesystem/
-│   ├── PathValidator.java          # Path validation utilities
-│   ├── VirtualFileSystem.java      # Virtual file system
-│   └── WorkspaceManager.java       # Workspace management
-├── util/
-│   └── SettingsManager.java        # Settings persistence
-└── MainActivity.java               # Main activity with navigation
-```
-
-## Building
-
-### Using Nix (Recommended)
-
-The project includes a Nix flake for reproducible builds:
-
-```bash
-# Enter development shell
-nix develop
-
-# Build the project
-./gradlew assembleDebug
-```
-
-### Manual Setup
-
-1. Ensure JDK 21 is installed
-2. Ensure Python 3.11 is available (for Chaquopy build)
-3. Run `./gradlew assembleDebug`
-
-## License
-
-This project is open source and available for educational purposes.
+- What do I need as a developer to start working on a feature?
+> I recommend using Nix, because it is the simplest way to start developing. Alternatively, you can set up Java 21 and Python 3.11.
