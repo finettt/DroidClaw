@@ -1,30 +1,21 @@
 package io.finett.droidclaw.model;
 
-/**
- * Represents a chat session with token tracking.
- * Implements the "Last Usage" algorithm:
- * - Current context tokens: Actual context size from last API response
- * - Session cumulative tokens: Total tokens spent across all requests
- */
 public class ChatSession {
     private String id;
     private String title;
     private long updatedAt;
-    
-    // Current context tokens (from last API response - "Last Usage" algorithm)
+
     private int currentContextTokens;
     private int currentPromptTokens;
     private int currentCompletionTokens;
-    
-    // Session cumulative tokens (total spent across all requests)
+
     private int totalTokens;
     private int totalPromptTokens;
     private int totalCompletionTokens;
     private int totalToolCalls;
 
-    // Session type and visibility
-    private int sessionType; // SessionType.NORMAL, HIDDEN_HEARTBEAT, HIDDEN_CRON
-    private String parentTaskId; // Links to cron job or background task
+    private int sessionType;
+    private String parentTaskId;
 
     public ChatSession(String id, String title, long updatedAt) {
         this.id = id;
@@ -65,7 +56,6 @@ public class ChatSession {
         this.updatedAt = updatedAt;
     }
     
-    // Current context tokens (Last Usage algorithm)
     public int getCurrentContextTokens() {
         return currentContextTokens;
     }
@@ -90,7 +80,6 @@ public class ChatSession {
         this.currentCompletionTokens = currentCompletionTokens;
     }
     
-    // Session cumulative tokens
     public int getTotalTokens() {
         return totalTokens;
     }
@@ -123,7 +112,6 @@ public class ChatSession {
         this.totalToolCalls = totalToolCalls;
     }
 
-    // Session type and visibility
     public int getSessionType() {
         return sessionType;
     }
@@ -132,10 +120,6 @@ public class ChatSession {
         this.sessionType = sessionType;
     }
 
-    /**
-     * Check if this session is hidden from the UI.
-     * Hidden sessions include background tasks like heartbeat and cron jobs.
-     */
     public boolean isHidden() {
         return sessionType != SessionType.NORMAL;
     }

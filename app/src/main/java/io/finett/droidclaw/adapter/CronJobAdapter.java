@@ -114,7 +114,7 @@ public class CronJobAdapter extends RecyclerView.Adapter<CronJobAdapter.CronJobV
             textJobName.setText(job.getName());
             textSchedule.setText(CronJobScheduler.formatScheduleForDisplay(job.getSchedule()));
 
-            // Status chip
+
             if (job.isPaused()) {
                 chipStatus.setText(R.string.cron_status_paused);
             } else if (job.isEnabled()) {
@@ -123,7 +123,7 @@ public class CronJobAdapter extends RecyclerView.Adapter<CronJobAdapter.CronJobV
                 chipStatus.setText(R.string.cron_status_disabled);
             }
 
-            // Last run time
+
             if (job.getLastRunTimestamp() > 0) {
                 String lastRunText = formatRelativeTime(job.getLastRunTimestamp());
                 textLastRun.setText(itemView.getContext().getString(R.string.cron_last_run, lastRunText));
@@ -133,10 +133,10 @@ public class CronJobAdapter extends RecyclerView.Adapter<CronJobAdapter.CronJobV
                 textLastRun.setVisibility(View.VISIBLE);
             }
 
-            // Success rate
+
             textSuccessRate.setText(itemView.getContext().getString(R.string.cron_success_rate, job.getSuccessRate()));
 
-            // Error message
+
             if (job.getLastError() != null && !job.getLastError().isEmpty() && job.getRetryCount() > 0) {
                 textErrorMessage.setText(itemView.getContext().getString(R.string.cron_error_prefix, job.getLastError()));
                 textErrorMessage.setVisibility(View.VISIBLE);
@@ -144,7 +144,7 @@ public class CronJobAdapter extends RecyclerView.Adapter<CronJobAdapter.CronJobV
                 textErrorMessage.setVisibility(View.GONE);
             }
 
-            // Click listeners
+
             itemView.setOnClickListener(v -> listener.onCronJobClick(job));
             itemView.setOnLongClickListener(v -> {
                 listener.onCronJobLongClick(job, v);

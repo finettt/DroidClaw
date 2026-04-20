@@ -18,9 +18,6 @@ import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 
-/**
- * Tool for setting up and configuring the heartbeat monitoring system.
- */
 public class SetupHeartbeatTool implements Tool {
 
     private static final String TAG = "SetupHeartbeatTool";
@@ -88,7 +85,6 @@ public class SetupHeartbeatTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Parse parameters with defaults
             boolean enabled = true;
             String interval = "30min";
             String monitoringFocus = null;
@@ -105,7 +101,6 @@ public class SetupHeartbeatTool implements Tool {
                 }
             }
 
-            // Parse interval
             long intervalMs = parseInterval(interval);
             if (intervalMs == -1) {
                 return ToolResult.error(
@@ -113,18 +108,15 @@ public class SetupHeartbeatTool implements Tool {
                 );
             }
 
-            // Get or create config
             HeartbeatConfig config = getConfigRepository().getConfig();
             config.setIntervalMillis(intervalMs);
             config.setEnabled(enabled);
             getConfigRepository().updateConfig(config);
 
-            // Update HEARTBEAT.md if monitoring focus is specified
             if (monitoringFocus != null && !monitoringFocus.isEmpty()) {
                 updateHeartbeatPrompt(monitoringFocus);
             }
 
-            // Schedule or cancel
             if (enabled) {
                 getTaskScheduler().scheduleHeartbeat(config);
             } else {
@@ -133,7 +125,6 @@ public class SetupHeartbeatTool implements Tool {
 
             Log.d(TAG, "Heartbeat configured - enabled: " + enabled + ", interval: " + interval);
 
-            // Build result
             JsonObject result = new JsonObject();
             result.addProperty("status", "configured");
             result.addProperty("enabled", enabled);
@@ -143,7 +134,6 @@ public class SetupHeartbeatTool implements Tool {
                 result.addProperty("monitoring_focus", monitoringFocus);
             }
 
-            // Create human-readable message
             StringBuilder message = new StringBuilder();
             if (enabled) {
                 message.append("✓ Heartbeat monitoring enabled\n");

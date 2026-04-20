@@ -15,10 +15,6 @@ import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for creating scheduled background tasks via natural language.
- * Creates a CronJob and schedules it using WorkManager.
- */
 public class CreateTaskTool implements Tool {
 
     private static final String TAG = "CreateTaskTool";
@@ -76,7 +72,7 @@ public class CreateTaskTool implements Tool {
 
     @Override
     public boolean requiresApproval() {
-        return true; // Creating automated tasks should require user approval
+        return true;
     }
 
     @Override
@@ -104,7 +100,6 @@ public class CreateTaskTool implements Tool {
                 return ToolResult.error("Parameters cannot be empty");
             }
 
-            // Validate schedule format
             if (!isValidSchedule(schedule)) {
                 return ToolResult.error(
                         "Invalid schedule format: '" + schedule + "'. Valid formats: 'hourly', 'daily', 'weekly', " +
@@ -113,7 +108,6 @@ public class CreateTaskTool implements Tool {
                 );
             }
 
-            // Create the job
             CronJob job = new CronJob();
             job.setId(UUID.randomUUID().toString());
             job.setName(name);
@@ -123,7 +117,6 @@ public class CreateTaskTool implements Tool {
             job.setPaused(false);
             job.setCreatedAt(System.currentTimeMillis());
 
-            // Save and schedule
             getTaskRepository().saveCronJob(job);
             getScheduler().scheduleJob(job);
 
@@ -150,14 +143,12 @@ public class CreateTaskTool implements Tool {
             return false;
         }
 
-        // Check for simple keywords
         if (schedule.equalsIgnoreCase("hourly") ||
                 schedule.equalsIgnoreCase("daily") ||
                 schedule.equalsIgnoreCase("weekly")) {
             return true;
         }
 
-        // Check daily@HH:MM format
         if (schedule.matches("daily@\\d{1,2}:\\d{2}")) {
             String[] parts = schedule.split("@");
             String[] timeParts = parts[1].split(":");
@@ -166,7 +157,6 @@ public class CreateTaskTool implements Tool {
             return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
         }
 
-        // Check weekly@DAY@HH:MM format
         if (schedule.matches("weekly@(MON|TUE|WED|THU|FRI|SAT|SUN)@\\d{1,2}:\\d{2}")) {
             String[] parts = schedule.split("@");
             String[] timeParts = parts[2].split(":");
@@ -175,17 +165,15 @@ public class CreateTaskTool implements Tool {
             return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
         }
 
-        // Check every_N_unit format (e.g., every_6_hours, every_30_minutes, every_2_days)
         if (schedule.matches("every_\\d+_(hours?|minutes?|days?)")) {
             return true;
         }
 
-        // Try parsing as milliseconds
         try {
             long ms = Long.parseLong(schedule);
             return ms > 0;
         } catch (NumberFormatException e) {
-            // Not a number
+            // not a number — fall through
         }
 
         return false;

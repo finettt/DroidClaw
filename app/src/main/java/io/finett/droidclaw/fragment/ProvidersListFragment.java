@@ -63,14 +63,14 @@ public class ProvidersListFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Reload settings manager to get fresh data from SharedPreferences
+
         settingsManager = new SettingsManager(requireContext());
         loadProviders();
     }
 
     private void loadProviders() {
         List<Provider> providers = settingsManager.getProviders();
-        // Create a new list to ensure ListAdapter detects the change
+
         adapter.submitList(new java.util.ArrayList<>(providers));
 
         if (providers.isEmpty()) {
@@ -90,7 +90,7 @@ public class ProvidersListFragment extends Fragment {
     }
 
     private void navigateToNewProvider() {
-        // Navigate to provider detail without an ID (create new)
+
         Navigation.findNavController(requireView())
                 .navigate(R.id.action_providersListFragment_to_providerDetailFragment);
     }

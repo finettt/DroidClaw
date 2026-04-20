@@ -24,11 +24,11 @@ public class TokenEstimator {
             return 0;
         }
         
-        // Split on whitespace and count words
+
         String[] words = text.trim().split("\\s+");
         int wordCount = words.length;
         
-        // Apply conversion factor and round up
+
         return (int) Math.ceil(wordCount * WORDS_TO_TOKENS);
     }
     

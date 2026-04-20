@@ -16,9 +16,6 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for editing files with search/replace, insert, and delete line operations.
- */
 public class FileEditTool implements Tool {
     private static final String NAME = "edit_file";
     private final VirtualFileSystem vfs;
@@ -58,11 +55,11 @@ public class FileEditTool implements Tool {
     public ToolDefinition getDefinition() {
         return definition;
     }
-    
     @Override
     public boolean requiresApproval() {
-        return true; // File editing modifies existing files
+        return true;
     }
+
     
     @Override
     public String getApprovalDescription(JsonObject arguments) {
@@ -76,7 +73,6 @@ public class FileEditTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Extract common arguments
             if (!arguments.has("path")) {
                 return ToolResult.error("Missing required argument: path");
             }
@@ -87,7 +83,6 @@ public class FileEditTool implements Tool {
             String path = arguments.get("path").getAsString();
             String operation = arguments.get("operation").getAsString();
 
-            // Read the file
             File file = pathValidator.validateAndResolve(path);
             if (!file.exists() || !file.isFile()) {
                 return ToolResult.error("File not found: " + path);
@@ -95,7 +90,6 @@ public class FileEditTool implements Tool {
 
             List<String> lines = readFileLines(file);
 
-            // Perform the operation
             int changesCount = 0;
             switch (operation.toLowerCase()) {
                 case "replace":
@@ -111,11 +105,9 @@ public class FileEditTool implements Tool {
                     return ToolResult.error("Invalid operation: " + operation + ". Must be 'replace', 'insert', or 'delete_lines'");
             }
 
-            // Write the modified content back
             String newContent = String.join("\n", lines);
             vfs.writeFile(path, newContent, false);
 
-            // Build result JSON
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("path", path);
             resultJson.addProperty("operation", operation);
@@ -177,7 +169,6 @@ public class FileEditTool implements Tool {
         int lineNumber = arguments.get("line_number").getAsInt();
         String content = arguments.get("content").getAsString();
 
-        // Convert to 0-based index
         int index = lineNumber - 1;
 
         if (index < 0 || index > lines.size()) {
@@ -196,7 +187,6 @@ public class FileEditTool implements Tool {
         int lineNumber = arguments.get("line_number").getAsInt();
         int count = arguments.has("count") ? arguments.get("count").getAsInt() : 1;
 
-        // Convert to 0-based index
         int startIndex = lineNumber - 1;
 
         if (startIndex < 0 || startIndex >= lines.size()) {

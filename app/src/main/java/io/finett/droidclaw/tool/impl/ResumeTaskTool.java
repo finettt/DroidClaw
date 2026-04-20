@@ -13,9 +13,6 @@ import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for resuming a paused scheduled task.
- */
 public class ResumeTaskTool implements Tool {
 
     private static final String TAG = "ResumeTaskTool";
@@ -88,11 +85,9 @@ public class ResumeTaskTool implements Tool {
             }
 
             if (!job.isEnabled()) {
-                // Re-enable it
                 job.setEnabled(true);
             }
 
-            // Resume the job
             job.setPaused(false);
             getTaskRepository().updateCronJob(job);
             getScheduler().scheduleJob(job);
@@ -130,7 +125,6 @@ public class ResumeTaskTool implements Tool {
         }
 
         if (taskName != null && !taskName.isEmpty()) {
-            // Search by name (case-insensitive partial match)
             java.util.List<CronJob> allJobs = getTaskRepository().getCronJobs();
             for (CronJob job : allJobs) {
                 if (job.getName().toLowerCase().contains(taskName.toLowerCase())) {

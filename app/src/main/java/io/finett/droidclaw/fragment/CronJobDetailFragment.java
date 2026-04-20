@@ -61,7 +61,7 @@ public class CronJobDetailFragment extends Fragment {
 
         initializeViews(view);
 
-        // Get job ID from arguments
+
         if (getArguments() != null) {
             String jobId = getArguments().getString("job_id");
             if (jobId != null) {
@@ -97,7 +97,7 @@ public class CronJobDetailFragment extends Fragment {
         textJobPrompt.setText(job.getPrompt());
         textSchedule.setText(CronJobScheduler.formatScheduleForDisplay(job.getSchedule()));
 
-        // Status
+
         String status;
         if (job.isPaused()) {
             status = requireContext().getString(R.string.cron_status_paused_fmt);
@@ -108,10 +108,10 @@ public class CronJobDetailFragment extends Fragment {
         }
         textStatus.setText(status);
 
-        // Created date
+
         textCreated.setText(requireContext().getString(R.string.cron_created_fmt, dateFormat.format(job.getCreatedAt())));
 
-        // Metrics
+
         textSuccessRate.setText(requireContext().getString(R.string.cron_success_rate_fmt, job.getSuccessRate()));
 
         long avgMs = job.getAverageExecutionTime();
@@ -139,7 +139,7 @@ public class CronJobDetailFragment extends Fragment {
             textLastRun.setText(R.string.cron_never_run);
         }
 
-        // Update pause/resume button text
+
         updatePauseResumeButton();
     }
 
@@ -165,8 +165,8 @@ public class CronJobDetailFragment extends Fragment {
         });
 
         buttonEdit.setOnClickListener(v -> {
-            // Navigate back to cron job list and open editor
-            // For now, show a toast
+
+
             Toast.makeText(requireContext(), "Edit feature coming soon", Toast.LENGTH_SHORT).show();
         });
 
@@ -209,7 +209,7 @@ public class CronJobDetailFragment extends Fragment {
                     taskRepository.deleteExecutionRecords(job.getId());
                     scheduler.cancelJob(job.getId());
                     Toast.makeText(requireContext(), "Task deleted", Toast.LENGTH_SHORT).show();
-                    // Navigate back
+
                     NavController navController = Navigation.findNavController(requireView());
                     navController.popBackStack();
                 })

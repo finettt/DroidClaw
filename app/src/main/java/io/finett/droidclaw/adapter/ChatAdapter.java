@@ -154,13 +154,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 messageText.setText(content);
             }
 
-            // Display attachments if present
             renderAttachments(message);
         }
 
-        /**
-         * Renders file attachment chips for the message.
-         */
         private void renderAttachments(ChatMessage message) {
             attachmentsContainer.removeAllViews();
 
@@ -179,16 +175,13 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 int iconRes = attachment.getDisplayIconResId();
                 chip.setChipIconResource(iconRes);
 
-                // Click to open file
                 chip.setOnClickListener(v -> openFile(attachment));
 
                 attachmentsContainer.addView(chip);
             }
         }
 
-        /**
-         * Opens the attached file with an external app.
-         */
+        private void openFile(FileAttachment attachment) {
         private void openFile(FileAttachment attachment) {
             File file = new File(attachment.getAbsolutePath());
             if (!file.exists()) {
@@ -205,11 +198,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 intent.setDataAndType(fileUri, attachment.getMimeType());
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                // Check if there's an app to handle this intent
                 if (intent.resolveActivity(context.getPackageManager()) != null) {
                     context.startActivity(intent);
                 } else {
-                    // No app found - show chooser with "Open with" prompt
                     Intent chooser = Intent.createChooser(intent,
                             context.getString(R.string.file_viewer_open_with));
                     if (chooser.resolveActivity(context.getPackageManager()) != null) {
@@ -267,18 +258,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         @Override
         void bind(ChatMessage message) {
             if (message.getToolCalls() != null && !message.getToolCalls().isEmpty()) {
-                // Show the first tool call's name as the main text
                 LlmApiService.ToolCall firstToolCall = message.getToolCalls().get(0);
                 String toolName = firstToolCall.getName();
 
-                // Set icon based on tool type
                 int iconRes = getToolIcon(toolName);
                 toolCallIcon.setImageResource(iconRes);
 
-                // Format tool name for display
                 toolCallText.setText(formatToolName(toolName));
 
-                // Show all tool call arguments
                 StringBuilder argsBuilder = new StringBuilder();
                 for (LlmApiService.ToolCall toolCall : message.getToolCalls()) {
                     if (message.getToolCalls().size() > 1) {
@@ -308,7 +295,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
         
         private String formatToolName(String toolName) {
-            // Convert snake_case to Title Case
             String[] parts = toolName.split("_");
             StringBuilder formatted = new StringBuilder();
             for (String part : parts) {
@@ -322,7 +308,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
         
         private String formatArguments(String args) {
-            // Pretty-print JSON arguments with limited length
             if (args.length() > 200) {
                 return args.substring(0, 197) + "...";
             }

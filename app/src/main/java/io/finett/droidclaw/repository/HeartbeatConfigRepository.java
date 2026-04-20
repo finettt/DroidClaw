@@ -9,10 +9,6 @@ import org.json.JSONObject;
 
 import io.finett.droidclaw.model.HeartbeatConfig;
 
-/**
- * Repository for heartbeat configuration.
- * Stores and retrieves heartbeat settings using SharedPreferences.
- */
 public class HeartbeatConfigRepository {
     private static final String TAG = "HeartbeatCfgRepo";
     private static final String PREFS_NAME = "droidclaw_heartbeat";
@@ -24,10 +20,6 @@ public class HeartbeatConfigRepository {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
-    /**
-     * Get the current heartbeat configuration.
-     * Returns a Flow-like single value (synchronous version).
-     */
     public HeartbeatConfig getConfig() {
         try {
             String jsonString = prefs.getString(KEY_CONFIG, null);
@@ -50,9 +42,6 @@ public class HeartbeatConfigRepository {
         }
     }
 
-    /**
-     * Update the heartbeat configuration.
-     */
     public void updateConfig(HeartbeatConfig config) {
         try {
             JSONObject jsonObject = new JSONObject();
@@ -67,23 +56,14 @@ public class HeartbeatConfigRepository {
         }
     }
 
-    /**
-     * Check if heartbeat is enabled.
-     */
     public boolean isHeartbeatEnabled() {
         return getConfig().isEnabled();
     }
 
-    /**
-     * Check if heartbeat should run based on current time.
-     */
     public boolean shouldRun(long currentTimeMillis) {
         return getConfig().shouldRun(currentTimeMillis);
     }
 
-    /**
-     * Update the last run timestamp.
-     */
     public void updateLastRun(long timestamp) {
         HeartbeatConfig config = getConfig();
         config.setLastRunTimestamp(timestamp);

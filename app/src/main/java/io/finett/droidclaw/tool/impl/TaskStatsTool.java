@@ -16,9 +16,6 @@ import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for getting aggregate statistics across all tasks or a specific task.
- */
 public class TaskStatsTool implements Tool {
 
     private static final String TAG = "TaskStatsTool";
@@ -91,11 +88,9 @@ public class TaskStatsTool implements Tool {
                     return ToolResult.error("Task not found. Use list_tasks to see available tasks.");
                 }
             } else {
-                // All tasks
                 records = getTaskRepository().getAllExecutionRecords();
             }
 
-            // Calculate statistics
             int totalExecutions = records.size();
             int successCount = 0;
             int failureCount = 0;
@@ -125,7 +120,6 @@ public class TaskStatsTool implements Tool {
             double avgTokens = totalExecutions > 0 ? (double) totalTokens / totalExecutions : 0;
             double avgIterations = totalExecutions > 0 ? (double) totalIterations / totalExecutions : 0;
 
-            // Format average duration
             String avgDurationText;
             long avgSec = avgDuration / 1000;
             if (avgSec < 60) {
@@ -150,7 +144,6 @@ public class TaskStatsTool implements Tool {
             result.addProperty("avg_tokens", String.format(Locale.US, "%.0f", avgTokens));
             result.addProperty("avg_iterations", String.format(Locale.US, "%.1f", avgIterations));
 
-            // Create human-readable summary
             StringBuilder summary = new StringBuilder();
             summary.append("Statistics: ").append(taskName).append("\n\n");
 

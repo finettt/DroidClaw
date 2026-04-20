@@ -35,10 +35,10 @@ public class InfoFragment extends Fragment {
         textAppVersion = view.findViewById(R.id.text_app_version);
         textGitHubLink = view.findViewById(R.id.text_github_link);
 
-        // Display app version
+
         textAppVersion.setText(getString(R.string.info_app_version, BuildConfig.APP_VERSION));
 
-        // Open GitHub on click
+
         textGitHubLink.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL));
             startActivity(intent);

@@ -64,13 +64,13 @@ public class ProviderDetailFragment extends Fragment {
             provider = settingsManager.getProvider(providerId);
             isNewProvider = (provider == null);
             if (isNewProvider) {
-                // Invalid provider ID, create new
+
                 provider = new Provider();
                 provider.setId(UUID.randomUUID().toString());
                 providerId = provider.getId();
             }
         } else {
-            // Creating new provider
+
             isNewProvider = true;
             provider = new Provider();
             provider.setId(UUID.randomUUID().toString());
@@ -98,13 +98,13 @@ public class ProviderDetailFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Reload settings manager to get fresh data from SharedPreferences
+
         settingsManager = new SettingsManager(requireContext());
-        // Reload provider data when returning from ModelDetailFragment
+
         Provider updatedProvider = settingsManager.getProvider(providerId);
         if (updatedProvider != null) {
             provider = updatedProvider;
-            // Create a new list to ensure ListAdapter detects the change
+
             modelsAdapter.submitList(new java.util.ArrayList<>(provider.getModels()));
         }
     }
@@ -175,7 +175,7 @@ public class ProviderDetailFragment extends Fragment {
         buttonSave.setOnClickListener(v -> saveProvider());
         buttonDelete.setOnClickListener(v -> confirmDeleteProvider());
         
-        // Clear errors on input
+
         inputProviderName.addTextChangedListener(new SimpleTextWatcher(() ->
             tilProviderName.setError(null)));
         inputBaseUrl.addTextChangedListener(new SimpleTextWatcher(() ->
@@ -190,7 +190,7 @@ public class ProviderDetailFragment extends Fragment {
         String apiKey = inputApiKey.getText().toString().trim();
         String apiTypeDisplay = dropdownApiType.getText().toString();
 
-        // Validation
+
         if (name.isEmpty()) {
             tilProviderName.setError(getString(R.string.validation_required));
             return;
@@ -213,13 +213,13 @@ public class ProviderDetailFragment extends Fragment {
 
         String apiType = getApiTypeValue(apiTypeDisplay);
 
-        // Update provider object (ID already set in onCreate)
+
         provider.setName(name);
         provider.setBaseUrl(baseUrl);
         provider.setApiKey(apiKey);
         provider.setApi(apiType);
 
-        // Save to settings
+
         if (isNewProvider) {
             settingsManager.addProvider(provider);
             isNewProvider = false;
@@ -253,7 +253,7 @@ public class ProviderDetailFragment extends Fragment {
     }
 
     private void navigateToNewModel() {
-        // Save current form data to the in-memory provider before navigating
+
         updateProviderFromForm();
         
         Bundle args = new Bundle();
@@ -274,7 +274,7 @@ public class ProviderDetailFragment extends Fragment {
         provider.setApiKey(apiKey);
         provider.setApi(apiType);
         
-        // Save the provider to settings (so ModelDetailFragment can access it)
+
         if (isNewProvider) {
             settingsManager.addProvider(provider);
             isNewProvider = false;
@@ -314,7 +314,7 @@ public class ProviderDetailFragment extends Fragment {
         return "openai-completions";
     }
 
-    // Simple TextWatcher helper
+
     private static class SimpleTextWatcher implements TextWatcher {
         private final Runnable onChanged;
 

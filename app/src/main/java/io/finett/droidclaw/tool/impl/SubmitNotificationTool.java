@@ -10,18 +10,6 @@ import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for submitting structured notification content from background tasks.
- * 
- * When a background task (heartbeat or cron job) completes, the agent should call
- * this tool to provide a title and summary for the user notification.
- * 
- * This replaces the unreliable TITLE:/SUMMARY: text parsing approach with
- * structured output via function calling, guaranteeing machine-readable results.
- * 
- * Usage: Call this tool at the end of a background task execution with a concise
- * title and summary describing what was accomplished or what needs attention.
- */
 public class SubmitNotificationTool implements Tool {
 
     private static final String TAG = "SubmitNotificationTool";
@@ -30,7 +18,7 @@ public class SubmitNotificationTool implements Tool {
     private final ToolDefinition definition;
     private final Context context;
 
-    // Store the last submitted notification for retrieval by workers
+    // Last submitted notification, read by workers after agent loop completes
     private static volatile JsonObject lastNotification;
 
     public SubmitNotificationTool(Context context) {
@@ -86,7 +74,6 @@ public class SubmitNotificationTool implements Tool {
                 return ToolResult.error("Title and summary cannot be empty");
             }
 
-            // Store notification for retrieval by workers
             JsonObject notification = new JsonObject();
             notification.addProperty("title", title);
             notification.addProperty("summary", summary);
@@ -108,20 +95,11 @@ public class SubmitNotificationTool implements Tool {
         }
     }
 
-    /**
-     * Get the last submitted notification.
-     * Thread-safe retrieval for worker consumption.
-     *
-     * @return JsonObject with title, summary, status or null if not set
-     */
     public static JsonObject getLastNotification() {
         return lastNotification;
     }
 
-    /**
-     * Clear the last submitted notification.
-     * Should be called after notification is consumed to prevent stale data.
-     */
+    /** Should be called after the notification is consumed to prevent stale data. */
     public static void clearLastNotification() {
         lastNotification = null;
     }

@@ -13,10 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
 
-/**
- * Manages file uploads from the device into the workspace uploads directory.
- * Handles copying files from content URIs (from Storage Access Framework) to the workspace.
- */
 public class FileUploadManager {
     private static final String TAG = "FileUploadManager";
     private static final long MAX_UPLOAD_SIZE = 50 * 1024 * 1024; // 50MB
@@ -32,28 +28,18 @@ public class FileUploadManager {
         }
     }
 
-    /**
-     * Uploads a file from a content URI to the workspace uploads directory.
-     *
-     * @param uri         Content URI from ACTION_OPEN_DOCUMENT or similar
-     * @param displayName Optional display name; if null, resolved from URI
-     * @return UploadResult containing the filename, path, and MIME type
-     */
     public UploadResult uploadFile(Uri uri, String displayName) throws IOException {
         if (uri == null) {
             throw new IllegalArgumentException("URI cannot be null");
         }
 
-        // Resolve display name
         String name = displayName;
         if (name == null || name.isEmpty()) {
             name = resolveFileName(uri);
         }
 
-        // Sanitize filename
         String safeName = sanitizeFilename(name);
 
-        // Ensure unique filename by prepending UUID
         String extension = "";
         int dotIndex = safeName.lastIndexOf('.');
         if (dotIndex > 0) {
@@ -64,13 +50,11 @@ public class FileUploadManager {
 
         File destFile = new File(uploadsDir, uniqueName);
 
-        // Check file size before copying
         long fileSize = getFileSize(uri);
         if (fileSize > MAX_UPLOAD_SIZE) {
             throw new IOException("File too large: " + formatSize(fileSize) + " (max: " + formatSize(MAX_UPLOAD_SIZE) + ")");
         }
 
-        // Copy file to uploads directory
         copyUriToFile(uri, destFile);
 
         String mimeType = resolveMimeType(destFile.getName());
@@ -80,9 +64,6 @@ public class FileUploadManager {
         return new UploadResult(uniqueName, destFile.getAbsolutePath(), mimeType, name);
     }
 
-    /**
-     * Copies content from a URI to a destination file.
-     */
     private void copyUriToFile(Uri uri, File destFile) throws IOException {
         try (InputStream inputStream = context.getContentResolver().openInputStream(uri);
              FileOutputStream outputStream = new FileOutputStream(destFile)) {
@@ -99,9 +80,6 @@ public class FileUploadManager {
         }
     }
 
-    /**
-     * Resolves the file size from a content URI.
-     */
     private long getFileSize(Uri uri) {
         long size = 0;
         if ("content".equals(uri.getScheme())) {
@@ -119,9 +97,6 @@ public class FileUploadManager {
         return size;
     }
 
-    /**
-     * Resolves the original file name from a content URI.
-     */
     private String resolveFileName(Uri uri) {
         String name = "uploaded_file";
 
@@ -147,9 +122,6 @@ public class FileUploadManager {
         return name;
     }
 
-    /**
-     * Resolves MIME type from filename extension.
-     */
     public static String resolveMimeType(String filename) {
         String extension = "";
         int dotIndex = filename.lastIndexOf('.');
@@ -157,7 +129,6 @@ public class FileUploadManager {
             extension = filename.substring(dotIndex + 1).toLowerCase();
         }
 
-        // Try Android's MimeTypeMap (available on device)
         try {
             MimeTypeMap mimeMap = MimeTypeMap.getSingleton();
             if (mimeMap != null) {
@@ -170,13 +141,9 @@ public class FileUploadManager {
             // MimeTypeMap not available (e.g., in unit tests)
         }
 
-        // Fallback: common extensions
         return getMimeTypeFromExtension(extension);
     }
 
-    /**
-     * Fallback MIME type mapping for common extensions (used when MimeTypeMap is unavailable).
-     */
     private static String getMimeTypeFromExtension(String ext) {
         switch (ext) {
             case "png": return "image/png";
@@ -211,17 +178,9 @@ public class FileUploadManager {
         }
     }
 
-    /**
-     * Sanitizes a filename to prevent path traversal and invalid characters.
-     */
     private static String sanitizeFilename(String filename) {
-        // Remove path components
         filename = new File(filename).getName();
-
-        // Remove null bytes and control characters
         filename = filename.replaceAll("[\\x00-\\x1f]", "");
-
-        // Remove leading/trailing dots and spaces
         filename = filename.replaceAll("^[.\\s]+|[.\\s]+$", "");
 
         if (filename.isEmpty()) {
@@ -231,9 +190,6 @@ public class FileUploadManager {
         return filename;
     }
 
-    /**
-     * Checks if a file is an image that can be sent directly to a vision model.
-     */
     public static boolean isVisionImage(String mimeType) {
         return mimeType != null && (mimeType.startsWith("image/png") ||
                 mimeType.startsWith("image/jpeg") ||
@@ -242,9 +198,6 @@ public class FileUploadManager {
                 mimeType.startsWith("image/webp"));
     }
 
-    /**
-     * Checks if a file is an image (by extension).
-     */
     public static boolean isImageFile(String filename) {
         if (filename == null) return false;
         String lower = filename.toLowerCase();
@@ -258,14 +211,11 @@ public class FileUploadManager {
         return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
     }
 
-    /**
-     * Result of a file upload operation.
-     */
     public static class UploadResult {
-        private final String filename;       // Unique name in uploads directory
-        private final String absolutePath;   // Full path to the file
-        private final String mimeType;       // Detected MIME type
-        private final String originalName;   // Original display name from device
+        private final String filename;
+        private final String absolutePath;
+        private final String mimeType;
+        private final String originalName;
 
         public UploadResult(String filename, String absolutePath, String mimeType, String originalName) {
             this.filename = filename;

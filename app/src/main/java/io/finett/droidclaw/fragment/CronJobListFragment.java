@@ -72,7 +72,7 @@ public class CronJobListFragment extends Fragment implements CronJobAdapter.OnCr
         List<CronJob> jobs = taskRepository.getCronJobs();
         adapter.submitList(jobs);
 
-        // Show/hide empty state
+
         if (jobs.isEmpty()) {
             textEmptyState.setVisibility(View.VISIBLE);
             recyclerCronJobs.setVisibility(View.GONE);
@@ -90,7 +90,7 @@ public class CronJobListFragment extends Fragment implements CronJobAdapter.OnCr
 
     @Override
     public void onCronJobClick(CronJob job) {
-        // Navigate to job detail/history
+
         Bundle args = new Bundle();
         args.putString("job_id", job.getId());
         NavController navController = Navigation.findNavController(requireView());
@@ -106,7 +106,7 @@ public class CronJobListFragment extends Fragment implements CronJobAdapter.OnCr
         androidx.appcompat.widget.PopupMenu popupMenu = new androidx.appcompat.widget.PopupMenu(requireContext(), anchorView);
         popupMenu.getMenuInflater().inflate(R.menu.menu_cron_job_actions, popupMenu.getMenu());
 
-        // Show/hide pause/resume based on current state
+
         if (job.isPaused()) {
             popupMenu.getMenu().findItem(R.id.action_pause).setVisible(false);
             popupMenu.getMenu().findItem(R.id.action_resume).setVisible(true);
@@ -201,7 +201,7 @@ public class CronJobListFragment extends Fragment implements CronJobAdapter.OnCr
         }
         taskRepository.saveCronJob(job);
 
-        // Schedule the job
+
         scheduler.scheduleJob(job);
 
         loadCronJobs();

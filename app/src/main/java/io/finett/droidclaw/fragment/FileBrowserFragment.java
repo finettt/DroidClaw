@@ -107,11 +107,11 @@ public class FileBrowserFragment extends Fragment {
     private void loadDirectory(String path) {
         currentPath = path;
 
-        // Update path display
+
         String displayPath = ".".equals(path) ? "/" : "/" + path;
         pathText.setText(displayPath);
 
-        // Update title to show current directory name
+
         if (".".equals(path)) {
             titleText.setText(R.string.file_browser_title);
         } else {
@@ -123,22 +123,22 @@ public class FileBrowserFragment extends Fragment {
             titleText.setText(dirName);
         }
 
-        // Load files in background
+
         new Thread(() -> {
             try {
                 VirtualFileSystem.FileListResult result = virtualFileSystem.listFiles(path, false);
                 List<VirtualFileSystem.FileInfo> files = new ArrayList<>(result.getFiles());
 
-                // Sort: directories first, then alphabetically
+
                 Collections.sort(files, (a, b) -> {
                     if (a.isDirectory() != b.isDirectory()) {
                         return a.isDirectory() ? -1 : 1;
                     }
-                    // Extract just the name for sorting
+
                     return getFileName(a.getPath()).compareToIgnoreCase(getFileName(b.getPath()));
                 });
 
-                // Add parent directory entry (..) if not at root
+
                 if (!".".equals(path)) {
                     String parentPath = getParentPath(path);
                     files.add(0, new ParentDirectoryEntry(parentPath));
@@ -312,7 +312,7 @@ public class FileBrowserFragment extends Fragment {
     }
 
     private String getFileName(String path) {
-        // Special case for parent directory
+
         if ("..".equals(path)) {
             return "..";
         }
@@ -424,10 +424,10 @@ public class FileBrowserFragment extends Fragment {
             }
 
             void bind(VirtualFileSystem.FileInfo file) {
-                // Check if this is a parent directory entry
+
                 boolean isParentDir = file instanceof ParentDirectoryEntry;
 
-                // Extract just the name for display
+
                 String name;
                 if (isParentDir) {
                     name = "..";
@@ -439,7 +439,7 @@ public class FileBrowserFragment extends Fragment {
 
                 fileName.setText(name);
 
-                // Set icon based on file type
+
                 int iconRes;
                 if (isParentDir) {
                     iconRes = R.drawable.ic_folder;
@@ -459,7 +459,7 @@ public class FileBrowserFragment extends Fragment {
                 }
                 fileIcon.setImageResource(iconRes);
 
-                // Set details
+
                 if (isParentDir) {
                     fileDetails.setText(R.string.file_browser_parent_directory);
                 } else if (file.isDirectory()) {
@@ -477,7 +477,7 @@ public class FileBrowserFragment extends Fragment {
                     fileDetails.setText(size + " • " + sdf.format(new Date(file.getLastModified())));
                 }
 
-                // Show chevron for directories (including parent directory)
+
                 fileChevron.setVisibility(file.isDirectory() ? View.VISIBLE : View.GONE);
             }
         }

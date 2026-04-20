@@ -1,13 +1,7 @@
 package io.finett.droidclaw.model;
 
-/**
- * Configuration for the heartbeat background task.
- * The heartbeat periodically runs a background check to keep the agent active
- * and maintain context freshness.
- */
 public class HeartbeatConfig {
 
-    /** Staleness level indicating how overdue the heartbeat is. */
     public enum StalenessLevel {
         /** On time or never run yet (ratio < 1.0 or no previous run). */
         FRESH,
@@ -23,7 +17,7 @@ public class HeartbeatConfig {
 
     public HeartbeatConfig() {
         this.enabled = false;
-        this.intervalMillis = 30 * 60 * 1000L; // 30 minutes default
+        this.intervalMillis = 30 * 60 * 1000L;
         this.lastRunTimestamp = 0;
     }
 
@@ -57,9 +51,6 @@ public class HeartbeatConfig {
         this.lastRunTimestamp = lastRunTimestamp;
     }
 
-    /**
-     * Check if the heartbeat should run based on the current time and last run.
-     */
     public boolean shouldRun(long currentTimeMillis) {
         return enabled && (currentTimeMillis - lastRunTimestamp) >= intervalMillis;
     }
@@ -95,9 +86,6 @@ public class HeartbeatConfig {
         }
     }
 
-    /**
-     * Create a default config with heartbeat disabled.
-     */
     public static HeartbeatConfig getDefaults() {
         return new HeartbeatConfig();
     }

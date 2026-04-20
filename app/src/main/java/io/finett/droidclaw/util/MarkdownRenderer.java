@@ -86,7 +86,7 @@ public class MarkdownRenderer {
             return false;
         }
         
-        // Check for common markdown patterns
+
         return text.contains("**") ||     // Bold
                text.contains("__") ||     // Bold
                text.contains("```") ||    // Code block

@@ -13,9 +13,6 @@ import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for permanently deleting a scheduled task.
- */
 public class DeleteTaskTool implements Tool {
 
     private static final String TAG = "DeleteTaskTool";
@@ -72,7 +69,7 @@ public class DeleteTaskTool implements Tool {
 
     @Override
     public boolean requiresApproval() {
-        return true; // Deletion should always require approval
+        return true;
     }
 
     @Override
@@ -107,7 +104,6 @@ public class DeleteTaskTool implements Tool {
             String taskName = job.getName();
             String taskId = job.getId();
 
-            // Delete the job and its history
             getTaskRepository().deleteCronJob(taskId);
             getTaskRepository().deleteExecutionRecords(taskId);
             getScheduler().cancelJob(taskId);
@@ -143,10 +139,8 @@ public class DeleteTaskTool implements Tool {
         if (taskId != null && !taskId.isEmpty()) {
             return getTaskRepository().getCronJob(taskId);
         }
-
-        if (taskName != null && !taskName.isEmpty()) {
-            // Search by name (case-insensitive partial match)
-            java.util.List<CronJob> allJobs = getTaskRepository().getCronJobs();
+if (taskName != null && !taskName.isEmpty()) {
+    java.util.List<CronJob> allJobs = getTaskRepository().getCronJobs();
             for (CronJob job : allJobs) {
                 if (job.getName().toLowerCase().contains(taskName.toLowerCase())) {
                     return job;

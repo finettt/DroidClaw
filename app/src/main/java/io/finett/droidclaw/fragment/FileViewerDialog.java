@@ -61,7 +61,7 @@ public class FileViewerDialog extends DialogFragment {
         loadingIndicator = view.findViewById(R.id.loadingIndicator);
         titleText = view.findViewById(R.id.fileTitleText);
 
-        // Extract file name from path
+
         String fileName = filePath.contains("/") ? filePath.substring(filePath.lastIndexOf('/') + 1) : filePath;
         titleText.setText(fileName);
 
@@ -70,7 +70,7 @@ public class FileViewerDialog extends DialogFragment {
 
         AlertDialog dialog = builder.create();
 
-        // Load file content
+
         loadFileContent();
 
         return dialog;

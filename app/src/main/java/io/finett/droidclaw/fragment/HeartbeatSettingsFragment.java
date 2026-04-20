@@ -34,7 +34,7 @@ public class HeartbeatSettingsFragment extends Fragment {
 
     private static final String TAG = "HeartbeatSettings";
 
-    // Interval options in milliseconds
+
     private static final long INTERVAL_15_MIN = 15 * 60 * 1000L;
     private static final long INTERVAL_30_MIN = 30 * 60 * 1000L;
     private static final long INTERVAL_60_MIN = 60 * 60 * 1000L;

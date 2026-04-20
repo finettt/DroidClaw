@@ -32,7 +32,7 @@ public class CronJobWorker extends BaseTaskWorker {
     @NonNull
     @Override
     public Result doWork() {
-        // Get job ID from input data
+
         String jobId = getInputData().getString("job_id");
 
         if (jobId == null || jobId.isEmpty()) {
@@ -43,20 +43,20 @@ public class CronJobWorker extends BaseTaskWorker {
         Log.d(TAG, "Starting cron job worker: " + jobId);
 
         try {
-            // Load cron job from repository
+
             CronJob job = taskRepository.getCronJob(jobId);
             if (job == null) {
                 Log.w(TAG, "Cron job not found: " + jobId);
                 return Result.failure();
             }
 
-            // Check if job is enabled and not paused
+
             if (!job.isEnabled() || job.isPaused()) {
                 Log.d(TAG, "Cron job is disabled or paused, skipping: " + jobId);
                 return Result.success();
             }
 
-            // Get the prompt to execute
+
             String prompt = job.getPrompt();
             if (prompt == null || prompt.trim().isEmpty()) {
                 Log.w(TAG, "Cron job has empty prompt: " + jobId);
@@ -65,17 +65,17 @@ public class CronJobWorker extends BaseTaskWorker {
 
             long startTime = System.currentTimeMillis();
 
-            // Create isolated session for this cron job
+
             ChatSession session = createIsolatedSession(SessionType.HIDDEN_CRON);
             session.setParentTaskId(job.getId());
 
-            // Execute the job prompt in sandbox
+
             TaskResult result = executeWithSandbox(session, prompt);
 
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
 
-            // Record success or failure on the job
+
             if (result.isSuccess()) {
                 job.recordSuccess(duration);
                 job.setLastRunTimestamp(System.currentTimeMillis());
@@ -83,7 +83,7 @@ public class CronJobWorker extends BaseTaskWorker {
                 job.recordFailure(result.getContent());
                 job.setLastRunTimestamp(System.currentTimeMillis());
 
-                // Schedule retry if needed
+
                 if (job.canRetry()) {
                     Log.d(TAG, "Scheduling retry for job: " + jobId + " (attempt " + job.getRetryCount() + ")");
                     CronJobScheduler scheduler = new CronJobScheduler(appContext);
@@ -93,26 +93,26 @@ public class CronJobWorker extends BaseTaskWorker {
                 }
             }
 
-            // Update job in repository
+
             taskRepository.updateCronJob(job);
 
-            // Save task result
+
             taskRepository.saveTaskResult(result);
 
-            // Send notification for cron job completion
+
             notificationManager.sendTaskNotification(result);
             Log.d(TAG, "Cron job completed: " + job.getName());
 
-            // Cron jobs always return success (job continues)
+
             return Result.success();
 
         } catch (Exception e) {
             Log.e(TAG, "Cron job worker failed: " + jobId, e);
 
-            // Show error notification
+
             notificationManager.showErrorNotification("Cron Job Failed", "Job " + jobId + ": " + e.getMessage());
 
-            // Try to update job with error
+
             try {
                 CronJob job = taskRepository.getCronJob(jobId);
                 if (job != null) {
@@ -135,7 +135,7 @@ public class CronJobWorker extends BaseTaskWorker {
 
     @Override
     protected String getParentTaskId() {
-        // Will be set from the actual job ID in doWork()
+
         String jobId = getInputData().getString("job_id");
         return jobId != null ? jobId : "cron";
     }
@@ -147,8 +147,8 @@ public class CronJobWorker extends BaseTaskWorker {
 
     @Override
     protected Result executeTask() {
-        // This method is not used for CronJobWorker as doWork() is overridden directly
-        // The abstract method is required by BaseTaskWorker but cron job has custom logic
+
+
         return Result.success();
     }
 }

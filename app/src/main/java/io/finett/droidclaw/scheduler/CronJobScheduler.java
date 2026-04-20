@@ -18,10 +18,6 @@ import java.util.concurrent.TimeUnit;
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.worker.CronJobWorker;
 
-/**
- * Schedules and manages cron job execution via WorkManager.
- * Converts various schedule formats to WorkManager constraints.
- */
 public class CronJobScheduler {
 
     private static final String TAG = "CronJobScheduler";
@@ -35,12 +31,6 @@ public class CronJobScheduler {
         this.workManager = WorkManager.getInstance(appContext);
     }
 
-    /**
-     * Schedule a cron job for periodic execution.
-     * Converts the job's schedule string to WorkManager constraints.
-     *
-     * @param job The cron job to schedule
-     */
     public void scheduleJob(CronJob job) {
         if (job == null) {
             Log.w(TAG, "Cannot schedule null job");
@@ -58,19 +48,16 @@ public class CronJobScheduler {
 
         Log.d(TAG, "Scheduling job: " + job.getId() + " with interval: " + intervalMs + "ms");
 
-        // Create input data
         Data inputData = new Data.Builder()
                 .putString("job_id", job.getId())
                 .build();
 
-        // Set constraints: require network for API calls, optimize for battery
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)  // Don't run when battery is low
-                .setRequiresCharging(false)       // Can run on battery
+                .setRequiresBatteryNotLow(true)
+                .setRequiresCharging(false)
                 .build();
 
-        // Create periodic work request
         PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(
                 CronJobWorker.class,
                 intervalMs,
@@ -81,7 +68,6 @@ public class CronJobScheduler {
                 .addTag("cron_job")
                 .build();
 
-        // Enqueue with KEEP policy to preserve existing work
         workManager.enqueueUniquePeriodicWork(
                 workName,
                 ExistingPeriodicWorkPolicy.KEEP,
@@ -90,22 +76,12 @@ public class CronJobScheduler {
         Log.d(TAG, "Job scheduled successfully: " + job.getId());
     }
 
-    /**
-     * Cancel a scheduled cron job.
-     *
-     * @param jobId The job ID to cancel
-     */
     public void cancelJob(String jobId) {
         String workName = getWorkName(jobId);
         workManager.cancelUniqueWork(workName);
         Log.d(TAG, "Job cancelled: " + jobId);
     }
 
-    /**
-     * Execute a cron job immediately (one-time execution).
-     *
-     * @param jobId The job ID to execute
-     */
     public void executeJobNow(String jobId) {
         String workName = "cron_job_now_" + jobId;
 
@@ -113,7 +89,6 @@ public class CronJobScheduler {
                 .putString("job_id", jobId)
                 .build();
 
-        // Set constraints for manual execution (also battery optimized)
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .setRequiresBatteryNotLow(true)
@@ -134,41 +109,24 @@ public class CronJobScheduler {
         Log.d(TAG, "Job queued for immediate execution: " + jobId);
     }
 
-    /**
-     * Cancel all scheduled cron jobs.
-     */
     public void cancelAllJobs() {
         workManager.cancelAllWorkByTag("cron_job");
         Log.d(TAG, "All cron jobs cancelled");
     }
 
-    /**
-     * Parse a schedule string to interval in milliseconds.
-     * Supports:
-     * - Numeric: milliseconds interval (e.g., "3600000" = 1 hour)
-     * - Simple: "daily", "weekly", "hourly"
-     * - Time-based: "daily@HH:MM" (e.g., "daily@09:30")
-     * - Weekly: "weekly@DAY@HH:MM" (e.g., "weekly@monday@09:00")
-     * - Cron expression: (basic support, converts to approximate interval)
-     *
-     * @param schedule The schedule string
-     * @return Interval in milliseconds
-     */
     public static long parseScheduleToInterval(String schedule) {
         if (schedule == null || schedule.trim().isEmpty()) {
-            return TimeUnit.HOURS.toMillis(1); // Default: 1 hour
+            return TimeUnit.HOURS.toMillis(1);
         }
 
         String normalized = schedule.trim().toLowerCase(Locale.ROOT);
 
         try {
-            // Try parsing as numeric milliseconds
             return Long.parseLong(normalized);
         } catch (NumberFormatException e) {
-            // Not a number, parse as schedule string
+            // not a number, parse as schedule string
         }
 
-        // Parse simple schedules
         if (normalized.equals("hourly")) {
             return TimeUnit.HOURS.toMillis(1);
         } else if (normalized.equals("daily")) {
@@ -176,23 +134,17 @@ public class CronJobScheduler {
         } else if (normalized.equals("weekly")) {
             return TimeUnit.DAYS.toMillis(7);
         } else if (normalized.startsWith("daily@")) {
-            // Daily at specific time - use 24 hours (WorkManager handles approximate timing)
+            // WorkManager handles approximate daily timing
             return TimeUnit.DAYS.toMillis(1);
         } else if (normalized.startsWith("weekly@")) {
-            // Weekly on specific day - use 7 days
             return TimeUnit.DAYS.toMillis(7);
         } else if (normalized.startsWith("every_")) {
-            // Custom interval: "every_2_hours", "every_30_minutes"
             return parseCustomInterval(normalized.substring(6));
         } else {
-            // Cron expression or unknown - default to 1 hour
             return parseCronExpression(normalized);
         }
     }
 
-    /**
-     * Parse custom interval strings like "2_hours", "30_minutes".
-     */
     private static long parseCustomInterval(String interval) {
         String[] parts = interval.split("_");
         if (parts.length == 2) {
@@ -220,14 +172,8 @@ public class CronJobScheduler {
         return TimeUnit.HOURS.toMillis(1);
     }
 
-    /**
-     * Parse cron expression to approximate interval.
-     * Basic support for common patterns.
-     */
     private static long parseCronExpression(String cronExpression) {
-        // Basic pattern matching for common cron schedules
-        // This is simplified - full cron parsing would be more complex
-
+        // Basic pattern matching for common cron schedules; full cron parsing is not supported
         if (cronExpression.startsWith("0 */")) {
             // Every N hours: "0 */2 * * *"
             try {
@@ -249,14 +195,10 @@ public class CronJobScheduler {
             return TimeUnit.DAYS.toMillis(7);
         }
 
-        // Default fallback
         Log.w(TAG, "Unsupported cron expression, using 1 hour default: " + cronExpression);
         return TimeUnit.HOURS.toMillis(1);
     }
 
-    /**
-     * Format an interval in milliseconds to human-readable string.
-     */
     public static String formatInterval(long intervalMs) {
         long hours = TimeUnit.MILLISECONDS.toHours(intervalMs);
         long days = hours / 24;
@@ -276,9 +218,6 @@ public class CronJobScheduler {
         }
     }
 
-    /**
-     * Format a schedule string for display.
-     */
     public static String formatScheduleForDisplay(String schedule) {
         if (schedule == null || schedule.trim().isEmpty()) {
             return "Unknown";
@@ -316,9 +255,6 @@ public class CronJobScheduler {
         }
     }
 
-    /**
-     * Format time string from "HH:MM" to readable format.
-     */
     public static String formatTime(String timeStr) {
         try {
             String[] parts = timeStr.split(":");
@@ -335,25 +271,15 @@ public class CronJobScheduler {
         }
     }
 
-    /**
-     * Capitalize first letter of string.
-     */
     static String capitalizeFirst(String str) {
         if (str == null || str.isEmpty()) return str;
         return str.substring(0, 1).toUpperCase(Locale.ROOT) + str.substring(1);
     }
 
-    /**
-     * Get unique work name for a job.
-     */
     static String getWorkName(String jobId) {
         return CRON_WORK_PREFIX + jobId;
     }
 
-    /**
-     * Check if a job is currently scheduled in WorkManager.
-     * Note: This is async, returns null if work info not found.
-     */
     public void isJobScheduled(String jobId, ScheduledCallback callback) {
         String workName = getWorkName(jobId);
         workManager.getWorkInfosForUniqueWorkLiveData(workName)
@@ -366,9 +292,6 @@ public class CronJobScheduler {
                 });
     }
 
-    /**
-     * Callback interface for scheduled status checks.
-     */
     public interface ScheduledCallback {
         void onResult(boolean isScheduled);
     }

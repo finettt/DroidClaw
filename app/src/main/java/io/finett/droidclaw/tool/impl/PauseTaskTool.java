@@ -13,9 +13,6 @@ import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for pausing a scheduled task temporarily.
- */
 public class PauseTaskTool implements Tool {
 
     private static final String TAG = "PauseTaskTool";
@@ -94,7 +91,6 @@ public class PauseTaskTool implements Tool {
                 return ToolResult.success(result);
             }
 
-            // Pause the job
             job.setPaused(true);
             getTaskRepository().updateCronJob(job);
             getScheduler().cancelJob(job.getId());
@@ -132,7 +128,6 @@ public class PauseTaskTool implements Tool {
         }
 
         if (taskName != null && !taskName.isEmpty()) {
-            // Search by name (case-insensitive partial match)
             java.util.List<CronJob> allJobs = getTaskRepository().getCronJobs();
             for (CronJob job : allJobs) {
                 if (job.getName().toLowerCase().contains(taskName.toLowerCase())) {

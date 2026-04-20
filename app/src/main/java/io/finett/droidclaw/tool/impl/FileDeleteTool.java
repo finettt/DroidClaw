@@ -7,9 +7,6 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for deleting files or empty directories from the virtual filesystem.
- */
 public class FileDeleteTool implements Tool {
     private static final String NAME = "delete_file";
     private final VirtualFileSystem vfs;
@@ -41,11 +38,11 @@ public class FileDeleteTool implements Tool {
     public ToolDefinition getDefinition() {
         return definition;
     }
-    
     @Override
     public boolean requiresApproval() {
-        return true; // File deletion is a destructive operation
+        return true;
     }
+
     
     @Override
     public String getApprovalDescription(JsonObject arguments) {
@@ -57,17 +54,14 @@ public class FileDeleteTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Extract arguments
             if (!arguments.has("path")) {
                 return ToolResult.error("Missing required argument: path");
             }
 
             String path = arguments.get("path").getAsString();
 
-            // Execute delete operation
             vfs.deleteFile(path);
 
-            // Build result JSON
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("path", path);
             resultJson.addProperty("deleted", true);

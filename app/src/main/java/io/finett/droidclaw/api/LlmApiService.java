@@ -52,13 +52,6 @@ public class LlmApiService {
     private final SettingsManager settingsManager;
     private final Handler mainHandler;
 
-    // =========================================================================
-    // Public data types
-    // =========================================================================
-
-    /**
-     * Represents a single tool call requested by the LLM.
-     */
     public static class ToolCall {
         private final String id;
         private final String name;
@@ -165,9 +158,6 @@ public class LlmApiService {
         }
     }
 
-    // =========================================================================
-    // Callback interfaces
-    // =========================================================================
 
     public interface ChatCallback {
         void onSuccess(String response);
@@ -179,17 +169,11 @@ public class LlmApiService {
         void onError(String error);
     }
 
-    /**
-     * Callback for structured response with refusals and tool calls.
-     */
     public interface StructuredResponseCallback {
         void onSuccess(StructuredResponse response);
         void onError(String error);
     }
 
-    // =========================================================================
-    // Constructor
-    // =========================================================================
 
     public LlmApiService(SettingsManager settingsManager) {
         this.settingsManager = settingsManager;
@@ -203,9 +187,6 @@ public class LlmApiService {
                 .build();
     }
 
-    // =========================================================================
-    // Public API methods
-    // =========================================================================
 
     public void sendMessage(List<ChatMessage> conversationHistory, ChatCallback callback) {
         sendMessage(conversationHistory, null, null, callback);
@@ -282,26 +263,11 @@ public class LlmApiService {
         });
     }
 
-    /**
-     * Send message with tool support and get a structured response.
-     *
-     * @param conversationHistory Full conversation history
-     * @param tools               Tool definitions (can be null)
-     * @param callback            Callback with {@link LlmResponse} containing content and tool calls
-     */
     public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools,
                                      ChatCallbackWithTools callback) {
         sendMessageWithTools(conversationHistory, tools, null, callback);
     }
 
-    /**
-     * Send message with tool support, identity context, and get a structured response.
-     *
-     * @param conversationHistory Full conversation history
-     * @param tools               Tool definitions (can be null)
-     * @param identityMessages    System messages for identity context (soul.md, user.md)
-     * @param callback            Callback with {@link LlmResponse} containing content and tool calls
-     */
     public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools,
                                      List<ChatMessage> identityMessages, ChatCallbackWithTools callback) {
         if (!settingsManager.isConfigured()) {
@@ -459,13 +425,6 @@ public class LlmApiService {
         client.dispatcher().cancelAll();
     }
 
-    // =========================================================================
-    // Request builder helpers
-    // =========================================================================
-
-    /**
-     * Build an OkHttp {@link Request.Builder} pre-configured for the OpenAI API.
-     */
     private Request.Builder buildOpenAiRequestBuilder(String jsonBody) {
         Request.Builder builder = new Request.Builder()
                 .url(settingsManager.getApiUrl())
@@ -480,10 +439,6 @@ public class LlmApiService {
         return builder;
     }
 
-    /**
-     * Build an OkHttp {@link Request.Builder} pre-configured for the Anthropic Messages API.
-     * Uses {@code x-api-key} and {@code anthropic-version} headers instead of {@code Authorization}.
-     */
     private Request.Builder buildAnthropicRequestBuilder(String jsonBody) {
         String apiKey = settingsManager.getApiKey();
         Request.Builder builder = new Request.Builder()
@@ -499,13 +454,6 @@ public class LlmApiService {
         return builder;
     }
 
-    // =========================================================================
-    // OpenAI request body builders
-    // =========================================================================
-
-    /**
-     * Build the JSON request body for OpenAI Chat Completions API.
-     */
     private JsonObject buildOpenAiRequestBody(List<ChatMessage> conversationHistory,
                                               JsonArray tools,
                                               List<ChatMessage> identityMessages) {
@@ -539,10 +487,6 @@ public class LlmApiService {
         return requestBody;
     }
 
-    /**
-     * Build the JSON request body for OpenAI Chat Completions API with Structured Outputs.
-     * Adds {@code response_format} with {@code json_schema} and {@code strict: true}.
-     */
     private JsonObject buildOpenAiRequestBodyWithStructuredOutput(List<ChatMessage> conversationHistory,
                                                                    JsonArray tools,
                                                                    List<ChatMessage> identityMessages,
@@ -561,9 +505,6 @@ public class LlmApiService {
         return requestBody;
     }
 
-    // =========================================================================
-    // Anthropic request body builders
-    // =========================================================================
 
     /**
      * Build the JSON request body for the Anthropic Messages API.
@@ -628,10 +569,6 @@ public class LlmApiService {
         return requestBody;
     }
 
-    /**
-     * Augment identity messages with a schema instruction for structured output
-     * when using the Anthropic API (which has no native structured output support).
-     */
     private List<ChatMessage> buildAnthropicSchemaInstructions(List<ChatMessage> identityMessages,
                                                                 JsonObject responseSchema) {
         List<ChatMessage> augmented = new ArrayList<>();
@@ -685,10 +622,6 @@ public class LlmApiService {
         return anthropicTools;
     }
 
-    /**
-     * Anthropic requires strictly alternating user/assistant roles.
-     * This merges consecutive same-role messages into a single message with multiple content blocks.
-     */
     private JsonArray mergeConsecutiveSameRoleMessages(JsonArray messages) {
         if (messages.size() == 0) return messages;
 
@@ -741,9 +674,6 @@ public class LlmApiService {
         return merged;
     }
 
-    /**
-     * Append the content from {@code msg} into {@code contentArray} as content blocks.
-     */
     private void appendContentToArray(JsonArray contentArray, JsonObject msg) {
         if (msg.has("content")) {
             JsonElement contentEl = msg.get("content");
@@ -760,19 +690,12 @@ public class LlmApiService {
                 contentArray.add(textBlock);
             }
         }
-        // For tool_use / tool_result blocks already stored as content arrays
+
         if (msg.has("tool_calls")) {
             // Already handled via toAnthropicApiMessage(); content should be tool_use blocks
         }
     }
 
-    // =========================================================================
-    // OpenAI response parsers
-    // =========================================================================
-
-    /**
-     * Parse a plain text response from the OpenAI API.
-     */
     private String parseOpenAiResponseText(String responseBody) {
         JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
@@ -789,9 +712,6 @@ public class LlmApiService {
         return "No response received";
     }
 
-    /**
-     * Parse an OpenAI response that may contain tool calls.
-     */
     private LlmResponse parseOpenAiResponseWithTools(String responseBody) {
         JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
@@ -822,9 +742,6 @@ public class LlmApiService {
         return new LlmResponse(content, toolCalls, usage);
     }
 
-    /**
-     * Parse an OpenAI Structured Outputs response (with optional refusal).
-     */
     private StructuredResponse parseOpenAiStructuredResponse(String responseBody) {
         JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
         JsonArray choices = jsonResponse.getAsJsonArray("choices");
@@ -856,9 +773,6 @@ public class LlmApiService {
         return new StructuredResponse(content, refusal, toolCalls, usage);
     }
 
-    /**
-     * Extract tool calls from an OpenAI {@code message} JSON object.
-     */
     private List<ToolCall> parseOpenAiToolCalls(JsonObject message) {
         if (!message.has("tool_calls")) return null;
 
@@ -882,9 +796,6 @@ public class LlmApiService {
         return toolCalls.isEmpty() ? null : toolCalls;
     }
 
-    /**
-     * Extract {@link TokenUsage} from an OpenAI response JSON using prompt/completion token keys.
-     */
     private TokenUsage parseOpenAiUsage(JsonObject jsonResponse) {
         if (!jsonResponse.has("usage")) return null;
         JsonObject usageObj = jsonResponse.getAsJsonObject("usage");
@@ -895,26 +806,11 @@ public class LlmApiService {
         return new TokenUsage(totalTokens, promptTokens, completionTokens);
     }
 
-    // =========================================================================
-    // Anthropic response parsers
-    // =========================================================================
-
-    /**
-     * Parse a plain text response from the Anthropic Messages API.
-     *
-     * <p>Anthropic format: {@code {content: [{type:"text", text:"..."}, ...], stop_reason: "end_turn"}}</p>
-     */
     private String parseAnthropicResponseText(String responseBody) {
         JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
         return extractAnthropicTextContent(jsonResponse);
     }
 
-    /**
-     * Parse an Anthropic Messages API response that may contain tool use blocks.
-     *
-     * <p>Anthropic format for tool use:
-     * {@code {content: [{type:"tool_use", id, name, input: {...}}, ...], stop_reason: "tool_use"}}</p>
-     */
     private LlmResponse parseAnthropicResponseWithTools(String responseBody) {
         JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
 
@@ -957,9 +853,6 @@ public class LlmApiService {
         return new LlmResponse(content, toolCalls.isEmpty() ? null : toolCalls, usage);
     }
 
-    /**
-     * Extract concatenated text from an Anthropic response's content array.
-     */
     private String extractAnthropicTextContent(JsonObject jsonResponse) {
         if (!jsonResponse.has("content")) return "No response received";
 
@@ -978,10 +871,6 @@ public class LlmApiService {
         return sb.length() > 0 ? sb.toString() : "No response received";
     }
 
-    /**
-     * Extract {@link TokenUsage} from an Anthropic response JSON.
-     * Anthropic uses {@code input_tokens} / {@code output_tokens} (not prompt/completion).
-     */
     private TokenUsage parseAnthropicUsage(JsonObject jsonResponse) {
         if (!jsonResponse.has("usage")) return null;
         JsonObject usageObj = jsonResponse.getAsJsonObject("usage");
@@ -992,14 +881,6 @@ public class LlmApiService {
         return new TokenUsage(total, inputTokens, outputTokens);
     }
 
-    // =========================================================================
-    // Error parsing
-    // =========================================================================
-
-    /**
-     * Parse a human-readable error message from an API error response body.
-     * Handles both OpenAI and Anthropic error formats.
-     */
     private String parseApiError(String responseBody, int httpCode, String apiType) {
         try {
             JsonObject errorJson = gson.fromJson(responseBody, JsonObject.class);

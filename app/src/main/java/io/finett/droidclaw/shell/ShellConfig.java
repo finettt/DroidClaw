@@ -5,10 +5,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Configuration for shell command execution.
- * Controls timeouts, security settings, and allowed/blocked commands.
- */
 public class ShellConfig {
     private static final int DEFAULT_TIMEOUT_SECONDS = 30;
     private static final int MAX_OUTPUT_SIZE = 1024 * 1024; // 1MB
@@ -55,12 +51,6 @@ public class ShellConfig {
         return allowedCommands;
     }
 
-    /**
-     * Check if a command is allowed to execute based on the configuration.
-     * 
-     * @param command The command to check
-     * @return true if the command is allowed, false otherwise
-     */
     public boolean isCommandAllowed(String command) {
         if (!enabled) {
             return false;
@@ -69,20 +59,14 @@ public class ShellConfig {
         String trimmedCommand = command.trim();
         String firstToken = trimmedCommand.split("\\s+")[0];
 
-        // Check if command is in blocklist
         for (String blocked : blockedCommands) {
             String[] blockedTokens = blocked.split("\\s+");
             String firstBlockedToken = blockedTokens[0];
-            // Check if first token matches blocked command's first token
             if (firstToken.equals(firstBlockedToken)) {
-                // Check if this is a blocklist entry with arguments (e.g., "rm -rf /")
+                // Block entries with arguments (e.g. "rm -rf /") by matching argument prefix
                 if (blockedTokens.length > 1) {
-                    // Extract the argument portion of the blocked command
                     String blockedArgs = blocked.substring(firstBlockedToken.length()).trim();
-                    // Extract the argument portion of the input command
                     String commandArgs = trimmedCommand.substring(firstToken.length()).trim();
-                    // Block if the command has the same argument prefix as the blocked command
-                    // This blocks "rm -rf data" when "rm -rf /" is blocked
                     if (blockedArgs.isEmpty() || commandArgs.startsWith(blockedArgs)) {
                         return false;
                     }
@@ -92,7 +76,7 @@ public class ShellConfig {
             }
         }
 
-        // If allowlist is defined, command must be in it
+        // If an allowlist is defined, the command must be in it
         if (!allowedCommands.isEmpty()) {
             boolean allowed = false;
             for (String allowedCmd : allowedCommands) {
@@ -107,9 +91,6 @@ public class ShellConfig {
         return true;
     }
 
-    /**
-     * Create a default configuration with sensible security settings.
-     */
     public static ShellConfig createDefault() {
         return new Builder()
                 .timeoutSeconds(DEFAULT_TIMEOUT_SECONDS)
@@ -120,9 +101,6 @@ public class ShellConfig {
                 .build();
     }
 
-    /**
-     * Get a set of dangerous commands that should be blocked by default.
-     */
     private static Set<String> getDefaultBlockedCommands() {
         return new HashSet<>(Arrays.asList(
             "rm -rf /",

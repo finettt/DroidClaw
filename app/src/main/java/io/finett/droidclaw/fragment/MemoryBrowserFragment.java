@@ -85,7 +85,7 @@ public class MemoryBrowserFragment extends Fragment {
             if (content.isEmpty()) {
                 longTermPreview.setText("No long-term memory yet. Tap Edit to add some.");
             } else {
-                // Show first 200 characters
+
                 String preview = content.length() > 200 
                     ? content.substring(0, 200) + "..." 
                     : content;
@@ -116,7 +116,7 @@ public class MemoryBrowserFragment extends Fragment {
             .inflate(R.layout.dialog_edit_memory, null);
         EditText editText = dialogView.findViewById(R.id.memoryEditText);
         
-        // Load current content
+
         try {
             String current = memoryRepository.readLongTermMemory();
             editText.setText(current);
@@ -174,7 +174,7 @@ public class MemoryBrowserFragment extends Fragment {
             
             holder.title.setText(filename);
             
-            // Read first line as preview
+
             try (BufferedReader reader = new BufferedReader(new FileReader(note))) {
                 String firstLine = reader.readLine();
                 if (firstLine != null) {

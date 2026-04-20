@@ -21,18 +21,15 @@ public class ChatMessage {
     private int type;
     private long timestamp;
 
-    // For tool-related messages
     private List<LlmApiService.ToolCall> toolCalls;
     private String toolCallId;
     private String toolName;
 
-    // For attachment messages (user uploads and agent file references)
     private List<FileAttachment> attachments;
     private String filePath;    // For TYPE_ATTACHMENT: path to agent-referenced file
     private String fileMimeType; // For TYPE_ATTACHMENT
     private String displayName; // For TYPE_ATTACHMENT: friendly name to display
 
-    // For context card messages
     private boolean isContextCard;
     private String contextType; // "heartbeat", "cron", "manual"
     private String originalTaskId; // Links to the original task
@@ -43,18 +40,12 @@ public class ChatMessage {
         this.timestamp = System.currentTimeMillis();
     }
 
-    /**
-     * Create a message with tool calls (from assistant).
-     */
     public static ChatMessage createToolCallMessage(List<LlmApiService.ToolCall> toolCalls) {
         ChatMessage message = new ChatMessage(null, TYPE_TOOL_CALL);
         message.toolCalls = toolCalls;
         return message;
     }
 
-    /**
-     * Create a tool result message.
-     */
     public static ChatMessage createToolResultMessage(String toolCallId, String toolName, String result) {
         ChatMessage message = new ChatMessage(result, TYPE_TOOL_RESULT);
         message.toolCallId = toolCallId;
@@ -154,8 +145,6 @@ public class ChatMessage {
         this.originalTaskId = originalTaskId;
     }
 
-    // Attachment-related methods
-
     public List<FileAttachment> getAttachments() {
         return attachments;
     }
@@ -196,18 +185,12 @@ public class ChatMessage {
         this.displayName = displayName;
     }
 
-    /**
-     * Creates a user message with file attachments.
-     */
     public static ChatMessage createUserMessageWithAttachments(String content, List<FileAttachment> attachments) {
         ChatMessage message = new ChatMessage(content, TYPE_USER);
         message.attachments = attachments != null ? new ArrayList<>(attachments) : new ArrayList<>();
         return message;
     }
 
-    /**
-     * Creates an attachment message for files referenced by the agent.
-     */
     public static ChatMessage createAttachmentMessage(String filePath, String displayName, String mimeType) {
         ChatMessage message = new ChatMessage(null, TYPE_ATTACHMENT);
         message.filePath = filePath;
@@ -216,9 +199,6 @@ public class ChatMessage {
         return message;
     }
 
-    /**
-     * Create a context card message for task result continuation.
-     */
     public static ChatMessage createContextCardMessage(TaskResult taskResult) {
         ChatMessage message = new ChatMessage(taskResult.getContent(), TYPE_CONTEXT_CARD);
         message.isContextCard = true;
@@ -228,11 +208,6 @@ public class ChatMessage {
         return message;
     }
 
-    /**
-     * Convert this message to the API format required by OpenAI Chat Completions.
-     *
-     * @return JsonObject representing the message
-     */
     public JsonObject toApiMessage() {
         JsonObject message = new JsonObject();
 
@@ -245,7 +220,6 @@ public class ChatMessage {
             case TYPE_USER:
                 message.addProperty("role", "user");
                 if (hasAttachments()) {
-                    // Build multipart content
                     message.add("content", buildUserContentWithAttachments());
                 } else {
                     message.addProperty("content", content);
@@ -260,7 +234,6 @@ public class ChatMessage {
                 break;
 
             case TYPE_TOOL_CALL:
-                // Assistant message with tool calls
                 message.addProperty("role", "assistant");
                 message.add("content", com.google.gson.JsonNull.INSTANCE);
 
@@ -283,14 +256,12 @@ public class ChatMessage {
                 break;
 
             case TYPE_TOOL_RESULT:
-                // Tool result message
                 message.addProperty("role", "tool");
                 message.addProperty("tool_call_id", toolCallId);
                 message.addProperty("content", content != null ? content : "");
                 break;
 
             case TYPE_CONTEXT_CARD:
-                // Context card - treat as system message with task context
                 message.addProperty("role", "system");
                 String contextContent = "[Task Context: " + contextType + "]\n" +
                                        (content != null ? content : "");
@@ -298,7 +269,6 @@ public class ChatMessage {
                 break;
 
             case TYPE_ATTACHMENT:
-                // Agent-referenced file - send as user message with file info
                 message.addProperty("role", "user");
                 String attachmentText = "File: `" + (displayName != null ? displayName : filePath) + "`\n" +
                         "The agent mentioned or produced this file. It is available at: " +
@@ -310,32 +280,13 @@ public class ChatMessage {
         return message;
     }
 
-    /**
-     * Convert this message to the Anthropic Messages API format.
-     *
-     * <p>Key differences from OpenAI format:
-     * <ul>
-     *   <li>No {@code system} role in messages array – system content is handled separately</li>
-     *   <li>Tool calls from the assistant are {@code tool_use} content blocks</li>
-     *   <li>Tool results are {@code user} messages with {@code tool_result} content blocks</li>
-     *   <li>Content is always an array of typed blocks (text, tool_use, tool_result, image)</li>
-     * </ul>
-     * </p>
-     *
-     * @return JsonObject for the Anthropic messages array, or {@code null} if this message
-     *         type should be omitted from the Anthropic messages array (e.g. system messages,
-     *         which go in the top-level {@code system} field instead).
-     */
     public JsonObject toAnthropicApiMessage() {
         JsonObject message = new JsonObject();
 
         switch (type) {
             case TYPE_SYSTEM:
             case TYPE_CONTEXT_CARD:
-                // System messages are handled at the top-level "system" field in Anthropic API.
-                // Context cards become system context – also omitted from the messages array here
-                // (the caller injects them into the system field or as user messages if needed).
-                // Return null to signal the caller should skip this message.
+                // System messages go in the top-level "system" field in the Anthropic API; skip here.
                 return null;
 
             case TYPE_USER:
@@ -343,7 +294,6 @@ public class ChatMessage {
                 if (hasAttachments()) {
                     message.add("content", buildAnthropicUserContentWithAttachments());
                 } else {
-                    // Single text block
                     JsonArray userContent = new JsonArray();
                     JsonObject textBlock = new JsonObject();
                     textBlock.addProperty("type", "text");
@@ -366,7 +316,6 @@ public class ChatMessage {
                 break;
 
             case TYPE_TOOL_CALL:
-                // Assistant message containing tool_use blocks
                 message.addProperty("role", "assistant");
                 JsonArray toolUseContent = new JsonArray();
                 if (toolCalls != null) {
@@ -383,20 +332,17 @@ public class ChatMessage {
                 break;
 
             case TYPE_TOOL_RESULT:
-                // In Anthropic API, tool results are sent as user messages with tool_result blocks
                 message.addProperty("role", "user");
                 JsonArray toolResultContent = new JsonArray();
                 JsonObject toolResultBlock = new JsonObject();
                 toolResultBlock.addProperty("type", "tool_result");
                 toolResultBlock.addProperty("tool_use_id", toolCallId != null ? toolCallId : "");
-                // Content inside tool_result can be a string or array of blocks
                 toolResultBlock.addProperty("content", content != null ? content : "");
                 toolResultContent.add(toolResultBlock);
                 message.add("content", toolResultContent);
                 break;
 
             case TYPE_ATTACHMENT:
-                // Agent-referenced file – send as user text message
                 message.addProperty("role", "user");
                 JsonArray attachContent = new JsonArray();
                 JsonObject attachBlock = new JsonObject();
@@ -416,14 +362,9 @@ public class ChatMessage {
         return message;
     }
 
-    /**
-     * Builds Anthropic-format multipart content array for user messages with attachments.
-     * Images are sent as base64 image blocks; other files are referenced as text.
-     */
     private JsonArray buildAnthropicUserContentWithAttachments() {
         JsonArray contentArray = new JsonArray();
 
-        // Add text content first
         if (content != null && !content.isEmpty()) {
             JsonObject textPart = new JsonObject();
             textPart.addProperty("type", "text");
@@ -431,12 +372,10 @@ public class ChatMessage {
             contentArray.add(textPart);
         }
 
-        // Add each attachment
         for (FileAttachment attachment : attachments) {
             if (attachment.isImage()) {
                 String base64Data = encodeFileToBase64(attachment.getAbsolutePath());
                 if (base64Data != null) {
-                    // Anthropic image block format
                     JsonObject imagePart = new JsonObject();
                     imagePart.addProperty("type", "image");
 
@@ -449,14 +388,12 @@ public class ChatMessage {
                     contentArray.add(imagePart);
                 }
 
-                // Also add a text reference
                 JsonObject textRef = new JsonObject();
                 textRef.addProperty("type", "text");
                 textRef.addProperty("text", "`" + attachment.getOriginalName() +
                         "` file attached by user, you can find it in uploads");
                 contentArray.add(textRef);
             } else {
-                // Non-image files: add text reference
                 JsonObject textPart = new JsonObject();
                 textPart.addProperty("type", "text");
                 textPart.addProperty("text", "`" + attachment.getOriginalName() +
@@ -475,14 +412,9 @@ public class ChatMessage {
         return contentArray;
     }
 
-    /**
-     * Builds multipart content array for user messages with attachments.
-     * Creates an array with text content and image_url content for images.
-     */
     private JsonArray buildUserContentWithAttachments() {
         JsonArray contentArray = new JsonArray();
 
-        // Add text content first
         if (content != null && !content.isEmpty()) {
             JsonObject textPart = new JsonObject();
             textPart.addProperty("type", "text");
@@ -490,10 +422,8 @@ public class ChatMessage {
             contentArray.add(textPart);
         }
 
-        // Add each attachment as appropriate content part
         for (FileAttachment attachment : attachments) {
             if (attachment.isImage()) {
-                // For images: use base64 data URL for vision-capable models
                 String base64Data = encodeFileToBase64(attachment.getAbsolutePath());
                 if (base64Data != null) {
                     JsonObject imagePart = new JsonObject();
@@ -506,14 +436,12 @@ public class ChatMessage {
                     contentArray.add(imagePart);
                 }
 
-                // Always add text reference for the image
                 JsonObject textRef = new JsonObject();
                 textRef.addProperty("type", "text");
                 textRef.addProperty("text", "`" + attachment.getOriginalName() +
                         "` file attached by user, you can find it in uploads");
                 contentArray.add(textRef);
             } else {
-                // Non-image files: add text reference
                 String fileRef = "`" + attachment.getOriginalName() +
                         "` file attached by user, you can find it in uploads";
                 JsonObject textPart = new JsonObject();
@@ -523,7 +451,6 @@ public class ChatMessage {
             }
         }
 
-        // If no content parts were added, add plain text
         if (contentArray.size() == 0) {
             JsonObject textPart = new JsonObject();
             textPart.addProperty("type", "text");
@@ -534,9 +461,6 @@ public class ChatMessage {
         return contentArray;
     }
 
-    /**
-     * Encodes a file's content to base64 string.
-     */
     private static String encodeFileToBase64(String filePath) {
         try {
             java.io.File file = new java.io.File(filePath);

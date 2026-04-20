@@ -32,7 +32,7 @@ public class NotificationPermissionHelper {
      * Returns true if permission is granted or not required (Android < 13).
      */
     public boolean hasNotificationPermission() {
-        // POST_NOTIFICATIONS permission is only required on Android 13+ (API 33)
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             return true;
         }
@@ -50,7 +50,7 @@ public class NotificationPermissionHelper {
             return true;
         }
 
-        // Request the permission
+
         ActivityCompat.requestPermissions(
                 activity,
                 new String[]{Manifest.permission.POST_NOTIFICATIONS},
@@ -65,17 +65,17 @@ public class NotificationPermissionHelper {
      */
     public void checkAndRequestPermission(Activity activity, PermissionCallback callback) {
         if (hasNotificationPermission()) {
-            // Permission already granted
+
             callback.onPermissionGranted();
             return;
         }
 
-        // Check if we should show rationale
+
         if (ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)) {
-            // Show rationale dialog
+
             showRationaleDialog(activity, callback);
         } else {
-            // First time request or user already denied - just request
+
             requestNotificationPermission(activity);
         }
     }

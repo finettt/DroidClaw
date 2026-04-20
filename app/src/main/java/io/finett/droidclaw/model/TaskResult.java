@@ -4,14 +4,9 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Represents the result of a background task execution.
- * Used to track outcomes of heartbeat checks, cron jobs, and other automated tasks.
- */
 public class TaskResult implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // Task types
     public static final int TYPE_HEARTBEAT = 1;
     public static final int TYPE_CRON_JOB = 2;
     public static final int TYPE_MANUAL = 3;
@@ -30,9 +25,6 @@ public class TaskResult implements Serializable {
         this.metadata = new HashMap<>();
     }
 
-    /**
-     * Check if this result indicates success.
-     */
     public boolean isSuccess() {
         if (metadata == null) return false;
         String status = metadata.get("status");
@@ -79,9 +71,6 @@ public class TaskResult implements Serializable {
         this.metadata = metadata;
     }
 
-    /**
-     * Add a metadata key-value pair.
-     */
     public void putMetadata(String key, String value) {
         if (this.metadata == null) {
             this.metadata = new HashMap<>();
@@ -89,9 +78,6 @@ public class TaskResult implements Serializable {
         this.metadata.put(key, value);
     }
 
-    /**
-     * Get a metadata value by key.
-     */
     public String getMetadataValue(String key) {
         if (this.metadata == null) {
             return null;
@@ -99,9 +85,6 @@ public class TaskResult implements Serializable {
         return this.metadata.get(key);
     }
 
-    /**
-     * Get the string representation of a task type.
-     */
     public static String typeToString(int type) {
         switch (type) {
             case TYPE_HEARTBEAT:

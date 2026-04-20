@@ -19,29 +19,29 @@ import io.finett.droidclaw.fragment.ZenResultFragment;
  */
 public class NotificationManager {
 
-    // Channel IDs
+
     public static final String CHANNEL_ID_HEARTBEAT_ALERTS = "droidclaw_heartbeat_alerts";
     public static final String CHANNEL_ID_TASK_RESULTS = "droidclaw_task_results";
     public static final String CHANNEL_ID_TASK_ERRORS = "droidclaw_task_errors";
 
-    // Channel names
+
     private static final String CHANNEL_NAME_HEARTBEAT_ALERTS = "droidclaw_heartbeat_alerts";
     private static final String CHANNEL_NAME_TASK_RESULTS = "droidclaw_task_results";
     private static final String CHANNEL_NAME_TASK_ERRORS = "droidclaw_task_errors";
 
-    // Channel descriptions
+
     private static final String CHANNEL_DESC_HEARTBEAT_ALERTS = "droidclaw_heartbeat_alerts_desc";
     private static final String CHANNEL_DESC_TASK_RESULTS = "droidclaw_task_results_desc";
     private static final String CHANNEL_DESC_TASK_ERRORS = "droidclaw_task_errors_desc";
 
-    // Notification IDs (unique for each notification type)
+
     private static final int NOTIFICATION_ID_HEARTBEAT = 1001;
     private static final int NOTIFICATION_ID_ERROR = 1002;
     private static final int NOTIFICATION_ID_CRON_JOB = 1003;
     private static final int NOTIFICATION_ID_MANUAL_TASK = 1004;
     private static final int NOTIFICATION_ID_WARNING = 1005;
 
-    // PendingIntent request codes (must be unique for each pending intent)
+
     private static final int PENDING_INTENT_HEARTBEAT = 2001;
     private static final int PENDING_INTENT_ERROR = 2002;
     private static final int PENDING_INTENT_CRON_JOB = 2003;
@@ -90,7 +90,7 @@ public class NotificationManager {
      */
     private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Load channel names and descriptions from string resources
+
             String heartbeatChannelName = context.getString(R.string.notification_channel_heartbeat_alerts);
             String heartbeatChannelDesc = context.getString(R.string.notification_channel_heartbeat_alerts_desc);
             String taskResultsChannelName = context.getString(R.string.notification_channel_task_results);
@@ -98,7 +98,7 @@ public class NotificationManager {
             String errorsChannelName = context.getString(R.string.notification_channel_task_errors);
             String errorsChannelDesc = context.getString(R.string.notification_channel_task_errors_desc);
 
-            // Heartbeat Alerts channel - High priority
+
             NotificationChannel heartbeatChannel = new NotificationChannel(
                     CHANNEL_ID_HEARTBEAT_ALERTS,
                     heartbeatChannelName,
@@ -108,7 +108,7 @@ public class NotificationManager {
             heartbeatChannel.enableVibration(true);
             systemNotificationManager.createNotificationChannel(heartbeatChannel);
 
-            // Task Results channel - Default priority
+
             NotificationChannel taskResultsChannel = new NotificationChannel(
                     CHANNEL_ID_TASK_RESULTS,
                     taskResultsChannelName,
@@ -119,7 +119,7 @@ public class NotificationManager {
             taskResultsChannel.setSound(null, null);
             systemNotificationManager.createNotificationChannel(taskResultsChannel);
 
-            // Task Errors channel - High priority
+
             NotificationChannel errorsChannel = new NotificationChannel(
                     CHANNEL_ID_TASK_ERRORS,
                     errorsChannelName,
@@ -172,7 +172,7 @@ public class NotificationManager {
         String summary;
         String fullContent = result.getContent();
 
-        // Check if agent-generated content is available in metadata
+
         String agentTitle = result.getMetadataValue("notification_title");
         String agentSummary = result.getMetadataValue("notification_summary");
 

@@ -69,7 +69,7 @@ public class SkillsBrowserFragment extends Fragment {
     private void loadSkills() {
         skillsAdapter.setLoading(true);
 
-        // Run in background thread to avoid blocking UI
+
         new Thread(() -> {
             try {
                 List<SkillInfo> skills = scanSkills();
@@ -95,14 +95,14 @@ public class SkillsBrowserFragment extends Fragment {
         String skillsPath = ".agent/skills";
 
         try {
-            // Read skills from workspace
+
             List<SkillInfo> workspaceSkills = readSkillsFromDirectory(workspaceManager.getSkillsDirectory());
             skills.addAll(workspaceSkills);
         } catch (Exception e) {
             Log.w(TAG, "Failed to read skills from workspace", e);
         }
 
-        // Also try to read from assets for built-in skills
+
         try {
             String[] assetFiles = requireContext().getAssets().list("skills");
             if (assetFiles != null) {
@@ -198,23 +198,23 @@ public class SkillsBrowserFragment extends Fragment {
         skill.setName(name);
         skill.setContent(content);
 
-        // Parse YAML frontmatter and markdown content
+
         parseSkillContent(skill, content);
 
         return skill;
     }
 
     private void parseSkillContent(SkillInfo skill, String content) {
-        // Extract description from YAML frontmatter or first paragraph
+ from YAML frontmatter or first paragraph
         String description = extractYamlField(content, "description");
         if (description != null && !description.isEmpty()) {
             skill.setDescription(description);
         } else {
-            // Fallback: extract first paragraph
+
             int firstParagraphEnd = content.indexOf("\n\n");
             if (firstParagraphEnd > 0) {
                 String firstParagraph = content.substring(0, firstParagraphEnd).trim();
-                // Remove YAML frontmatter if present
+
                 if (firstParagraph.startsWith("---")) {
                     int frontmatterEnd = firstParagraph.indexOf("---", 3);
                     if (frontmatterEnd > 0) {
@@ -225,7 +225,7 @@ public class SkillsBrowserFragment extends Fragment {
             }
         }
 
-        // Extract other fields
+
         skill.setCategory(extractYamlField(content, "category"));
         skill.setAuthor(extractYamlField(content, "author"));
         skill.setVersion(extractYamlField(content, "version"));
@@ -234,7 +234,7 @@ public class SkillsBrowserFragment extends Fragment {
     }
 
     private String extractYamlField(String content, String fieldName) {
-        // Find YAML frontmatter section
+
         int frontmatterStart = content.indexOf("---");
         if (frontmatterStart < 0) {
             return null;

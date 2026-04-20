@@ -122,7 +122,7 @@ public class ModelDetailFragment extends Fragment {
             checkboxInputText.setChecked(model.hasTextInput());
             checkboxInputImage.setChecked(model.hasImageInput());
         } else {
-            // Defaults for new model
+
             inputContextWindow.setText("4096");
             inputMaxTokens.setText("4096");
             checkboxInputText.setChecked(true);
@@ -140,7 +140,7 @@ public class ModelDetailFragment extends Fragment {
         String contextWindowStr = inputContextWindow.getText().toString().trim();
         String maxTokensStr = inputMaxTokens.getText().toString().trim();
 
-        // Validation
+
         if (id.isEmpty()) {
             inputModelId.setError(getString(R.string.validation_required));
             return;
@@ -175,7 +175,7 @@ public class ModelDetailFragment extends Fragment {
             return;
         }
 
-        // Use the provider's API type for the model
+
         String apiType = provider.getApi();
         boolean reasoning = switchReasoning.isChecked();
         
@@ -192,7 +192,7 @@ public class ModelDetailFragment extends Fragment {
             return;
         }
 
-        // Update model object
+
         model.setId(id);
         model.setName(name);
         model.setApi(apiType);
@@ -201,7 +201,7 @@ public class ModelDetailFragment extends Fragment {
         model.setReasoning(reasoning);
         model.setInput(inputTypes);
 
-        // Save to settings
+
         if (isNewModel) {
             settingsManager.addModel(providerId, model);
         } else {

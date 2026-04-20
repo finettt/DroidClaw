@@ -56,7 +56,7 @@ public class TaskHistoryFragment extends Fragment implements TaskExecutionAdapte
 
         taskRepository = new TaskRepository(requireContext());
 
-        // Get job ID filter from arguments if provided
+
         if (getArguments() != null) {
             jobIdFilter = getArguments().getString("job_id");
         }
@@ -83,7 +83,7 @@ public class TaskHistoryFragment extends Fragment implements TaskExecutionAdapte
     }
 
     private void setupSpinner() {
-        // Load all cron jobs for filter
+
         List<CronJob> jobs = taskRepository.getCronJobs();
         List<String> jobNames = new ArrayList<>();
         jobNames.add(getString(R.string.task_history_filter_all));
@@ -101,10 +101,10 @@ public class TaskHistoryFragment extends Fragment implements TaskExecutionAdapte
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == 0) {
-                    // All tasks
+
                     jobIdFilter = null;
                 } else {
-                    // Specific job
+
                     jobIdFilter = jobs.get(position - 1).getId();
                 }
                 loadTaskHistory();
@@ -115,7 +115,7 @@ public class TaskHistoryFragment extends Fragment implements TaskExecutionAdapte
             }
         });
 
-        // If jobIdFilter is set, select that job in spinner
+
         if (jobIdFilter != null) {
             for (int i = 0; i < jobs.size(); i++) {
                 if (jobs.get(i).getId().equals(jobIdFilter)) {
@@ -134,19 +134,19 @@ public class TaskHistoryFragment extends Fragment implements TaskExecutionAdapte
         List<TaskExecutionRecord> records;
 
         if (jobIdFilter != null) {
-            // Filter by specific job
+
             records = taskRepository.getExecutionHistory(jobIdFilter);
         } else {
-            // Show all records
+
             records = taskRepository.getAllExecutionRecords();
         }
 
         adapter.submitList(records);
 
-        // Update stats
+
         updateStats(records);
 
-        // Show/hide empty state
+
         if (records.isEmpty()) {
             textEmptyHistory.setVisibility(View.VISIBLE);
             recyclerTaskHistory.setVisibility(View.GONE);
@@ -185,7 +185,7 @@ public class TaskHistoryFragment extends Fragment implements TaskExecutionAdapte
         textTotalExecutions.setText(requireContext().getString(R.string.stats_total_fmt, total));
         textSuccessRate.setText(requireContext().getString(R.string.stats_success_fmt, successRate));
 
-        // Format average duration
+
         String avgDurationText;
         long avgSec = avgDuration / 1000;
         if (avgSec < 60) {
@@ -200,8 +200,8 @@ public class TaskHistoryFragment extends Fragment implements TaskExecutionAdapte
 
     @Override
     public void onTaskExecutionClick(TaskExecutionRecord record) {
-        // TODO: Navigate to detail view showing full execution data
-        // For now, just show a toast with basic info
+
+
         String message = "Task " + (record.isSuccess() ? "succeeded" : "failed") +
                 "\nDuration: " + (record.getDurationMillis() / 1000) + "s" +
                 "\nTokens: " + record.getTokensUsed() +
