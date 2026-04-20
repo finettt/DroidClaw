@@ -40,12 +40,12 @@ jobs:
           # trigger_phrase: "/claude"
 
           # Optional: Trigger when specific user is assigned to an issue
-          # assignee_trigger: "claude-bot"
+          assignee_trigger: "claude"
 
           # Optional: Configure Claude's behavior with CLI arguments
-          # claude_args: |
+           claude_args: |
+             --max-turns 10
           #   --model claude-opus-4-1-20250805
-          #   --max-turns 10
           #   --allowedTools "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
           #   --system-prompt "Follow our coding standards. Ensure all new code has tests. Use TypeScript for new files."
 
