@@ -205,7 +205,7 @@ public class SkillsBrowserFragment extends Fragment {
     }
 
     private void parseSkillContent(SkillInfo skill, String content) {
- from YAML frontmatter or first paragraph
+        // Extract description from YAML frontmatter or first paragraph
         String description = extractYamlField(content, "description");
         if (description != null && !description.isEmpty()) {
             skill.setDescription(description);

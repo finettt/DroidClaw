@@ -171,7 +171,7 @@ public class ZenResultFragment extends Fragment {
         ChatSession session = mainActivity.getMostRecentChatSession();
 
         if (session != null) {
-     to add context
+            // Inject task result into existing chat to add context
             continuationService.continueInExistingChat(taskResult, session.getId());
 
             Bundle args = new Bundle();

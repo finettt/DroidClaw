@@ -182,7 +182,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
 
         private void openFile(FileAttachment attachment) {
-        private void openFile(FileAttachment attachment) {
             File file = new File(attachment.getAbsolutePath());
             if (!file.exists()) {
                 Toast.makeText(context, "File not found: " + attachment.getOriginalName(),

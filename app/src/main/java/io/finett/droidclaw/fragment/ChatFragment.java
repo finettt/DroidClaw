@@ -229,7 +229,7 @@ public class ChatFragment extends Fragment {
                 pendingTaskResult = null; // Clear after use
             }
 
- (likely "New Chat")
+            // No saved messages - this is a new chat (likely "New Chat")
             updateToolbarTitle();
         }
     }
