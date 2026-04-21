@@ -15,9 +15,6 @@ import io.finett.droidclaw.tool.ToolResult;
 
 import static org.junit.Assert.*;
 
-/**
- * Unit tests for ShellTool.
- */
 public class ShellToolTest {
     private ShellTool tool;
     private File workspaceRoot;
@@ -25,7 +22,6 @@ public class ShellToolTest {
 
     @Before
     public void setUp() throws IOException {
-        // Create a dedicated test workspace directory
         workspaceRoot = new File(System.getProperty("java.io.tmpdir"), "shell_test_workspace_" + System.currentTimeMillis());
         workspaceRoot.mkdirs();
         
@@ -47,8 +43,7 @@ public class ShellToolTest {
         assertEquals("execute_shell", definition.getFunction().getName());
         assertNotNull(definition.getFunction().getDescription());
         assertNotNull(definition.getFunction().getParameters());
-        
-        // Verify parameters schema
+
         JsonObject params = definition.getFunction().getParameters();
         assertTrue(params.has("properties"));
         assertTrue(params.getAsJsonObject("properties").has("command"));
@@ -73,8 +68,7 @@ public class ShellToolTest {
     @Test
     public void testExecuteMissingCommand() {
         JsonObject args = new JsonObject();
-        // Missing required "command" parameter
-        
+
         ToolResult result = tool.execute(args);
         
         assertFalse(result.isSuccess());
@@ -83,7 +77,6 @@ public class ShellToolTest {
 
     @Test
     public void testExecuteWithWorkingDirectory() throws IOException {
-        // Create a subdirectory in workspace
         File subdir = new File(workspaceRoot, "testdir_" + System.currentTimeMillis());
         subdir.mkdir();
         
@@ -93,8 +86,7 @@ public class ShellToolTest {
             args.addProperty("working_directory", subdir.getName());
             
             ToolResult result = tool.execute(args);
-            
-            // Should succeed since the directory exists within workspace
+
             assertTrue("Tool execution should succeed", result.isSuccess());
             String content = result.getContent();
             assertTrue(content.contains("exit_code"));
@@ -232,7 +224,7 @@ public class ShellToolTest {
         
         assertTrue(result.isSuccess());
         assertTrue(result.getContent().contains("timed_out"));
-        assertTrue(result.getContent().contains("false")); // Should not timeout
+        assertTrue(result.getContent().contains("false"));
     }
 
     @Test
@@ -240,10 +232,9 @@ public class ShellToolTest {
         JsonObject args = new JsonObject();
         args.addProperty("command", "pwd");
         args.addProperty("working_directory", "../../../");
-        
+
         ToolResult result = tool.execute(args);
-        
-        // Should reject path traversal attempt
+
         assertFalse("Should reject path traversal", result.isSuccess());
         assertTrue("Error should mention security or path traversal",
                    result.getError().contains("Security") ||
@@ -273,20 +264,16 @@ public class ShellToolTest {
     
     @Test
     public void testWorkingDirectoryOutsideWorkspace() throws IOException {
-        // Create a temp directory outside the workspace
         File outsideDir = new File(System.getProperty("java.io.tmpdir"), "outside_workspace_" + System.currentTimeMillis());
         outsideDir.mkdir();
-        
+
         try {
-            // Try to use a path that points outside the workspace
-            // This tests the executor's validation
             JsonObject args = new JsonObject();
             args.addProperty("command", "pwd");
             args.addProperty("working_directory", "../../" + outsideDir.getName());
             
             ToolResult result = tool.execute(args);
-            
-            // Should reject paths outside workspace
+
             assertFalse("Should reject path outside workspace", result.isSuccess());
         } finally {
             outsideDir.delete();
@@ -322,7 +309,6 @@ public class ShellToolTest {
     
     @Test
     public void testPathValidatorIntegration() throws IOException {
-        // Create a nested directory structure
         File nestedDir = new File(workspaceRoot, "level1/level2");
         nestedDir.mkdirs();
         
@@ -335,7 +321,6 @@ public class ShellToolTest {
             
             assertTrue("Should succeed with nested directory", result.isSuccess());
         } finally {
-            // Cleanup
             new File(nestedDir, "level2").delete();
             nestedDir.delete();
             new File(workspaceRoot, "level1").delete();
@@ -351,12 +336,9 @@ public class ShellToolTest {
         
         assertTrue(result.isSuccess());
         String json = result.toJson();
-        
-        // Verify it's valid JSON
+
         assertNotNull(json);
         assertFalse(json.isEmpty());
-        
-        // Should contain expected fields
         assertTrue(json.contains("exit_code"));
         assertTrue(json.contains("timed_out"));
         assertTrue(json.contains("execution_time_ms"));

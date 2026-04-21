@@ -5,9 +5,6 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/**
- * Unit tests for {@link AgentConfig} model class.
- */
 public class AgentConfigTest {
 
     private AgentConfig config;
@@ -16,8 +13,6 @@ public class AgentConfigTest {
     public void setUp() {
         config = new AgentConfig();
     }
-
-    // ==================== Constructor Tests ====================
 
     @Test
     public void defaultConstructor_createsInstance() {
@@ -44,8 +39,6 @@ public class AgentConfigTest {
         assertEquals(60, c.getShellTimeout());
     }
 
-    // ==================== getDefaults Tests ====================
-
     @Test
     public void getDefaults_returnsDefaultConfiguration() {
         AgentConfig defaults = AgentConfig.getDefaults();
@@ -66,8 +59,6 @@ public class AgentConfigTest {
         
         assertNotSame(defaults1, defaults2);
     }
-
-    // ==================== Getter/Setter Tests ====================
 
     @Test
     public void setDefaultModel_updatesDefaultModel() {
@@ -114,8 +105,6 @@ public class AgentConfigTest {
         assertEquals(120, config.getShellTimeout());
     }
 
-    // ==================== getDefaultProviderId Tests ====================
-
     @Test
     public void getDefaultProviderId_withValidFormat_returnsProviderId() {
         config.setDefaultModel("openai/gpt-4");
@@ -151,8 +140,6 @@ public class AgentConfigTest {
         config.setDefaultModel("openai/");
         assertEquals("openai", config.getDefaultProviderId());
     }
-
-    // ==================== getDefaultModelId Tests ====================
 
     @Test
     public void getDefaultModelId_withValidFormat_returnsModelId() {
@@ -196,8 +183,6 @@ public class AgentConfigTest {
         assertEquals("claude-3-opus-20240229", config.getDefaultModelId());
     }
 
-    // ==================== setDefaultModelFromIds Tests ====================
-
     @Test
     public void setDefaultModelFromIds_withValidIds_setsCorrectFormat() {
         config.setDefaultModelFromIds("openai", "gpt-4");
@@ -234,8 +219,6 @@ public class AgentConfigTest {
         assertEquals("anthropic-ai/claude-3-opus-20240229", config.getDefaultModel());
     }
 
-    // ==================== Integration Tests ====================
-
     @Test
     public void setDefaultModelFromIds_thenGetIds_returnsCorrectValues() {
         config.setDefaultModelFromIds("openai", "gpt-4-turbo");
@@ -251,8 +234,6 @@ public class AgentConfigTest {
         assertEquals("anthropic", config.getDefaultProviderId());
         assertEquals("claude-3-sonnet", config.getDefaultModelId());
     }
-
-    // ==================== Edge Case Tests ====================
 
     @Test
     public void config_withZeroMaxIterations_acceptsValue() {
@@ -312,7 +293,6 @@ public class AgentConfigTest {
 
     @Test
     public void config_multipleSetsAndGets_maintainsCorrectState() {
-        // Set initial values
         config.setDefaultModel("openai/gpt-4");
         config.setShellAccess(true);
         config.setSandboxMode("relaxed");
@@ -320,7 +300,6 @@ public class AgentConfigTest {
         config.setRequireApproval(false);
         config.setShellTimeout(60);
         
-        // Verify values
         assertEquals("openai/gpt-4", config.getDefaultModel());
         assertTrue(config.isShellAccess());
         assertEquals("relaxed", config.getSandboxMode());
@@ -328,7 +307,6 @@ public class AgentConfigTest {
         assertFalse(config.isRequireApproval());
         assertEquals(60, config.getShellTimeout());
         
-        // Change values
         config.setDefaultModel("anthropic/claude-3");
         config.setShellAccess(false);
         config.setSandboxMode("strict");
@@ -336,7 +314,6 @@ public class AgentConfigTest {
         config.setRequireApproval(true);
         config.setShellTimeout(30);
         
-        // Verify changed values
         assertEquals("anthropic/claude-3", config.getDefaultModel());
         assertFalse(config.isShellAccess());
         assertEquals("strict", config.getSandboxMode());

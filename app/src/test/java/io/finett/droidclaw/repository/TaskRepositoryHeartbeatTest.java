@@ -31,14 +31,11 @@ public class TaskRepositoryHeartbeatTest {
         context = RuntimeEnvironment.getApplication();
         taskRepository = new TaskRepository(context);
 
-        // Clear test data
         context.getSharedPreferences("droidclaw_tasks", Context.MODE_PRIVATE)
                 .edit()
                 .clear()
                 .commit();
     }
-
-    // ==================== getLastHeartbeatResult() TESTS ====================
 
     @Test
     public void getLastHeartbeatResult_returnsNull_whenNoResults() {
@@ -48,7 +45,6 @@ public class TaskRepositoryHeartbeatTest {
 
     @Test
     public void getLastHeartbeatResult_returnsLatest() {
-        // Save multiple heartbeat results
         TaskResult oldResult = new TaskResult("old", TaskResult.TYPE_HEARTBEAT,
                 1000L, "Old heartbeat");
         oldResult.putMetadata("healthy", "true");
@@ -69,7 +65,6 @@ public class TaskRepositoryHeartbeatTest {
 
     @Test
     public void getLastHeartbeatResult_ignoresNonHeartbeatResults() {
-        // Save a cron job result
         TaskResult cronResult = new TaskResult("cron", TaskResult.TYPE_CRON_JOB,
                 1000L, "Cron job result");
         taskRepository.saveTaskResult(cronResult);
@@ -96,8 +91,6 @@ public class TaskRepositoryHeartbeatTest {
         assertNotNull("Should return heartbeat", latest);
         assertEquals("Should return latest heartbeat", "hb2", latest.getId());
     }
-
-    // ==================== getTaskResults() TYPE FILTERING TESTS ====================
 
     @Test
     public void getTaskResults_filtersByHeartbeatType() {
@@ -152,8 +145,6 @@ public class TaskRepositoryHeartbeatTest {
         assertEquals("Third should be old", "old", results.get(2).getId());
     }
 
-    // ==================== METADATA TESTS ====================
-
     @Test
     public void saveHeartbeatResult_preservesHealthyMetadata() {
         TaskResult result = new TaskResult("test", TaskResult.TYPE_HEARTBEAT,
@@ -185,8 +176,6 @@ public class TaskRepositoryHeartbeatTest {
         assertEquals("error should match", "timeout", retrieved.getMetadataValue("error"));
     }
 
-    // ==================== OVERWRITE TESTS ====================
-
     @Test
     public void saveTaskResult_overwritesExistingId() {
         TaskResult result1 = new TaskResult("test", TaskResult.TYPE_HEARTBEAT,
@@ -205,8 +194,6 @@ public class TaskRepositoryHeartbeatTest {
         assertEquals("Should have latest content", "Second", results.get(0).getContent());
         assertEquals("Should have latest metadata", "false", results.get(0).getMetadataValue("healthy"));
     }
-
-    // ==================== TASK TYPE CONSTANTS TESTS ====================
 
     @Test
     public void taskTypeConstants_haveExpectedValues() {

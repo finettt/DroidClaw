@@ -3,9 +3,6 @@ package io.finett.droidclaw.api;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-/**
- * Unit tests for TokenUsage class (Last Usage algorithm).
- */
 public class TokenUsageTest {
     
     @Test

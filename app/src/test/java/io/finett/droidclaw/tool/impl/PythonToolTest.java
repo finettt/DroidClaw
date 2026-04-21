@@ -18,9 +18,6 @@ import io.finett.droidclaw.tool.ToolResult;
 
 import static org.junit.Assert.*;
 
-/**
- * Unit tests for PythonTool.
- */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
 public class PythonToolTest {

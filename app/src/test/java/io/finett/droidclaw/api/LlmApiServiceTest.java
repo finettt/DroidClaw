@@ -154,8 +154,6 @@ public class LlmApiServiceTest {
         assertEquals("Bearer real-key", request.header("Authorization"));
     }
 
-    // ========== NEW TESTS FOR TOOL SUPPORT ==========
-
     @Test
     public void testToolCall_getters() {
         JsonObject args = new JsonObject();
@@ -434,13 +432,11 @@ public class LlmApiServiceTest {
 
         ChatMessage userMessage = new ChatMessage("Read file", ChatMessage.TYPE_USER);
         
-        // Create tool call message
         JsonObject args = new JsonObject();
         args.addProperty("path", "test.txt");
         LlmApiService.ToolCall toolCall = new LlmApiService.ToolCall("call_123", "file_read", args);
         ChatMessage toolCallMessage = ChatMessage.createToolCallMessage(Arrays.asList(toolCall));
         
-        // Create tool result message
         ChatMessage toolResultMessage = ChatMessage.createToolResultMessage(
             "call_123", "file_read", "File content here"
         );
@@ -449,15 +445,12 @@ public class LlmApiServiceTest {
             Arrays.asList(userMessage, toolCallMessage, toolResultMessage));
 
         JsonArray messages = requestBody.getAsJsonArray("messages");
-        // System + user + tool_call + tool_result = 4 messages
         assertEquals(4, messages.size());
-        
-        // Verify tool call message format
+
         JsonObject toolCallMsg = messages.get(2).getAsJsonObject();
         assertEquals("assistant", toolCallMsg.get("role").getAsString());
         assertTrue("Should have tool_calls", toolCallMsg.has("tool_calls"));
-        
-        // Verify tool result message format
+
         JsonObject toolResultMsg = messages.get(3).getAsJsonObject();
         assertEquals("tool", toolResultMsg.get("role").getAsString());
         assertEquals("call_123", toolResultMsg.get("tool_call_id").getAsString());
@@ -549,8 +542,7 @@ public class LlmApiServiceTest {
             }
 
             requestBody.add("messages", messages);
-            
-            // Add tools if provided
+
             if (tools != null && tools.size() > 0) {
                 requestBody.add("tools", tools);
                 requestBody.addProperty("tool_choice", "auto");
@@ -587,18 +579,16 @@ public class LlmApiServiceTest {
                 return new LlmApiService.LlmResponse("No message in response", null);
             }
 
-            // Extract content (may be null if there are tool calls)
             String content = null;
             if (message.has("content") && !message.get("content").isJsonNull()) {
                 content = message.get("content").getAsString();
             }
 
-            // Extract tool calls if present
             List<LlmApiService.ToolCall> toolCalls = null;
             if (message.has("tool_calls")) {
                 JsonArray toolCallsArray = message.getAsJsonArray("tool_calls");
                 toolCalls = new ArrayList<>();
-                
+
                 for (com.google.gson.JsonElement toolCallElement : toolCallsArray) {
                     JsonObject toolCallObj = toolCallElement.getAsJsonObject();
                     String id = toolCallObj.get("id").getAsString();
@@ -606,7 +596,6 @@ public class LlmApiServiceTest {
                     String name = function.get("name").getAsString();
                     String argumentsStr = function.get("arguments").getAsString();
                     
-                    // Parse arguments string to JsonObject
                     JsonObject arguments = gson.fromJson(argumentsStr, JsonObject.class);
                     
                     toolCalls.add(new LlmApiService.ToolCall(id, name, arguments));

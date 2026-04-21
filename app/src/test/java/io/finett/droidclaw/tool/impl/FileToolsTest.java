@@ -38,7 +38,6 @@ public class FileToolsTest {
         pathValidator = new PathValidator(workspaceRoot);
         vfs = new VirtualFileSystem(pathValidator);
 
-        // Initialize all tools
         fileReadTool = new FileReadTool(vfs);
         fileWriteTool = new FileWriteTool(vfs);
         fileListTool = new FileListTool(vfs);
@@ -73,13 +72,11 @@ public class FileToolsTest {
 
     @Test
     public void testFileReadToolSuccess() {
-        // First write a file
         JsonObject writeArgs = new JsonObject();
         writeArgs.addProperty("path", "read_test.txt");
         writeArgs.addProperty("content", "Test content");
         fileWriteTool.execute(writeArgs);
 
-        // Then read it
         JsonObject readArgs = new JsonObject();
         readArgs.addProperty("path", "read_test.txt");
 
@@ -91,13 +88,11 @@ public class FileToolsTest {
 
     @Test
     public void testFileReadToolWithOffset() {
-        // Write multiline file
         JsonObject writeArgs = new JsonObject();
         writeArgs.addProperty("path", "multiline.txt");
         writeArgs.addProperty("content", "Line 1\nLine 2\nLine 3");
         fileWriteTool.execute(writeArgs);
 
-        // Read with offset
         JsonObject readArgs = new JsonObject();
         readArgs.addProperty("path", "multiline.txt");
         readArgs.addProperty("offset", 1);
@@ -111,7 +106,6 @@ public class FileToolsTest {
 
     @Test
     public void testFileListToolSuccess() {
-        // Create some files
         JsonObject writeArgs1 = new JsonObject();
         writeArgs1.addProperty("path", "file1.txt");
         writeArgs1.addProperty("content", "content1");
@@ -122,7 +116,6 @@ public class FileToolsTest {
         writeArgs2.addProperty("content", "content2");
         fileWriteTool.execute(writeArgs2);
 
-        // List files
         JsonObject listArgs = new JsonObject();
         listArgs.addProperty("path", ".");
 
@@ -134,13 +127,11 @@ public class FileToolsTest {
 
     @Test
     public void testFileListToolRecursive() {
-        // Create nested files
         JsonObject writeArgs = new JsonObject();
         writeArgs.addProperty("path", "dir/subdir/file.txt");
         writeArgs.addProperty("content", "nested content");
         fileWriteTool.execute(writeArgs);
 
-        // List recursively
         JsonObject listArgs = new JsonObject();
         listArgs.addProperty("path", ".");
         listArgs.addProperty("recursive", true);
@@ -153,13 +144,11 @@ public class FileToolsTest {
 
     @Test
     public void testFileDeleteToolSuccess() {
-        // Create a file
         JsonObject writeArgs = new JsonObject();
         writeArgs.addProperty("path", "delete_me.txt");
         writeArgs.addProperty("content", "content");
         fileWriteTool.execute(writeArgs);
 
-        // Delete it
         JsonObject deleteArgs = new JsonObject();
         deleteArgs.addProperty("path", "delete_me.txt");
 
@@ -171,7 +160,6 @@ public class FileToolsTest {
 
     @Test
     public void testFileSearchToolSuccess() {
-        // Create files with searchable content
         JsonObject writeArgs1 = new JsonObject();
         writeArgs1.addProperty("path", "search1.txt");
         writeArgs1.addProperty("content", "Find this keyword");
@@ -182,7 +170,6 @@ public class FileToolsTest {
         writeArgs2.addProperty("content", "Another keyword here");
         fileWriteTool.execute(writeArgs2);
 
-        // Search for pattern
         JsonObject searchArgs = new JsonObject();
         searchArgs.addProperty("pattern", "keyword");
         searchArgs.addProperty("file_pattern", "*.txt");
@@ -195,13 +182,11 @@ public class FileToolsTest {
 
     @Test
     public void testFileEditToolReplace() throws Exception {
-        // Create a file
         JsonObject writeArgs = new JsonObject();
         writeArgs.addProperty("path", "edit.txt");
         writeArgs.addProperty("content", "Hello World\nHello Everyone");
         fileWriteTool.execute(writeArgs);
 
-        // Edit with replace
         JsonObject editArgs = new JsonObject();
         editArgs.addProperty("path", "edit.txt");
         editArgs.addProperty("operation", "replace");
@@ -211,8 +196,7 @@ public class FileToolsTest {
         ToolResult result = fileEditTool.execute(editArgs);
 
         assertTrue(result.isSuccess());
-        
-        // Verify the replacement
+
         JsonObject readArgs = new JsonObject();
         readArgs.addProperty("path", "edit.txt");
         ToolResult readResult = fileReadTool.execute(readArgs);
@@ -221,13 +205,11 @@ public class FileToolsTest {
 
     @Test
     public void testFileEditToolInsert() throws Exception {
-        // Create a file
         JsonObject writeArgs = new JsonObject();
         writeArgs.addProperty("path", "insert.txt");
         writeArgs.addProperty("content", "Line 1\nLine 3");
         fileWriteTool.execute(writeArgs);
 
-        // Insert a line
         JsonObject editArgs = new JsonObject();
         editArgs.addProperty("path", "insert.txt");
         editArgs.addProperty("operation", "insert");
@@ -241,13 +223,11 @@ public class FileToolsTest {
 
     @Test
     public void testFileEditToolDeleteLines() throws Exception {
-        // Create a file
         JsonObject writeArgs = new JsonObject();
         writeArgs.addProperty("path", "delete_lines.txt");
         writeArgs.addProperty("content", "Line 1\nLine 2\nLine 3\nLine 4");
         fileWriteTool.execute(writeArgs);
 
-        // Delete lines
         JsonObject editArgs = new JsonObject();
         editArgs.addProperty("path", "delete_lines.txt");
         editArgs.addProperty("operation", "delete_lines");
@@ -261,13 +241,11 @@ public class FileToolsTest {
 
     @Test
     public void testFileInfoToolSuccess() {
-        // Create a file
         JsonObject writeArgs = new JsonObject();
         writeArgs.addProperty("path", "info.txt");
         writeArgs.addProperty("content", "Test content");
         fileWriteTool.execute(writeArgs);
 
-        // Get file info
         JsonObject infoArgs = new JsonObject();
         infoArgs.addProperty("path", "info.txt");
 
@@ -280,7 +258,6 @@ public class FileToolsTest {
 
     @Test
     public void testToolDefinitions() {
-        // Verify all tools have proper definitions
         assertNotNull(fileReadTool.getDefinition());
         assertNotNull(fileWriteTool.getDefinition());
         assertNotNull(fileListTool.getDefinition());
@@ -300,7 +277,6 @@ public class FileToolsTest {
 
     @Test
     public void testSecurityPathTraversal() {
-        // Test that path traversal is blocked in all tools
         JsonObject maliciousArgs = new JsonObject();
         maliciousArgs.addProperty("path", "../../etc/passwd");
         maliciousArgs.addProperty("content", "malicious");

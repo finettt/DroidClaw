@@ -23,9 +23,6 @@ import io.finett.droidclaw.filesystem.VirtualFileSystem;
 import io.finett.droidclaw.python.PythonExecutor;
 import io.finett.droidclaw.shell.ShellExecutor;
 
-/**
- * Unit tests for ToolRegistry.
- */
 @RunWith(RobolectricTestRunner.class)
 public class ToolRegistryTest {
 
@@ -146,7 +143,6 @@ public class ToolRegistryTest {
         assertNotNull("Tool definitions should not be null", definitions);
         assertEquals("Should have definitions for all tools", 19, definitions.size());
         
-        // Verify structure of first definition
         JsonObject firstDef = definitions.get(0).getAsJsonObject();
         assertTrue("Should have 'type' field", firstDef.has("type"));
         assertTrue("Should have 'function' field", firstDef.has("function"));
@@ -183,12 +179,10 @@ public class ToolRegistryTest {
 
     @Test
     public void testExecuteTool_WithInvalidArguments() {
-        // Try to execute read_file without required 'path' argument
         JsonObject args = new JsonObject();
         
         ToolResult result = toolRegistry.executeTool("read_file", args);
         assertNotNull("Result should not be null", result);
-        // Should fail due to missing required parameter
     }
 
     @Test
@@ -249,7 +243,6 @@ public class ToolRegistryTest {
 
     @Test
     public void testMultipleToolExecutions() {
-        // Test that we can execute multiple tools in sequence
         JsonObject listArgs = new JsonObject();
         listArgs.addProperty("path", ".");
         
@@ -258,8 +251,6 @@ public class ToolRegistryTest {
         
         ToolResult result2 = toolRegistry.executeTool("list_files", listArgs);
         assertNotNull("Second result should not be null", result2);
-        
-        // Registry should handle multiple executions without issues
     }
 
     @Test
@@ -284,7 +275,6 @@ public class ToolRegistryTest {
         t1.join();
         t2.join();
 
-        // Should complete without errors
         assertEquals("Tool count should remain consistent", 19, toolRegistry.getToolCount());
     }
 }

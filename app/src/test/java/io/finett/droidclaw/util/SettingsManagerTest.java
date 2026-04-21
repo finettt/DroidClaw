@@ -34,10 +34,6 @@ public class SettingsManagerTest {
         settingsManager = new SettingsManager(context);
     }
 
-    // ========================
-    // Provider Management Tests
-    // ========================
-
     @Test
     public void getProviders_whenEmpty_returnsEmptyList() {
         assertTrue(settingsManager.getProviders().isEmpty());
@@ -85,10 +81,6 @@ public class SettingsManagerTest {
         assertNull(settingsManager.getProvider("test-provider"));
     }
 
-    // ========================
-    // Model Management Tests
-    // ========================
-
     @Test
     public void addModel_toProvider_storesModel() {
         Provider provider = createTestProvider("test-provider", "Test Provider",
@@ -117,10 +109,6 @@ public class SettingsManagerTest {
         assertNull(settingsManager.getModel("test-provider", "test-model"));
     }
 
-    // ========================
-    // Agent Configuration Tests
-    // ========================
-
     @Test
     public void getAgentConfig_returnsDefaults() {
         AgentConfig config = settingsManager.getAgentConfig();
@@ -135,7 +123,6 @@ public class SettingsManagerTest {
 
     @Test
     public void setDefaultModel_storesValue() {
-        // First add a provider with a model
         Provider provider = createTestProvider("test-provider", "Test Provider",
                 "https://api.test.com", "test-api-key");
         Model model = createTestModel("test-model", "Test Model", 4096);
@@ -235,10 +222,6 @@ public class SettingsManagerTest {
         assertEquals(300, settingsManager.getShellTimeoutSeconds());
     }
 
-    // ========================
-    // API Key/URL/Model Getters Tests
-    // ========================
-
     @Test
     public void getApiKey_whenNoProvider_returnsEmptyString() {
         assertEquals("", settingsManager.getApiKey());
@@ -307,10 +290,6 @@ public class SettingsManagerTest {
         assertEquals(8192, settingsManager.getMaxTokens());
     }
 
-    // ========================
-    // Configuration Status Tests
-    // ========================
-
     @Test
     public void isConfigured_whenNoProvider_returnsFalse() {
         assertFalse(settingsManager.isConfigured());
@@ -333,10 +312,6 @@ public class SettingsManagerTest {
         
         assertTrue(settingsManager.isConfigured());
     }
-
-    // ========================
-    // Onboarding Tests
-    // ========================
 
     @Test
     public void isOnboardingCompleted_whenNotSet_returnsFalse() {
@@ -371,10 +346,6 @@ public class SettingsManagerTest {
         assertEquals("", settingsManager.getUserName());
     }
 
-    // ========================
-    // Model Reference Tests
-    // ========================
-
     @Test
     public void getAllModelReferences_returnsAllModels() {
         Provider provider1 = createTestProvider("provider1", "Provider 1",
@@ -405,10 +376,6 @@ public class SettingsManagerTest {
         String displayName = settingsManager.getModelDisplayName("test-provider/test-model");
         assertEquals("Test Provider / Test Model", displayName);
     }
-
-    // ========================
-    // Persistence Tests
-    // ========================
 
     @Test
     public void agentSettingsPersistAcrossInstances() {
@@ -454,10 +421,6 @@ public class SettingsManagerTest {
         assertTrue(newInstance.isOnboardingCompleted());
         assertEquals("Test User", newInstance.getUserName());
     }
-
-    // ========================
-    // Helper Methods
-    // ========================
 
     private Provider createTestProvider(String id, String name, String baseUrl, String apiKey) {
         Provider provider = new Provider();

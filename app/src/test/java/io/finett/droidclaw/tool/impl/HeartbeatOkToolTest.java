@@ -27,8 +27,6 @@ public class HeartbeatOkToolTest {
         heartbeatOkTool = new HeartbeatOkTool();
     }
 
-    // ==================== BASIC TOOL PROPERTIES ====================
-
     @Test
     public void getName_returnsCorrectName() {
         assertEquals("heartbeat_ok", heartbeatOkTool.getName());
@@ -64,8 +62,6 @@ public class HeartbeatOkToolTest {
         JsonObject parameters = definition.getFunction().getParameters();
         assertTrue("Parameters should be null for heartbeat_ok", parameters == null);
     }
-
-    // ==================== TOOL EXECUTION TESTS ====================
 
     @Test
     public void execute_withNullArguments_succeeds() {
@@ -107,17 +103,13 @@ public class HeartbeatOkToolTest {
         assertTrue("Both should succeed", result1.isSuccess() && result2.isSuccess());
     }
 
-    // ==================== TOOL BEHAVIOR TESTS ====================
-
     @Test
     public void doesNotRequireApproval() {
-        // HeartbeatOkTool should not require approval (default is false)
         assertFalse("Should not require approval", heartbeatOkTool.requiresApproval());
     }
 
     @Test
     public void implementsToolInterface() {
-        // Verify it properly implements the Tool interface
         Tool tool = heartbeatOkTool;
         assertNotNull("Should be a valid Tool instance", tool);
         assertEquals("Tool name should match", "heartbeat_ok", tool.getName());

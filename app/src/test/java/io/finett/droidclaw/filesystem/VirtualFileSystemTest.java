@@ -30,10 +30,8 @@ public class VirtualFileSystemTest {
         String path = "test.txt";
         String content = "Hello, World!";
 
-        // Write file
         assertTrue(vfs.writeFile(path, content, false));
 
-        // Read file
         VirtualFileSystem.FileReadResult result = vfs.readFile(path, null, null);
         assertEquals(content, result.getContent());
         assertEquals(1, result.getTotalLines());
@@ -98,16 +96,13 @@ public class VirtualFileSystemTest {
 
     @Test
     public void testListFiles() throws Exception {
-        // Create some files
         vfs.writeFile("file1.txt", "content1", false);
         vfs.writeFile("file2.txt", "content2", false);
         vfs.writeFile("dir/file3.txt", "content3", false);
 
-        // List files in root
         VirtualFileSystem.FileListResult result = vfs.listFiles(".", false);
         assertTrue(result.getFiles().size() >= 2);
 
-        // Verify we can find our files
         boolean foundFile1 = false;
         boolean foundFile2 = false;
         for (VirtualFileSystem.FileInfo info : result.getFiles()) {
@@ -125,8 +120,7 @@ public class VirtualFileSystemTest {
         vfs.writeFile("dir/subdir/file3.txt", "content3", false);
 
         VirtualFileSystem.FileListResult result = vfs.listFiles(".", true);
-        
-        // Should find all files recursively
+
         boolean foundFile1 = false;
         boolean foundFile3 = false;
         for (VirtualFileSystem.FileInfo info : result.getFiles()) {
@@ -169,12 +163,10 @@ public class VirtualFileSystemTest {
         vfs.writeFile("file2.txt", "Test Hello\nAnother line", false);
         vfs.writeFile("file3.log", "No match here", false);
 
-        // Search for "Hello"
         VirtualFileSystem.FileSearchResult result = vfs.searchFiles(".", "Hello", "*.txt");
-        
+
         assertEquals(2, result.getMatches().size());
-        
-        // Verify matches
+
         for (VirtualFileSystem.SearchMatch match : result.getMatches()) {
             assertTrue(match.getLine().contains("Hello"));
             assertTrue(match.getFile().endsWith(".txt"));
@@ -187,8 +179,7 @@ public class VirtualFileSystemTest {
         vfs.writeFile("test.log", "Line with pattern", false);
 
         VirtualFileSystem.FileSearchResult result = vfs.searchFiles(".", "pattern", "*.txt");
-        
-        // Should only match .txt file
+
         assertEquals(1, result.getMatches().size());
         assertTrue(result.getMatches().get(0).getFile().endsWith(".txt"));
     }
@@ -249,10 +240,8 @@ public class VirtualFileSystemTest {
 
     @Test(expected = IOException.class)
     public void testReadFileTooLarge() throws Exception {
-        // Create a file larger than MAX_FILE_SIZE (10MB)
         String path = "large.txt";
         StringBuilder largeContent = new StringBuilder();
-        // Create content > 10MB
         for (int i = 0; i < 11 * 1024 * 1024; i++) {
             largeContent.append("a");
         }
@@ -263,7 +252,6 @@ public class VirtualFileSystemTest {
 
     @Test(expected = IOException.class)
     public void testWriteFileTooLarge() throws Exception {
-        // Try to write content larger than MAX_FILE_SIZE
         StringBuilder largeContent = new StringBuilder();
         for (int i = 0; i < 11 * 1024 * 1024; i++) {
             largeContent.append("a");
@@ -274,11 +262,9 @@ public class VirtualFileSystemTest {
 
     @Test
     public void testDeleteEmptyDirectory() throws Exception {
-        // Create an empty directory by creating and then deleting a file
         vfs.writeFile("emptydir/temp.txt", "temp", false);
         vfs.deleteFile("emptydir/temp.txt");
-        
-        // Now delete the empty directory
+
         assertTrue(vfs.deleteFile("emptydir"));
     }
 
@@ -317,7 +303,6 @@ public class VirtualFileSystemTest {
             vfs.searchFiles(".", "[invalid(", null);
             fail("Should have thrown exception for invalid regex");
         } catch (Exception e) {
-            // Expected - invalid regex pattern
             assertTrue(e.getMessage() != null);
         }
     }
@@ -328,9 +313,8 @@ public class VirtualFileSystemTest {
         vfs.writeFile("test.log", "match", false);
         vfs.writeFile("data.txt", "match", false);
 
-        // Search only .txt files
         VirtualFileSystem.FileSearchResult result = vfs.searchFiles(".", "match", "*.txt");
-        
+
         assertEquals(2, result.getMatches().size());
         for (VirtualFileSystem.SearchMatch match : result.getMatches()) {
             assertTrue(match.getFile().endsWith(".txt"));
@@ -343,7 +327,6 @@ public class VirtualFileSystemTest {
         vfs.writeFile("test2.txt", "match", false);
         vfs.writeFile("test10.txt", "match", false);
 
-        // Search with ? wildcard (single character)
         VirtualFileSystem.FileSearchResult result = vfs.searchFiles(".", "match", "test?.txt");
         
         assertEquals(2, result.getMatches().size());
@@ -375,7 +358,6 @@ public class VirtualFileSystemTest {
 
     @Test
     public void testListFilesNullPath() throws Exception {
-        // Null path should default to current directory
         VirtualFileSystem.FileListResult result = vfs.listFiles(null, false);
         assertNotNull(result);
         assertNotNull(result.getFiles());
@@ -384,8 +366,7 @@ public class VirtualFileSystemTest {
     @Test
     public void testSearchFilesNullPath() throws Exception {
         vfs.writeFile("test.txt", "content", false);
-        
-        // Null path should default to current directory
+
         VirtualFileSystem.FileSearchResult result = vfs.searchFiles(null, "content", null);
         assertNotNull(result);
         assertTrue(result.getMatches().size() >= 1);
