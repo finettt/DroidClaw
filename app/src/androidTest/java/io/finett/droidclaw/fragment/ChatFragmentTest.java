@@ -79,9 +79,8 @@ public class ChatFragmentTest {
 
         try (FragmentScenario<ChatFragment> scenario =
                      FragmentScenario.launchInContainer(ChatFragment.class, args, R.style.Theme_DroidClaw)) {
-            // Wait for fragment to fully initialize
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            
+
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
 
@@ -153,14 +152,12 @@ public class ChatFragmentTest {
                 messageInput.setText("Test message");
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
 
-                // Wait a bit for async processing
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
 
-                // User message should be added immediately
                 assertTrue("Should have at least user message",
                         recyclerView.getAdapter().getItemCount() >= 1);
                 assertEquals("", messageInput.getText().toString());
@@ -187,15 +184,12 @@ public class ChatFragmentTest {
                 messageInput.setText("Test");
                 sendButton.performClick();
 
-                // Wait a moment for UI to update
                 try {
                     Thread.sleep(50);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
 
-                // Should show loading state (or have already completed, which is also valid)
-                // The important thing is that it doesn't crash
                 assertNotNull(statusContainer);
                 assertFalse("Send button should be disabled or re-enabled",
                         sendButton.isEnabled() && statusContainer.getVisibility() == android.view.View.VISIBLE);
@@ -227,9 +221,8 @@ public class ChatFragmentTest {
 
         try (FragmentScenario<ChatFragment> scenario =
                      FragmentScenario.launchInContainer(ChatFragment.class, args, R.style.Theme_DroidClaw)) {
-            // Wait for fragment to fully initialize
             InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-            
+
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
 
@@ -300,11 +293,10 @@ public class ChatFragmentTest {
                 attachNavController(fragment, R.id.chatFragment);
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
-                
+
                 messageInput.setText("Test");
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
 
-                // Should not crash - this is the main assertion
                 assertNotNull(fragment.requireView());
             });
         }
@@ -323,11 +315,10 @@ public class ChatFragmentTest {
                 attachNavController(fragment, R.id.chatFragment);
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
-                
+
                 messageInput.setText("Test");
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
 
-                // Should not crash
                 assertNotNull(fragment.requireView());
             });
         }
@@ -350,17 +341,14 @@ public class ChatFragmentTest {
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
             });
 
-            // Wait a bit for the async operation to start
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
-            // Destroy fragment - should cancel pending requests without crashing
             scenario.moveToState(androidx.lifecycle.Lifecycle.State.DESTROYED);
-            
-            // Wait a bit more to ensure callbacks don't crash
+
             try {
                 Thread.sleep(200);
             } catch (InterruptedException e) {
@@ -392,7 +380,6 @@ public class ChatFragmentTest {
                 messageInput.setText(longMessage);
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
 
-                // Wait for processing
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
@@ -423,13 +410,11 @@ public class ChatFragmentTest {
                 assertEquals(1, recyclerView.getAdapter().getItemCount());
             });
 
-            // Recreate the fragment
             scenario.recreate();
 
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recyclerView);
-                // Should reload messages from repository
                 assertEquals(1, recyclerView.getAdapter().getItemCount());
             });
         }
@@ -437,7 +422,6 @@ public class ChatFragmentTest {
 
     private void configureSettings() {
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
-        // Create a test provider with a model
         Provider testProvider = new Provider("test-provider", "Test Provider",
                 "http://localhost:1234/v1", "test-api-key", "openai-completions");
         Model testModel = new Model("test-model", "Test Model", "openai-completions",

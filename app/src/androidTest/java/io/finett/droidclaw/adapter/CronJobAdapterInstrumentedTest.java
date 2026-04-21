@@ -22,10 +22,6 @@ import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.util.TestThemeHelper;
 
-/**
- * Instrumented tests for CronJobAdapter.
- * Tests the adapter's RecyclerView binding and DiffUtil functionality.
- */
 @RunWith(AndroidJUnit4.class)
 public class CronJobAdapterInstrumentedTest {
 
@@ -94,11 +90,9 @@ public class CronJobAdapterInstrumentedTest {
         CronJob job = createTestJob("job-1", "Test Job", "3600000");
         adapter.submitList(java.util.Arrays.asList(job));
 
-        // Accessing out of bounds should throw
         try {
             adapter.getJobAt(1);
         } catch (IndexOutOfBoundsException e) {
-            // Expected
         }
     }
 
@@ -138,7 +132,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Verify views are bound
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_job_name));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_schedule));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_last_run));
@@ -164,7 +157,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Status chip should show active
         String statusText = viewHolder.chipStatus.getText().toString();
         assertTrue("Status should be active", statusText.contains("Active"));
     }
@@ -187,7 +179,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Status chip should show paused
         String statusText = viewHolder.chipStatus.getText().toString();
         assertTrue("Status should be paused", statusText.contains("Paused"));
     }
@@ -210,7 +201,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Status chip should show disabled
         String statusText = viewHolder.chipStatus.getText().toString();
         assertTrue("Status should be disabled", statusText.contains("Disabled"));
     }
@@ -233,7 +223,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Last run should show relative time
         TextView lastRunView = viewHolder.itemView.findViewById(R.id.text_last_run);
         String text = lastRunView.getText().toString();
         assertTrue("Last run should show relative time", text.contains("ago") || text.contains("hour"));
@@ -256,7 +245,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Last run should show "Never"
         TextView lastRunView = viewHolder.itemView.findViewById(R.id.text_last_run);
         String text = lastRunView.getText().toString();
         assertTrue("Last run should show 'Never'", text.contains("Never"));
@@ -280,7 +268,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Success rate should show 80%
         TextView rateView = viewHolder.itemView.findViewById(R.id.text_success_rate);
         String text = rateView.getText().toString();
         assertTrue("Success rate should contain 80", text.contains("80"));
@@ -304,7 +291,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Error message should be visible
         TextView errorView = viewHolder.itemView.findViewById(R.id.text_error_message);
         assertTrue("Error view should be visible", errorView.getVisibility() == View.VISIBLE);
     }
@@ -327,7 +313,6 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Error message should be hidden
         TextView errorView = viewHolder.itemView.findViewById(R.id.text_error_message);
         assertTrue("Error view should be hidden", errorView.getVisibility() == View.GONE);
     }
@@ -348,10 +333,8 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Click the item
         viewHolder.itemView.performClick();
 
-        // Verify listener was called
         assertEquals(1, listener.clickCount);
         assertEquals("job-click", listener.clickedJob.getId());
     }
@@ -372,10 +355,8 @@ public class CronJobAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Long click the item
         viewHolder.itemView.performLongClick();
 
-        // Verify listener was called
         assertEquals(1, listener.longClickCount);
         assertEquals("job-longclick", listener.longClickedJob.getId());
     }
@@ -387,7 +368,6 @@ public class CronJobAdapterInstrumentedTest {
 
         assertEquals(1, adapter.getItemCount());
 
-        // Update the job with same ID
         CronJob updatedJob = createTestJob("job-same", "Updated Job", "7200000");
         updatedJob.setSuccessCount(10);
 
@@ -442,7 +422,6 @@ public class CronJobAdapterInstrumentedTest {
         job.setSuccessCount(5);
         adapter.submitList(java.util.Arrays.asList(job));
 
-        // Update the job
         CronJob updatedJob = createTestJob("job-update", "Updated Name", "7200000");
         updatedJob.setSuccessCount(10);
 
@@ -483,7 +462,6 @@ public class CronJobAdapterInstrumentedTest {
 
             adapter.onBindViewHolder(viewHolder, 0);
 
-            // Schedule should be formatted and displayed
             TextView scheduleView = viewHolder.itemView.findViewById(R.id.text_schedule);
             assertNotNull("Schedule view should exist", scheduleView);
             assertTrue("Schedule should be displayed", scheduleView.getText().toString().length() > 0);
@@ -506,9 +484,6 @@ public class CronJobAdapterInstrumentedTest {
 
     @Test
     public void onBindViewHolder_withNullJob_doesNotCrash() {
-        // This test verifies the adapter handles edge cases gracefully
-        // In practice, onBindViewHolder should never receive a null item
-        // but we verify the adapter works correctly with normal data
         CronJob job = createTestJob("job-normal", "Normal Job", "3600000");
         adapter.submitList(java.util.Arrays.asList(job));
 
@@ -520,14 +495,10 @@ public class CronJobAdapterInstrumentedTest {
                 0
         );
 
-        // Should not crash
         adapter.onBindViewHolder(viewHolder, 0);
         assertNotNull("ViewHolder should be bound", viewHolder.itemView);
     }
 
-    /**
-     * Test click listener implementation.
-     */
     private static class TestOnCronJobClickListener implements CronJobAdapter.OnCronJobClickListener {
         private int clickCount = 0;
         private int longClickCount = 0;
@@ -547,9 +518,6 @@ public class CronJobAdapterInstrumentedTest {
         }
     }
 
-    /**
-     * Helper method to create a test cron job.
-     */
     private CronJob createTestJob(String id, String name, String schedule) {
         CronJob job = new CronJob(id, name, "Test Prompt", schedule);
         job.setEnabled(true);

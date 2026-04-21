@@ -37,16 +37,14 @@ public class MainActivityTest {
 
     @Before
     public void setUp() {
-        // Clear SharedPreferences before each test
         SharedPreferences chatPrefs = getApplicationContext()
                 .getSharedPreferences(CHAT_PREFS, Context.MODE_PRIVATE);
         chatPrefs.edit().clear().commit();
-        
+
         SharedPreferences settingsPrefs = getApplicationContext()
                 .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
         settingsPrefs.edit().clear().commit();
-        
-        // Mark onboarding as completed so tests can access MainActivity directly
+
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
         settingsManager.setOnboardingCompleted(true);
     }
@@ -83,7 +81,6 @@ public class MainActivityTest {
 
     @Test
     public void onCreate_withSavedSessions_loadsPersistedSessions() {
-        // Pre-populate sessions
         ChatRepository repository = new ChatRepository(getApplicationContext());
         List<ChatSession> sessions = Arrays.asList(
                 new ChatSession("session-1", "First Chat", 100L),
@@ -106,10 +103,10 @@ public class MainActivityTest {
             scenario.onActivity(activity -> {
                 RecyclerView recyclerView = activity.findViewById(R.id.recycler_chat_sessions);
                 int initialCount = recyclerView.getAdapter().getItemCount();
-                
+
                 activity.findViewById(R.id.button_new_chat).performClick();
-                
-                assertEquals("Should add one new session", 
+
+                assertEquals("Should add one new session",
                         initialCount + 1, recyclerView.getAdapter().getItemCount());
             });
         }
@@ -120,19 +117,14 @@ public class MainActivityTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
-
-                // Open drawer first and wait for animation
                 drawerLayout.openDrawer(GravityCompat.START);
             });
 
-            // Wait for drawer to fully open with longer timeout
             waitForDrawerState(scenario, true);
 
-            // Small delay to ensure drawer is stable after animation
             TestUtils.waitFor(100);
 
             scenario.onActivity(activity -> {
-                // Verify drawer is open before clicking
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
                 assertTrue("Drawer should be open before clicking button",
                         drawerLayout.isDrawerOpen(GravityCompat.START));
@@ -140,7 +132,6 @@ public class MainActivityTest {
                 activity.findViewById(R.id.button_new_chat).performClick();
             });
 
-            // Wait for drawer to close
             waitForDrawerState(scenario, false);
         }
     }
@@ -150,19 +141,14 @@ public class MainActivityTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
-
-                // Open drawer first and wait for animation
                 drawerLayout.openDrawer(GravityCompat.START);
             });
 
-            // Wait for drawer to fully open with longer timeout
             waitForDrawerState(scenario, true);
 
-            // Small delay to ensure drawer is stable after animation
             TestUtils.waitFor(100);
 
             scenario.onActivity(activity -> {
-                // Verify drawer is open before clicking
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
                 assertTrue("Drawer should be open before clicking button",
                         drawerLayout.isDrawerOpen(GravityCompat.START));
@@ -170,7 +156,6 @@ public class MainActivityTest {
                 activity.findViewById(R.id.button_settings).performClick();
             });
 
-            // Wait for drawer to close
             waitForDrawerState(scenario, false);
         }
     }
@@ -179,7 +164,6 @@ public class MainActivityTest {
     public void updateSessionMetadata_withNullSessionId_doesNotCrash() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Should not crash
                 activity.updateSessionMetadata(null, "Test message", System.currentTimeMillis());
             });
         }
@@ -189,7 +173,6 @@ public class MainActivityTest {
     public void updateSessionMetadata_withEmptySessionId_doesNotCrash() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Should not crash
                 activity.updateSessionMetadata("", "Test message", System.currentTimeMillis());
             });
         }
@@ -197,7 +180,6 @@ public class MainActivityTest {
 
     @Test
     public void updateSessionMetadata_withNewChatTitle_generatesTitle() {
-        // Pre-populate with a "New Chat" session
         ChatRepository repository = new ChatRepository(getApplicationContext());
         List<ChatSession> sessions = Arrays.asList(
                 new ChatSession("session-1", "New Chat", 100L)
@@ -209,7 +191,6 @@ public class MainActivityTest {
                 String firstUserMessage = "Hello, this is my first message";
                 activity.updateSessionMetadata("session-1", firstUserMessage, 200L);
 
-                // Verify the session was updated
                 List<ChatSession> updatedSessions = repository.loadSessions();
                 assertEquals("Should have 1 session", 1, updatedSessions.size());
                 assertFalse("Title should not be 'New Chat' after update", 
@@ -224,7 +205,6 @@ public class MainActivityTest {
 
     @Test
     public void updateSessionMetadata_withExistingTitle_keepsTitle() {
-        // Pre-populate with a custom-titled session
         ChatRepository repository = new ChatRepository(getApplicationContext());
         List<ChatSession> sessions = Arrays.asList(
                 new ChatSession("session-1", "My Custom Title", 100L)
@@ -235,7 +215,6 @@ public class MainActivityTest {
             scenario.onActivity(activity -> {
                 activity.updateSessionMetadata("session-1", "New message", 200L);
 
-                // Verify the title was not changed
                 List<ChatSession> updatedSessions = repository.loadSessions();
                 assertEquals("Should have 1 session", 1, updatedSessions.size());
                 assertEquals("Custom title should be preserved", 
@@ -277,7 +256,6 @@ public class MainActivityTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Update the oldest session to make it newest
                 activity.updateSessionMetadata("session-1", "Updated message", 400L);
 
                 List<ChatSession> updatedSessions = repository.loadSessions();
@@ -293,7 +271,6 @@ public class MainActivityTest {
     public void updateSessionMetadata_withNonExistentSession_doesNotCrash() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Should not crash when session doesn't exist
                 activity.updateSessionMetadata("non-existent", "Message", System.currentTimeMillis());
             });
         }
@@ -303,12 +280,10 @@ public class MainActivityTest {
     public void multipleSessionCreation_persistsAllSessions() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Create multiple sessions
                 activity.findViewById(R.id.button_new_chat).performClick();
                 activity.findViewById(R.id.button_new_chat).performClick();
                 activity.findViewById(R.id.button_new_chat).performClick();
 
-                // Verify sessions are persisted
                 ChatRepository repository = new ChatRepository(getApplicationContext());
                 List<ChatSession> loadedSessions = repository.loadSessions();
                 assertTrue("Should have at least 4 sessions (1 initial + 3 new)", 
@@ -361,7 +336,6 @@ public class MainActivityTest {
 
     @Test
     public void savedSessions_areSortedByUpdatedAtDescending() {
-        // Save sessions in non-sorted order
         ChatRepository repository = new ChatRepository(getApplicationContext());
         List<ChatSession> sessions = Arrays.asList(
                 new ChatSession("oldest", "Oldest", 100L),
@@ -372,7 +346,6 @@ public class MainActivityTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Load and verify sorting
                 List<ChatSession> loadedSessions = repository.loadSessions();
                 assertEquals("Newest session should be first", "newest", loadedSessions.get(0).getId());
                 assertEquals("Middle session should be second", "middle", loadedSessions.get(1).getId());
@@ -391,13 +364,10 @@ public class MainActivityTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Simulate rename with empty string
                 ChatSession session = repository.loadSessions().get(0);
-                
-                // The rename method should handle empty titles
+
                 activity.getSupportFragmentManager().executePendingTransactions();
-                
-                // Verify title was not changed to empty
+
                 List<ChatSession> updatedSessions = repository.loadSessions();
                 assertEquals("Original Title", updatedSessions.get(0).getTitle());
             });
@@ -417,15 +387,11 @@ public class MainActivityTest {
                 RecyclerView recyclerView = activity.findViewById(R.id.recycler_chat_sessions);
                 int initialCount = recyclerView.getAdapter().getItemCount();
                 
-                // Get the only session and delete it
                 List<ChatSession> loadedSessions = repository.loadSessions();
                 ChatSession sessionToDelete = loadedSessions.get(0);
-                
-                // Manually invoke deletion
                 loadedSessions.remove(sessionToDelete);
                 repository.deleteSession(sessionToDelete.getId(), loadedSessions);
                 
-                // When last session is deleted, a new one should be created
                 List<ChatSession> sessionsAfterDelete = repository.loadSessions();
                 assertTrue("Should have at least one session after deleting the last one",
                         sessionsAfterDelete.size() >= 0);
@@ -447,16 +413,13 @@ public class MainActivityTest {
                 RecyclerView recyclerView = activity.findViewById(R.id.recycler_chat_sessions);
                 int initialCount = recyclerView.getAdapter().getItemCount();
                 
-                // Verify we have 2 sessions
                 assertEquals(2, initialCount);
-                
-                // Delete one session
+
                 List<ChatSession> loadedSessions = repository.loadSessions();
                 ChatSession sessionToDelete = loadedSessions.get(0);
                 loadedSessions.remove(sessionToDelete);
                 repository.deleteSession(sessionToDelete.getId(), loadedSessions);
                 
-                // Should have 1 session remaining
                 assertEquals(1, repository.loadSessions().size());
             });
         }
@@ -468,7 +431,6 @@ public class MainActivityTest {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
                 
-                // Open and close multiple times
                 for (int i = 0; i < 5; i++) {
                     drawerLayout.openDrawer(GravityCompat.START);
                     try {
@@ -484,7 +446,6 @@ public class MainActivityTest {
                     }
                 }
                 
-                // Should not crash
                 assertNotNull(drawerLayout);
             });
         }
@@ -504,10 +465,7 @@ public class MainActivityTest {
             scenario.onActivity(activity -> {
                 RecyclerView recyclerView = activity.findViewById(R.id.recycler_chat_sessions);
                 
-                // Verify sessions are loaded
                 assertEquals(3, recyclerView.getAdapter().getItemCount());
-                
-                // Rapid session changes should not crash
                 assertNotNull(activity.getSupportActionBar());
             });
         }
@@ -573,13 +531,11 @@ public class MainActivityTest {
 
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Update multiple sessions
                 activity.updateSessionMetadata("session-1", "Message 1", 300L);
                 activity.updateSessionMetadata("session-2", "Message 2", 400L);
                 
                 List<ChatSession> updatedSessions = repository.loadSessions();
                 
-                // Sessions should be sorted by updated time (newest first)
                 assertEquals("session-2", updatedSessions.get(0).getId());
                 assertEquals("session-1", updatedSessions.get(1).getId());
             });
@@ -591,7 +547,6 @@ public class MainActivityTest {
         ChatRepository repository = new ChatRepository(getApplicationContext());
         List<ChatSession> sessions = new ArrayList<>();
         
-        // Create many sessions
         for (int i = 0; i < 50; i++) {
             sessions.add(new ChatSession("session-" + i, "Chat " + i, (long) i));
         }
@@ -601,13 +556,11 @@ public class MainActivityTest {
             scenario.onActivity(activity -> {
                 RecyclerView recyclerView = activity.findViewById(R.id.recycler_chat_sessions);
                 int initialCount = recyclerView.getAdapter().getItemCount();
-                
+
                 assertEquals(50, initialCount);
-                
-                // Create new session
+
                 activity.findViewById(R.id.button_new_chat).performClick();
-                
-                // Should have one more session
+
                 assertEquals(51, recyclerView.getAdapter().getItemCount());
             });
         }
@@ -617,7 +570,6 @@ public class MainActivityTest {
     public void navigationController_nullCheck_doesNotCrash() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
-                // Try to trigger navigation-related operations
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
                 drawerLayout.openDrawer(GravityCompat.START);
                 
@@ -627,10 +579,8 @@ public class MainActivityTest {
                     e.printStackTrace();
                 }
                 
-                // Click settings while drawer is open
                 activity.findViewById(R.id.button_settings).performClick();
-                
-                // Should not crash
+
                 assertNotNull(activity);
             });
         }
@@ -638,12 +588,10 @@ public class MainActivityTest {
 
     @Test
     public void sessionList_emptyState_createsInitialSession() {
-        // Start with completely empty state
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 RecyclerView recyclerView = activity.findViewById(R.id.recycler_chat_sessions);
                 
-                // Should have at least one session (the initial one)
                 assertTrue("Should have initial session",
                         recyclerView.getAdapter().getItemCount() >= 1);
             });
@@ -656,12 +604,9 @@ public class MainActivityTest {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
                 
-                // Initially drawer should be closed
                 assertFalse(drawerLayout.isDrawerOpen(GravityCompat.START));
-                
-                // ActionBarDrawerToggle should be set up
+
                 assertNotNull(activity.getSupportActionBar());
-                // Verify the action bar is properly initialized
                 assertNotNull(activity.getSupportActionBar().getTitle());
             });
         }
@@ -702,18 +647,16 @@ public class MainActivityTest {
                 assertEquals(2, recyclerView.getAdapter().getItemCount());
             });
 
-            // Recreate activity (simulates rotation)
             scenario.recreate();
 
             scenario.onActivity(activity -> {
                 RecyclerView recyclerView = activity.findViewById(R.id.recycler_chat_sessions);
-                // Sessions should be reloaded
                 assertEquals(2, recyclerView.getAdapter().getItemCount());
             });
         }
     }
     private void waitForDrawerState(ActivityScenario<MainActivity> scenario, boolean expectedOpen) {
-        long timeoutAt = System.currentTimeMillis() + 3000L;  // Increased timeout to 3 seconds
+        long timeoutAt = System.currentTimeMillis() + 3000L;
         boolean[] stateMatches = new boolean[1];
 
         do {
@@ -724,12 +667,11 @@ public class MainActivityTest {
             });
 
             if (stateMatches[0]) {
-                // Wait a bit more to ensure drawer animation is fully complete
                 TestUtils.waitFor(50);
                 return;
             }
 
-            TestUtils.waitFor(100);  // Increased poll interval
+            TestUtils.waitFor(100);
         } while (System.currentTimeMillis() < timeoutAt);
 
         scenario.onActivity(activity -> {

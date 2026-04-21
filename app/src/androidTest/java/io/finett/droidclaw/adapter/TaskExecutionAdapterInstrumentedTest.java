@@ -24,10 +24,6 @@ import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.TaskExecutionRecord;
 import io.finett.droidclaw.util.TestThemeHelper;
 
-/**
- * Instrumented tests for TaskExecutionAdapter.
- * Tests the adapter's RecyclerView binding for execution records.
- */
 @RunWith(AndroidJUnit4.class)
 public class TaskExecutionAdapterInstrumentedTest {
 
@@ -122,7 +118,6 @@ public class TaskExecutionAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Verify views are bound
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_execution_time));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_duration));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_tokens));
@@ -363,10 +358,8 @@ public class TaskExecutionAdapterInstrumentedTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Click the item
         viewHolder.itemView.performClick();
 
-        // Verify listener was called
         assertEquals(1, listener.clickCount);
         assertEquals("task-click", listener.clickedRecord.getTaskId());
     }
@@ -392,7 +385,6 @@ public class TaskExecutionAdapterInstrumentedTest {
 
             adapter.onBindViewHolder(viewHolder, 0);
 
-            // Should bind without crashing
             assertNotNull("ViewHolder should be bound", viewHolder.itemView);
         }
     }
@@ -492,7 +484,6 @@ public class TaskExecutionAdapterInstrumentedTest {
         adapter.onBindViewHolder(viewHolder, 0);
 
         TextView errorView = viewHolder.itemView.findViewById(R.id.text_error_message);
-        // With null error, preview should be shown
         TextView previewView = viewHolder.itemView.findViewById(R.id.text_preview_content);
         assertTrue("Preview should be visible", previewView.getVisibility() == View.VISIBLE);
     }
@@ -601,7 +592,6 @@ public class TaskExecutionAdapterInstrumentedTest {
             TextView timeView = viewHolder.itemView.findViewById(R.id.text_execution_time);
             String timeText = timeView.getText().toString();
 
-            // Should have formatted date/time (not just raw timestamp)
             assertTrue("Time should be formatted", timeText.length() > 0);
         }
     }
@@ -644,9 +634,6 @@ public class TaskExecutionAdapterInstrumentedTest {
         assertNotNull("ViewHolder should be created", viewHolder);
     }
 
-    /**
-     * Test click listener implementation.
-     */
     private static class TestOnTaskExecutionClickListener implements TaskExecutionAdapter.OnTaskExecutionClickListener {
         private int clickCount = 0;
         private TaskExecutionRecord clickedRecord;
@@ -658,9 +645,6 @@ public class TaskExecutionAdapterInstrumentedTest {
         }
     }
 
-    /**
-     * Helper method to create a test execution record.
-     */
     private TaskExecutionRecord createTestRecord(String taskId, String sessionId, int taskType, long startTime) {
         TaskExecutionRecord record = new TaskExecutionRecord(taskId, sessionId, taskType, startTime);
         record.setEndTime(startTime + 1000L); // Default 1 second duration

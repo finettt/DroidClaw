@@ -104,9 +104,8 @@ public class ChatAdapterTest {
 
     @Test
     public void updateLastMessage_emptyAdapter_doesNotCrash() {
-        // Should not crash when adapter is empty
         adapter.updateLastMessage("Some content");
-        
+
         assertEquals(0, adapter.getItemCount());
     }
 
@@ -193,7 +192,6 @@ public class ChatAdapterTest {
         List<ChatMessage> messages1 = adapter.getMessages();
         List<ChatMessage> messages2 = adapter.getMessages();
 
-        // Should return new list instances
         assertNotNull(messages1);
         assertNotNull(messages2);
         assertEquals(messages1.size(), messages2.size());
@@ -206,7 +204,6 @@ public class ChatAdapterTest {
         List<ChatMessage> messages = adapter.getMessages();
         messages.add(new ChatMessage("Should not affect adapter", ChatMessage.TYPE_USER));
 
-        // Adapter should still have only 1 message
         assertEquals(1, adapter.getItemCount());
     }
 
@@ -310,24 +307,19 @@ public class ChatAdapterTest {
 
     @Test
     public void sequentialOperations_maintainCorrectState() {
-        // Add messages
         adapter.addMessage(new ChatMessage("First", ChatMessage.TYPE_USER));
         adapter.addMessage(new ChatMessage("Second", ChatMessage.TYPE_ASSISTANT));
         assertEquals(2, adapter.getItemCount());
 
-        // Update last message
         adapter.updateLastMessage("Updated second");
         assertEquals("Updated second", adapter.getMessages().get(1).getContent());
 
-        // Add more messages
         adapter.addMessage(new ChatMessage("Third", ChatMessage.TYPE_USER));
         assertEquals(3, adapter.getItemCount());
 
-        // Clear all
         adapter.clearMessages();
         assertEquals(0, adapter.getItemCount());
 
-        // Set new messages
         adapter.setMessages(Arrays.asList(
                 new ChatMessage("New message", ChatMessage.TYPE_USER)
         ));
@@ -336,7 +328,6 @@ public class ChatAdapterTest {
 
     @Test
     public void addMessage_toolCallMessage_increasesCount() {
-        // Create a tool call message
         ChatMessage toolCallMessage = new ChatMessage(null, ChatMessage.TYPE_TOOL_CALL);
         adapter.addMessage(toolCallMessage);
 
@@ -345,7 +336,6 @@ public class ChatAdapterTest {
 
     @Test
     public void addMessage_toolResultMessage_increasesCount() {
-        // Create a tool result message
         ChatMessage toolResultMessage = new ChatMessage("Result content", ChatMessage.TYPE_TOOL_RESULT);
         adapter.addMessage(toolResultMessage);
 
@@ -426,7 +416,6 @@ public class ChatAdapterTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Verify the view holder has the correct views
         assertNotNull(viewHolder.itemView.findViewById(R.id.toolCallIcon));
         assertNotNull(viewHolder.itemView.findViewById(R.id.toolCallText));
         assertNotNull(viewHolder.itemView.findViewById(R.id.toolCallArgs));
@@ -447,7 +436,6 @@ public class ChatAdapterTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Verify the view holder has the correct views
         assertNotNull(viewHolder.itemView.findViewById(R.id.toolResultLabel));
         assertNotNull(viewHolder.itemView.findViewById(R.id.toolResultContent));
     }
@@ -482,8 +470,6 @@ public class ChatAdapterTest {
         assertEquals(ChatMessage.TYPE_TOOL_CALL, messages.get(1).getType());
         assertEquals("Result", messages.get(2).getContent());
     }
-
-    // --- TYPE_SYSTEM tests for identity system support ---
 
     @Test
     public void addMessage_systemMessage_increasesCount() {
@@ -561,8 +547,6 @@ public class ChatAdapterTest {
         assertEquals("assistant", assistantMessage.toApiMessage().get("role").getAsString());
     }
 
-    // ==================== CONTEXT CARD TESTS ====================
-
     @Test
     public void addMessage_contextCardMessage_increasesCount() {
         ChatMessage contextCard = new ChatMessage("Context content", ChatMessage.TYPE_CONTEXT_CARD);
@@ -626,7 +610,6 @@ public class ChatAdapterTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Verify the view holder has the correct views
         assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardHeader));
         assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardIcon));
         assertNotNull(viewHolder.itemView.findViewById(R.id.contextCardTitle));
@@ -656,7 +639,6 @@ public class ChatAdapterTest {
 
         TextView contentText = viewHolder.itemView.findViewById(R.id.contextCardContent);
         assertNotNull("Content text view should exist", contentText);
-        // Content may be rendered as markdown, so check it contains key text
         assertTrue("Content should contain task text",
                 contentText.getText().toString().contains("Details here") ||
                 contentText.getText().toString().contains("Task Result"));
@@ -829,13 +811,12 @@ public class ChatAdapterTest {
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
-        // Add all message types
         adapter.addMessage(new ChatMessage("System", ChatMessage.TYPE_SYSTEM));
         adapter.addMessage(new ChatMessage("User", ChatMessage.TYPE_USER));
         adapter.addMessage(new ChatMessage("Assistant", ChatMessage.TYPE_ASSISTANT));
         adapter.addMessage(new ChatMessage(null, ChatMessage.TYPE_TOOL_CALL));
         adapter.addMessage(new ChatMessage("Tool result", ChatMessage.TYPE_TOOL_RESULT));
-        
+
         ChatMessage contextCard = new ChatMessage("Context", ChatMessage.TYPE_CONTEXT_CARD);
         contextCard.setIsContextCard(true);
         contextCard.setContextType("heartbeat");
@@ -844,7 +825,6 @@ public class ChatAdapterTest {
 
         assertEquals(6, adapter.getItemCount());
 
-        // Verify each view type
         assertEquals(ChatMessage.TYPE_SYSTEM, adapter.getItemViewType(0));
         assertEquals(ChatMessage.TYPE_USER, adapter.getItemViewType(1));
         assertEquals(ChatMessage.TYPE_ASSISTANT, adapter.getItemViewType(2));
@@ -852,7 +832,6 @@ public class ChatAdapterTest {
         assertEquals(ChatMessage.TYPE_TOOL_RESULT, adapter.getItemViewType(4));
         assertEquals(ChatMessage.TYPE_CONTEXT_CARD, adapter.getItemViewType(5));
 
-        // Verify all view holders can be created
         for (int i = 0; i < 6; i++) {
             ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
                     recyclerView,
@@ -861,8 +840,6 @@ public class ChatAdapterTest {
             assertNotNull("ViewHolder for type " + i + " should not be null", viewHolder);
         }
     }
-
-    // ==================== ATTACHMENT TESTS ====================
 
     @Test
     public void addMessage_attachmentMessage_increasesCount() {
@@ -914,7 +891,6 @@ public class ChatAdapterTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // AttachmentMessageViewHolder uses Chip as the root view
         com.google.android.material.chip.Chip chip = (com.google.android.material.chip.Chip) viewHolder.itemView;
         assertNotNull(chip.getText());
         assertTrue("Chip text should contain filename",
@@ -953,7 +929,6 @@ public class ChatAdapterTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Verify attachments container exists
         android.widget.LinearLayout attachmentsContainer = viewHolder.itemView.findViewById(R.id.attachmentsContainer);
         assertNotNull(attachmentsContainer);
     }
@@ -974,7 +949,6 @@ public class ChatAdapterTest {
 
         adapter.onBindViewHolder(viewHolder, 0);
 
-        // Verify files container exists in tool result
         android.widget.LinearLayout filesContainer = viewHolder.itemView.findViewById(R.id.toolResultFilesContainer);
         assertNotNull(filesContainer);
     }
@@ -985,7 +959,6 @@ public class ChatAdapterTest {
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
-        // Add all message types
         adapter.addMessage(new ChatMessage("System", ChatMessage.TYPE_SYSTEM));
         adapter.addMessage(new ChatMessage("User", ChatMessage.TYPE_USER));
         adapter.addMessage(new ChatMessage("Assistant", ChatMessage.TYPE_ASSISTANT));
@@ -1000,7 +973,6 @@ public class ChatAdapterTest {
 
         assertEquals(7, adapter.getItemCount());
 
-        // Verify all view types
         int[] expectedTypes = {
                 ChatMessage.TYPE_SYSTEM,
                 ChatMessage.TYPE_USER,

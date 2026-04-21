@@ -24,16 +24,11 @@ import org.junit.runner.RunWith;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.TaskResult;
 
-/**
- * Instrumented tests for ZenResultFragment.
- * Tests the distraction-free task result viewing functionality.
- */
 @RunWith(AndroidJUnit4.class)
 public class ZenResultFragmentInstrumentedTest {
 
     @Before
     public void setUp() {
-        // Clear SharedPreferences before each test
         getApplicationContext()
                 .getSharedPreferences("chat_messages", Context.MODE_PRIVATE)
                 .edit()
@@ -43,7 +38,6 @@ public class ZenResultFragmentInstrumentedTest {
 
     @After
     public void tearDown() {
-        // Clean up after tests
         getApplicationContext()
                 .getSharedPreferences("chat_messages", Context.MODE_PRIVATE)
                 .edit()
@@ -72,11 +66,9 @@ public class ZenResultFragmentInstrumentedTest {
                 assertNotNull("Timestamp should be displayed", timestampView);
                 assertNotNull("Content should be displayed", contentView);
 
-                // Verify title contains heartbeat label
                 String title = titleView.getText().toString();
                 assertTrue("Title should contain 'Heartbeat'", title.contains("Heartbeat"));
 
-                // Verify content is displayed
                 String content = contentView.getText().toString();
                 assertTrue("Content should display task result text",
                         content.contains("All systems operational"));
@@ -224,7 +216,6 @@ public class ZenResultFragmentInstrumentedTest {
                 assertNotNull("Content view should exist", contentView);
 
                 String content = contentView.getText().toString();
-                // Markdown should be rendered, so raw markdown syntax shouldn't appear
                 assertTrue("Content should be rendered (should contain 'Task Results')",
                         content.contains("Task Results"));
                 assertTrue("Content should contain 'Status'",
@@ -251,7 +242,6 @@ public class ZenResultFragmentInstrumentedTest {
                 assertNotNull("Timestamp view should exist", timestampView);
 
                 String timestampText = timestampView.getText().toString();
-                // Timestamp should be formatted (not just a number)
                 assertTrue("Timestamp should be formatted (contain text)",
                         timestampText.length() > 0 && !timestampText.equals("1000"));
             });
@@ -278,7 +268,6 @@ public class ZenResultFragmentInstrumentedTest {
                 TextView contentView = view.findViewById(R.id.resultContent);
                 String content = contentView.getText().toString();
 
-                // Content should be displayed (may be truncated in UI but should not crash)
                 assertNotNull("Content should be displayed", content);
                 assertTrue("Content view should have text", content.length() > 0);
             });

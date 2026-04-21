@@ -23,10 +23,6 @@ import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.repository.TaskRepository;
 
-/**
- * Instrumented tests for CronJobDetailFragment.
- * Tests the job details display and actions.
- */
 @RunWith(AndroidJUnit4.class)
 public class CronJobDetailFragmentInstrumentedTest {
 
@@ -34,7 +30,6 @@ public class CronJobDetailFragmentInstrumentedTest {
 
     @Before
     public void setUp() {
-        // Clear SharedPreferences before each test
         getApplicationContext()
                 .getSharedPreferences("droidclaw_tasks", Context.MODE_PRIVATE)
                 .edit()
@@ -46,7 +41,6 @@ public class CronJobDetailFragmentInstrumentedTest {
 
     @After
     public void tearDown() {
-        // Clean up after tests
         getApplicationContext()
                 .getSharedPreferences("droidclaw_tasks", Context.MODE_PRIVATE)
                 .edit()
@@ -56,7 +50,6 @@ public class CronJobDetailFragmentInstrumentedTest {
 
     @Test
     public void launch_withCronJob_displaysAllFields() {
-        // Create and save a cron job
         CronJob job = new CronJob("cron-detail-1", "Daily Report", "Generate daily report", "86400000");
         job.setEnabled(true);
         job.setCreatedAt(1000L);
@@ -66,7 +59,6 @@ public class CronJobDetailFragmentInstrumentedTest {
         job.setTotalExecutionTime(60000L); // 60 seconds total
         repository.saveCronJob(job);
 
-        // Launch fragment with job ID
         android.os.Bundle args = new android.os.Bundle();
         args.putString("job_id", job.getId());
 
@@ -77,7 +69,6 @@ public class CronJobDetailFragmentInstrumentedTest {
             scenario.onFragment(fragment -> {
                 View view = fragment.requireView();
 
-                // Check all text views exist
                 TextView jobName = view.findViewById(R.id.text_job_name);
                 TextView jobPrompt = view.findViewById(R.id.text_job_prompt);
                 TextView schedule = view.findViewById(R.id.text_schedule);
@@ -98,10 +89,8 @@ public class CronJobDetailFragmentInstrumentedTest {
                 assertNotNull("Total runs view should exist", totalRuns);
                 assertNotNull("Last run view should exist", lastRun);
 
-                // Verify content is displayed
                 assertNotNull("Job name should not be null", jobName.getText());
                 assertNotNull("Job prompt should not be null", jobPrompt.getText());
-                // Schedule is displayed - format depends on the schedule string
                 String scheduleText = schedule.getText().toString();
                 assertTrue("Schedule should be displayed", scheduleText.length() > 0 && !scheduleText.contains("Unknown"));
             });
@@ -202,13 +191,10 @@ public class CronJobDetailFragmentInstrumentedTest {
                 TextView totalRuns = view.findViewById(R.id.text_total_runs);
                 TextView avgDuration = view.findViewById(R.id.text_avg_duration);
 
-                // Success rate should be 80% (8/10)
                 assertTrue("Success rate should contain 80", successRate.getText().toString().contains("80"));
 
-                // Total runs should be 10
                 assertTrue("Total runs should contain 10", totalRuns.getText().toString().contains("10"));
 
-                // Average duration should be around 15s
                 String avgText = avgDuration.getText().toString();
                 assertTrue("Avg duration should contain 15", avgText.contains("15") || avgText.contains("15.0"));
             });
@@ -253,7 +239,6 @@ public class CronJobDetailFragmentInstrumentedTest {
             scenario.onFragment(fragment -> {
                 View view = fragment.requireView();
 
-                // Check all buttons exist
                 assertNotNull("View history button should exist",
                         view.findViewById(R.id.button_view_history));
                 assertNotNull("Run now button should exist",
@@ -270,13 +255,10 @@ public class CronJobDetailFragmentInstrumentedTest {
 
     @Test
     public void launch_withJobFromDifferentRepositoryInstance_displaysCorrectly() {
-        // Save job with first repository
         CronJob job = new CronJob("cron-persist-1", "Persist Job", "Test prompt", "3600000");
         repository.saveCronJob(job);
 
-        // Create new repository instance (simulating new fragment)
         TaskRepository newRepository = new TaskRepository(getApplicationContext());
-        // Re-save with new repository to ensure it's accessible
         newRepository.saveCronJob(job);
 
         android.os.Bundle args = new android.os.Bundle();
@@ -297,7 +279,6 @@ public class CronJobDetailFragmentInstrumentedTest {
 
     @Test
     public void launch_withNullArguments_showsEmptyState() {
-        // Launch without arguments - should handle gracefully
         try (androidx.fragment.app.testing.FragmentScenario<CronJobDetailFragment> scenario =
                      androidx.fragment.app.testing.FragmentScenario.launchInContainer(
                                      CronJobDetailFragment.class, null, R.style.Theme_DroidClaw)) {
@@ -305,9 +286,7 @@ public class CronJobDetailFragmentInstrumentedTest {
                 View view = fragment.requireView();
                 TextView jobName = view.findViewById(R.id.text_job_name);
 
-                // With null job, name should be empty or show placeholder
                 String text = jobName.getText().toString();
-                // Either empty or shows default
                 assertTrue("Job name should be empty or show default", text.isEmpty() || text.contains("Unknown"));
             });
         }
@@ -358,7 +337,6 @@ public class CronJobDetailFragmentInstrumentedTest {
                     View view = fragment.requireView();
                     TextView scheduleView = view.findViewById(R.id.text_schedule);
 
-                    // Schedule should be displayed (formatted)
                     String scheduleText = scheduleView.getText().toString();
                     assertTrue("Schedule should be displayed for: " + schedule,
                             scheduleText.length() > 0 && !scheduleText.contains("Unknown"));

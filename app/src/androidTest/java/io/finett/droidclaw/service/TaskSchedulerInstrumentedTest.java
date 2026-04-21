@@ -26,10 +26,6 @@ import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.worker.CronJobWorker;
 import io.finett.droidclaw.worker.HeartbeatWorker;
 
-/**
- * Instrumented tests for TaskScheduler.
- * Tests WorkManager scheduling and cancellation using WorkManager's testing utilities.
- */
 @RunWith(AndroidJUnit4.class)
 public class TaskSchedulerInstrumentedTest {
 
@@ -40,7 +36,6 @@ public class TaskSchedulerInstrumentedTest {
     public void setUp() {
         Context context = getApplicationContext();
         
-        // Initialize WorkManager for testing
         WorkManagerTestInitHelper.initializeTestWorkManager(context);
         
         taskScheduler = new TaskScheduler(context);
@@ -49,7 +44,6 @@ public class TaskSchedulerInstrumentedTest {
 
     @After
     public void tearDown() {
-        // Cancel all work
         workManager.cancelAllWork();
         try {
             Thread.sleep(100);
@@ -58,17 +52,13 @@ public class TaskSchedulerInstrumentedTest {
         }
     }
 
-    // ==================== HEARTBEAT SCHEDULING TESTS ====================
-
     @Test
     public void scheduleHeartbeat_enqueuesPeriodicWork() throws Exception {
         HeartbeatConfig config = new HeartbeatConfig(true, 60 * 60 * 1000L, 0L); // 1 hour
         taskScheduler.scheduleHeartbeat(config);
 
-        // Give WorkManager time to schedule
         Thread.sleep(100);
 
-        // Verify work is enqueued
         List<WorkInfo> workInfos = workManager
                 .getWorkInfosForUniqueWork("heartbeat_task")
                 .get(5, TimeUnit.SECONDS);
@@ -92,7 +82,6 @@ public class TaskSchedulerInstrumentedTest {
 
     @Test
     public void scheduleHeartbeat_withDisabledHeartbeat_stillEnqueues() throws Exception {
-        // Even disabled heartbeats are scheduled (worker checks disabled state)
         HeartbeatConfig config = new HeartbeatConfig(false, 30 * 60 * 1000L, 0L);
         taskScheduler.scheduleHeartbeat(config);
 
@@ -112,7 +101,6 @@ public class TaskSchedulerInstrumentedTest {
 
         Thread.sleep(100);
 
-        // Schedule again with different interval
         HeartbeatConfig config2 = new HeartbeatConfig(true, 60 * 60 * 1000L, 0L);
         taskScheduler.scheduleHeartbeat(config2);
 
@@ -122,7 +110,6 @@ public class TaskSchedulerInstrumentedTest {
                 .getWorkInfosForUniqueWork("heartbeat_task")
                 .get(5, TimeUnit.SECONDS);
 
-        // Should only have one work instance (replaced)
         assertTrue("Should have only 1 work instance", workInfos.size() <= 1);
     }
 
@@ -141,7 +128,6 @@ public class TaskSchedulerInstrumentedTest {
                 .getWorkInfosForUniqueWork("heartbeat_task")
                 .get(5, TimeUnit.SECONDS);
 
-        // WorkManager marks work as CANCELLED rather than removing it
         boolean isCancelled = workInfos.isEmpty() || 
                 workInfos.get(0).getState() == WorkInfo.State.CANCELLED;
         assertTrue("Heartbeat work should be cancelled", isCancelled);
@@ -149,7 +135,6 @@ public class TaskSchedulerInstrumentedTest {
 
     @Test
     public void cancelHeartbeat_whenNotScheduled_doesNotCrash() {
-        // Should not crash when cancelling non-existent work
         taskScheduler.cancelHeartbeat();
     }
 
@@ -224,7 +209,6 @@ public class TaskSchedulerInstrumentedTest {
 
         Thread.sleep(100);
 
-        // Verify all jobs are enqueued
         List<WorkInfo> workInfos1 = workManager
                 .getWorkInfosForUniqueWork("cron_task_cron-1")
                 .get(5, TimeUnit.SECONDS);
@@ -255,7 +239,6 @@ public class TaskSchedulerInstrumentedTest {
                 .getWorkInfosForUniqueWork("cron_task_cron-to-cancel")
                 .get(5, TimeUnit.SECONDS);
 
-        // WorkManager marks work as CANCELLED rather than removing it
         boolean isCancelled = workInfos.isEmpty() || 
                 workInfos.get(0).getState() == WorkInfo.State.CANCELLED;
         assertTrue("Cron job work should be cancelled", isCancelled);
@@ -263,11 +246,8 @@ public class TaskSchedulerInstrumentedTest {
 
     @Test
     public void cancelCronJob_nonExistentJob_doesNotCrash() {
-        // Should not crash when cancelling non-existent work
         taskScheduler.cancelCronJob("non-existent");
     }
-
-    // ==================== RUN TASK NOW TESTS ====================
 
     @Test
     public void runTaskNow_heartbeatType_enqueuesHeartbeatWork() throws Exception {
@@ -275,9 +255,6 @@ public class TaskSchedulerInstrumentedTest {
 
         Thread.sleep(100);
 
-        // Run task now creates unique work with timestamp-based name
-        // We can't easily check it without knowing the exact name, but we can verify it doesn't crash
-        // and that WorkManager accepts the work
         assertTrue("Run task now should not crash", true);
     }
 
@@ -290,11 +267,8 @@ public class TaskSchedulerInstrumentedTest {
         assertTrue("Run task now should not crash", true);
     }
 
-    // ==================== CANCEL ALL TESTS ====================
-
     @Test
     public void cancelAll_removesAllScheduledWork() throws Exception {
-        // Schedule multiple tasks
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 0L);
         taskScheduler.scheduleHeartbeat(config);
 
@@ -309,8 +283,6 @@ public class TaskSchedulerInstrumentedTest {
 
         Thread.sleep(100);
 
-        // Verify all work is cancelled (check each unique work)
-        // WorkManager marks work as CANCELLED rather than removing it
         List<WorkInfo> heartbeatWork = workManager
                 .getWorkInfosForUniqueWork("heartbeat_task")
                 .get(5, TimeUnit.SECONDS);
@@ -338,8 +310,6 @@ public class TaskSchedulerInstrumentedTest {
         taskScheduler.cancelAll();
     }
 
-    // ==================== INPUT DATA TESTS ====================
-
     @Test
     public void scheduleHeartbeat_passesInputDataToWorker() throws Exception {
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 0L);
@@ -352,7 +322,6 @@ public class TaskSchedulerInstrumentedTest {
                 .get(5, TimeUnit.SECONDS);
 
         assertFalse("Work should be enqueued", workInfos.isEmpty());
-        // Verify work has correct worker class
         assertNotNull("WorkInfo should have data", workInfos.get(0));
     }
 

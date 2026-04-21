@@ -36,8 +36,6 @@ public class SettingsAdapterTest {
         adapter = new SettingsAdapter();
     }
 
-    // ==================== Initial State Tests ====================
-
     @Test
     public void initialState_hasZeroItems() {
         assertEquals(0, adapter.getItemCount());
@@ -45,11 +43,8 @@ public class SettingsAdapterTest {
 
     @Test
     public void initialState_itemsList_isEmpty() {
-        // Items are private, but we can verify through adapter behavior
         assertEquals(0, adapter.getItemCount());
     }
-
-    // ==================== setItems Tests ====================
 
     @Test
     public void setItems_withItems_updatesCount() {
@@ -103,8 +98,6 @@ public class SettingsAdapterTest {
         assertEquals(2, adapter.getItemCount());
     }
 
-    // ==================== ViewHolder Creation Tests ====================
-
     @Test
     public void onCreateViewHolder_createsValidViewHolder() {
         Context context = TestThemeHelper.getThemedContext();
@@ -131,8 +124,6 @@ public class SettingsAdapterTest {
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_chevron));
     }
 
-    // ==================== ViewHolder Binding Tests ====================
-
     @Test
     public void onBindViewHolder_bindsIcon() {
         SettingsAdapter.SettingsItem item = new SettingsAdapter.SettingsItem(
@@ -148,7 +139,6 @@ public class SettingsAdapterTest {
 
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
-        // Icon is now an ImageView, not TextView
         assertNotNull(viewHolder.itemView.findViewById(R.id.icon_image));
     }
 
@@ -244,20 +234,16 @@ public class SettingsAdapterTest {
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
-        // Test first item
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder1, 0);
         TextView titleText1 = viewHolder1.itemView.findViewById(R.id.text_title);
         assertEquals("Providers", titleText1.getText().toString());
 
-        // Test second item
         RecyclerView.ViewHolder viewHolder2 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder2, 1);
         TextView titleText2 = viewHolder2.itemView.findViewById(R.id.text_title);
         assertEquals("Models", titleText2.getText().toString());
     }
-
-    // ==================== Click Listener Tests ====================
 
     @Test
     public void clickListener_whenSet_receivesClickEvents() {
@@ -280,14 +266,12 @@ public class SettingsAdapterTest {
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
         recyclerView.setAdapter(adapter);
         
-        // Force layout to attach view holders properly
         recyclerView.measure(
             View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
         );
         recyclerView.layout(0, 0, 1000, 1000);
         
-        // Get the view holder that is now properly attached
         RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
         assertNotNull("ViewHolder should be attached", viewHolder);
 
@@ -311,7 +295,6 @@ public class SettingsAdapterTest {
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
-        // Should not crash
         viewHolder.itemView.performClick();
     }
 
@@ -323,7 +306,6 @@ public class SettingsAdapterTest {
         List<SettingsAdapter.SettingsItem> items = Arrays.asList(testItem);
         adapter.setItems(items);
 
-        // Explicitly set null listener
         adapter.setOnSettingsItemClickListener(null);
 
         Context context = TestThemeHelper.getThemedContext();
@@ -332,11 +314,8 @@ public class SettingsAdapterTest {
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder, 0);
 
-        // Should not crash
         viewHolder.itemView.performClick();
     }
-
-    // ==================== Edge Case Tests ====================
 
     @Test
     public void setItems_withVeryLongTitle_handlesCorrectly() {
@@ -465,14 +444,12 @@ public class SettingsAdapterTest {
 
     @Test
     public void setItems_multipleUpdates_maintainsCorrectState() {
-        // First update
         List<SettingsAdapter.SettingsItem> items1 = Arrays.asList(
             new SettingsAdapter.SettingsItem("providers", R.drawable.ic_settings_provider, "Providers", "2 providers", true)
         );
         adapter.setItems(items1);
         assertEquals(1, adapter.getItemCount());
 
-        // Second update
         List<SettingsAdapter.SettingsItem> items2 = Arrays.asList(
             new SettingsAdapter.SettingsItem("providers", R.drawable.ic_settings_provider, "Providers", "2 providers", true),
             new SettingsAdapter.SettingsItem("models", R.drawable.ic_settings_provider, "Models", "5 models", true)
@@ -480,11 +457,9 @@ public class SettingsAdapterTest {
         adapter.setItems(items2);
         assertEquals(2, adapter.getItemCount());
 
-        // Third update - clear
         adapter.setItems(new ArrayList<>());
         assertEquals(0, adapter.getItemCount());
 
-        // Fourth update - repopulate
         adapter.setItems(items1);
         assertEquals(1, adapter.getItemCount());
     }
@@ -505,13 +480,11 @@ public class SettingsAdapterTest {
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
-        // Test first item (with chevron)
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder1, 0);
         TextView chevronText1 = viewHolder1.itemView.findViewById(R.id.text_chevron);
         assertEquals(View.VISIBLE, chevronText1.getVisibility());
 
-        // Test second item (without chevron)
         RecyclerView.ViewHolder viewHolder2 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((SettingsAdapter.SettingsViewHolder) viewHolder2, 1);
         TextView chevronText2 = viewHolder2.itemView.findViewById(R.id.text_chevron);

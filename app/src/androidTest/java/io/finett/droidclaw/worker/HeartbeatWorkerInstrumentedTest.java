@@ -25,12 +25,6 @@ import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.HeartbeatConfigRepository;
 import io.finett.droidclaw.repository.TaskRepository;
 
-/**
- * Instrumented tests for HeartbeatWorker.
- * Tests the worker's execution logic with real workspace files and repositories.
- * Note: Full AgentLoop execution requires network access and API configuration,
- * so these tests focus on the worker's own logic (file reading, config checks, etc.).
- */
 @RunWith(AndroidJUnit4.class)
 public class HeartbeatWorkerInstrumentedTest {
 
@@ -46,14 +40,11 @@ public class HeartbeatWorkerInstrumentedTest {
         heartbeatConfigRepo = new HeartbeatConfigRepository(context);
         taskRepository = new TaskRepository(context);
 
-        // Initialize workspace
         try {
             workspaceManager.initializeWithSkills();
         } catch (IOException e) {
-            // Workspace may already be initialized
         }
 
-        // Clear test data
         clearTestData();
     }
 
@@ -63,34 +54,26 @@ public class HeartbeatWorkerInstrumentedTest {
     }
 
     private void clearTestData() {
-        // Clear heartbeat config
         context.getSharedPreferences("droidclaw_heartbeat", Context.MODE_PRIVATE)
                 .edit()
                 .clear()
                 .commit();
 
-        // Clear task repository
         context.getSharedPreferences("droidclaw_tasks", Context.MODE_PRIVATE)
                 .edit()
                 .clear()
                 .commit();
     }
 
-    // ==================== WORKER INSTANTIATION TESTS ====================
-
     @Test
     public void worker_canBeCreated() {
-        // Verify worker can access required dependencies
         assertNotNull("Context should be available", context);
         assertNotNull("WorkspaceManager should be available", workspaceManager);
         assertNotNull("HeartbeatConfigRepository should be available", heartbeatConfigRepo);
     }
 
-    // ==================== HEARTBEAT FILE READING TESTS ====================
-
     @Test
     public void readHeartbeatFile_withExistingFile_returnsContent() throws Exception {
-        // Create HEARTBEAT.md file
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
         File agentDir = new File(workspaceRoot, ".agent");
         if (!agentDir.exists()) {
@@ -104,7 +87,6 @@ public class HeartbeatWorkerInstrumentedTest {
             writer.write("Include HEARTBEAT_OK if everything is healthy.\n");
         }
 
-        // Verify file exists
         assertTrue("HEARTBEAT.md should exist", heartbeatFile.exists());
     }
 
@@ -113,7 +95,6 @@ public class HeartbeatWorkerInstrumentedTest {
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
         File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
 
-        // Delete file if it exists
         if (heartbeatFile.exists()) {
             heartbeatFile.delete();
         }
@@ -125,7 +106,6 @@ public class HeartbeatWorkerInstrumentedTest {
     public void checkHeartbeatOk_withStructuredResponse_returnsTrue() {
         String content = "{\"healthy\":true,\"summary\":\"All systems normal\",\"issues\":[]}";
 
-        // Test structured output parsing
         io.finett.droidclaw.model.HeartbeatResponse response =
                 io.finett.droidclaw.model.HeartbeatResponse.fromJson(content);
 
@@ -146,7 +126,6 @@ public class HeartbeatWorkerInstrumentedTest {
     public void checkHeartbeatOk_withLegacyMarker_returnsTrue() {
         String content = "System is healthy. All checks passed.\n\n{\"HEARTBEAT_OK\": true}";
 
-        // Test the legacy detection logic
         boolean hasMarker = content != null && content.contains("HEARTBEAT_OK") && content.contains("true");
 
         assertTrue("Should detect HEARTBEAT_OK marker", hasMarker);
@@ -156,7 +135,6 @@ public class HeartbeatWorkerInstrumentedTest {
     public void checkHeartbeatOk_withRefusal_returnsFalse() {
         String content = "[REFUSAL] I'm sorry, I cannot assist with that request.";
 
-        // Refusal should be treated as unhealthy
         boolean isHealthy = !content.startsWith("[REFUSAL]");
 
         assertFalse("Should return false for refusal", isHealthy);
@@ -189,38 +167,30 @@ public class HeartbeatWorkerInstrumentedTest {
         assertFalse("Should handle empty content", hasMarker);
     }
 
-    // ==================== HEARTBEAT CONFIG TESTS ====================
-
     @Test
     public void doWork_withDisabledHeartbeat_skipsExecution() {
-        // Configure heartbeat as disabled
         HeartbeatConfig config = new HeartbeatConfig(false, 30 * 60 * 1000L, 0L);
         heartbeatConfigRepo.updateConfig(config);
 
-        // Verify the config is disabled (worker will check this in doWork)
         HeartbeatConfig retrieved = heartbeatConfigRepo.getConfig();
         assertFalse("Heartbeat should be disabled", retrieved.isEnabled());
     }
 
     @Test
     public void doWork_withIntervalNotElapsed_skipsExecution() throws Exception {
-        // Configure heartbeat with recent last run
         long now = System.currentTimeMillis();
         HeartbeatConfig config = new HeartbeatConfig(true, 60 * 60 * 1000L, now - 5 * 60 * 1000L); // 5 minutes ago
         heartbeatConfigRepo.updateConfig(config);
 
-        // Verify shouldRun returns false
         assertFalse("Should not run - interval not elapsed", config.shouldRun(now));
     }
 
     @Test
     public void doWork_withIntervalElapsed_allowsExecution() throws Exception {
-        // Configure heartbeat with old last run
         long now = System.currentTimeMillis();
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, now - 60 * 60 * 1000L); // 1 hour ago
         heartbeatConfigRepo.updateConfig(config);
 
-        // Verify shouldRun returns true
         assertTrue("Should run - interval elapsed", config.shouldRun(now));
     }
 
@@ -235,8 +205,6 @@ public class HeartbeatWorkerInstrumentedTest {
         HeartbeatConfig retrieved = heartbeatConfigRepo.getConfig();
         assertEquals("Last run should be updated", now, retrieved.getLastRunTimestamp());
     }
-
-    // ==================== DEFAULT PROMPT TESTS ====================
 
     @Test
     public void getDefaultHeartbeatPrompt_containsRequiredFields() {
@@ -259,7 +227,6 @@ public class HeartbeatWorkerInstrumentedTest {
 
     @Test
     public void taskResult_savedAfterExecution() throws Exception {
-        // Setup: Create a task result manually (simulating worker execution)
         TaskResult result = new TaskResult("heartbeat-test", TaskResult.TYPE_HEARTBEAT, 
                 System.currentTimeMillis(), "Heartbeat check completed successfully");
         result.putMetadata("healthy", "true");
@@ -267,7 +234,6 @@ public class HeartbeatWorkerInstrumentedTest {
 
         taskRepository.saveTaskResult(result);
 
-        // Verify result is saved
         java.util.List<TaskResult> results = taskRepository.getTaskResults(TaskResult.TYPE_HEARTBEAT, 10);
         assertEquals("Should have 1 result", 1, results.size());
         assertEquals("heartbeat-test", results.get(0).getId());
@@ -290,11 +256,8 @@ public class HeartbeatWorkerInstrumentedTest {
         assertEquals("timeout exceeded", results.get(0).getMetadataValue("error"));
     }
 
-    // ==================== WORKER BEHAVIOR TESTS ====================
-
     @Test
     public void worker_withEmptyHeartbeatFile_usesDefaultPrompt() throws Exception {
-        // Create empty HEARTBEAT.md
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
         File agentDir = new File(workspaceRoot, ".agent");
         if (!agentDir.exists()) {
@@ -306,16 +269,12 @@ public class HeartbeatWorkerInstrumentedTest {
             writer.write("");
         }
 
-        // Worker should detect empty file and use default prompt
         assertTrue("HEARTBEAT.md should exist but be empty", 
                 heartbeatFile.exists() && heartbeatFile.length() == 0);
     }
 
     @Test
     public void worker_createsIsolatedSession_withCorrectType() throws Exception {
-        // This test verifies session creation logic
-        // In a real scenario, the worker would create a session with SessionType.HIDDEN_HEARTBEAT
-        // We verify the session type constant is correct
         assertEquals("HIDDEN_HEARTBEAT type should be 1", 1, io.finett.droidclaw.model.SessionType.HIDDEN_HEARTBEAT);
     }
 }
