@@ -7,23 +7,6 @@ import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Represents a structured heartbeat response from the LLM.
- * Used with Structured Outputs to guarantee valid JSON schema adherence.
- *
- * Schema:
- * {
- *   "healthy": boolean,
- *   "summary": string,
- *   "issues": [
- *     {
- *       "category": string,
- *       "description": string,
- *       "severity": "low" | "medium" | "high"
- *     }
- *   ]
- * }
- */
 public class HeartbeatResponse {
 
     private final boolean healthy;
@@ -52,18 +35,10 @@ public class HeartbeatResponse {
         return !issues.isEmpty();
     }
 
-    /**
-     * Parse a HeartbeatResponse from a JSON string.
-     *
-     * @param jsonStr Valid JSON string from Structured Outputs
-     * @return Parsed HeartbeatResponse
-     * @throws IllegalArgumentException if JSON is invalid
-     */
     public static HeartbeatResponse fromJson(String jsonStr) {
         com.google.gson.Gson gson = new com.google.gson.Gson();
         JsonObject json = com.google.gson.JsonParser.parseString(jsonStr).getAsJsonObject();
 
-        // Validate required fields - throw if missing (allows fallback to legacy detection)
         if (!json.has("healthy")) {
             throw new IllegalArgumentException("Missing required field: healthy");
         }
@@ -90,10 +65,6 @@ public class HeartbeatResponse {
         return new HeartbeatResponse(healthy, summary, issues);
     }
 
-    /**
-     * Returns the JSON Schema for Structured Outputs.
-     * This schema is sent to the API with strict: true to guarantee adherence.
-     */
     public static JsonObject getJsonSchema() {
         JsonObject schema = new JsonObject();
         schema.addProperty("type", "object");
@@ -101,19 +72,16 @@ public class HeartbeatResponse {
 
         JsonObject properties = new JsonObject();
 
-        // healthy property
         JsonObject healthyProp = new JsonObject();
         healthyProp.addProperty("type", "boolean");
         healthyProp.addProperty("description", "true if all systems are healthy, false otherwise");
         properties.add("healthy", healthyProp);
 
-        // summary property
         JsonObject summaryProp = new JsonObject();
         summaryProp.addProperty("type", "string");
         summaryProp.addProperty("description", "Brief summary of system health status");
         properties.add("summary", summaryProp);
 
-        // issues property
         JsonObject issuesProp = new JsonObject();
         issuesProp.addProperty("type", "array");
         issuesProp.addProperty("description", "List of any issues found during the health check");
@@ -165,9 +133,6 @@ public class HeartbeatResponse {
         return schema;
     }
 
-    /**
-     * Represents a single issue found during the heartbeat check.
-     */
     public static class Issue {
         private final String category;
         private final String description;

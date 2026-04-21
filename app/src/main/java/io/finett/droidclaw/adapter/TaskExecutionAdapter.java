@@ -106,19 +106,19 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
         }
 
         void bind(TaskExecutionRecord record) {
-            // Format date and time
+
             String date = dateFormat.format(record.getStartTime());
             String time = timeFormat.format(record.getStartTime());
             textExecutionTime.setText(itemView.getContext().getString(R.string.execution_datetime_fmt, date, time));
 
-            // Status chip
+
             if (record.isSuccess()) {
                 chipExecutionStatus.setText(R.string.status_success);
             } else {
                 chipExecutionStatus.setText(R.string.status_failed);
             }
 
-            // Duration
+
             long durationSec = record.getDurationMillis() / 1000;
             String durationText;
             if (durationSec < 60) {
@@ -130,7 +130,7 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
             }
             textDuration.setText(itemView.getContext().getString(R.string.execution_duration, durationText));
 
-            // Tokens
+
             int tokens = record.getTokensUsed();
             String tokenText;
             if (tokens >= 1000) {
@@ -140,10 +140,10 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
             }
             textTokens.setText(itemView.getContext().getString(R.string.execution_tokens, tokenText));
 
-            // Iterations
+
             textIterations.setText(itemView.getContext().getString(R.string.execution_iterations, record.getIterations()));
 
-            // Error message
+
             if (!record.isSuccess() && record.getErrorMessage() != null && !record.getErrorMessage().isEmpty()) {
                 textErrorMessage.setText(itemView.getContext().getString(R.string.execution_error_prefix, record.getErrorMessage()));
                 textErrorMessage.setVisibility(View.VISIBLE);

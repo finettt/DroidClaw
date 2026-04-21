@@ -25,10 +25,6 @@ import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.model.TaskExecutionRecord;
 import io.finett.droidclaw.model.TaskResult;
 
-/**
- * Instrumented tests for TaskRepository.
- * Tests the persistence layer for background tasks using real SharedPreferences.
- */
 @RunWith(AndroidJUnit4.class)
 public class TaskRepositoryInstrumentedTest {
 
@@ -36,7 +32,6 @@ public class TaskRepositoryInstrumentedTest {
 
     @Before
     public void setUp() {
-        // Clear SharedPreferences before each test
         getApplicationContext()
                 .getSharedPreferences("droidclaw_tasks", Context.MODE_PRIVATE)
                 .edit()
@@ -48,15 +43,12 @@ public class TaskRepositoryInstrumentedTest {
 
     @After
     public void tearDown() {
-        // Clean up after tests
         getApplicationContext()
                 .getSharedPreferences("droidclaw_tasks", Context.MODE_PRIVATE)
                 .edit()
                 .clear()
                 .commit();
     }
-
-    // ==================== TASK RESULTS TESTS ====================
 
     @Test
     public void saveTaskResult_savesAndRetrievesResult() {
@@ -89,7 +81,6 @@ public class TaskRepositoryInstrumentedTest {
 
     @Test
     public void getTaskResults_filtersByType() {
-        // Save different task types
         repository.saveTaskResult(new TaskResult("heartbeat-1", TaskResult.TYPE_HEARTBEAT, 1000L, "HB1"));
         repository.saveTaskResult(new TaskResult("cron-1", TaskResult.TYPE_CRON_JOB, 2000L, "CJ1"));
         repository.saveTaskResult(new TaskResult("heartbeat-2", TaskResult.TYPE_HEARTBEAT, 3000L, "HB2"));
@@ -119,7 +110,6 @@ public class TaskRepositoryInstrumentedTest {
 
     @Test
     public void getTaskResults_respectsLimit() {
-        // Save 5 results
         for (int i = 0; i < 5; i++) {
             repository.saveTaskResult(new TaskResult("task-" + i, TaskResult.TYPE_HEARTBEAT, i * 1000L, "Content " + i));
         }
@@ -127,7 +117,6 @@ public class TaskRepositoryInstrumentedTest {
         List<TaskResult> limitedResults = repository.getTaskResults(TaskResult.TYPE_HEARTBEAT, 3);
 
         assertEquals("Should return only 3 results", 3, limitedResults.size());
-        // Should be the 3 most recent
         assertEquals("Content 4", limitedResults.get(0).getContent());
         assertEquals("Content 3", limitedResults.get(1).getContent());
         assertEquals("Content 2", limitedResults.get(2).getContent());
@@ -157,7 +146,6 @@ public class TaskRepositoryInstrumentedTest {
 
     @Test
     public void deleteTaskResult_nonExistentId_doesNotCrash() {
-        // Should not crash when deleting non-existent task
         repository.deleteTaskResult("non-existent");
         List<TaskResult> results = repository.getAllTaskResults();
         assertEquals("Should have 0 results", 0, results.size());
@@ -249,7 +237,6 @@ public class TaskRepositoryInstrumentedTest {
         CronJob job = new CronJob("cron-1", "Job 1", "Prompt 1", "3600000");
         repository.saveCronJob(job);
 
-        // Update the job's last run timestamp
         job.setLastRunTimestamp(5000L);
         repository.updateCronJob(job);
 
@@ -259,12 +246,10 @@ public class TaskRepositoryInstrumentedTest {
 
     @Test
     public void updateCronJobLastRun_nonExistentJob_doesNotCrash() {
-        // Create a new job and update it (which saves it)
         CronJob job = new CronJob("non-existent", "Test", "Test", "3600000");
         job.setLastRunTimestamp(5000L);
         repository.updateCronJob(job);
         
-        // Verify it was saved
         CronJob retrieved = repository.getCronJob("non-existent");
         assertNotNull("Job should exist", retrieved);
     }
@@ -307,8 +292,6 @@ public class TaskRepositoryInstrumentedTest {
         assertEquals("Should have 1 enabled job", 1, enabledJobs.size());
         assertEquals("cron-1", enabledJobs.get(0).getId());
     }
-
-    // ==================== TASK EXECUTION RECORDS TESTS ====================
 
     @Test
     public void saveExecutionRecord_savesAndRetrievesRecord() {
@@ -398,7 +381,6 @@ public class TaskRepositoryInstrumentedTest {
         Collections.sort(recentRecords, (a, b) -> Long.compare(b.getStartTime(), a.getStartTime()));
 
         assertEquals("Should have 2 records", 2, recentRecords.size());
-        // Should be sorted by start time descending
         assertEquals("cron-1", recentRecords.get(0).getTaskId());
         assertEquals("hb-1", recentRecords.get(1).getTaskId());
     }
@@ -442,17 +424,13 @@ public class TaskRepositoryInstrumentedTest {
         assertEquals("Should have 0 records", 0, allRecords.size());
     }
 
-    // ==================== INTEGRATION TESTS ====================
-
     @Test
     public void taskResultAndExecutionRecord_fullLifecycle() {
-        // Create and save task result
         TaskResult result = new TaskResult("task-lifecycle", TaskResult.TYPE_HEARTBEAT, 1000L, "Heartbeat check completed");
         result.putMetadata("duration", "1500");
         result.putMetadata("status", "success");
         repository.saveTaskResult(result);
 
-        // Create and save execution record
         TaskExecutionRecord record = new TaskExecutionRecord("task-lifecycle", "session-lifecycle", TaskResult.TYPE_HEARTBEAT, 1000L);
         record.setEndTime(2500L);
         record.setSuccess(true);
@@ -460,7 +438,6 @@ public class TaskRepositoryInstrumentedTest {
         record.setIterations(2);
         repository.saveExecutionRecord(record);
 
-        // Verify both are retrievable
         List<TaskResult> results = repository.getTaskResults(TaskResult.TYPE_HEARTBEAT, 10);
         List<TaskExecutionRecord> records = repository.getExecutionHistory("task-lifecycle");
 
@@ -478,11 +455,9 @@ public class TaskRepositoryInstrumentedTest {
 
     @Test
     public void cronJobAndTaskResult_cronJobExecution() {
-        // Create cron job
         CronJob cronJob = new CronJob("cron-daily", "Daily Summary", "Generate daily summary", "86400000");
         repository.saveCronJob(cronJob);
 
-        // Simulate execution
         TaskResult result = new TaskResult("cron-execution-1", TaskResult.TYPE_CRON_JOB, 5000L, "Daily summary generated");
         repository.saveTaskResult(result);
 
@@ -491,12 +466,10 @@ public class TaskRepositoryInstrumentedTest {
         record.setSuccess(true);
         repository.saveExecutionRecord(record);
 
-        // Update cron job last run
         CronJob jobToUpdate = repository.getCronJob("cron-daily");
         jobToUpdate.setLastRunTimestamp(5000L);
         repository.updateCronJob(jobToUpdate);
 
-        // Verify all data
         CronJob updatedJob = repository.getCronJob("cron-daily");
         assertEquals(5000L, updatedJob.getLastRunTimestamp());
 
@@ -509,14 +482,11 @@ public class TaskRepositoryInstrumentedTest {
 
     @Test
     public void persistence_acrossRepositoryInstances() {
-        // Save data with first repository instance
         repository.saveTaskResult(new TaskResult("persistent-task", TaskResult.TYPE_HEARTBEAT, 1000L, "Persistent data"));
         repository.saveCronJob(new CronJob("persistent-cron", "Persistent Job", "Persistent prompt", "3600000"));
 
-        // Create new repository instance
         TaskRepository newRepository = new TaskRepository(getApplicationContext());
 
-        // Verify data persisted
         List<TaskResult> results = newRepository.getTaskResults(TaskResult.TYPE_HEARTBEAT, 10);
         assertEquals("Task result should persist", 1, results.size());
 

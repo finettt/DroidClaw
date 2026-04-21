@@ -17,10 +17,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Android instrumented tests for PythonExecutor.
- * These tests require the Chaquopy Python runtime which is only available on Android devices.
- */
 @RunWith(AndroidJUnit4.class)
 public class PythonExecutorTest {
 
@@ -33,7 +29,6 @@ public class PythonExecutorTest {
     public void setUp() throws IOException {
         context = getApplicationContext();
         
-        // Create test configuration
         config = PythonConfig.builder()
                 .timeout(30)
                 .enablePip(true)
@@ -42,7 +37,6 @@ public class PythonExecutorTest {
         
         executor = new PythonExecutor(context, config);
         
-        // Create test script directory
         testScriptDir = new File(context.getCacheDir(), "test_scripts");
         testScriptDir.mkdirs();
     }
@@ -53,7 +47,6 @@ public class PythonExecutorTest {
             executor.shutdown();
         }
         
-        // Clean up test scripts
         if (testScriptDir != null && testScriptDir.exists()) {
             deleteRecursive(testScriptDir);
         }
@@ -177,7 +170,6 @@ public class PythonExecutorTest {
         String code = "";
         PythonResult result = executor.executeCode(code);
         
-        // Empty code should execute successfully (no output)
         assertTrue("Empty code should execute successfully", result.isSuccess());
     }
 
@@ -208,13 +200,11 @@ public class PythonExecutorTest {
         String code = "import time\ntime.sleep(0.1)\nprint('Done')";
         PythonResult result = executor.executeCode(code, 5);
         
-        // Should complete within 5 seconds
         assertTrue("Execution should be successful", result.isSuccess());
     }
 
     @Test
     public void testExecuteCode_withTimeout() {
-        // This code will run longer than the timeout
         String code = "import time\ntime.sleep(10)\nprint('This should not print')";
         PythonResult result = executor.executeCode(code, 1);
         
@@ -267,7 +257,6 @@ public class PythonExecutorTest {
         PythonResult result = executor.executeScript(scriptFile);
         
         assertTrue("Script execution should be successful", result.isSuccess());
-        // sys.argv may be empty when running via exec(), just verify it runs
         assertNotNull("Output should not be null", result.getOutput());
     }
 
@@ -291,7 +280,6 @@ public class PythonExecutorTest {
         
         assertNotNull("Python version should not be null", version);
         assertFalse("Python version should not be empty", version.isEmpty());
-        // Chaquopy uses Python 3.11 per build.gradle
         assertTrue("Should be Python 3.x", version.startsWith("3."));
     }
 
@@ -304,7 +292,6 @@ public class PythonExecutorTest {
 
     @Test
     public void testIsPackageInstalled_preinstalledPackage() {
-        // 'requests' is pre-installed via build.gradle
         boolean isInstalled = executor.isPackageInstalled("requests");
         
         assertTrue("'requests' should be installed from build.gradle", isInstalled);
@@ -319,7 +306,6 @@ public class PythonExecutorTest {
 
     @Test
     public void testInstallPackage_pipDisabled() {
-        // Create executor with pip disabled
         PythonConfig noPipConfig = PythonConfig.builder()
                 .timeout(30)
                 .enablePip(false)
@@ -342,7 +328,6 @@ public class PythonExecutorTest {
     public void testInstallPackage_invalidPackage() {
         PythonResult result = executor.installPackage("nonexistent_package_xyz123");
         
-        // Installing non-existent package should fail
         assertFalse("Install should fail for non-existent package", result.isSuccess());
     }
 
@@ -376,7 +361,6 @@ public class PythonExecutorTest {
 
     @Test
     public void testExecuteCode_withRequests() {
-        // This tests that pre-installed packages work
         String code = "import requests\nprint('requests imported successfully')";
         PythonResult result = executor.executeCode(code);
         
@@ -387,7 +371,6 @@ public class PythonExecutorTest {
 
     @Test
     public void testExecuteCode_withBeautifulSoup() {
-        // This tests that pre-installed packages work
         String code = "from bs4 import BeautifulSoup\nprint('BeautifulSoup imported')";
         PythonResult result = executor.executeCode(code);
         
@@ -398,7 +381,6 @@ public class PythonExecutorTest {
 
     @Test
     public void testExecuteCode_multipleExecutions() {
-        // Test that multiple executions work correctly
         for (int i = 0; i < 3; i++) {
             String code = "print('Iteration " + i + "')";
             PythonResult result = executor.executeCode(code);
@@ -411,7 +393,6 @@ public class PythonExecutorTest {
 
     @Test
     public void testExecuteCode_largeOutput() {
-        // Generate larger output
         StringBuilder code = new StringBuilder("output = []\n");
         for (int i = 0; i < 100; i++) {
             code.append("output.append('Line ").append(i).append("')\n");
@@ -430,7 +411,6 @@ public class PythonExecutorTest {
         PythonConfig config = PythonConfig.createDefault();
         PythonExecutor testExecutor = new PythonExecutor(context, config);
         
-        // Shutdown should not throw
         testExecutor.shutdown();
         
         assertTrue("Shutdown should complete without error", true);

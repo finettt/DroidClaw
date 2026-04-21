@@ -11,9 +11,6 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for getting file metadata and information.
- */
 public class FileInfoTool implements Tool {
     private static final String NAME = "file_info";
     private final VirtualFileSystem vfs;
@@ -51,17 +48,14 @@ public class FileInfoTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Extract arguments
             if (!arguments.has("path")) {
                 return ToolResult.error("Missing required argument: path");
             }
 
             String path = arguments.get("path").getAsString();
 
-            // Get file info
             VirtualFileSystem.FileInfo fileInfo = vfs.getFileInfo(path);
 
-            // Build result JSON
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("path", fileInfo.getPath());
             resultJson.addProperty("type", fileInfo.isDirectory() ? "directory" : "file");

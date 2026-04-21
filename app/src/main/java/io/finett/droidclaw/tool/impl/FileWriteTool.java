@@ -9,9 +9,6 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for writing content to files in the virtual filesystem.
- */
 public class FileWriteTool implements Tool {
     private static final String NAME = "write_file";
     private final VirtualFileSystem vfs;
@@ -45,11 +42,11 @@ public class FileWriteTool implements Tool {
     public ToolDefinition getDefinition() {
         return definition;
     }
-    
     @Override
     public boolean requiresApproval() {
-        return true; // File writing can overwrite existing files
+        return true;
     }
+
     
     @Override
     public String getApprovalDescription(JsonObject arguments) {
@@ -63,7 +60,6 @@ public class FileWriteTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Extract arguments
             if (!arguments.has("path")) {
                 return ToolResult.error("Missing required argument: path");
             }
@@ -75,10 +71,8 @@ public class FileWriteTool implements Tool {
             String content = arguments.get("content").getAsString();
             boolean append = arguments.has("append") && arguments.get("append").getAsBoolean();
 
-            // Execute write operation
             vfs.writeFile(path, content, append);
 
-            // Build result JSON
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("path", path);
             resultJson.addProperty("bytes_written", content.getBytes(StandardCharsets.UTF_8).length);

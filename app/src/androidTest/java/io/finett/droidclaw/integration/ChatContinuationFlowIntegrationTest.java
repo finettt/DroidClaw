@@ -32,10 +32,6 @@ import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.service.ChatContinuationService;
 
-/**
- * Integration tests for the complete chat continuation flow.
- * Tests the end-to-end workflow from task result creation to chat display.
- */
 @RunWith(AndroidJUnit4.class)
 public class ChatContinuationFlowIntegrationTest {
 
@@ -44,7 +40,6 @@ public class ChatContinuationFlowIntegrationTest {
 
     @Before
     public void setUp() {
-        // Clear SharedPreferences before each test
         getApplicationContext()
                 .getSharedPreferences("chat_messages", Context.MODE_PRIVATE)
                 .edit()
@@ -57,7 +52,6 @@ public class ChatContinuationFlowIntegrationTest {
 
     @After
     public void tearDown() {
-        // Clean up after tests
         getApplicationContext()
                 .getSharedPreferences("chat_messages", Context.MODE_PRIVATE)
                 .edit()
@@ -69,7 +63,6 @@ public class ChatContinuationFlowIntegrationTest {
 
     @Test
     public void heartbeatTaskResult_fullFlowFromCreationToChatDisplay() {
-        // Step 1: Create task result
         TaskResult taskResult = new TaskResult(
                 "hb-integration-1",
                 TaskResult.TYPE_HEARTBEAT,
@@ -77,19 +70,15 @@ public class ChatContinuationFlowIntegrationTest {
                 "# Heartbeat Check Complete\n\nAll systems operational."
         );
 
-        // Step 2: Create new chat with task result
         ChatSession newSession = continuationService.continueInNewChat(taskResult);
         assertNotNull("Session should be created", newSession);
 
-        // Step 3: Verify session is linked to task
         assertEquals("Session should have parent task ID",
                 taskResult.getId(), newSession.getParentTaskId());
 
-        // Step 4: Verify messages are saved
         List<ChatMessage> messages = chatRepository.loadMessages(newSession.getId());
         assertTrue("Should have at least 2 messages", messages.size() >= 2);
 
-        // Step 5: Verify first message is context card
         ChatMessage contextCard = messages.get(0);
         assertEquals("First message should be context card",
                 ChatMessage.TYPE_CONTEXT_CARD, contextCard.getType());
@@ -99,7 +88,6 @@ public class ChatContinuationFlowIntegrationTest {
                 "# Heartbeat Check Complete\n\nAll systems operational.",
                 contextCard.getContent());
 
-        // Step 6: Verify second message is agent prompt
         ChatMessage agentPrompt = messages.get(1);
         assertEquals("Second message should be system type",
                 ChatMessage.TYPE_SYSTEM, agentPrompt.getType());
@@ -109,7 +97,6 @@ public class ChatContinuationFlowIntegrationTest {
 
     @Test
     public void cronJobResult_fullFlowFromCreationToExistingChatUpdate() {
-        // Step 1: Create existing chat session
         String existingSessionId = "existing-cron-chat";
         ChatSession existingSession = new ChatSession(existingSessionId, "Existing Chat", System.currentTimeMillis());
         chatRepository.saveMessages(existingSessionId, Arrays.asList(
@@ -117,7 +104,6 @@ public class ChatContinuationFlowIntegrationTest {
                 new ChatMessage("Initial assistant response", ChatMessage.TYPE_ASSISTANT)
         ));
 
-        // Step 2: Create cron job task result
         TaskResult taskResult = new TaskResult(
                 "cron-integration-1",
                 TaskResult.TYPE_CRON_JOB,
@@ -125,20 +111,16 @@ public class ChatContinuationFlowIntegrationTest {
                 "Daily report: 10 new items processed"
         );
 
-        // Step 3: Continue in existing chat
         continuationService.continueInExistingChat(taskResult, existingSessionId);
 
-        // Step 4: Verify messages were added
         List<ChatMessage> messages = chatRepository.loadMessages(existingSessionId);
         assertTrue("Should have at least 4 messages (2 original + 2 new)", messages.size() >= 4);
 
-        // Step 5: Verify original messages are preserved
         assertEquals("First message should be original",
                 "Initial user message", messages.get(0).getContent());
         assertEquals("Second message should be original",
                 "Initial assistant response", messages.get(1).getContent());
 
-        // Step 6: Verify new messages are appended
         ChatMessage contextCard = messages.get(messages.size() - 2);
         assertEquals("Context card should be second to last",
                 ChatMessage.TYPE_CONTEXT_CARD, contextCard.getType());
@@ -154,17 +136,14 @@ public class ChatContinuationFlowIntegrationTest {
 
     @Test
     public void multipleTaskResults_createDistinctChats() {
-        // Create multiple task results
         TaskResult hbResult = new TaskResult("hb-multi", TaskResult.TYPE_HEARTBEAT, 1000L, "Heartbeat 1");
         TaskResult cronResult = new TaskResult("cron-multi", TaskResult.TYPE_CRON_JOB, 2000L, "Cron 1");
         TaskResult manualResult = new TaskResult("manual-multi", TaskResult.TYPE_MANUAL, 3000L, "Manual 1");
 
-        // Create separate chats for each
         ChatSession hbSession = continuationService.continueInNewChat(hbResult);
         ChatSession cronSession = continuationService.continueInNewChat(cronResult);
         ChatSession manualSession = continuationService.continueInNewChat(manualResult);
 
-        // Verify all sessions are distinct
         assertNotNull("Heartbeat session should exist", hbSession);
         assertNotNull("Cron session should exist", cronSession);
         assertNotNull("Manual session should exist", manualSession);
@@ -174,7 +153,6 @@ public class ChatContinuationFlowIntegrationTest {
                 hbSession.getId().equals(manualSession.getId()) == false &&
                 cronSession.getId().equals(manualSession.getId()) == false);
 
-        // Verify each chat has correct content
         List<ChatMessage> hbMessages = chatRepository.loadMessages(hbSession.getId());
         assertEquals("Heartbeat content", "Heartbeat 1", hbMessages.get(0).getContent());
 
@@ -185,30 +163,23 @@ public class ChatContinuationFlowIntegrationTest {
         assertEquals("Manual content", "Manual 1", manualMessages.get(0).getContent());
     }
 
-    // ==================== CHAT ADAPTER INTEGRATION TESTS ====================
-
     @Test
     public void chatAdapter_loadsContextCardMessages_fromContinuedChat() {
-        // Create task result and chat
         TaskResult taskResult = new TaskResult("hb-adapter-1", TaskResult.TYPE_HEARTBEAT, 1000L,
                 "Adapter test content");
         ChatSession session = continuationService.continueInNewChat(taskResult);
 
-        // Load messages into adapter
         ChatAdapter adapter = new ChatAdapter();
         List<ChatMessage> messages = chatRepository.loadMessages(session.getId());
         adapter.setMessages(messages);
 
-        // Verify adapter has correct messages
         assertEquals("Should have at least 2 messages", 2, adapter.getItemCount());
 
-        // Verify context card is first
         ChatMessage firstMessage = adapter.getMessages().get(0);
         assertEquals("First should be context card",
                 ChatMessage.TYPE_CONTEXT_CARD, firstMessage.getType());
         assertTrue("Should be marked as context card", firstMessage.isContextCard());
 
-        // Verify agent prompt is second
         ChatMessage secondMessage = adapter.getMessages().get(1);
         assertEquals("Second should be system prompt",
                 ChatMessage.TYPE_SYSTEM, secondMessage.getType());
@@ -216,7 +187,6 @@ public class ChatContinuationFlowIntegrationTest {
 
     @Test
     public void chatAdapter_displaysMixedMessages_correctlyWithContinuation() {
-        // Create existing chat with various message types
         String sessionId = "mixed-chat";
         chatRepository.saveMessages(sessionId, Arrays.asList(
                 new ChatMessage("User message 1", ChatMessage.TYPE_USER),
@@ -224,21 +194,17 @@ public class ChatContinuationFlowIntegrationTest {
                 new ChatMessage("User message 2", ChatMessage.TYPE_USER)
         ));
 
-        // Add task result via continuation
         TaskResult taskResult = new TaskResult("hb-mixed-1", TaskResult.TYPE_HEARTBEAT, 1000L,
                 "Heartbeat during conversation");
         continuationService.continueInExistingChat(taskResult, sessionId);
 
-        // Load into adapter
         ChatAdapter adapter = new ChatAdapter();
         List<ChatMessage> messages = chatRepository.loadMessages(sessionId);
         adapter.setMessages(messages);
 
-        // Verify message count
         assertTrue("Should have at least 5 messages (3 original + 2 new)",
                 adapter.getItemCount() >= 5);
 
-        // Verify message order and types
         List<ChatMessage> adapterMessages = adapter.getMessages();
         assertEquals("Message 1 should be user", ChatMessage.TYPE_USER, adapterMessages.get(0).getType());
         assertEquals("Message 2 should be assistant", ChatMessage.TYPE_ASSISTANT, adapterMessages.get(1).getType());
@@ -247,11 +213,8 @@ public class ChatContinuationFlowIntegrationTest {
         assertEquals("Message 5 should be system", ChatMessage.TYPE_SYSTEM, adapterMessages.get(4).getType());
     }
 
-    // ==================== CHAT REPOSITORY INTEGRATION TESTS ====================
-
     @Test
     public void chatRepository_persistsContextCardFields() {
-        // Create session with context card message
         String sessionId = "context-persist-session";
         ChatMessage contextCard = new ChatMessage("Persisted content", ChatMessage.TYPE_CONTEXT_CARD);
         contextCard.setIsContextCard(true);
@@ -264,10 +227,8 @@ public class ChatContinuationFlowIntegrationTest {
                 contextCard
         ));
 
-        // Reload messages
         List<ChatMessage> loadedMessages = chatRepository.loadMessages(sessionId);
 
-        // Verify context card fields persisted
         assertEquals("Should have 2 messages", 2, loadedMessages.size());
         ChatMessage loadedCard = loadedMessages.get(1);
 
@@ -280,11 +241,8 @@ public class ChatContinuationFlowIntegrationTest {
         assertEquals("Content should persist", "Persisted content", loadedCard.getContent());
     }
 
-    // ==================== TASK RESULT SERIALIZATION TESTS ====================
-
     @Test
     public void taskResult_serializable_forFragmentNavigation() {
-        // Create task result with all fields
         TaskResult taskResult = new TaskResult(
                 "serializable-1",
                 TaskResult.TYPE_HEARTBEAT,
@@ -294,11 +252,9 @@ public class ChatContinuationFlowIntegrationTest {
         taskResult.putMetadata("key1", "value1");
         taskResult.putMetadata("key2", "value2");
 
-        // Verify it can be put in a bundle (simulating fragment navigation)
         android.os.Bundle args = new android.os.Bundle();
         args.putSerializable("task_result", taskResult);
 
-        // Verify it can be retrieved
         TaskResult retrieved = (TaskResult) args.getSerializable("task_result");
         assertNotNull("Task result should be retrievable from bundle", retrieved);
         assertEquals("ID should match", "serializable-1", retrieved.getId());
@@ -309,38 +265,29 @@ public class ChatContinuationFlowIntegrationTest {
         assertEquals("Metadata should persist", "value1", retrieved.getMetadataValue("key1"));
     }
 
-    // ==================== COMPLEX SCENARIO TESTS ====================
-
     @Test
     public void complexScenario_multipleContinuationsInSameChat() {
-        // Create initial chat
         String sessionId = "complex-chat";
         chatRepository.saveMessages(sessionId, Arrays.asList(
                 new ChatMessage("Initial message", ChatMessage.TYPE_USER)
         ));
 
-        // Add first task result
         TaskResult hbResult = new TaskResult("hb-complex-1", TaskResult.TYPE_HEARTBEAT, 1000L,
                 "First heartbeat");
         continuationService.continueInExistingChat(hbResult, sessionId);
 
-        // Add user response
         List<ChatMessage> messages = chatRepository.loadMessages(sessionId);
         messages.add(new ChatMessage("User response to heartbeat", ChatMessage.TYPE_USER));
         chatRepository.saveMessages(sessionId, messages);
 
-        // Add second task result
         TaskResult cronResult = new TaskResult("cron-complex-1", TaskResult.TYPE_CRON_JOB, 2000L,
                 "First cron job");
         continuationService.continueInExistingChat(cronResult, sessionId);
 
-        // Verify final state
         List<ChatMessage> finalMessages = chatRepository.loadMessages(sessionId);
 
-        // Should have: initial + hb context + hb prompt + user response + cron context + cron prompt
         assertTrue("Should have at least 6 messages", finalMessages.size() >= 6);
 
-        // Verify the sequence
         assertEquals("1st: Initial user message", ChatMessage.TYPE_USER, finalMessages.get(0).getType());
         assertEquals("2nd: HB context card", ChatMessage.TYPE_CONTEXT_CARD, finalMessages.get(1).getType());
         assertEquals("3rd: HB agent prompt", ChatMessage.TYPE_SYSTEM, finalMessages.get(2).getType());
@@ -351,11 +298,9 @@ public class ChatContinuationFlowIntegrationTest {
 
     @Test
     public void complexScenario_chatContinuationAfterMultipleTasks() {
-        // Create multiple task results
         TaskResult[] taskResults = new TaskResult[5];
         ChatSession[] sessions = new ChatSession[5];
 
-        // Create 5 different task results and chats
         for (int i = 0; i < 5; i++) {
             taskResults[i] = new TaskResult(
                     "task-" + i,
@@ -366,7 +311,6 @@ public class ChatContinuationFlowIntegrationTest {
             sessions[i] = continuationService.continueInNewChat(taskResults[i]);
         }
 
-        // Verify all sessions created successfully
         for (int i = 0; i < 5; i++) {
             assertNotNull("Session " + i + " should exist", sessions[i]);
             List<ChatMessage> messages = chatRepository.loadMessages(sessions[i].getId());
@@ -400,43 +344,34 @@ public class ChatContinuationFlowIntegrationTest {
         ChatSession session = continuationService.continueInNewChat(taskResult);
         List<ChatMessage> messages = chatRepository.loadMessages(session.getId());
 
-        // Verify content is preserved exactly
         ChatMessage contextCard = messages.get(0);
         assertEquals("Content should be preserved exactly", richContent, contextCard.getContent());
     }
 
     @Test
     public void complexScenario_longConversationWithPeriodicHeartbeats() {
-        // Simulate a long conversation with periodic heartbeat checks
         String sessionId = "long-conversation";
 
-        // Initial messages
         chatRepository.saveMessages(sessionId, Arrays.asList(
                 new ChatMessage("Hello", ChatMessage.TYPE_USER),
                 new ChatMessage("Hi there!", ChatMessage.TYPE_ASSISTANT)
         ));
 
-        // Simulate 3 heartbeat checks during conversation
         for (int i = 1; i <= 3; i++) {
-            // Add heartbeat
             TaskResult hbResult = new TaskResult("hb-long-" + i, TaskResult.TYPE_HEARTBEAT, i * 10000L,
                     "Heartbeat check " + i);
             continuationService.continueInExistingChat(hbResult, sessionId);
 
-            // Add user interaction
             List<ChatMessage> messages = chatRepository.loadMessages(sessionId);
             messages.add(new ChatMessage("User message after heartbeat " + i, ChatMessage.TYPE_USER));
             messages.add(new ChatMessage("Assistant response " + i, ChatMessage.TYPE_ASSISTANT));
             chatRepository.saveMessages(sessionId, messages);
         }
 
-        // Verify final conversation structure
         List<ChatMessage> finalMessages = chatRepository.loadMessages(sessionId);
 
-        // Should have: 2 initial + 3 * (2 heartbeat + 2 user interactions) = 14 messages
         assertEquals("Should have 14 messages total", 14, finalMessages.size());
 
-        // Verify pattern: user, assistant, [context, system, user, assistant] * 3
         assertEquals("1: Initial user", ChatMessage.TYPE_USER, finalMessages.get(0).getType());
         assertEquals("2: Initial assistant", ChatMessage.TYPE_ASSISTANT, finalMessages.get(1).getType());
 

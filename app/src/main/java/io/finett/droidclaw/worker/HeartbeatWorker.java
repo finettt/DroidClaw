@@ -43,7 +43,7 @@ public class HeartbeatWorker extends BaseTaskWorker {
 
     private static final String TAG = "HeartbeatWorker";
 
-    // Fallback regex pattern for backward compatibility
+
     private static final Pattern HEARTBEAT_JSON_PATTERN = Pattern.compile(
             "\\{\\s*\"HEARTBEAT_OK\"\\s*:\\s*(true|false)\\s*\\}",
             Pattern.CASE_INSENSITIVE
@@ -60,7 +60,7 @@ public class HeartbeatWorker extends BaseTaskWorker {
 
     @Override
     protected void customizeAgentLoop(AgentLoop agentLoop) {
-        // Enable Structured Outputs for heartbeat responses
+
         agentLoop.setResponseSchema(HeartbeatResponse.getJsonSchema());
     }
 
@@ -70,14 +70,14 @@ public class HeartbeatWorker extends BaseTaskWorker {
         Log.d(TAG, "Starting heartbeat worker");
 
         try {
-            // Check if heartbeat is enabled
+
             HeartbeatConfig config = heartbeatConfigRepo.getConfig();
             if (!config.isEnabled()) {
                 Log.d(TAG, "Heartbeat is disabled, skipping");
                 return Result.success();
             }
 
-            // Check staleness of the heartbeat system itself
+
             long currentTime = System.currentTimeMillis();
             HeartbeatConfig.StalenessLevel staleness = config.getStalenessLevel(currentTime);
             double stalenessRatio = config.getStalenessRatio(currentTime);
@@ -97,41 +97,41 @@ public class HeartbeatWorker extends BaseTaskWorker {
                 notificationManager.sendWarningNotification("Heartbeat Delayed", msg);
             }
 
-            // Check if we should run based on interval
+
             if (!config.shouldRun(currentTime)) {
                 Log.d(TAG, "Heartbeat interval not elapsed, skipping");
                 return Result.success();
             }
 
-            // Read HEARTBEAT.md file
+
             String heartbeatPrompt = readHeartbeatFile();
             if (heartbeatPrompt == null || heartbeatPrompt.trim().isEmpty()) {
                 Log.w(TAG, "HEARTBEAT.md is empty or missing, using default heartbeat prompt");
                 heartbeatPrompt = getDefaultHeartbeatPrompt();
             }
 
-            // Create isolated session
+
             ChatSession session = createIsolatedSession(SessionType.HIDDEN_HEARTBEAT);
 
-            // Execute heartbeat prompt in sandbox
+
             TaskResult result = executeWithSandbox(session, heartbeatPrompt);
 
-            // Save task result with staleness metadata
+
             result.putMetadata("staleness_ratio", String.valueOf(stalenessRatio));
             result.putMetadata("staleness_level", staleness.name());
 
-            // Check for HEARTBEAT_OK marker with enhanced detection
+
             boolean isHealthy = checkHeartbeatOk(result.getContent());
             result.putMetadata("healthy", String.valueOf(isHealthy));
             taskRepository.saveTaskResult(result);
 
-            // Update last run timestamp
+
             heartbeatConfigRepo.updateLastRun(currentTime);
 
-            // Handle notification based on heartbeat status
+
             if (isHealthy) {
                 Log.d(TAG, "Heartbeat completed successfully - system healthy");
-                // Silent - no notification needed when system is healthy
+
             } else {
                 Log.w(TAG, "Heartbeat completed - potential issues detected, showing notification");
                 notificationManager.sendTaskNotification(result);

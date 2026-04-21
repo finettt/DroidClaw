@@ -20,23 +20,10 @@ import io.finett.droidclaw.tool.ToolResult;
 import io.finett.droidclaw.util.SettingsManager;
 import io.finett.droidclaw.repository.MemoryRepository;
 
-/**
- * AgentLoop handles the iterative tool-calling workflow.
- *
- * Flow:
- * 1. User sends a message
- * 2. LLM responds (may include tool calls)
- * 3. If tool calls exist, execute them (with approval if required)
- * 4. Send tool results back to LLM
- * 5. Repeat until LLM provides final text response
- */
 public class AgentLoop {
     private static final String TAG = "AgentLoop";
     private static final int DEFAULT_MAX_ITERATIONS = 20;
 
-    // Pattern to detect file paths in agent responses (workspace paths)
-    // Matches: /data/data/.../workspace/... or relative paths like uploads/filename.ext
-    // Also matches backtick-quoted paths like `filename.ext`
     private static final Pattern FILE_PATH_PATTERN = Pattern.compile(
         "(?:`([^`]+)`|(/data/data/[^\\s]+|uploads/[^\\s]+|home/[^\\s]+|tmp/[^\\s]+))"
     );
@@ -64,9 +51,6 @@ public class AgentLoop {
     private int totalCompletionTokens = 0;
     private int totalToolCalls = 0;
 
-    /**
-     * Callback interface for agent events.
-     */
     public interface AgentCallback {
         void onProgress(String status);
         void onToolCall(String toolName, String arguments);
@@ -85,32 +69,19 @@ public class AgentLoop {
         void onApprovalRequired(String toolName, String description, JsonObject arguments, ApprovalCallback approvalCallback);
     }
     
-    /**
-     * Callback for tool approval decisions.
-     */
     public interface ApprovalCallback {
         void onApproved();
         void onDenied();
     }
 
-    /**
-     * Creates an AgentLoop without settings (for backwards compatibility).
-     * Uses default values for max iterations and approval.
-     */
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry) {
         this(apiService, toolRegistry, null, null, null);
     }
     
-    /**
-     * Creates an AgentLoop with settings for configuration.
-     */
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager) {
         this(apiService, toolRegistry, settingsManager, null, null);
     }
     
-    /**
-     * Creates an AgentLoop with full memory support.
-     */
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager,
                      ConversationSummarizer summarizer, MemoryContextBuilder memoryContext) {
         this.apiService = apiService;
@@ -119,44 +90,26 @@ public class AgentLoop {
         this.summarizer = summarizer;
         this.memoryContext = memoryContext;
         this.iterationCount = 0;
-        
-        // Load settings
+
         if (settingsManager != null) {
             this.maxIterations = settingsManager.getMaxAgentIterations();
             this.requireApproval = settingsManager.isRequireApproval();
         } else {
             this.maxIterations = DEFAULT_MAX_ITERATIONS;
-            this.requireApproval = true; // Default to requiring approval
+            this.requireApproval = true;
         }
     }
 
-    /**
-     * Sets the identity context (soul.md and user.md) to be prepended to conversations.
-     *
-     * @param identityMessages List of system messages containing identity context
-     */
     public void setIdentityContext(List<ChatMessage> identityMessages) {
         this.identityMessages = identityMessages;
         Log.d(TAG, "Identity context set: " + (identityMessages != null ? identityMessages.size() : 0) + " message(s)");
     }
 
-    /**
-     * Sets a JSON Schema for Structured Outputs.
-     * When set, the model's final text response will adhere to the provided schema.
-     *
-     * @param schema JSON Schema for Structured Outputs (null to disable)
-     */
     public void setResponseSchema(JsonObject schema) {
         this.responseSchema = schema;
         Log.d(TAG, "Response schema set: " + (schema != null ? "enabled" : "disabled"));
     }
 
-    /**
-     * Start the agent loop with a user message.
-     *
-     * @param conversationHistory Full conversation history including the new user message
-     * @param callback Callback for progress and completion
-     */
     public void start(List<ChatMessage> conversationHistory, AgentCallback callback) {
         iterationCount = 0;
         
@@ -220,15 +173,12 @@ public class AgentLoop {
      * Continue iteration with conversation (after optional summarization).
      */
     private void continueIteration(List<ChatMessage> conversationHistory, AgentCallback callback) {
-        // Build context messages (identity + memory)
         List<ChatMessage> contextMessages = new ArrayList<>();
 
-        // Add identity messages
         if (identityMessages != null) {
             contextMessages.addAll(identityMessages);
         }
 
-        // Add memory context (if available)
         if (memoryContext != null) {
             String memoryCtx = memoryContext.buildMemoryContext();
             if (!memoryCtx.isEmpty()) {
@@ -237,10 +187,8 @@ public class AgentLoop {
             }
         }
 
-        // Get tool definitions
         JsonArray tools = toolRegistry.getToolDefinitions();
 
-        // Use structured outputs if a schema is set
         if (responseSchema != null) {
             sendStructuredMessage(conversationHistory, tools, contextMessages, callback);
         } else {
@@ -257,7 +205,6 @@ public class AgentLoop {
                 new LlmApiService.StructuredResponseCallback() {
             @Override
             public void onSuccess(LlmApiService.StructuredResponse response) {
-                // Update token tracking
                 if (response.getUsage() != null && response.getUsage().isAvailable()) {
                     currentContextTokens = response.getUsage().getTotalTokens();
                     currentPromptTokens = response.getUsage().getPromptTokens();
@@ -271,7 +218,6 @@ public class AgentLoop {
                           ", Session total: " + totalTokens);
                 }
 
-                // Check for refusal
                 if (response.isRefusal()) {
                     Log.w(TAG, "Model refused to respond: " + response.getRefusal());
                     handleRefusal(response, conversationHistory, callback);
@@ -296,14 +242,11 @@ public class AgentLoop {
         apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, new LlmApiService.ChatCallbackWithTools() {
             @Override
             public void onSuccess(LlmApiService.LlmResponse response) {
-                // Update token tracking using "Last Usage" algorithm
                 if (response.getUsage() != null && response.getUsage().isAvailable()) {
-                    // Current context (from last API response - this is the ACTUAL context size)
                     currentContextTokens = response.getUsage().getTotalTokens();
                     currentPromptTokens = response.getUsage().getPromptTokens();
                     currentCompletionTokens = response.getUsage().getCompletionTokens();
 
-                    // Session cumulative stats (total spent across all requests)
                     totalTokens += response.getUsage().getTotalTokens();
                     totalPromptTokens += response.getUsage().getPromptTokens();
                     totalCompletionTokens += response.getUsage().getCompletionTokens();
@@ -322,36 +265,25 @@ public class AgentLoop {
         });
     }
 
-    /**
-     * Handle the response from the LLM.
-     */
     private void handleLlmResponse(LlmApiService.LlmResponse response, List<ChatMessage> conversationHistory, AgentCallback callback) {
         if (response.hasToolCalls()) {
-            // LLM wants to call tools
             handleToolCalls(response, conversationHistory, callback);
         } else {
-            // LLM provided final text response
             handleFinalResponse(response, conversationHistory, callback);
         }
     }
 
-    /**
-     * Handle tool calls from the LLM.
-     */
     private void handleToolCalls(LlmApiService.LlmResponse response, List<ChatMessage> conversationHistory, AgentCallback callback) {
         List<LlmApiService.ToolCall> toolCalls = response.getToolCalls();
-        
+
         Log.d(TAG, "LLM requested " + toolCalls.size() + " tool call(s)");
         callback.onProgress("Executing " + toolCalls.size() + " tool(s)...");
 
-        // Add assistant message with tool calls to history
         ChatMessage toolCallMessage = ChatMessage.createToolCallMessage(toolCalls);
         conversationHistory.add(toolCallMessage);
-        
-        // Increment tool call counter
+
         totalToolCalls += toolCalls.size();
 
-        // Process tool calls sequentially with approval support
         processToolCallsWithApproval(toolCalls, 0, conversationHistory, callback);
     }
     
@@ -412,16 +344,12 @@ public class AgentLoop {
         }
     }
     
-    /**
-     * Execute a tool and continue processing remaining tool calls.
-     */
     private void executeToolAndContinue(LlmApiService.ToolCall toolCall, List<LlmApiService.ToolCall> toolCalls,
                                         int index, List<ChatMessage> conversationHistory, AgentCallback callback) {
         String toolName = toolCall.getName();
-        
-        // Execute the tool
+
         ToolResult result = toolRegistry.executeTool(toolName, toolCall.getArguments());
-        
+
         String resultContent;
         if (result.isSuccess()) {
             resultContent = result.getContent();
@@ -433,21 +361,16 @@ public class AgentLoop {
 
         callback.onToolResult(toolName, resultContent);
 
-        // Add tool result to conversation history
         ChatMessage toolResultMessage = ChatMessage.createToolResultMessage(
             toolCall.getId(),
             toolName,
             resultContent
         );
         conversationHistory.add(toolResultMessage);
-        
-        // Process next tool call
+
         processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
     }
 
-    /**
-     * Handle final text response from the LLM.
-     */
     private void handleFinalResponse(LlmApiService.LlmResponse response, List<ChatMessage> conversationHistory, AgentCallback callback) {
         String content = response.getContent();
 
@@ -457,20 +380,14 @@ public class AgentLoop {
 
         Log.d(TAG, "Agent loop completed in " + iterationCount + " iteration(s)");
 
-        // Add final assistant response to history
         ChatMessage assistantMessage = new ChatMessage(content, ChatMessage.TYPE_ASSISTANT);
         conversationHistory.add(assistantMessage);
 
-        // Detect file references in the response and create attachment messages
         detectAndAddFileReferences(content, conversationHistory);
 
         callback.onComplete(content, conversationHistory);
     }
 
-    /**
-     * Scans the assistant response for file references and creates TYPE_ATTACHMENT messages.
-     * Detects backtick-quoted filenames and workspace paths.
-     */
     private void detectAndAddFileReferences(String content, List<ChatMessage> conversationHistory) {
         if (content == null) return;
 
@@ -515,11 +432,7 @@ public class AgentLoop {
         }
     }
 
-    /**
-     * Attempts to find a file in the workspace directories.
-     */
     private File findFileInWorkspace(String relativePath) {
-        // Try common workspace directories
         String[] searchDirs = {
             "uploads",
             "home",
@@ -529,7 +442,6 @@ public class AgentLoop {
             "tmp"
         };
 
-        // First try direct path under workspace
         File workspaceRoot = getWorkspaceRoot();
         if (workspaceRoot != null) {
             File directFile = new File(workspaceRoot, relativePath);
@@ -549,10 +461,6 @@ public class AgentLoop {
         return null;
     }
 
-    /**
-     * Gets the workspace root from the tool registry.
-     * Returns null if not available.
-     */
     private File getWorkspaceRoot() {
         try {
             return toolRegistry.getWorkspaceRoot();
@@ -561,20 +469,14 @@ public class AgentLoop {
         }
     }
 
-    /**
-     * Handle a structured response from the LLM (with schema adherence).
-     * Processes tool calls or treats content as final response.
-     */
     private void handleStructuredLlmResponse(LlmApiService.StructuredResponse response,
                                               List<ChatMessage> conversationHistory,
                                               AgentCallback callback) {
         if (response.hasToolCalls()) {
-            // Convert StructuredResponse to LlmResponse for tool handling
             LlmApiService.LlmResponse llmResponse = new LlmApiService.LlmResponse(
                     response.getContent(), response.getToolCalls(), response.getUsage());
             handleToolCalls(llmResponse, conversationHistory, callback);
         } else {
-            // Final text response - content adheres to the schema
             String content = response.getContent();
 
             if (content == null || content.isEmpty()) {
@@ -590,9 +492,6 @@ public class AgentLoop {
         }
     }
 
-    /**
-     * Handle a refusal from the LLM when using Structured Outputs.
-     */
     private void handleRefusal(LlmApiService.StructuredResponse response,
                                List<ChatMessage> conversationHistory,
                                AgentCallback callback) {
@@ -600,69 +499,48 @@ public class AgentLoop {
 
         Log.w(TAG, "Handling refusal: " + refusalMessage);
 
-        // Add refusal to conversation history
         ChatMessage refusalMsg = new ChatMessage("Refusal: " + refusalMessage, ChatMessage.TYPE_ASSISTANT);
         conversationHistory.add(refusalMsg);
 
-        // Notify callback of completion with refusal indicator
         callback.onComplete("[REFUSAL] " + refusalMessage, conversationHistory);
     }
 
-    /**
-     * Get the current iteration count.
-     */
     public int getIterationCount() {
         return iterationCount;
     }
 
-    /**
-     * Reset the iteration count.
-     */
     public void reset() {
         iterationCount = 0;
     }
-    
-    // Token tracking getters - "Last Usage" algorithm
-    
-    /**
-     * Get current context tokens (from last API response).
-     * This represents the ACTUAL context size.
-     */
+
     public int getCurrentContextTokens() {
         return currentContextTokens;
     }
-    
+
     public int getCurrentPromptTokens() {
         return currentPromptTokens;
     }
-    
+
     public int getCurrentCompletionTokens() {
         return currentCompletionTokens;
     }
-    
-    /**
-     * Get session cumulative tokens (total spent across all requests).
-     */
+
     public int getTotalTokens() {
         return totalTokens;
     }
-    
+
     public int getTotalPromptTokens() {
         return totalPromptTokens;
     }
-    
+
     public int getTotalCompletionTokens() {
         return totalCompletionTokens;
     }
-    
+
     public int getTotalToolCalls() {
         return totalToolCalls;
     }
-    
-    /**
-     * Reset all token counters (current context and session cumulative).
-     * Called when starting a new session or clearing context.
-     */
+
     public void resetTokens() {
         currentContextTokens = 0;
         currentPromptTokens = 0;
@@ -673,22 +551,14 @@ public class AgentLoop {
         totalToolCalls = 0;
         Log.d(TAG, "Token counters reset");
     }
-    
-    /**
-     * Reset only current context tokens (called after compression).
-     * Session cumulative tokens are preserved.
-     */
+
     public void resetCurrentContext() {
         currentContextTokens = 0;
         currentPromptTokens = 0;
         currentCompletionTokens = 0;
         Log.d(TAG, "Current context tokens reset (session totals preserved)");
     }
-    
-    /**
-     * Set token values from saved session.
-     * Used when restoring a session.
-     */
+
     public void setTokensFromSession(int currentContext, int currentPrompt, int currentCompletion,
                                       int total, int totalPrompt, int totalCompletion, int toolCalls) {
         this.currentContextTokens = currentContext;

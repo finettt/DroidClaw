@@ -8,9 +8,6 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for searching file contents in the virtual filesystem.
- */
 public class FileSearchTool implements Tool {
     private static final String NAME = "search_files";
     private final VirtualFileSystem vfs;
@@ -48,7 +45,6 @@ public class FileSearchTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Extract arguments
             if (!arguments.has("pattern")) {
                 return ToolResult.error("Missing required argument: pattern");
             }
@@ -57,10 +53,8 @@ public class FileSearchTool implements Tool {
             String pattern = arguments.get("pattern").getAsString();
             String filePattern = arguments.has("file_pattern") ? arguments.get("file_pattern").getAsString() : null;
 
-            // Execute search operation
             VirtualFileSystem.FileSearchResult result = vfs.searchFiles(path, pattern, filePattern);
 
-            // Build result JSON
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("path", path);
             resultJson.addProperty("pattern", pattern);

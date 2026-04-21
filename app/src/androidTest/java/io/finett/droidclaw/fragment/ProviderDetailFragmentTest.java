@@ -38,7 +38,6 @@ public class ProviderDetailFragmentTest {
 
     @Before
     public void setUp() {
-        // Clear settings before each test
         SharedPreferences prefs = getApplicationContext()
                 .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
         prefs.edit().clear().commit();
@@ -57,10 +56,8 @@ public class ProviderDetailFragmentTest {
                 TextInputLayout tilProviderName = fragment.requireView().findViewById(R.id.til_provider_name);
                 Button btnSave = fragment.requireView().findViewById(R.id.button_save);
 
-                // Try to save without filling any fields - validation stops at first error
                 btnSave.performClick();
 
-                // First field (provider name) should show error
                 assertNotNull("Provider name error should be set", tilProviderName.getError());
             });
         }
@@ -107,11 +104,9 @@ public class ProviderDetailFragmentTest {
                 TextInputEditText etProviderName = fragment.requireView().findViewById(R.id.input_provider_name);
                 Button btnSave = fragment.requireView().findViewById(R.id.button_save);
 
-                // Trigger validation error
                 btnSave.performClick();
                 assertNotNull("Error should be shown", tilProviderName.getError());
 
-                // Type in the field
                 etProviderName.setText("A");
             });
 
@@ -119,7 +114,6 @@ public class ProviderDetailFragmentTest {
 
             scenario.onFragment(fragment -> {
                 TextInputLayout tilProviderName = fragment.requireView().findViewById(R.id.til_provider_name);
-                // Error should be cleared
                 assertNull("Error should be cleared when typing", tilProviderName.getError());
             });
         }
@@ -138,10 +132,8 @@ public class ProviderDetailFragmentTest {
                 TextInputEditText etProviderName = fragment.requireView().findViewById(R.id.input_provider_name);
                 Button btnSave = fragment.requireView().findViewById(R.id.button_save);
 
-                // Fill provider name to get to base URL validation
                 etProviderName.setText("Test");
 
-                // Trigger validation error on base URL
                 btnSave.performClick();
             });
 
@@ -151,10 +143,8 @@ public class ProviderDetailFragmentTest {
                 TextInputLayout tilBaseUrl = fragment.requireView().findViewById(R.id.til_base_url);
                 TextInputEditText etBaseUrl = fragment.requireView().findViewById(R.id.input_base_url);
 
-                // Verify error was set
                 assertNotNull("Error should be shown", tilBaseUrl.getError());
 
-                // Type in the field to clear error
                 etBaseUrl.setText("https://");
             });
 
@@ -162,7 +152,6 @@ public class ProviderDetailFragmentTest {
 
             scenario.onFragment(fragment -> {
                 TextInputLayout tilBaseUrl = fragment.requireView().findViewById(R.id.til_base_url);
-                // Error should be cleared
                 assertNull("Error should be cleared when typing", tilBaseUrl.getError());
             });
         }
@@ -182,11 +171,9 @@ public class ProviderDetailFragmentTest {
                 TextInputEditText etBaseUrl = fragment.requireView().findViewById(R.id.input_base_url);
                 Button btnSave = fragment.requireView().findViewById(R.id.button_save);
 
-                // Fill first two fields to trigger API key validation
                 etProviderName.setText("Test");
                 etBaseUrl.setText("https://api.test.com");
 
-                // Now try to save - API key validation will trigger
                 btnSave.performClick();
             });
 
@@ -196,10 +183,8 @@ public class ProviderDetailFragmentTest {
                 TextInputLayout tilApiKey = fragment.requireView().findViewById(R.id.til_api_key);
                 TextInputEditText etApiKey = fragment.requireView().findViewById(R.id.input_api_key);
 
-                // Verify error was set
                 assertNotNull("Error should be shown", tilApiKey.getError());
 
-                // Type in the API key field to clear error
                 etApiKey.setText("test");
             });
 
@@ -207,7 +192,6 @@ public class ProviderDetailFragmentTest {
 
             scenario.onFragment(fragment -> {
                 TextInputLayout tilApiKey = fragment.requireView().findViewById(R.id.til_api_key);
-                // Error should be cleared
                 assertNull("Error should be cleared when typing", tilApiKey.getError());
             });
         }
@@ -235,14 +219,12 @@ public class ProviderDetailFragmentTest {
                 btnSave.performClick();
             });
 
-            // Wait for navigation
             try {
                 Thread.sleep(200);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
-            // Verify provider was saved
             SettingsManager settingsManager = new SettingsManager(getApplicationContext());
             assertEquals("Provider should be saved", 1, settingsManager.getProviderCount());
             List<Provider> providers = settingsManager.getProviders();
@@ -256,7 +238,6 @@ public class ProviderDetailFragmentTest {
 
     @Test
     public void editExistingProvider_loadsData() {
-        // Pre-populate a provider
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
         Provider provider = new Provider();
         provider.setId("test-provider-id");
@@ -285,7 +266,6 @@ public class ProviderDetailFragmentTest {
 
     @Test
     public void deleteProvider_confirmsAndDeletes() {
-        // Pre-populate a provider
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
         Provider provider = new Provider();
         provider.setId("test-provider-id");
@@ -303,11 +283,9 @@ public class ProviderDetailFragmentTest {
             scenario.onFragment(fragment -> {
                 Button btnDelete = fragment.requireView().findViewById(R.id.button_delete);
 
-                // Verify delete button is visible for existing provider
                 assertEquals("Delete button should be visible", View.VISIBLE, btnDelete.getVisibility());
             });
 
-            // Verify provider exists before deletion
             assertEquals("Provider should exist initially", 1, settingsManager.getProviderCount());
         }
     }

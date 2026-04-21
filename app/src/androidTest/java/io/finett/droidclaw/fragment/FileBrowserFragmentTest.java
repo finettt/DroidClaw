@@ -38,7 +38,6 @@ public class FileBrowserFragmentTest {
     @Before
     public void setUp() {
         workspaceManager = new WorkspaceManager(getApplicationContext());
-        // Clean up workspace before each test
         cleanWorkspace();
     }
 
@@ -60,11 +59,7 @@ public class FileBrowserFragmentTest {
         file.delete();
     }
 
-    /**
-     * Polls until the RecyclerView adapter has at least minItems, or times out.
-     * This is more reliable than a fixed Thread.sleep() for async operations.
-     */
-    private void waitForAdapterItems(FragmentScenario<FileBrowserFragment> scenario, int minItems) {
+        private void waitForAdapterItems(FragmentScenario<FileBrowserFragment> scenario, int minItems) {
         long startTime = System.currentTimeMillis();
         while (System.currentTimeMillis() - startTime < WAIT_TIMEOUT_MS) {
             AtomicInteger itemCount = new AtomicInteger(0);
@@ -86,10 +81,7 @@ public class FileBrowserFragmentTest {
         }
     }
 
-    /**
-     * Wait for async operations to complete. More reliable than fixed sleep.
-     */
-    private void waitForLoading() {
+        private void waitForLoading() {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         try {
             Thread.sleep(100); // Small buffer after idle
@@ -153,7 +145,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void withFiles_displaysFileList() {
-        // Create test files
         createTestFile("test.txt", "Test content");
         createTestFile("test.md", "Markdown content");
 
@@ -182,7 +173,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void withDirectory_displaysDirectoryIcon() {
-        // Create test directory
         File testDir = new File(workspaceManager.getWorkspaceRoot(), "test_dir");
         testDir.mkdirs();
 
@@ -227,7 +217,6 @@ public class FileBrowserFragmentTest {
 
             waitForLoading();
 
-            // Recreate fragment
             scenario.recreate();
 
             scenario.onFragment(fragment -> {
@@ -245,7 +234,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void directoryClick_shouldTriggerNavigation() {
-        // Create test directory
         File testDir = new File(workspaceManager.getWorkspaceRoot(), "test_dir");
         testDir.mkdirs();
 
@@ -260,7 +248,6 @@ public class FileBrowserFragmentTest {
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
 
-                // Click on first item (directory)
                 if (fileList.getAdapter().getItemCount() > 0) {
                     View firstItem = fileList.getLayoutManager().findViewByPosition(0);
                     if (firstItem != null) {
@@ -273,7 +260,6 @@ public class FileBrowserFragmentTest {
 
             scenario.onFragment(fragment -> {
                 TextView pathText = fragment.requireView().findViewById(R.id.pathText);
-                // Path should have changed from root
                 String currentPath = pathText.getText().toString();
                 assertNotNull("Path should not be null after navigation", currentPath);
             });
@@ -282,7 +268,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void filesSortedCorrectly_directoriesFirst() {
-        // Create mixed files and directories
         File testDir = new File(workspaceManager.getWorkspaceRoot(), "a_directory");
         testDir.mkdirs();
         createTestFile("z_file.txt", "Content");
@@ -293,13 +278,11 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            // Wait for background loading with polling instead of fixed sleep
             waitForAdapterItems(scenario, 2);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
                 assertTrue("Should have at least 2 items", fileList.getAdapter().getItemCount() >= 2);
-                // Directory should come first even though it starts with 'a' and file starts with 'z'
             });
         }
     }
@@ -320,7 +303,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void loadDirectory_handlesIOErrors() {
-        // This test ensures the fragment doesn't crash on errors
         try (FragmentScenario<FileBrowserFragment> scenario =
                      FragmentScenario.launchInContainer(FileBrowserFragment.class, null, R.style.Theme_DroidClaw)) {
             scenario.onFragment(fragment -> {
@@ -330,7 +312,6 @@ public class FileBrowserFragmentTest {
             waitForLoading();
 
             scenario.onFragment(fragment -> {
-                // Fragment should still be functional
                 assertNotNull("Fragment view should still exist", fragment.requireView());
             });
         }
@@ -338,7 +319,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void multipleFileTypes_displayCorrectIcons() {
-        // Create files with different extensions
         createTestFile("test.md", "Markdown");
         createTestFile("test.py", "Python");
         createTestFile("test.js", "JavaScript");
@@ -362,7 +342,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void subdirectory_showsParentDirectoryEntry() {
-        // Create test directory
         File testDir = new File(workspaceManager.getWorkspaceRoot(), "subdir");
         testDir.mkdirs();
 
@@ -374,7 +353,6 @@ public class FileBrowserFragmentTest {
 
             waitForAdapterItems(scenario, 1);
 
-            // Click on directory to navigate into it
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
                 if (fileList.getAdapter().getItemCount() > 0) {
@@ -385,16 +363,13 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            // Wait for parent directory entry to appear
             waitForAdapterItems(scenario, 1);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
-                // Should have at least the parent directory entry
                 assertTrue("Should have parent directory entry (..) in subdirectory",
                         fileList.getAdapter().getItemCount() >= 1);
 
-                // Check first item is parent directory with ".." name
                 View firstItem = fileList.getLayoutManager().findViewByPosition(0);
                 if (firstItem != null) {
                     TextView fileName = firstItem.findViewById(R.id.fileName);
@@ -423,12 +398,10 @@ public class FileBrowserFragmentTest {
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
-                // Root directory should not have parent directory entry
                 if (fileList.getAdapter().getItemCount() > 0) {
                     View firstItem = fileList.getLayoutManager().findViewByPosition(0);
                     if (firstItem != null) {
                         TextView fileName = firstItem.findViewById(R.id.fileName);
-                        // First item should NOT be ".." in root directory
                         assertTrue("Root directory should not have parent directory entry",
                                 !".." .equals(fileName.getText().toString()));
                     }
@@ -439,7 +412,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void clickParentDirectory_navigatesToParent() {
-        // Create nested directory structure
         File testDir = new File(workspaceManager.getWorkspaceRoot(), "parent_dir");
         testDir.mkdirs();
         File nestedDir = new File(testDir, "child_dir");
@@ -453,7 +425,6 @@ public class FileBrowserFragmentTest {
 
             waitForAdapterItems(scenario, 1);
 
-            // Navigate into parent_dir
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
                 View firstItem = fileList.getLayoutManager().findViewByPosition(0);
@@ -464,10 +435,8 @@ public class FileBrowserFragmentTest {
 
             waitForAdapterItems(scenario, 1);
 
-            // Navigate into child_dir
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
-                // Second item should be child_dir (first is ..)
                 View secondItem = fileList.getLayoutManager().findViewByPosition(1);
                 if (secondItem != null) {
                     secondItem.performClick();
@@ -476,14 +445,12 @@ public class FileBrowserFragmentTest {
 
             waitForAdapterItems(scenario, 1);
 
-            // Verify we're in child_dir
             scenario.onFragment(fragment -> {
                 TextView pathText = fragment.requireView().findViewById(R.id.pathText);
                 assertTrue("Should be in child directory",
                         pathText.getText().toString().contains("child_dir"));
             });
 
-            // Click on parent directory entry (..)
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
                 View firstItem = fileList.getLayoutManager().findViewByPosition(0);
@@ -496,12 +463,10 @@ public class FileBrowserFragmentTest {
 
             waitForAdapterItems(scenario, 1);
 
-            // Verify we're back in parent_dir
             scenario.onFragment(fragment -> {
                 TextView pathText = fragment.requireView().findViewById(R.id.pathText);
                 assertTrue("Should be back in parent directory",
                         pathText.getText().toString().contains("parent_dir"));
-                // Should not contain child_dir anymore
                 assertTrue("Should not be in child directory anymore",
                         !pathText.getText().toString().contains("child_dir"));
             });
@@ -510,7 +475,6 @@ public class FileBrowserFragmentTest {
 
     @Test
     public void parentDirectoryEntry_showsChevron() {
-        // Create test directory
         File testDir = new File(workspaceManager.getWorkspaceRoot(), "test_subdir");
         testDir.mkdirs();
 
@@ -522,7 +486,6 @@ public class FileBrowserFragmentTest {
 
             waitForAdapterItems(scenario, 1);
 
-            // Navigate into directory
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
                 View firstItem = fileList.getLayoutManager().findViewByPosition(0);

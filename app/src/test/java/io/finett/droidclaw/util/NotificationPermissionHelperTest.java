@@ -26,8 +26,6 @@ public class NotificationPermissionHelperTest {
         permissionHelper = new NotificationPermissionHelper(RuntimeEnvironment.getApplication());
     }
 
-    // ==================== SDK VERSION CHECK TESTS ====================
-
     @Test
     @Config(sdk = Build.VERSION_CODES.S) // Android 12 (API 32) - below TIRAMISU
     public void hasNotificationPermission_returnsTrue_onAndroid12() {
@@ -63,7 +61,6 @@ public class NotificationPermissionHelperTest {
     @Test
     @Config(sdk = Build.VERSION_CODES.UPSIDE_DOWN_CAKE) // Android 14 (API 34)
     public void hasNotificationPermission_checksPermission_onAndroid14() {
-        // On Android 14+, the permission check runs
         permissionHelper.hasNotificationPermission();
     }
 }

@@ -55,10 +55,10 @@ public class ZenResultFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Initialize continuation service
+
         continuationService = new ChatContinuationService(requireContext());
 
-        // Get task result from arguments
+
         if (getArguments() != null) {
             taskResult = (TaskResult) getArguments().getSerializable(ARG_TASK_RESULT);
         }
@@ -96,16 +96,16 @@ public class ZenResultFragment extends Fragment {
     private void populateData() {
         if (taskResult == null) return;
 
-        // Set title based on task type
+
         String typeLabel = getTaskTypeLabel(taskResult.getType());
         resultTitle.setText(typeLabel + " Result");
 
-        // Set timestamp
+
         SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault());
         String formattedDate = sdf.format(new Date(taskResult.getTimestamp()));
         resultTimestamp.setText(formattedDate);
 
-        // Render markdown content
+
         String content = taskResult.getContent();
         if (content != null && !content.isEmpty()) {
             if (MarkdownRenderer.containsMarkdown(content)) {
@@ -119,10 +119,10 @@ public class ZenResultFragment extends Fragment {
     }
 
     private void setupClickListeners() {
-        // Chat about this button
+
         fabChatAboutThis.setOnClickListener(v -> showChatContinuationDialog());
 
-        // Share button
+
         fabShare.setOnClickListener(v -> shareResult());
     }
 
@@ -148,13 +148,13 @@ public class ZenResultFragment extends Fragment {
             return;
         }
 
-        // Use continuation service
+
         ChatSession newSession = continuationService.continueInNewChat(taskResult);
 
         MainActivity mainActivity = (MainActivity) requireActivity();
         mainActivity.addChatSessionToList(newSession);
 
-        // Navigate to chat with session ID
+
         Bundle args = new Bundle();
         args.putString(ChatFragment.ARG_SESSION_ID, newSession.getId());
         Navigation.findNavController(requireView()).navigate(R.id.chatFragment, args);
@@ -165,13 +165,13 @@ public class ZenResultFragment extends Fragment {
             return;
         }
 
-        // For now, use the most recent chat
+
         // In a full implementation, you'd show a picker of existing chats
         MainActivity mainActivity = (MainActivity) requireActivity();
         ChatSession session = mainActivity.getMostRecentChatSession();
 
         if (session != null) {
-            // Use continuation service to add context
+            // Inject task result into existing chat to add context
             continuationService.continueInExistingChat(taskResult, session.getId());
 
             Bundle args = new Bundle();

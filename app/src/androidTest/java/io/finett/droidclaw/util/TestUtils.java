@@ -20,30 +20,14 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import io.finett.droidclaw.R;
 
-/**
- * Utility class for Android instrumented tests.
- * Provides helper methods for test synchronization and waiting.
- */
 public class TestUtils {
 
     private static final String TAG = "TestUtils";
     private static final long DEFAULT_TIMEOUT_MS = 10000; // Increased for CI
     private static final long POLL_INTERVAL_MS = 250;
-
-    /**
-     * Waits for Espresso to be idle.
-     * This ensures all pending UI operations and animations are complete.
-     */
     public static void waitForIdle() {
         onIdle();
     }
-
-    /**
-     * Waits for a specified duration.
-     * Use sparingly - prefer IdlingResources when possible.
-     *
-     * @param millis Time to wait in milliseconds
-     */
     public static void sleep(long millis) {
         try {
             Thread.sleep(millis);
@@ -51,64 +35,34 @@ public class TestUtils {
             Thread.currentThread().interrupt();
         }
     }
-
-    /**
-     * Polls until the root view is displayed, with a default timeout.
-     * This is a best-effort approach suitable for CI emulators that may never report focus.
-     * Does NOT throw if focus is never gained - logs a warning instead.
-     */
     public static void waitForWindowFocus() {
         waitForWindowFocus(DEFAULT_TIMEOUT_MS);
     }
-
-    /**
-     * Polls until the root view is displayed, with a configurable timeout.
-     * This is a best-effort approach suitable for CI emulators.
-     *
-     * On headless CI emulators (-no-window), the window may never report has-window-focus=true,
-     * but Espresso can still interact with views. This method logs a warning instead of
-     * throwing an exception when focus isn't gained.
-     *
-     * @param timeoutMs Maximum time to wait for root view to be displayed
-     */
     public static void waitForWindowFocus(long timeoutMs) {
-        // Dismiss any system dialogs that might steal focus
         dismissSystemDialogs();
 
         long deadline = System.currentTimeMillis() + timeoutMs;
 
         while (System.currentTimeMillis() < deadline) {
             try {
-                // Try to find any displayed view - this works even without window focus
                 onView(isRoot()).check(matches(isDisplayed()));
                 Log.d(TAG, "Root view displayed successfully");
-                // Give a small extra delay for UI to settle
                 sleep(300);
                 return;
             } catch (NoMatchingRootException e) {
-                // Root not ready yet, keep waiting
                 sleep(POLL_INTERVAL_MS);
             } catch (Exception e) {
-                // Other exceptions - keep waiting
                 Log.d(TAG, "Waiting for window focus: " + e.getMessage());
                 sleep(POLL_INTERVAL_MS);
             }
         }
 
-        // On CI emulators with -no-window, focus may never be reported
-        // Log a warning but don't fail - Espresso can still work
         Log.w(TAG, "Window focus not gained within " + timeoutMs + "ms. " +
                 "Proceeding anyway (headless emulator compatibility).");
 
-        // Give time for dialogs and animations to settle
         dismissSystemDialogs();
         sleep(500);
     }
-
-    /**
-     * Dismisses system dialogs that might interfere with tests.
-     * Best-effort - ignores exceptions.
-     */
     public static void dismissSystemDialogs() {
         try {
             InstrumentationRegistry.getInstrumentation()
@@ -118,33 +72,13 @@ public class TestUtils {
             Log.d(TAG, "Could not dismiss system dialogs: " + e.getMessage());
         }
     }
-
-    /**
-     * Waits for UI to be ready after activity launch or navigation.
-     * Combines window focus polling with Espresso idle synchronization.
-     */
     public static void waitForUiReady() {
         waitForWindowFocus();
         onIdle();
     }
-
-    /**
-     * Waits specifically for the chat screen to be ready by polling for
-     * the message input view from ChatFragment.
-     *
-     * This is more reliable than a generic idle wait because MainActivity
-     * performs some navigation work asynchronously after launch.
-     */
     public static void waitForChatFragment() {
         waitForChatFragment(DEFAULT_TIMEOUT_MS);
     }
-
-    /**
-     * Waits specifically for the chat screen to be ready by polling for
-     * the message input view from ChatFragment.
-     *
-     * @param timeoutMs Maximum time to wait in milliseconds
-     */
     public static void waitForChatFragment(long timeoutMs) {
         waitForUiReady();
 
@@ -164,14 +98,6 @@ public class TestUtils {
 
         Log.w(TAG, "ChatFragment was not displayed within timeout");
     }
-
-    /**
-     * Waits for a specific view to be displayed, with timeout.
-     * More reliable than waitForUiReady() for specific elements.
-     *
-     * @param viewMatcher The view matcher to find the view
-     * @param timeoutMs   Maximum time to wait in milliseconds
-     */
     public static void waitForViewDisplayed(org.hamcrest.Matcher<View> viewMatcher, long timeoutMs) {
         long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
@@ -184,21 +110,11 @@ public class TestUtils {
         }
         Log.w(TAG, "View not displayed within timeout");
     }
-
-    /**
-     * Waits for a specific view to be displayed, with default timeout.
-     *
-     * @param viewMatcher The view matcher to find the view
-     */
     public static void waitForViewDisplayed(org.hamcrest.Matcher<View> viewMatcher) {
         waitForViewDisplayed(viewMatcher, DEFAULT_TIMEOUT_MS);
     }
 
-    /**
-     * Simple IdlingResource that waits for a fixed duration.
-     * Useful for waiting for animations or async operations.
-     */
-    public static class SimpleIdlingResource implements IdlingResource {
+        public static class SimpleIdlingResource implements IdlingResource {
         private final long waitTimeMs;
         private final long startTime;
         private ResourceCallback callback;
@@ -230,13 +146,6 @@ public class TestUtils {
             this.callback = callback;
         }
     }
-
-    /**
-     * Waits for a specified duration using an IdlingResource.
-     * This is better than Thread.sleep as it integrates with Espresso's synchronization.
-     *
-     * @param millis Time to wait in milliseconds
-     */
     public static void waitFor(long millis) {
         SimpleIdlingResource idlingResource = new SimpleIdlingResource(millis);
         IdlingRegistry.getInstance().register(idlingResource);
@@ -246,14 +155,6 @@ public class TestUtils {
             IdlingRegistry.getInstance().unregister(idlingResource);
         }
     }
-
-    /**
-     * Gets the drawable resource ID from an ImageView.
-     * Useful for testing which drawable is set on an ImageView.
-     *
-     * @param imageView The ImageView to check
-     * @return The drawable resource ID, or -1 if not set or cannot be determined
-     */
     public static int getDrawableResourceId(ImageView imageView) {
         if (imageView == null) {
             return -1;
@@ -262,30 +163,19 @@ public class TestUtils {
         if (drawable == null) {
             return -1;
         }
-        // Try to get the resource ID from the drawable
-        // This works for resources set via setImageResource()
         try {
             String resourceName = imageView.getResources().getResourceEntryName(
                     imageView.getResources().getIdentifier(
                             drawable.toString(),
                             "drawable",
                             imageView.getContext().getPackageName()));
-            // This approach doesn't work well, so let's use reflection
             return getDrawableResIdViaReflection(imageView);
         } catch (Exception e) {
             return -1;
         }
     }
-
-    /**
-     * Gets the drawable resource ID from an ImageView using reflection.
-     *
-     * @param imageView The ImageView to check
-     * @return The drawable resource ID, or -1 if not set
-     */
     private static int getDrawableResIdViaReflection(ImageView imageView) {
         try {
-            // Get the mResource field from the Drawable
             Drawable drawable = imageView.getDrawable();
             java.lang.reflect.Field field = drawable.getClass().getDeclaredField("mResource");
             field.setAccessible(true);

@@ -71,7 +71,6 @@ public class ToolDefinitionTest {
         assertEquals("string", properties.getAsJsonObject("name").get("type").getAsString());
         assertEquals("User name", properties.getAsJsonObject("name").get("description").getAsString());
         
-        // Check required array
         assertTrue(params.has("required"));
         JsonArray required = params.getAsJsonArray("required");
         assertEquals(1, required.size());

@@ -19,9 +19,6 @@ import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for viewing execution history of a specific scheduled task.
- */
 public class ViewTaskHistoryTool implements Tool {
 
     private static final String TAG = "ViewTaskHistoryTool";
@@ -91,7 +88,6 @@ public class ViewTaskHistoryTool implements Tool {
 
             List<TaskExecutionRecord> records = getTaskRepository().getExecutionHistory(job.getId());
 
-            // Limit the results
             if (records.size() > limit) {
                 records = records.subList(0, limit);
             }
@@ -107,7 +103,6 @@ public class ViewTaskHistoryTool implements Tool {
                 recordObj.addProperty("success", record.isSuccess());
                 recordObj.addProperty("duration_ms", record.getDurationMillis());
 
-                // Format duration
                 long durationSec = record.getDurationMillis() / 1000;
                 String durationText;
                 if (durationSec < 60) {
@@ -145,7 +140,6 @@ public class ViewTaskHistoryTool implements Tool {
             result.addProperty("success_count", successCount);
             result.addProperty("failure_count", failureCount);
 
-            // Create human-readable summary
             StringBuilder summary = new StringBuilder();
             summary.append("Execution History for '").append(job.getName()).append("'\n");
             summary.append("Showing ").append(historyArray.size()).append(" of ")
@@ -199,7 +193,6 @@ public class ViewTaskHistoryTool implements Tool {
         }
 
         if (taskName != null && !taskName.isEmpty()) {
-            // Search by name (case-insensitive partial match)
             List<CronJob> allJobs = getTaskRepository().getCronJobs();
             for (CronJob job : allJobs) {
                 if (job.getName().toLowerCase().contains(taskName.toLowerCase())) {

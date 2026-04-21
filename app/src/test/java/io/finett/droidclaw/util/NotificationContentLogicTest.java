@@ -15,8 +15,6 @@ import io.finett.droidclaw.model.TaskResult;
  */
 public class NotificationContentLogicTest {
 
-    // ==================== AGENT-GENERATED CONTENT TESTS ====================
-
     @Test
     public void generateNotificationContent_usesAgentTitleAndSummary_whenAvailable() {
         TaskResult result = createTaskResult(TaskResult.TYPE_HEARTBEAT, true, "Full content here");
@@ -53,14 +51,11 @@ public class NotificationContentLogicTest {
         String longContent = createLongString(2000);
         TaskResult result = createTaskResult(TaskResult.TYPE_MANUAL, true, longContent);
 
-        // Simulate truncation logic
         String truncated = truncateContent(result.getContent(), 1000);
 
         assertEquals(1003, truncated.length()); // 1000 + "..."
         assertTrue(truncated.endsWith("..."));
     }
-
-    // ==================== DEFAULT TITLE TESTS ====================
 
     @Test
     public void generateDefaultTitle_heartbeatSuccess() {
@@ -116,8 +111,6 @@ public class NotificationContentLogicTest {
         assertEquals("Task Failed", title);
     }
 
-    // ==================== DEFAULT SUMMARY TESTS ====================
-
     @Test
     public void generateDefaultSummary_extractsFirstSentence() {
         String content = "First sentence. Second sentence.";
@@ -151,8 +144,6 @@ public class NotificationContentLogicTest {
         assertEquals("Task completed with no output", summary);
     }
 
-    // ==================== EDGE CASE TESTS ====================
-
     @Test
     public void extractTitle_returnsNull_whenNullResult() {
         String title = extractTitle(null);
@@ -179,8 +170,6 @@ public class NotificationContentLogicTest {
 
         assertEquals("Custom Summary", summary);
     }
-
-    // ==================== HELPER METHODS ====================
 
     /**
      * Replicates the title extraction logic from NotificationManager.

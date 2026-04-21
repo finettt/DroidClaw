@@ -35,8 +35,6 @@ public class TaskRepositoryTest {
         sharedPreferences.edit().clear().commit();
     }
 
-    // ==================== TASK RESULT TESTS ====================
-
     @Test
     public void saveTaskResult_andGetTaskResults_persistsAndReturnsResults() {
         TaskResult result1 = new TaskResult("result-1", TaskResult.TYPE_HEARTBEAT, 1000L, "Heartbeat OK");
@@ -48,7 +46,7 @@ public class TaskRepositoryTest {
         List<TaskResult> results = repository.getTaskResults(TaskResult.TYPE_HEARTBEAT, 10);
 
         assertEquals(2, results.size());
-        assertEquals("result-2", results.get(0).getId()); // Sorted by timestamp desc
+        assertEquals("result-2", results.get(0).getId());
         assertEquals("result-1", results.get(1).getId());
     }
 
@@ -144,8 +142,6 @@ public class TaskRepositoryTest {
 
         assertTrue(results.isEmpty());
     }
-
-    // ==================== CRON JOB TESTS ====================
 
     @Test
     public void saveCronJob_andGetCronJobs_persistsAndReturnsJobs() {
@@ -249,8 +245,6 @@ public class TaskRepositoryTest {
         assertEquals("provider/model", loaded.getModelReference());
     }
 
-    // ==================== EXECUTION RECORD TESTS ====================
-
     @Test
     public void saveExecutionRecord_andGetExecutionHistory_persistsAndReturnsRecords() {
         TaskExecutionRecord record1 = new TaskExecutionRecord("task-1", "session-1", TaskResult.TYPE_HEARTBEAT, 1000L);
@@ -267,7 +261,7 @@ public class TaskRepositoryTest {
         List<TaskExecutionRecord> history = repository.getExecutionHistory("task-1");
 
         assertEquals(2, history.size());
-        assertEquals("session-2", history.get(0).getSessionId()); // Sorted by startTime desc
+        assertEquals("session-2", history.get(0).getSessionId());
         assertEquals("session-1", history.get(1).getSessionId());
     }
 

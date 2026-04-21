@@ -12,9 +12,6 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for listing files and directories in the virtual filesystem.
- */
 public class FileListTool implements Tool {
     private static final String NAME = "list_files";
     private final VirtualFileSystem vfs;
@@ -53,14 +50,11 @@ public class FileListTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Extract arguments
             String path = arguments.has("path") ? arguments.get("path").getAsString() : ".";
             boolean recursive = arguments.has("recursive") && arguments.get("recursive").getAsBoolean();
 
-            // Execute list operation
             VirtualFileSystem.FileListResult result = vfs.listFiles(path, recursive);
 
-            // Build result JSON
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("path", path);
             resultJson.addProperty("recursive", recursive);

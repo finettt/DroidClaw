@@ -64,14 +64,14 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Refresh the list when returning from sub-screens
+
         loadSettingsItems();
     }
 
     private void loadSettingsItems() {
         List<SettingsAdapter.SettingsItem> items = new ArrayList<>();
 
-        // Providers item
+
         int providerCount = settingsManager.getProviderCount();
         String providerSubtitle = getString(R.string.settings_providers_subtitle, providerCount);
         items.add(new SettingsAdapter.SettingsItem(
@@ -82,7 +82,7 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
-        // Agent item
+
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_AGENT,
                 R.drawable.ic_settings_agent,
@@ -91,7 +91,7 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
-        // Heartbeat / Background Monitoring item
+
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_HEARTBEAT,
                 R.drawable.ic_settings_heartbeat,
@@ -100,7 +100,7 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
-        // Cron Jobs item
+
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_CRON_JOBS,
                 R.drawable.ic_settings_cron,
@@ -109,7 +109,7 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
-        // Skills item
+
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_SKILLS,
                 R.drawable.ic_tool_generic,
@@ -118,7 +118,7 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
-        // Info item
+
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_INFO,
                 R.drawable.ic_action_info,
@@ -127,7 +127,7 @@ public class SettingsFragment extends Fragment {
                 true
         ));
 
-        // Reset Onboarding item
+
         items.add(new SettingsAdapter.SettingsItem(
                 ITEM_RESET_ONBOARDING,
                 R.drawable.ic_settings_reset,
@@ -177,7 +177,7 @@ public class SettingsFragment extends Fragment {
                 .setMessage(R.string.settings_reset_onboarding_confirm)
                 .setPositiveButton(R.string.confirm, (dialog, which) -> {
                     settingsManager.resetOnboarding();
-                    // Navigate to onboarding
+        
                     Navigation.findNavController(requireView())
                             .navigate(R.id.action_settingsFragment_to_onboardingFragment);
                 })

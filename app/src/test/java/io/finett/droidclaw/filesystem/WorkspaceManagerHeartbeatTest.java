@@ -18,9 +18,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-/**
- * Unit tests for WorkspaceManager heartbeat template functionality.
- */
 @RunWith(RobolectricTestRunner.class)
 public class WorkspaceManagerHeartbeatTest {
 
@@ -32,15 +29,8 @@ public class WorkspaceManagerHeartbeatTest {
 
     @Before
     public void setUp() throws IOException {
-        // Create a temporary workspace directory
         workspaceRoot = tempFolder.newFolder("workspace");
-        
-        // Create WorkspaceManager with temp directory
-        // Note: We need to use reflection or a modified constructor to use custom root
-        // For this test, we'll test the logic with direct file operations
     }
-
-    // ==================== HEARTBEAT FILE PATH TESTS ====================
 
     @Test
     public void getHeartbeatFilePath_returnsCorrectPath() {
@@ -55,11 +45,8 @@ public class WorkspaceManagerHeartbeatTest {
         assertEquals("Should always return same path", path1, path2);
     }
 
-    // ==================== HEARTBEAT FILE STRUCTURE TESTS ====================
-
     @Test
     public void heartbeatFile_structure_matchesExpected() throws IOException {
-        // Create a temporary heartbeat file
         File agentDir = new File(workspaceRoot, ".agent");
         agentDir.mkdirs();
 
@@ -81,7 +68,6 @@ public class WorkspaceManagerHeartbeatTest {
         assertTrue("File should exist", heartbeatFile.exists());
         assertTrue("File should be readable", heartbeatFile.canRead());
 
-        // Read and verify structure
         StringBuilder content = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new FileReader(heartbeatFile))) {
             String line;
@@ -97,15 +83,11 @@ public class WorkspaceManagerHeartbeatTest {
         assertTrue("Should have response guidelines", contentStr.contains("Response Guidelines"));
     }
 
-    // ==================== WORKSPACE INITIALIZATION TESTS ====================
-
     @Test
     public void workspace_initialization_createsAgentDirectory() throws IOException {
-        // Simulate workspace initialization
         File agentDir = new File(workspaceRoot, ".agent");
         assertFalse("Agent dir should not exist before init", agentDir.exists());
 
-        // Initialize
         agentDir.mkdirs();
         new File(workspaceRoot, ".agent/memory").mkdirs();
         new File(workspaceRoot, ".agent/skills").mkdirs();
@@ -118,22 +100,18 @@ public class WorkspaceManagerHeartbeatTest {
 
     @Test
     public void workspace_initialization_heartbeatTemplateCreated() throws IOException {
-        // Simulate heartbeat template creation
         File agentDir = new File(workspaceRoot, ".agent");
         agentDir.mkdirs();
 
         File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
         assertFalse("Heartbeat file should not exist before creation", heartbeatFile.exists());
 
-        // Create template (simulating WorkspaceManager.createHeartbeatTemplate)
         java.nio.file.Files.write(heartbeatFile.toPath(), "# Heartbeat\n".getBytes());
 
         assertTrue("Heartbeat file should exist after creation", heartbeatFile.exists());
         assertNotNull("Heartbeat file should have content", heartbeatFile.length());
         assertTrue("Heartbeat file should be > 0 bytes", heartbeatFile.length() > 0);
     }
-
-    // ==================== HEARTBEAT FILE OPERATIONS TESTS ====================
 
     @Test
     public void heartbeatFile_readWriteCycle() throws IOException {
@@ -142,11 +120,9 @@ public class WorkspaceManagerHeartbeatTest {
 
         File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
 
-        // 1. Write content
         String originalContent = "# Test Heartbeat\n\n- [x] Check A\n- [x] Check B\n\n{\"HEARTBEAT_OK\": true}";
         java.nio.file.Files.write(heartbeatFile.toPath(), originalContent.getBytes());
 
-        // 2. Read content
         StringBuilder readContent = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new FileReader(heartbeatFile))) {
             String line;
@@ -155,7 +131,6 @@ public class WorkspaceManagerHeartbeatTest {
             }
         }
 
-        // 3. Verify content matches
         String readStr = readContent.toString();
         assertTrue("Should contain title", readStr.contains("Test Heartbeat"));
         assertTrue("Should contain checks", readStr.contains("[x]"));
@@ -169,14 +144,11 @@ public class WorkspaceManagerHeartbeatTest {
 
         File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
 
-        // 1. Create initial file
         java.nio.file.Files.write(heartbeatFile.toPath(), "# Initial\n".getBytes());
 
-        // 2. Modify file
         String modifiedContent = "# Modified\n\n- [x] All checks passed\n\n{\"HEARTBEAT_OK\": true}";
         java.nio.file.Files.write(heartbeatFile.toPath(), modifiedContent.getBytes());
 
-        // 3. Read modified content
         StringBuilder content = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new FileReader(heartbeatFile))) {
             String line;
@@ -196,19 +168,15 @@ public class WorkspaceManagerHeartbeatTest {
 
         File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
 
-        // 1. Create file
         java.nio.file.Files.write(heartbeatFile.toPath(), "# Heartbeat\n".getBytes());
         assertTrue("File should exist", heartbeatFile.exists());
 
-        // 2. Delete file
         heartbeatFile.delete();
         assertFalse("File should not exist after delete", heartbeatFile.exists());
 
-        // 3. Recreate file
         java.nio.file.Files.write(heartbeatFile.toPath(), "# New Heartbeat\n".getBytes());
         assertTrue("File should exist after recreate", heartbeatFile.exists());
 
-        // 4. Verify new content
         StringBuilder content = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new FileReader(heartbeatFile))) {
             String line;
@@ -220,8 +188,6 @@ public class WorkspaceManagerHeartbeatTest {
         assertTrue("Should contain new title", content.toString().contains("New Heartbeat"));
     }
 
-    // ==================== EDGE CASE TESTS ====================
-
     @Test
     public void heartbeatFile_emptyFile() throws IOException {
         File agentDir = new File(workspaceRoot, ".agent");
@@ -229,7 +195,6 @@ public class WorkspaceManagerHeartbeatTest {
 
         File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
 
-        // Create empty file
         heartbeatFile.createNewFile();
 
         assertTrue("File should exist", heartbeatFile.exists());
@@ -243,7 +208,6 @@ public class WorkspaceManagerHeartbeatTest {
 
         File heartbeatFile = new File(workspaceRoot, ".agent/HEARTBEAT.md");
 
-        // Create large content
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 1000; i++) {
             sb.append("- [ ] Check item ").append(i).append("\n");
@@ -255,7 +219,6 @@ public class WorkspaceManagerHeartbeatTest {
         assertTrue("File should exist", heartbeatFile.exists());
         assertTrue("File should be > 10KB", heartbeatFile.length() > 10000);
 
-        // Verify content can be read
         StringBuilder readContent = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new FileReader(heartbeatFile))) {
             String line;

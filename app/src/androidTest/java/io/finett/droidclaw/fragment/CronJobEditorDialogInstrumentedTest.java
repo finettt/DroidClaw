@@ -27,10 +27,6 @@ import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.scheduler.CronJobScheduler;
 import io.finett.droidclaw.util.TestThemeHelper;
 
-/**
- * Instrumented tests for CronJobEditorDialog.
- * Tests the dialog UI and schedule parsing.
- */
 @RunWith(AndroidJUnit4.class)
 public class CronJobEditorDialogInstrumentedTest {
 
@@ -47,8 +43,6 @@ public class CronJobEditorDialogInstrumentedTest {
         dialog = CronJobEditorDialog.newInstance(null);
         dialog.setTargetFragment(new TestTargetFragment(), 0);
 
-        // Note: We can't actually show the dialog in instrumented tests without activity,
-        // but we can test the parsing logic and model creation
         assertNotNull("Dialog should be created", dialog);
     }
 
@@ -62,7 +56,6 @@ public class CronJobEditorDialogInstrumentedTest {
 
     @Test
     public void parseSchedule_hourly_setsHourlyRadio() {
-        // Test the static parsing method
         long interval = CronJobScheduler.parseScheduleToInterval("hourly");
 
         assertEquals(60 * 60 * 1000L, interval); // 1 hour in milliseconds
@@ -210,8 +203,6 @@ public class CronJobEditorDialogInstrumentedTest {
 
     @Test
     public void buildScheduleString_hourlyRadio_returnsHourly() {
-        // This tests the internal logic by creating a mock scenario
-        // The actual build logic is in the dialog, so we test the scheduler's conversion
 
         long interval = CronJobScheduler.parseScheduleToInterval("hourly");
         assertEquals(60 * 60 * 1000L, interval);
@@ -237,7 +228,6 @@ public class CronJobEditorDialogInstrumentedTest {
 
     @Test
     public void parseAndSetSchedule_hourlyString_setsCorrectRadio() {
-        // Test that hourly string is parsed correctly
         String schedule = "hourly";
         long interval = CronJobScheduler.parseScheduleToInterval(schedule);
 
@@ -278,7 +268,6 @@ public class CronJobEditorDialogInstrumentedTest {
 
     @Test
     public void buildScheduleString_withHourlyRadio_returnsCorrectString() {
-        // Test that the scheduler correctly identifies hourly
         long interval = CronJobScheduler.parseScheduleToInterval("hourly");
         assertEquals(60 * 60 * 1000L, interval);
     }
@@ -303,8 +292,6 @@ public class CronJobEditorDialogInstrumentedTest {
 
     @Test
     public void validateJobName_empty_returnsError() {
-        // The validation logic is in the dialog's saveJob method
-        // We test the expected validation behavior
 
         String name = "";
         boolean isEmpty = name == null || name.trim().isEmpty();
@@ -540,10 +527,7 @@ public class CronJobEditorDialogInstrumentedTest {
         assertFalse(job.shouldRun(currentTime));
     }
 
-    /**
-     * Test target fragment for dialog testing.
-     */
-    private static class TestTargetFragment extends CronJobListFragment {
+        private static class TestTargetFragment extends CronJobListFragment {
         @Override
         public void onCronJobSaved(CronJob job) {
             // No-op for testing

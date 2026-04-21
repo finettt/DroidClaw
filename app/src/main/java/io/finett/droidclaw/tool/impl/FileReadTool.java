@@ -7,9 +7,6 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for reading file contents from the virtual filesystem.
- */
 public class FileReadTool implements Tool {
     private static final String NAME = "read_file";
     private final VirtualFileSystem vfs;
@@ -47,7 +44,6 @@ public class FileReadTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Extract arguments
             if (!arguments.has("path")) {
                 return ToolResult.error("Missing required argument: path");
             }
@@ -56,10 +52,8 @@ public class FileReadTool implements Tool {
             Integer offset = arguments.has("offset") ? arguments.get("offset").getAsInt() : null;
             Integer limit = arguments.has("limit") ? arguments.get("limit").getAsInt() : null;
 
-            // Execute read operation
             VirtualFileSystem.FileReadResult result = vfs.readFile(path, offset, limit);
 
-            // Build result JSON
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("path", path);
             resultJson.addProperty("content", result.getContent());

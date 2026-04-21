@@ -22,10 +22,6 @@ import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 
-/**
- * Instrumented tests for ChatContinuationService.
- * Tests the chat continuation flow for task results.
- */
 @RunWith(AndroidJUnit4.class)
 public class ChatContinuationServiceInstrumentedTest {
 
@@ -34,7 +30,6 @@ public class ChatContinuationServiceInstrumentedTest {
 
     @Before
     public void setUp() {
-        // Clear SharedPreferences before each test
         getApplicationContext()
                 .getSharedPreferences("chat_messages", Context.MODE_PRIVATE)
                 .edit()
@@ -47,15 +42,12 @@ public class ChatContinuationServiceInstrumentedTest {
 
     @After
     public void tearDown() {
-        // Clean up after tests
         getApplicationContext()
                 .getSharedPreferences("chat_messages", Context.MODE_PRIVATE)
                 .edit()
                 .clear()
                 .commit();
     }
-
-    // ==================== CONTINUE IN NEW CHAT TESTS ====================
 
     @Test
     public void continueInNewChat_createsSessionWithTaskResult() {
@@ -124,19 +116,16 @@ public class ChatContinuationServiceInstrumentedTest {
 
     @Test
     public void continueInNewChat_withDifferentTaskTypes_generatesCorrectTitles() {
-        // Heartbeat task
         TaskResult heartbeatResult = new TaskResult("hb-1", TaskResult.TYPE_HEARTBEAT, 1000L, "HB");
         ChatSession heartbeatSession = service.continueInNewChat(heartbeatResult);
         assertTrue("Heartbeat session title should contain 'Heartbeat'",
                 heartbeatSession.getTitle().contains("Heartbeat"));
 
-        // Cron job task
         TaskResult cronResult = new TaskResult("cron-1", TaskResult.TYPE_CRON_JOB, 2000L, "CJ");
         ChatSession cronSession = service.continueInNewChat(cronResult);
         assertTrue("Cron session title should contain 'Cron'",
                 cronSession.getTitle().contains("Cron"));
 
-        // Manual task
         TaskResult manualResult = new TaskResult("manual-1", TaskResult.TYPE_MANUAL, 3000L, "MT");
         ChatSession manualSession = service.continueInNewChat(manualResult);
         assertTrue("Manual session title should contain 'Manual'",
@@ -172,7 +161,6 @@ public class ChatContinuationServiceInstrumentedTest {
         assertEquals("Sessions should have different IDs",
                 false, session1.getId().equals(session2.getId()));
 
-        // Verify both sessions have their own messages
         List<ChatMessage> messages1 = chatRepository.loadMessages(session1.getId());
         List<ChatMessage> messages2 = chatRepository.loadMessages(session2.getId());
 
@@ -182,11 +170,8 @@ public class ChatContinuationServiceInstrumentedTest {
                 messages2.get(0).getContent(), "Result 2");
     }
 
-    // ==================== CONTINUE IN EXISTING CHAT TESTS ====================
-
     @Test
     public void continueInExistingChat_addsMessagesToSession() {
-        // Create existing session with some messages
         ChatSession existingSession = new ChatSession("existing-1", "Existing Chat", 1000L);
         chatRepository.saveMessages("existing-1", java.util.Arrays.asList(
                 new ChatMessage("User message", ChatMessage.TYPE_USER),
@@ -207,7 +192,6 @@ public class ChatContinuationServiceInstrumentedTest {
 
     @Test
     public void continueInExistingChat_newMessagesAreAppended() {
-        // Create existing session
         chatRepository.saveMessages("existing-2", java.util.Arrays.asList(
                 new ChatMessage("Old message 1", ChatMessage.TYPE_USER),
                 new ChatMessage("Old message 2", ChatMessage.TYPE_ASSISTANT)
@@ -220,13 +204,11 @@ public class ChatContinuationServiceInstrumentedTest {
 
         List<ChatMessage> messages = chatRepository.loadMessages("existing-2");
 
-        // First two messages should be original
         assertEquals("First message should be original",
                 "Old message 1", messages.get(0).getContent());
         assertEquals("Second message should be original",
                 "Old message 2", messages.get(1).getContent());
 
-        // New messages should be appended
         ChatMessage contextCard = messages.get(2);
         assertEquals("Third message should be context card",
                 ChatMessage.TYPE_CONTEXT_CARD, contextCard.getType());
@@ -236,7 +218,6 @@ public class ChatContinuationServiceInstrumentedTest {
 
     @Test
     public void continueInExistingChat_withEmptySession_addsMessages() {
-        // Create empty session
         ChatSession emptySession = new ChatSession("empty-session", "Empty Chat", 1000L);
         chatRepository.saveMessages("empty-session", java.util.Collections.emptyList());
 
@@ -265,7 +246,6 @@ public class ChatContinuationServiceInstrumentedTest {
 
         List<ChatMessage> messages = chatRepository.loadMessages("existing-3");
 
-        // Find context card (should be second to last)
         ChatMessage contextCard = messages.get(messages.size() - 2);
 
         assertTrue("Should be context card", contextCard.isContextCard());
@@ -273,8 +253,6 @@ public class ChatContinuationServiceInstrumentedTest {
         assertEquals("Should link to original task", "task-card", contextCard.getOriginalTaskId());
         assertEquals("Content should match task result", "Heartbeat check OK", contextCard.getContent());
     }
-
-    // ==================== CREATE CONTEXT MESSAGE TESTS ====================
 
     @Test
     public void createContextMessage_fromTaskResult_configuresCorrectly() {
@@ -292,8 +270,6 @@ public class ChatContinuationServiceInstrumentedTest {
         assertEquals("Content should match task result", "Cron task content", contextMessage.getContent());
         assertEquals("Timestamp should match task result", 7000L, contextMessage.getTimestamp());
     }
-
-    // ==================== AGENT PROMPT TESTS ====================
 
     @Test
     public void continueInNewChat_agentPromptMentionsTaskType() {
@@ -342,11 +318,9 @@ public class ChatContinuationServiceInstrumentedTest {
 
         ChatSession session = service.continueInNewChat(taskResult);
 
-        // Create new service instance
         ChatContinuationService newService = new ChatContinuationService(getApplicationContext());
         ChatRepository newRepo = new ChatRepository(getApplicationContext());
 
-        // Verify messages persisted
         List<ChatMessage> messages = newRepo.loadMessages(session.getId());
         assertTrue("Messages should persist across service instances", messages.size() >= 2);
         assertEquals("Context card content should match", "Persistent content", messages.get(0).getContent());
@@ -363,7 +337,6 @@ public class ChatContinuationServiceInstrumentedTest {
 
         service.continueInExistingChat(taskResult, "existing-persist");
 
-        // Create new repository instance
         ChatRepository newRepo = new ChatRepository(getApplicationContext());
         List<ChatMessage> messages = newRepo.loadMessages("existing-persist");
 

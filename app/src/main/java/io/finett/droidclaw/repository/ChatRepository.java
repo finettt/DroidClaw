@@ -28,9 +28,6 @@ public class ChatRepository {
 
     private final SharedPreferences prefs;
 
-    /**
-     * Callback interface for async title generation.
-     */
     public interface TitleGenerationCallback {
         void onTitleGenerated(String title);
         void onError(String error);
@@ -40,11 +37,6 @@ public class ChatRepository {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
     
-    // ==================== SESSION PERSISTENCE ====================
-    
-    /**
-     * Save all chat sessions to SharedPreferences
-     */
     public void saveSessions(List<ChatSession> sessions) {
         try {
             JSONArray jsonArray = new JSONArray();
@@ -53,19 +45,16 @@ public class ChatRepository {
                 jsonObject.put("id", session.getId());
                 jsonObject.put("title", session.getTitle());
                 jsonObject.put("updatedAt", session.getUpdatedAt());
-                
-                // Save current context tokens (Last Usage algorithm)
+
                 jsonObject.put("currentContextTokens", session.getCurrentContextTokens());
                 jsonObject.put("currentPromptTokens", session.getCurrentPromptTokens());
                 jsonObject.put("currentCompletionTokens", session.getCurrentCompletionTokens());
-                
-                // Save session cumulative tokens
+
                 jsonObject.put("totalTokens", session.getTotalTokens());
                 jsonObject.put("totalPromptTokens", session.getTotalPromptTokens());
                 jsonObject.put("totalCompletionTokens", session.getTotalCompletionTokens());
                 jsonObject.put("totalToolCalls", session.getTotalToolCalls());
 
-                // Save session type and visibility
                 jsonObject.put("sessionType", session.getSessionType());
                 if (session.getParentTaskId() != null) {
                     jsonObject.put("parentTaskId", session.getParentTaskId());
@@ -81,10 +70,6 @@ public class ChatRepository {
         }
     }
     
-    /**
-     * Load all chat sessions from SharedPreferences
-     * Returns sessions sorted by updatedAt (newest first)
-     */
     public List<ChatSession> loadSessions() {
         List<ChatSession> sessions = new ArrayList<>();
         
@@ -105,19 +90,16 @@ public class ChatRepository {
                 long updatedAt = jsonObject.getLong("updatedAt");
                 
                 ChatSession session = new ChatSession(id, title, updatedAt);
-                
-                // Load current context tokens (Last Usage algorithm)
+
                 session.setCurrentContextTokens(jsonObject.optInt("currentContextTokens", 0));
                 session.setCurrentPromptTokens(jsonObject.optInt("currentPromptTokens", 0));
                 session.setCurrentCompletionTokens(jsonObject.optInt("currentCompletionTokens", 0));
-                
-                // Load session cumulative tokens
+
                 session.setTotalTokens(jsonObject.optInt("totalTokens", 0));
                 session.setTotalPromptTokens(jsonObject.optInt("totalPromptTokens", 0));
                 session.setTotalCompletionTokens(jsonObject.optInt("totalCompletionTokens", 0));
                 session.setTotalToolCalls(jsonObject.optInt("totalToolCalls", 0));
 
-                // Load session type and visibility
                 session.setSessionType(jsonObject.optInt("sessionType", SessionType.NORMAL));
                 if (jsonObject.has("parentTaskId") && !jsonObject.isNull("parentTaskId")) {
                     session.setParentTaskId(jsonObject.getString("parentTaskId"));
@@ -126,7 +108,6 @@ public class ChatRepository {
                 sessions.add(session);
             }
             
-            // Sort by updatedAt descending (newest first)
             Collections.sort(sessions, (s1, s2) -> Long.compare(s2.getUpdatedAt(), s1.getUpdatedAt()));
             
             Log.d(TAG, "Loaded " + sessions.size() + " sessions");
@@ -138,22 +119,12 @@ public class ChatRepository {
         return sessions;
     }
     
-    /**
-     * Delete a session and its associated messages (cascade delete)
-     */
     public void deleteSession(String sessionId, List<ChatSession> remainingSessions) {
-        // Delete messages first
         deleteMessages(sessionId);
-        
-        // Save the updated sessions list
         saveSessions(remainingSessions);
-        
         Log.d(TAG, "Deleted session and messages for: " + sessionId);
     }
     
-    /**
-     * Update session metadata (title and timestamp)
-     */
     public void updateSession(String sessionId, String newTitle, long newTimestamp, List<ChatSession> allSessions) {
         for (ChatSession session : allSessions) {
             if (session.getId().equals(sessionId)) {
@@ -166,10 +137,6 @@ public class ChatRepository {
         Log.d(TAG, "Updated session: " + sessionId + " with title: " + newTitle);
     }
     
-    /**
-     * Generate a title from the first message content
-     * Truncates at 30 characters, trying to break at word boundary
-     */
     public String generateTitleFromMessage(String messageContent) {
         if (messageContent == null || messageContent.trim().isEmpty()) {
             return "New Chat";
@@ -180,7 +147,6 @@ public class ChatRepository {
             return trimmed;
         }
         
-        // Try to find a word boundary before 30 chars
         int lastSpace = trimmed.lastIndexOf(' ', 30);
         if (lastSpace > 15) {
             return trimmed.substring(0, lastSpace) + "...";
@@ -189,15 +155,6 @@ public class ChatRepository {
         return trimmed.substring(0, 27) + "...";
     }
 
-    /**
-     * Generate a chat title using the LLM to summarize the conversation.
-     * Falls back to generateTitleFromMessage if the LLM call fails.
-     *
-     * @param apiService   The LLM API service
-     * @param messages     The conversation messages to summarize
-     * @param fallbackTitle Title to use if LLM generation fails
-     * @param callback     Callback for the generated title
-     */
     public void generateTitleWithLLM(LlmApiService apiService, List<ChatMessage> messages,
                                      String fallbackTitle, TitleGenerationCallback callback) {
         if (messages == null || messages.isEmpty()) {
@@ -205,10 +162,8 @@ public class ChatRepository {
             return;
         }
 
-        // Build a concise message list for title generation (first user message + first assistant response)
         List<ChatMessage> titleMessages = new ArrayList<>();
 
-        // Find the first user message
         ChatMessage firstUserMessage = null;
         for (ChatMessage msg : messages) {
             if (msg.getType() == ChatMessage.TYPE_USER) {
@@ -222,7 +177,6 @@ public class ChatRepository {
             return;
         }
 
-        // Create a system prompt for title generation
         ChatMessage systemPrompt = new ChatMessage(
             "Generate a concise, descriptive title for this conversation. " +
             "The title must be at most 50 characters. " +
@@ -232,17 +186,16 @@ public class ChatRepository {
         titleMessages.add(systemPrompt);
         titleMessages.add(new ChatMessage(firstUserMessage.getContent(), ChatMessage.TYPE_USER));
 
-        // Use low temperature for deterministic output
         apiService.sendMessage(titleMessages, new LlmApiService.ChatCallback() {
             @Override
             public void onSuccess(String response) {
                 if (response != null && !response.isEmpty() && !response.equals("No response received")) {
                     String title = response.trim();
-                    // Remove surrounding quotes if present
+
                     if (title.startsWith("\"") && title.endsWith("\"")) {
                         title = title.substring(1, title.length() - 1);
                     }
-                    // Enforce 50 character limit
+
                     if (title.length() > 50) {
                         int lastSpace = title.lastIndexOf(' ', 47);
                         if (lastSpace > 20) {
@@ -270,11 +223,6 @@ public class ChatRepository {
         });
     }
 
-    // ==================== MESSAGE PERSISTENCE ====================
-
-    /**
-     * Save messages for a specific chat session
-     */
     public void saveMessages(String sessionId, List<ChatMessage> messages) {
         try {
             JSONArray jsonArray = new JSONArray();
@@ -283,8 +231,7 @@ public class ChatRepository {
                 jsonObject.put("content", message.getContent());
                 jsonObject.put("type", message.getType());
                 jsonObject.put("timestamp", message.getTimestamp());
-                
-                // Save tool-related fields
+
                 if (message.getType() == ChatMessage.TYPE_TOOL_CALL) {
                     if (message.getToolCalls() != null && !message.getToolCalls().isEmpty()) {
                         JSONArray toolCallsArray = new JSONArray();
@@ -311,7 +258,6 @@ public class ChatRepository {
                     }
                 }
 
-                // Save context card fields
                 if (message.getType() == ChatMessage.TYPE_CONTEXT_CARD) {
                     jsonObject.put("isContextCard", message.isContextCard());
                     if (message.getContextType() != null) {
@@ -322,7 +268,6 @@ public class ChatRepository {
                     }
                 }
 
-                // Save attachment fields (user messages with file uploads)
                 if (message.hasAttachments()) {
                     JSONArray attachmentsArray = new JSONArray();
                     for (io.finett.droidclaw.model.FileAttachment attachment : message.getAttachments()) {
@@ -336,7 +281,6 @@ public class ChatRepository {
                     jsonObject.put("attachments", attachmentsArray);
                 }
 
-                // Save TYPE_ATTACHMENT fields
                 if (message.getType() == ChatMessage.TYPE_ATTACHMENT) {
                     if (message.getFilePath() != null) {
                         jsonObject.put("filePath", message.getFilePath());
@@ -361,9 +305,6 @@ public class ChatRepository {
         }
     }
 
-    /**
-     * Load messages for a specific chat session
-     */
     public List<ChatMessage> loadMessages(String sessionId) {
         List<ChatMessage> messages = new ArrayList<>();
         
@@ -381,17 +322,15 @@ public class ChatRepository {
                 try {
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
                     
-                    // Handle content - optString returns "null" string if key doesn't exist
                     String content = jsonObject.has("content") && !jsonObject.isNull("content")
                         ? jsonObject.getString("content")
                         : null;
                     int type = jsonObject.getInt("type");
                     long timestamp = jsonObject.getLong("timestamp");
-                    
+
                     ChatMessage message;
 
                     if (type == ChatMessage.TYPE_TOOL_CALL && jsonObject.has("toolCalls")) {
-                        // Restore tool calls
                         JSONArray toolCallsArray = jsonObject.getJSONArray("toolCalls");
                         List<LlmApiService.ToolCall> toolCalls = new ArrayList<>();
                         for (int j = 0; j < toolCallsArray.length(); j++) {
@@ -405,7 +344,6 @@ public class ChatRepository {
                         message = ChatMessage.createToolCallMessage(toolCalls);
                         Log.d(TAG, "Restored tool call message with " + toolCalls.size() + " tool calls");
                     } else if (type == ChatMessage.TYPE_TOOL_RESULT) {
-                        // Restore tool result
                         String toolCallId = jsonObject.has("toolCallId") && !jsonObject.isNull("toolCallId")
                             ? jsonObject.getString("toolCallId")
                             : null;
@@ -415,7 +353,6 @@ public class ChatRepository {
                         message = ChatMessage.createToolResultMessage(toolCallId, toolName, content);
                         Log.d(TAG, "Restored tool result message for tool: " + toolName);
                     } else if (type == ChatMessage.TYPE_CONTEXT_CARD) {
-                        // Restore context card
                         message = new ChatMessage(content, type);
                         message.setIsContextCard(jsonObject.optBoolean("isContextCard", true));
                         if (jsonObject.has("contextType") && !jsonObject.isNull("contextType")) {
@@ -429,7 +366,6 @@ public class ChatRepository {
                         message = new ChatMessage(content, type);
                     }
 
-                    // Restore attachments (for user messages with file uploads)
                     if (jsonObject.has("attachments")) {
                         JSONArray attachmentsArray = jsonObject.getJSONArray("attachments");
                         List<io.finett.droidclaw.model.FileAttachment> attachments = new ArrayList<>();
@@ -447,7 +383,6 @@ public class ChatRepository {
                         message.setAttachments(attachments);
                     }
 
-                    // Restore TYPE_ATTACHMENT fields
                     if (type == ChatMessage.TYPE_ATTACHMENT) {
                         if (jsonObject.has("filePath") && !jsonObject.isNull("filePath")) {
                             message.setFilePath(jsonObject.getString("filePath"));
@@ -464,7 +399,6 @@ public class ChatRepository {
                     messages.add(message);
                 } catch (Exception e) {
                     Log.e(TAG, "Error loading message at index " + i + " for session: " + sessionId, e);
-                    // Continue loading other messages
                 }
             }
             
@@ -476,29 +410,17 @@ public class ChatRepository {
         return messages;
     }
 
-    /**
-     * Delete messages for a specific chat session
-     */
     public void deleteMessages(String sessionId) {
         String key = KEY_PREFIX + sessionId;
         prefs.edit().remove(key).apply();
         Log.d(TAG, "Deleted messages for session: " + sessionId);
     }
 
-    /**
-     * Clear all saved messages
-     */
     public void clearAllMessages() {
         prefs.edit().clear().apply();
         Log.d(TAG, "Cleared all saved messages");
     }
 
-    // ==================== HIDDEN SESSION SUPPORT ====================
-
-    /**
-     * Get only visible (normal) sessions.
-     * Filters out hidden sessions used for background tasks.
-     */
     public List<ChatSession> getVisibleSessions() {
         List<ChatSession> allSessions = loadSessions();
         List<ChatSession> visible = new ArrayList<>();
@@ -513,10 +435,6 @@ public class ChatRepository {
         return visible;
     }
 
-    /**
-     * Get a hidden session by task ID.
-     * Used for debugging background task sessions.
-     */
     public ChatSession getHiddenSession(String taskId) {
         List<ChatSession> allSessions = loadSessions();
 
@@ -530,10 +448,6 @@ public class ChatRepository {
         return null;
     }
 
-    /**
-     * Get all sessions including hidden ones.
-     * Use with caution - hidden sessions should not appear in UI.
-     */
     public List<ChatSession> getAllSessionsIncludingHidden() {
         return loadSessions();
     }

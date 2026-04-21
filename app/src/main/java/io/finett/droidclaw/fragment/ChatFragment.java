@@ -78,10 +78,8 @@ public class ChatFragment extends Fragment {
     private String currentSessionId;
     private TaskResult pendingTaskResult;
 
-    // Pending file attachments (selected but not yet sent)
     private List<FileAttachment> pendingAttachments = new ArrayList<>();
 
-    // File picker launcher
     private ActivityResultLauncher<String> filePickerLauncher;
 
     @Override
@@ -93,7 +91,7 @@ public class ChatFragment extends Fragment {
         chatRepository = new ChatRepository(requireContext());
         continuationService = new ChatContinuationService(requireContext());
 
-        // Check for task result in arguments
+
         Bundle taskArgs = getArguments();
         if (taskArgs != null) {
             pendingTaskResult = (TaskResult) taskArgs.getSerializable(ZenResultFragment.ARG_TASK_RESULT);
@@ -102,7 +100,7 @@ public class ChatFragment extends Fragment {
             }
         }
 
-        // Initialize workspace and identity
+
         workspaceManager = new WorkspaceManager(requireContext());
         try {
             workspaceManager.initializeWithSkills();
@@ -111,10 +109,10 @@ public class ChatFragment extends Fragment {
             Log.e(TAG, "Failed to initialize workspace", e);
         }
 
-        // Initialize file upload manager
+
         fileUploadManager = new FileUploadManager(requireContext(), workspaceManager);
 
-        // Register file picker launcher
+
         filePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
             uri -> {
@@ -126,24 +124,24 @@ public class ChatFragment extends Fragment {
 
         identityManager = new IdentityManager(requireContext(), workspaceManager);
         
-        // Initialize memory system
+
         memoryRepository = new MemoryRepository(workspaceManager);
         
-        // Get context window from selected model configuration
+
         int contextWindow = getModelContextWindow();
         ConversationSummarizer summarizer = new ConversationSummarizer(apiService, memoryRepository, contextWindow);
         MemoryContextBuilder memoryContext = new MemoryContextBuilder(memoryRepository);
         
-        // Create ToolRegistry with SettingsManager for shell access settings
+
         toolRegistry = new ToolRegistry(requireContext(), settingsManager);
         
-        // Create AgentLoop with full memory support
+
         agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);
         
-        // Load and set identity context
+
         loadIdentityContext();
         
-        // Get session ID from arguments
+
         Bundle args = getArguments();
         if (args != null) {
             currentSessionId = args.getString(ARG_SESSION_ID);
@@ -163,7 +161,7 @@ public class ChatFragment extends Fragment {
             Log.d(TAG, "Loaded identity context: " + identityMessages.size() + " message(s)");
         } catch (Exception e) {
             Log.w(TAG, "Failed to load identity context, continuing without it", e);
-            // Continue without identity context - not critical
+
         }
     }
 
@@ -203,7 +201,7 @@ public class ChatFragment extends Fragment {
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(chatAdapter);
         
-        // Load messages from repository if session ID exists
+
         loadChatHistory();
     }
     
@@ -219,19 +217,19 @@ public class ChatFragment extends Fragment {
             Log.d(TAG, "loadChatHistory: Loaded " + savedMessages.size() + " messages for session: " + currentSessionId);
             scrollToBottom();
 
-            // Update toolbar with session title
+
             updateToolbarTitle();
         } else {
             Log.d(TAG, "loadChatHistory: No saved messages for session: " + currentSessionId);
 
-            // If we have a pending task result, add context messages
+
             if (pendingTaskResult != null) {
                 Log.d(TAG, "loadChatHistory: Adding task result context messages");
                 addTaskResultContext(pendingTaskResult);
                 pendingTaskResult = null; // Clear after use
             }
 
-            // Update toolbar with session title (likely "New Chat")
+            // No saved messages - this is a new chat (likely "New Chat")
             updateToolbarTitle();
         }
     }
@@ -267,7 +265,7 @@ public class ChatFragment extends Fragment {
         messages.add(agentPrompt);
         chatAdapter.addMessage(agentPrompt);
         
-        // Save messages
+
         saveMessages();
         scrollToBottom();
         
@@ -325,16 +323,16 @@ public class ChatFragment extends Fragment {
                     @Override
                     public void onTitleGenerated(String title) {
                         if (isAdded() && getContext() != null) {
-                            // Update the session title directly in the activity
+
                             activity.updateSessionTitle(currentSessionId, title);
-                            // Update the toolbar
+
                             updateToolbarTitle();
                         }
                     }
 
                     @Override
                     public void onError(String error) {
-                        // Fallback already applied in callback
+
                         Log.w(TAG, "Title generation error: " + error);
                     }
                 });
@@ -489,7 +487,7 @@ public class ChatFragment extends Fragment {
             return;
         }
 
-        // Consume pending attachments
+
         List<FileAttachment> attachments = consumePendingAttachments();
 
         ChatMessage userMessage;
@@ -501,7 +499,7 @@ public class ChatFragment extends Fragment {
         chatAdapter.addMessage(userMessage);
         scrollToBottom();
         
-        // Save after adding user message
+
         saveMessages();
         updateSessionMetadata(messageText);
         Log.d(TAG, "sendMessage: Added and saved user message. Total: " + chatAdapter.getItemCount());
@@ -510,7 +508,7 @@ public class ChatFragment extends Fragment {
 
         setLoading(true);
 
-        // Use agent loop for tool-enabled conversation
+
         List<ChatMessage> conversationHistory = new ArrayList<>(chatAdapter.getMessages());
         
         agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
@@ -523,7 +521,7 @@ public class ChatFragment extends Fragment {
             public void onToolCall(String toolName, String arguments) {
                 Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
                 
-                // Enhanced status messages for different tool types
+
                 String statusMessage = getToolStatusMessage(toolName, arguments);
                 String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
                 updateStatus(statusMessage, iterationInfo);
@@ -533,7 +531,7 @@ public class ChatFragment extends Fragment {
             public void onToolResult(String toolName, String result) {
                 Log.d(TAG, "Tool result: " + toolName + " -> " + result.substring(0, Math.min(100, result.length())));
                 
-                // Show brief result feedback
+
                 String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
                 updateStatus("✓ " + formatToolName(toolName) + " completed", iterationInfo);
             }
@@ -542,19 +540,19 @@ public class ChatFragment extends Fragment {
             public void onComplete(String finalResponse, List<ChatMessage> updatedHistory) {
                 setLoading(false);
 
-                // Update adapter with the full conversation history from the agent
+
                 chatAdapter.setMessages(updatedHistory);
                 scrollToBottom();
 
-                // Save after adding assistant message
+
                 saveMessages();
                 updateSessionMetadata(null);
                 Log.d(TAG, "onComplete: Agent completed. Total messages: " + chatAdapter.getItemCount());
 
-                // Generate LLM-based title if this is the first assistant response
+
                 generateTitleIfNeeded(updatedHistory);
 
-                // Update toolbar title in case the session was renamed
+
                 updateToolbarTitle();
             }
 
@@ -571,7 +569,7 @@ public class ChatFragment extends Fragment {
             @Override
             public void onApprovalRequired(String toolName, String description, JsonObject arguments,
                                            AgentLoop.ApprovalCallback approvalCallback) {
-                // Show approval dialog on UI thread
+
                 requireActivity().runOnUiThread(() -> {
                     showApprovalDialog(toolName, description, approvalCallback);
                 });
@@ -633,7 +631,7 @@ public class ChatFragment extends Fragment {
      * Get a user-friendly status message for tool execution.
      */
     private String getToolStatusMessage(String toolName, String arguments) {
-        // Check for skill-related tools
+
         if (toolName.equals("list_files") && arguments.contains(".agent/skills")) {
             return "Discovering available skills...";
         } else if (toolName.equals("read_file") && arguments.contains(".agent/skills")) {

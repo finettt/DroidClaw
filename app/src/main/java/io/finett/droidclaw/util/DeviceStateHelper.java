@@ -75,7 +75,7 @@ public class DeviceStateHelper {
                 return freeMB < 100; // Less than 100MB
             }
         } catch (Exception e) {
-            // If we can't check, assume it's OK
+    
         }
         return false;
     }
@@ -95,23 +95,23 @@ public class DeviceStateHelper {
      * Returns true if task should proceed, false if it should skip.
      */
     public static boolean shouldExecuteTask(Context context) {
-        // Don't execute if airplane mode is on (no network)
+
         if (isAirplaneModeOn(context)) {
             return false;
         }
 
-        // Don't execute if battery is critical
+
         if (isBatteryCritical(context)) {
             return false;
         }
 
-        // Don't execute if storage is critical
+
         if (isStorageCritical(context)) {
             return false;
         }
 
-        // Power saving mode is a warning, not a hard block
-        // (WorkManager will still respect battery-not-low constraint)
+
+
         
         return true;
     }

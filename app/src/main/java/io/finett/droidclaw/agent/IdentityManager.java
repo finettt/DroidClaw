@@ -13,10 +13,6 @@ import java.util.List;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
 
-/**
- * Manages loading and formatting of identity documents (soul.md and user.md).
- * These files provide the agent with persistent identity and user knowledge across sessions.
- */
 public class IdentityManager {
     private static final String TAG = "IdentityManager";
     
@@ -31,13 +27,6 @@ public class IdentityManager {
         this.workspaceManager = workspaceManager;
     }
     
-    /**
-     * Loads both identity files and returns them as system messages for the LLM.
-     * Results are cached per session to avoid repeated file reads.
-     *
-     * @return List of ChatMessage with TYPE_SYSTEM containing identity context
-     * @throws IOException if files cannot be read
-     */
     public List<ChatMessage> getIdentityMessages() throws IOException {
         // Return cached identity if available
         if (cachedIdentity != null) {
@@ -51,12 +40,6 @@ public class IdentityManager {
         return createMessagesFromContext(identity);
     }
     
-    /**
-     * Loads both identity files from the workspace.
-     *
-     * @return IdentityContext containing content of both files
-     * @throws IOException if files cannot be read
-     */
     public IdentityContext loadIdentity() throws IOException {
         String soulContent = readIdentityFile(WorkspaceManager.getSoulFilePath());
         String userContent = readIdentityFile(WorkspaceManager.getUserFilePath());
@@ -64,11 +47,6 @@ public class IdentityManager {
         return new IdentityContext(soulContent, userContent);
     }
     
-    /**
-     * Checks if both identity files exist in the workspace.
-     *
-     * @return true if both soul.md and user.md exist
-     */
     public boolean identityFilesExist() {
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
         File soulFile = new File(workspaceRoot, WorkspaceManager.getSoulFilePath());
@@ -77,22 +55,11 @@ public class IdentityManager {
         return soulFile.exists() && userFile.exists();
     }
     
-    /**
-     * Clears the cached identity, forcing a reload on next access.
-     * Call this when identity files are updated.
-     */
     public void clearCache() {
         cachedIdentity = null;
         Log.d(TAG, "Identity cache cleared");
     }
     
-    /**
-     * Reads an identity file from the workspace.
-     *
-     * @param relativePath Path relative to workspace root
-     * @return File contents as string
-     * @throws IOException if file cannot be read
-     */
     private String readIdentityFile(String relativePath) throws IOException {
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
         File file = new File(workspaceRoot, relativePath);
@@ -114,12 +81,6 @@ public class IdentityManager {
         return content.toString();
     }
     
-    /**
-     * Creates ChatMessage list from IdentityContext.
-     *
-     * @param identity The identity context
-     * @return List of system messages
-     */
     private List<ChatMessage> createMessagesFromContext(IdentityContext identity) {
         List<ChatMessage> messages = new ArrayList<>();
         
@@ -138,9 +99,6 @@ public class IdentityManager {
         return messages;
     }
     
-    /**
-     * Container for identity file contents.
-     */
     public static class IdentityContext {
         private final String soulContent;
         private final String userContent;

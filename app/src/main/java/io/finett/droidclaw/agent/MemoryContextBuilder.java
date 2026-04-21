@@ -6,16 +6,6 @@ import java.io.IOException;
 
 import io.finett.droidclaw.repository.MemoryRepository;
 
-/**
- * Builds memory context from MEMORY.md and daily notes.
- * 
- * Loads:
- * - MEMORY.md (long-term memory, always)
- * - Today's daily note
- * - Yesterday's daily note
- * 
- * This context is prepended to the conversation to provide continuity.
- */
 public class MemoryContextBuilder {
     private static final String TAG = "MemoryContextBuilder";
     
@@ -25,16 +15,10 @@ public class MemoryContextBuilder {
         this.memoryRepository = memoryRepository;
     }
     
-    /**
-     * Build complete memory context from all memory sources.
-     * 
-     * @return Formatted memory context as markdown, or empty string if no memory exists
-     */
     public String buildMemoryContext() {
         StringBuilder context = new StringBuilder();
         
         try {
-            // Load long-term memory (MEMORY.md)
             String longTerm = memoryRepository.readLongTermMemory();
             if (!longTerm.isEmpty()) {
                 context.append("# Long-term Memory\n\n");
@@ -42,7 +26,6 @@ public class MemoryContextBuilder {
                 Log.d(TAG, "Loaded long-term memory: " + longTerm.length() + " chars");
             }
             
-            // Load today's note
             String today = memoryRepository.readTodayNote();
             if (!today.isEmpty()) {
                 context.append("# Today's Context\n\n");
@@ -50,7 +33,6 @@ public class MemoryContextBuilder {
                 Log.d(TAG, "Loaded today's note: " + today.length() + " chars");
             }
             
-            // Load yesterday's note
             String yesterday = memoryRepository.readYesterdayNote();
             if (!yesterday.isEmpty()) {
                 context.append("# Yesterday's Context\n\n");
@@ -63,7 +45,6 @@ public class MemoryContextBuilder {
                 return "";
             }
             
-            // Wrap in a clear separator
             String wrapped = "--- MEMORY CONTEXT ---\n\n" + context.toString() + "--- END MEMORY CONTEXT ---\n";
             Log.d(TAG, "Built memory context: " + wrapped.length() + " total chars");
             return wrapped;
@@ -74,11 +55,6 @@ public class MemoryContextBuilder {
         }
     }
     
-    /**
-     * Check if any memory exists.
-     * 
-     * @return true if MEMORY.md or any daily note exists
-     */
     public boolean hasMemory() {
         try {
             boolean hasLongTerm = memoryRepository.longTermMemoryExists();

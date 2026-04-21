@@ -21,9 +21,6 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit tests for MemoryRepository.
- */
 @RunWith(MockitoJUnitRunner.class)
 public class MemoryRepositoryTest {
 
@@ -39,13 +36,11 @@ public class MemoryRepositoryTest {
 
     @Before
     public void setUp() throws IOException {
-        // Create a temp directory to use as workspace
         File workspaceRoot = tempFolder.newFolder("workspace");
         File agentDir = new File(workspaceRoot, ".agent");
         memoryDir = new File(agentDir, "memory");
         memoryDir.mkdirs();
 
-        // Create a mock WorkspaceManager that returns our memory directory
         workspaceManager = mock(WorkspaceManager.class);
         when(workspaceManager.getMemoryDirectory()).thenReturn(memoryDir);
 
@@ -54,7 +49,6 @@ public class MemoryRepositoryTest {
 
     @Test
     public void testReadLongTermMemory_fileExists_returnsContent() throws IOException {
-        // Create MEMORY.md with content
         File memoryFile = new File(memoryDir, "MEMORY.md");
         java.io.FileWriter writer = new java.io.FileWriter(memoryFile);
         writer.write("# Long-term Memory\n\nTest content");
@@ -125,7 +119,6 @@ public class MemoryRepositoryTest {
         String todayFilename = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
         File todayFile = new File(memoryDir, todayFilename);
 
-        // Verify file doesn't exist initially
         assertFalse(todayFile.exists());
 
         memoryRepository.appendToDailyNote("New entry");
@@ -141,7 +134,6 @@ public class MemoryRepositoryTest {
         String todayFilename = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
         File todayFile = new File(memoryDir, todayFilename);
 
-        // Create existing file
         java.io.FileWriter writer = new java.io.FileWriter(todayFile);
         writer.write("# Daily Notes - " + LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("MMMM d, yyyy")) + "\n\n");
         writer.close();
@@ -182,16 +174,13 @@ public class MemoryRepositoryTest {
 
     @Test
     public void testGetAllDailyNotes_returnsSortedFiles() throws IOException {
-        // Create multiple daily notes
         createDailyNoteFile(LocalDate.of(2025, 12, 10));
         createDailyNoteFile(LocalDate.of(2025, 12, 15));
         createDailyNoteFile(LocalDate.of(2025, 12, 20));
 
-        // Add today's note
         String todayFilename = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
         new File(memoryDir, todayFilename).createNewFile();
 
-        // Add yesterday's note
         String yesterdayFilename = LocalDate.now().minusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
         new File(memoryDir, yesterdayFilename).createNewFile();
 
@@ -199,7 +188,6 @@ public class MemoryRepositoryTest {
 
         assertEquals("Should return all daily notes", 5, notes.size());
 
-        // Verify sorted by date descending (newest first)
         String firstDate = notes.get(0).getName().replace(".md", "");
         LocalDate firstDateParsed = LocalDate.parse(firstDate);
         assertTrue("Should be sorted newest first", firstDateParsed.equals(LocalDate.now()) ||
@@ -308,7 +296,6 @@ public class MemoryRepositoryTest {
 
     @Test
     public void testHasMemory_withAnyMemory_returnsTrue() throws IOException {
-        // Only create yesterday's note with content
         String yesterdayFilename = LocalDate.now().minusDays(1).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";
         File yesterdayFile = new File(memoryDir, yesterdayFilename);
         java.io.FileWriter writer = new java.io.FileWriter(yesterdayFile);
@@ -318,8 +305,6 @@ public class MemoryRepositoryTest {
         MemoryContextBuilder builder = new MemoryContextBuilder(memoryRepository);
         assertTrue(builder.hasMemory());
     }
-
-    // Helper methods
 
     private void createDailyNoteFile(LocalDate date) throws IOException {
         String filename = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")) + ".md";

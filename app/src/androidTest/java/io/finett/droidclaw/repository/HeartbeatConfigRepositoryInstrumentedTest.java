@@ -17,10 +17,6 @@ import org.junit.runner.RunWith;
 
 import io.finett.droidclaw.model.HeartbeatConfig;
 
-/**
- * Instrumented tests for HeartbeatConfigRepository.
- * Tests the persistence layer for heartbeat configuration using real SharedPreferences.
- */
 @RunWith(AndroidJUnit4.class)
 public class HeartbeatConfigRepositoryInstrumentedTest {
 
@@ -28,7 +24,6 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
 
     @Before
     public void setUp() {
-        // Clear SharedPreferences before each test
         getApplicationContext()
                 .getSharedPreferences("droidclaw_heartbeat", Context.MODE_PRIVATE)
                 .edit()
@@ -40,7 +35,6 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
 
     @After
     public void tearDown() {
-        // Clean up after tests
         getApplicationContext()
                 .getSharedPreferences("droidclaw_heartbeat", Context.MODE_PRIVATE)
                 .edit()
@@ -74,11 +68,9 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
 
     @Test
     public void updateConfig_overwritesPreviousConfig() {
-        // Save first config
         HeartbeatConfig config1 = new HeartbeatConfig(true, 30 * 60 * 1000L, 500L);
         repository.updateConfig(config1);
 
-        // Save second config
         HeartbeatConfig config2 = new HeartbeatConfig(false, 120 * 60 * 1000L, 2000L);
         repository.updateConfig(config2);
 
@@ -92,16 +84,13 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
 
     @Test
     public void isHeartbeatEnabled_reflectsConfigState() {
-        // Initially disabled
         assertFalse("Should be disabled initially", repository.isHeartbeatEnabled());
 
-        // Enable heartbeat
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 0L);
         repository.updateConfig(config);
 
         assertTrue("Should be enabled after update", repository.isHeartbeatEnabled());
 
-        // Disable heartbeat
         config.setEnabled(false);
         repository.updateConfig(config);
 
@@ -113,7 +102,6 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 1000L);
         repository.updateConfig(config);
 
-        // Current time is after interval has elapsed
         long currentTime = 1000L + 30 * 60 * 1000L + 1000L; // 30 min + 1 sec after last run
 
         assertTrue("Should run after interval elapsed", repository.shouldRun(currentTime));
@@ -124,7 +112,6 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 1000L);
         repository.updateConfig(config);
 
-        // Current time is before interval has elapsed
         long currentTime = 1000L + 15 * 60 * 1000L; // 15 min after last run
 
         assertFalse("Should not run before interval elapsed", repository.shouldRun(currentTime));
@@ -135,7 +122,6 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
         HeartbeatConfig config = new HeartbeatConfig(false, 30 * 60 * 1000L, 1000L);
         repository.updateConfig(config);
 
-        // Even after long time, should not run if disabled
         long currentTime = 1000L + 60 * 60 * 1000L; // 1 hour after last run
 
         assertFalse("Should not run when disabled", repository.shouldRun(currentTime));
@@ -146,7 +132,6 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 1000L);
         repository.updateConfig(config);
 
-        // Current time is exactly at interval boundary
         long currentTime = 1000L + 30 * 60 * 1000L;
 
         assertTrue("Should run at exact interval boundary", repository.shouldRun(currentTime));
@@ -154,11 +139,9 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
 
     @Test
     public void updateLastRun_updatesTimestampInConfig() {
-        // Set initial config
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 1000L);
         repository.updateConfig(config);
 
-        // Update last run timestamp
         long newTimestamp = 5000L;
         repository.updateLastRun(newTimestamp);
 
@@ -168,11 +151,9 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
 
     @Test
     public void updateLastRun_preservesOtherConfigFields() {
-        // Set initial config
         HeartbeatConfig config = new HeartbeatConfig(true, 60 * 60 * 1000L, 1000L);
         repository.updateConfig(config);
 
-        // Update last run timestamp
         repository.updateLastRun(5000L);
 
         HeartbeatConfig retrieved = repository.getConfig();
@@ -183,13 +164,11 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
 
     @Test
     public void multipleSequentialUpdates_allPersistCorrectly() {
-        // Update config multiple times
         for (int i = 0; i < 5; i++) {
             HeartbeatConfig config = new HeartbeatConfig(i % 2 == 0, (i + 1) * 10 * 60 * 1000L, i * 1000L);
             repository.updateConfig(config);
         }
 
-        // Verify last update persisted (i=4: 4%2==0 → enabled=true)
         HeartbeatConfig retrieved = repository.getConfig();
         assertTrue("Should reflect last update (i=4, even)", retrieved.isEnabled());
         assertEquals("Interval should be 50 minutes", 50 * 60 * 1000L, retrieved.getIntervalMillis());
@@ -198,15 +177,12 @@ public class HeartbeatConfigRepositoryInstrumentedTest {
 
     @Test
     public void configPersistsAcrossRepositoryInstances() {
-        // Save config with first repository instance
         HeartbeatConfig config = new HeartbeatConfig(true, 45 * 60 * 1000L, 3000L);
         repository.updateConfig(config);
 
-        // Create new repository instance
         HeartbeatConfigRepository newRepository = new HeartbeatConfigRepository(getApplicationContext());
         HeartbeatConfig retrieved = newRepository.getConfig();
 
-        // Verify config persisted across instances
         assertTrue("Heartbeat should be enabled", retrieved.isEnabled());
         assertEquals("Interval should be 45 minutes", 45 * 60 * 1000L, retrieved.getIntervalMillis());
         assertEquals("Last run should be 3000", 3000L, retrieved.getLastRunTimestamp());

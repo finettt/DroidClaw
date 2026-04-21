@@ -39,8 +39,6 @@ public class ProvidersAdapterTest {
         adapter = new ProvidersAdapter();
     }
 
-    // ==================== Initial State Tests ====================
-
     @Test
     public void initialState_hasZeroItems() {
         assertEquals(0, adapter.getItemCount());
@@ -50,8 +48,6 @@ public class ProvidersAdapterTest {
     public void initialState_getCurrentList_returnsEmptyList() {
         assertTrue(adapter.getCurrentList().isEmpty());
     }
-
-    // ==================== submitList Tests ====================
 
     @Test
     public void submitList_withProviders_updatesCount() throws InterruptedException {
@@ -105,8 +101,6 @@ public class ProvidersAdapterTest {
         assertEquals(2, adapter.getItemCount());
     }
 
-    // ==================== ViewHolder Creation Tests ====================
-
     @Test
     public void onCreateViewHolder_createsValidViewHolder() {
         Context context = TestThemeHelper.getThemedContext();
@@ -131,8 +125,6 @@ public class ProvidersAdapterTest {
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_provider_url));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_model_count));
     }
-
-    // ==================== ViewHolder Binding Tests ====================
 
     @Test
     public void onBindViewHolder_bindsProviderName() {
@@ -225,20 +217,16 @@ public class ProvidersAdapterTest {
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
-        // Test first provider
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder1, 0);
         TextView nameText1 = viewHolder1.itemView.findViewById(R.id.text_provider_name);
         assertEquals("OpenAI", nameText1.getText().toString());
 
-        // Test second provider
         RecyclerView.ViewHolder viewHolder2 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder2, 1);
         TextView nameText2 = viewHolder2.itemView.findViewById(R.id.text_provider_name);
         assertEquals("Anthropic", nameText2.getText().toString());
     }
-
-    // ==================== Click Listener Tests ====================
 
     @Test
     public void clickListener_whenSet_receivesClickEvents() throws InterruptedException {
@@ -259,14 +247,12 @@ public class ProvidersAdapterTest {
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
         recyclerView.setAdapter(adapter);
         
-        // Force layout to attach view holders properly
         recyclerView.measure(
             View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
         );
         recyclerView.layout(0, 0, 1000, 1000);
         
-        // Get the view holder that is now properly attached
         RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
         assertNotNull("ViewHolder should be attached", viewHolder);
 
@@ -288,11 +274,8 @@ public class ProvidersAdapterTest {
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
 
-        // Should not crash
         viewHolder.itemView.performClick();
     }
-
-    // ==================== DiffUtil Tests ====================
 
     @Test
     public void diffUtil_identifiesSameItems() throws InterruptedException {
@@ -326,12 +309,9 @@ public class ProvidersAdapterTest {
 
         AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider1));
         
-        // When model count changes, content should be different
         AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider2));
         assertEquals(1, adapter.getItemCount());
     }
-
-    // ==================== Edge Case Tests ====================
 
     @Test
     public void submitList_withVeryLongProviderName_handlesCorrectly() {
@@ -390,7 +370,6 @@ public class ProvidersAdapterTest {
     public void submitList_withManyModels_displaysCorrectCount() {
         Provider provider = new Provider("test", "Test Provider", "https://api.test.com", "key", "api");
         
-        // Add 100 models
         for (int i = 0; i < 100; i++) {
             provider.addModel(new Model("model-" + i, "Model " + i, "api", false,
                     Arrays.asList("text"), 8192, 4096));
@@ -412,14 +391,12 @@ public class ProvidersAdapterTest {
 
     @Test
     public void submitList_multipleUpdates_maintainsCorrectState() throws InterruptedException {
-        // First submission
         List<Provider> providers1 = Arrays.asList(
             new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai")
         );
         AdapterTestHelper.submitListAndWait(adapter, providers1);
         assertEquals(1, adapter.getItemCount());
 
-        // Second submission
         List<Provider> providers2 = Arrays.asList(
             new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai"),
             new Provider("anthropic", "Anthropic", "https://api.anthropic.com", "sk-ant", "anthropic")
@@ -427,11 +404,9 @@ public class ProvidersAdapterTest {
         AdapterTestHelper.submitListAndWait(adapter, providers2);
         assertEquals(2, adapter.getItemCount());
 
-        // Third submission - clear
         AdapterTestHelper.submitListAndWait(adapter, new ArrayList<>());
         assertEquals(0, adapter.getItemCount());
 
-        // Fourth submission - repopulate
         AdapterTestHelper.submitListAndWait(adapter, providers1);
         assertEquals(1, adapter.getItemCount());
     }

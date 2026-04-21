@@ -2,10 +2,6 @@ package io.finett.droidclaw.tool;
 
 import com.google.gson.JsonObject;
 
-/**
- * Represents a tool definition for the OpenAI function calling API.
- * Tools are defined in the Chat Completions API format.
- */
 public class ToolDefinition {
     private final String type = "function";
     private final FunctionDefinition function;
@@ -22,11 +18,6 @@ public class ToolDefinition {
         return function;
     }
 
-    /**
-     * Converts this definition to a JSON object for the API.
-     * 
-     * @return JsonObject representation
-     */
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
         json.addProperty("type", type);
@@ -34,9 +25,6 @@ public class ToolDefinition {
         return json;
     }
 
-    /**
-     * Inner class representing the function part of the tool definition.
-     */
     public static class FunctionDefinition {
         private final String name;
         private final String description;
@@ -70,9 +58,6 @@ public class ToolDefinition {
         }
     }
 
-    /**
-     * Builder for creating tool parameter schemas.
-     */
     public static class ParametersBuilder {
         private final JsonObject properties = new JsonObject();
         private final JsonObject schema = new JsonObject();
@@ -81,14 +66,6 @@ public class ToolDefinition {
             schema.addProperty("type", "object");
         }
 
-        /**
-         * Adds a string parameter.
-         * 
-         * @param name Parameter name
-         * @param description Parameter description
-         * @param required Whether the parameter is required
-         * @return This builder
-         */
         public ParametersBuilder addString(String name, String description, boolean required) {
             JsonObject prop = new JsonObject();
             prop.addProperty("type", "string");
@@ -101,14 +78,6 @@ public class ToolDefinition {
             return this;
         }
 
-        /**
-         * Adds an integer parameter.
-         * 
-         * @param name Parameter name
-         * @param description Parameter description
-         * @param required Whether the parameter is required
-         * @return This builder
-         */
         public ParametersBuilder addInteger(String name, String description, boolean required) {
             JsonObject prop = new JsonObject();
             prop.addProperty("type", "integer");
@@ -121,14 +90,6 @@ public class ToolDefinition {
             return this;
         }
 
-        /**
-         * Adds a boolean parameter.
-         * 
-         * @param name Parameter name
-         * @param description Parameter description
-         * @param required Whether the parameter is required
-         * @return This builder
-         */
         public ParametersBuilder addBoolean(String name, String description, boolean required) {
             JsonObject prop = new JsonObject();
             prop.addProperty("type", "boolean");
@@ -148,12 +109,7 @@ public class ToolDefinition {
             schema.getAsJsonArray("required").add(name);
         }
 
-        /**
-         * Builds the parameters schema.
-         * Adds additionalProperties: false for Structured Output compliance.
-         *
-         * @return JsonObject schema
-         */
+        /** Adds `additionalProperties: false` for Structured Output compliance. */
         public JsonObject build() {
             schema.add("properties", properties);
             schema.addProperty("additionalProperties", false);

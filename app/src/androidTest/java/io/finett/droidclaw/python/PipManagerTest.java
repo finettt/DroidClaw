@@ -15,10 +15,6 @@ import org.junit.runner.RunWith;
 
 import java.util.List;
 
-/**
- * Android instrumented tests for PipManager.
- * These tests require the Chaquopy Python runtime which is only available on Android devices.
- */
 @RunWith(AndroidJUnit4.class)
 public class PipManagerTest {
 
@@ -29,7 +25,6 @@ public class PipManagerTest {
     public void setUp() {
         Context context = getApplicationContext();
         
-        // Initialize Python if not already started
         if (!Python.isStarted()) {
             Python.start(new com.chaquo.python.android.AndroidPlatform(context));
         }
@@ -45,7 +40,6 @@ public class PipManagerTest {
 
     @Test
     public void testIsPackageInstalled_withBuiltInPackage() {
-        // 'sys' is a built-in Python module, should always be available
         boolean isInstalled = pipManager.isPackageInstalled("sys");
         assertTrue("Built-in 'sys' module should be installed", isInstalled);
     }
@@ -62,7 +56,6 @@ public class PipManagerTest {
             boolean isInstalled = pipManager.isPackageInstalled(null);
             assertFalse("Null package should return false", isInstalled);
         } catch (Exception e) {
-            // If we can't find the spec, the package is not installed
             assertTrue("Null package should throw exception or return false", true);
         }
     }
@@ -75,7 +68,6 @@ public class PipManagerTest {
 
     @Test
     public void testIsPackageInstalled_preinstalledPackage() {
-        // 'requests' is pre-installed via build.gradle
         boolean isInstalled = pipManager.isPackageInstalled("requests");
         assertTrue("'requests' should be installed from build.gradle", isInstalled);
     }
@@ -88,7 +80,6 @@ public class PipManagerTest {
 
     @Test
     public void testGetPackageVersion_withInstalledPackage() {
-        // 'requests' is installed via build.gradle
         String version = pipManager.getPackageVersion("requests");
         assertNotNull("Should return version for installed package", version);
         assertFalse("Version should not be empty", version.isEmpty());
@@ -102,9 +93,7 @@ public class PipManagerTest {
 
     @Test
     public void testGetPackageVersion_withBuiltInModule() {
-        // Built-in modules may not have a pip version
         String version = pipManager.getPackageVersion("sys");
-        // Could be null for built-in modules
         assertTrue("Built-in module version can be null or a valid string", 
                 version == null || !version.isEmpty());
     }

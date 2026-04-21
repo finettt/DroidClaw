@@ -38,8 +38,6 @@ public class ModelsAdapterTest {
         adapter = new ModelsAdapter();
     }
 
-    // ==================== Initial State Tests ====================
-
     @Test
     public void initialState_hasZeroItems() {
         assertEquals(0, adapter.getItemCount());
@@ -49,8 +47,6 @@ public class ModelsAdapterTest {
     public void initialState_getCurrentList_returnsEmptyList() {
         assertTrue(adapter.getCurrentList().isEmpty());
     }
-
-    // ==================== submitList Tests ====================
 
     @Test
     public void submitList_withModels_updatesCount() throws InterruptedException {
@@ -104,8 +100,6 @@ public class ModelsAdapterTest {
         assertEquals(2, adapter.getItemCount());
     }
 
-    // ==================== ViewHolder Creation Tests ====================
-
     @Test
     public void onCreateViewHolder_createsValidViewHolder() {
         Context context = TestThemeHelper.getThemedContext();
@@ -129,8 +123,6 @@ public class ModelsAdapterTest {
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_model_name));
         assertNotNull(viewHolder.itemView.findViewById(R.id.text_model_context));
     }
-
-    // ==================== ViewHolder Binding Tests ====================
 
     @Test
     public void onBindViewHolder_bindsModelName() {
@@ -182,20 +174,16 @@ public class ModelsAdapterTest {
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
-        // Test first model
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder1, 0);
         TextView nameText1 = viewHolder1.itemView.findViewById(R.id.text_model_name);
         assertEquals("GPT-4", nameText1.getText().toString());
 
-        // Test second model
         RecyclerView.ViewHolder viewHolder2 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder2, 1);
         TextView nameText2 = viewHolder2.itemView.findViewById(R.id.text_model_name);
         assertEquals("Claude 3", nameText2.getText().toString());
     }
-
-    // ==================== Click Listener Tests ====================
 
     @Test
     public void clickListener_whenSet_receivesClickEvents() throws InterruptedException {
@@ -216,14 +204,12 @@ public class ModelsAdapterTest {
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
         recyclerView.setAdapter(adapter);
         
-        // Force layout to attach view holders properly
         recyclerView.measure(
             View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY)
         );
         recyclerView.layout(0, 0, 1000, 1000);
         
-        // Get the view holder that is now properly attached
         RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(0);
         assertNotNull("ViewHolder should be attached", viewHolder);
 
@@ -245,11 +231,8 @@ public class ModelsAdapterTest {
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
 
-        // Should not crash
         viewHolder.itemView.performClick();
     }
-
-    // ==================== DiffUtil Tests ====================
 
     @Test
     public void diffUtil_identifiesSameItems() throws InterruptedException {
@@ -274,8 +257,6 @@ public class ModelsAdapterTest {
         AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(model1, model2));
         assertEquals(2, adapter.getItemCount());
     }
-
-    // ==================== Edge Case Tests ====================
 
     @Test
     public void submitList_withVeryLongModelName_handlesCorrectly() {
@@ -345,14 +326,12 @@ public class ModelsAdapterTest {
 
     @Test
     public void submitList_multipleUpdates_maintainsCorrectState() throws InterruptedException {
-        // First submission
         List<Model> models1 = Arrays.asList(
             new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
         AdapterTestHelper.submitListAndWait(adapter, models1);
         assertEquals(1, adapter.getItemCount());
 
-        // Second submission
         List<Model> models2 = Arrays.asList(
             new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096),
             new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048)
@@ -360,11 +339,9 @@ public class ModelsAdapterTest {
         AdapterTestHelper.submitListAndWait(adapter, models2);
         assertEquals(2, adapter.getItemCount());
 
-        // Third submission - clear
         AdapterTestHelper.submitListAndWait(adapter, new ArrayList<>());
         assertEquals(0, adapter.getItemCount());
 
-        // Fourth submission - repopulate
         AdapterTestHelper.submitListAndWait(adapter, models1);
         assertEquals(1, adapter.getItemCount());
     }

@@ -152,19 +152,16 @@ public class SettingsManager {
         try {
             JSONObject root = new JSONObject();
 
-            // Save providers
             JSONObject providersObj = new JSONObject();
             for (Map.Entry<String, Provider> entry : providers.entrySet()) {
                 providersObj.put(entry.getKey(), serializeProvider(entry.getValue()));
             }
             root.put("providers", providersObj);
 
-            // Save agent config
             JSONObject agentsObj = new JSONObject();
             agentsObj.put("defaults", serializeAgentConfig(agentConfig));
             root.put("agents", agentsObj);
 
-            // Save onboarding state
             JSONObject onboardingObj = new JSONObject();
             onboardingObj.put("completed", onboardingCompleted);
             onboardingObj.put("userName", userName);

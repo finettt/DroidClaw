@@ -10,9 +10,6 @@ import io.finett.droidclaw.filesystem.PathValidator;
 
 import static org.junit.Assert.*;
 
-/**
- * Unit tests for ShellExecutor.
- */
 public class ShellExecutorTest {
     private ShellExecutor executor;
     private ShellConfig config;
@@ -43,8 +40,8 @@ public class ShellExecutorTest {
     public void testCommandWithStderr() {
         // ls on a non-existent directory produces stderr
         ShellResult result = executor.execute("ls /nonexistent_directory_12345");
-        
-        assertFalse(result.isSuccess()); // Non-zero exit code
+
+        assertFalse(result.isSuccess());
         assertFalse(result.isTimedOut());
         assertFalse(result.getStderr().isEmpty());
     }
@@ -62,14 +59,12 @@ public class ShellExecutorTest {
 
     @Test
     public void testCommandTimeout() {
-        // Create a config with very short timeout
         ShellConfig shortConfig = new ShellConfig.Builder()
                 .timeoutSeconds(1)
                 .enabled(true)
                 .build();
         ShellExecutor shortExecutor = new ShellExecutor(shortConfig);
-        
-        // Sleep for longer than timeout
+
         ShellResult result = shortExecutor.execute("sleep 5");
         
         assertTrue(result.isTimedOut());
@@ -78,7 +73,6 @@ public class ShellExecutorTest {
 
     @Test
     public void testWorkingDirectory() {
-        // Create a subdirectory in workspace
         File subDir = new File(workspaceRoot, "subdir");
         subDir.mkdirs();
         
@@ -96,7 +90,6 @@ public class ShellExecutorTest {
 
     @Test
     public void testExitCode() {
-        // Command that exits with specific code
         ShellResult result = executor.execute("exit 42");
         
         assertEquals(42, result.getExitCode());
@@ -144,11 +137,9 @@ public class ShellExecutorTest {
                 .build();
         ShellExecutor whitelistExecutor = new ShellExecutor(whitelistConfig);
         
-        // Allowed command should work
         ShellResult result1 = whitelistExecutor.execute("echo test");
         assertTrue(result1.isSuccess());
-        
-        // Non-allowed command should fail
+
         try {
             whitelistExecutor.execute("ls");
             fail("Should have thrown SecurityException");
@@ -169,8 +160,7 @@ public class ShellExecutorTest {
     @Test
     public void testEmptyCommand() {
         ShellResult result = executor.execute("");
-        
-        // Empty command should complete quickly
+
         assertTrue(result.getExecutionTimeMs() < 5000);
     }
 
@@ -185,15 +175,13 @@ public class ShellExecutorTest {
     @Test
     public void testEnvironmentVariables() {
         ShellResult result = executor.execute("echo $HOME");
-        
+
         assertTrue(result.isSuccess());
-        // Should output something (the HOME environment variable)
         assertFalse(result.getStdout().trim().isEmpty());
     }
 
     @Test
     public void testLongOutput() {
-        // Generate a lot of output
         ShellResult result = executor.execute("for i in $(seq 1 100); do echo $i; done");
         
         assertTrue(result.isSuccess());
@@ -219,11 +207,8 @@ public class ShellExecutorTest {
         assertFalse(result.isTimedOut());
     }
 
-    // === Tests for PathValidator integration ===
-
     @Test
     public void testExecutorWithPathValidator() {
-        // Create executor with PathValidator
         ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
         
         ShellResult result = vfsExecutor.execute("echo test");
@@ -232,10 +217,8 @@ public class ShellExecutorTest {
 
     @Test
     public void testWorkingDirectoryValidationWithinWorkspace() throws IOException {
-        // Create executor with PathValidator
         ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
-        
-        // Create a subdirectory within workspace
+
         File validDir = new File(workspaceRoot, "valid_dir");
         validDir.mkdirs();
         
@@ -249,15 +232,12 @@ public class ShellExecutorTest {
 
     @Test
     public void testWorkingDirectoryValidationOutsideWorkspace() throws IOException {
-        // Create executor with PathValidator
         ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
-        
-        // Create a directory outside workspace
+
         File outsideDir = new File(System.getProperty("java.io.tmpdir"), "outside_workspace_" + System.currentTimeMillis());
         outsideDir.mkdirs();
         
         try {
-            // This should throw SecurityException because directory is outside workspace
             try {
                 vfsExecutor.execute("pwd", outsideDir);
                 fail("Should have thrown SecurityException for directory outside workspace");
@@ -274,15 +254,12 @@ public class ShellExecutorTest {
 
     @Test
     public void testExecuteWithRelativeDir() throws IOException {
-        // Create executor with PathValidator
         ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
-        
-        // Create a subdirectory
+
         File subDir = new File(workspaceRoot, "relative_test_dir");
         subDir.mkdirs();
         
         try {
-            // Test the new executeWithRelativeDir method
             ShellResult result = vfsExecutor.executeWithRelativeDir("pwd", "relative_test_dir");
             assertTrue("Command should succeed with relative path", result.isSuccess());
         } finally {
@@ -292,7 +269,6 @@ public class ShellExecutorTest {
 
     @Test
     public void testExecuteWithRelativeDirNoPathValidator() {
-        // Create executor without PathValidator
         ShellExecutor noVfsExecutor = new ShellExecutor(config);
         
         try {
@@ -306,10 +282,8 @@ public class ShellExecutorTest {
 
     @Test
     public void testExecuteWithRelativeDirPathTraversal() throws IOException {
-        // Create executor with PathValidator
         ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
-        
-        // Try path traversal
+
         try {
             vfsExecutor.executeWithRelativeDir("pwd", "../../../tmp");
             fail("Should have thrown SecurityException for path traversal");
@@ -342,10 +316,8 @@ public class ShellExecutorTest {
 
     @Test
     public void testNestedDirectoryInWorkspace() throws IOException {
-        // Create executor with PathValidator
         ShellExecutor vfsExecutor = new ShellExecutor(config, pathValidator);
-        
-        // Create nested directory structure
+
         File nestedDir = new File(workspaceRoot, "level1/level2/level3");
         nestedDir.mkdirs();
         
@@ -353,7 +325,6 @@ public class ShellExecutorTest {
             ShellResult result = vfsExecutor.execute("pwd", nestedDir);
             assertTrue("Should work with nested directory within workspace", result.isSuccess());
         } finally {
-            // Cleanup
             nestedDir.delete();
             new File(workspaceRoot, "level1/level2").delete();
             new File(workspaceRoot, "level1").delete();

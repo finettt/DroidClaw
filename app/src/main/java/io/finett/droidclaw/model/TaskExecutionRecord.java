@@ -1,14 +1,10 @@
 package io.finett.droidclaw.model;
 
-/**
- * Records the execution details of a background task.
- * Used for tracking task history, performance metrics, and debugging.
- */
 public class TaskExecutionRecord {
 
     private String taskId;
     private String sessionId;
-    private int taskType; // TaskResult.TYPE_HEARTBEAT, TYPE_CRON_JOB, etc.
+    private int taskType;
     private long startTime;
     private long endTime;
     private long durationMillis;
@@ -126,9 +122,6 @@ public class TaskExecutionRecord {
         this.errorMessage = errorMessage;
     }
 
-    /**
-     * Mark this execution as completed with the given end time.
-     */
     public void complete(long endTime) {
         this.endTime = endTime;
         this.durationMillis = endTime - startTime;
@@ -136,9 +129,6 @@ public class TaskExecutionRecord {
         this.errorMessage = null;
     }
 
-    /**
-     * Mark this execution as failed with an error message.
-     */
     public void fail(long endTime, String error) {
         this.endTime = endTime;
         this.durationMillis = endTime - startTime;

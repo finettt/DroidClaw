@@ -35,7 +35,6 @@ public class OnboardingFragmentTest {
 
     @Before
     public void setUp() {
-        // Clear settings before each test
         SharedPreferences prefs = getApplicationContext()
                 .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
         prefs.edit().clear().commit();
@@ -91,7 +90,6 @@ public class OnboardingFragmentTest {
                 btnNext.performClick();
             });
 
-            // Wait for animation outside of onFragment
             try {
                 Thread.sleep(400);
             } catch (InterruptedException e) {
@@ -119,7 +117,6 @@ public class OnboardingFragmentTest {
                 fragment.requireView().findViewById(R.id.btn_next_1).performClick();
             });
 
-            // Wait for animation
             try {
                 Thread.sleep(400);
             } catch (InterruptedException e) {
@@ -133,18 +130,14 @@ public class OnboardingFragmentTest {
                 TextInputEditText etName = fragment.requireView().findViewById(R.id.et_name);
                 Button btnNext2 = fragment.requireView().findViewById(R.id.btn_next_2);
 
-                // Try to proceed without entering name
                 btnNext2.performClick();
 
-                // Should show error
                 assertNotNull("Error should be set when name is empty", tilName.getError());
 
-                // Enter name and try again
                 etName.setText("Test User");
                 btnNext2.performClick();
             });
 
-            // Wait for animation
             try {
                 Thread.sleep(400);
             } catch (InterruptedException e) {
@@ -152,7 +145,6 @@ public class OnboardingFragmentTest {
             }
 
             scenario.onFragment(fragment -> {
-                // Should transition to provider section
                 View sectionProvider = fragment.requireView().findViewById(R.id.section_provider);
                 assertEquals("Provider section should be visible after valid name",
                         View.VISIBLE, sectionProvider.getVisibility());
@@ -169,7 +161,6 @@ public class OnboardingFragmentTest {
                 fragment.requireView().findViewById(R.id.btn_next_1).performClick();
             });
 
-            // Wait for animation
             try {
                 Thread.sleep(400);
             } catch (InterruptedException e) {
@@ -184,7 +175,6 @@ public class OnboardingFragmentTest {
                 btnNext2.performClick();
             });
 
-            // Verify name was saved
             SettingsManager settingsManager = new SettingsManager(getApplicationContext());
             assertEquals("John Doe", settingsManager.getUserName());
         }
@@ -210,7 +200,6 @@ public class OnboardingFragmentTest {
                 // Try to proceed without filling fields
                 btnGetStarted.performClick();
 
-                // Should show errors
                 assertNotNull("Provider name error should be set", tilProviderName.getError());
                 assertNotNull("Base URL error should be set", tilBaseUrl.getError());
                 assertNotNull("API key error should be set", tilApiKey.getError());
@@ -271,14 +260,12 @@ public class OnboardingFragmentTest {
                 btnGetStarted.performClick();
             });
 
-            // Wait for navigation
             try {
                 Thread.sleep(200);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
-            // Verify onboarding was marked as completed
             SettingsManager settingsManager = new SettingsManager(getApplicationContext());
             assertTrue("Onboarding should be marked as completed",
                     settingsManager.isOnboardingCompleted());
@@ -296,14 +283,12 @@ public class OnboardingFragmentTest {
                 btnSkip.performClick();
             });
 
-            // Wait for navigation
             try {
                 Thread.sleep(200);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
-            // Verify onboarding was marked as completed without saving data
             SettingsManager settingsManager = new SettingsManager(getApplicationContext());
             assertTrue("Onboarding should be marked as completed after skip",
                     settingsManager.isOnboardingCompleted());
@@ -354,11 +339,9 @@ public class OnboardingFragmentTest {
                 TextInputEditText etName = fragment.requireView().findViewById(R.id.et_name);
                 Button btnNext2 = fragment.requireView().findViewById(R.id.btn_next_2);
 
-                // Trigger validation error
                 btnNext2.performClick();
                 assertNotNull("Error should be shown", tilName.getError());
 
-                // Type in the field
                 etName.setText("A");
             });
 
@@ -366,7 +349,6 @@ public class OnboardingFragmentTest {
 
             scenario.onFragment(fragment -> {
                 TextInputLayout tilName = fragment.requireView().findViewById(R.id.til_name);
-                // Error should be cleared
                 assertEquals("Error should be cleared when typing", null, tilName.getError());
             });
         }
@@ -387,13 +369,11 @@ public class OnboardingFragmentTest {
                 e.printStackTrace();
             }
 
-            // Recreate fragment
             scenario.recreate();
 
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.onboardingFragment);
 
-                // Should show welcome section again after recreate
                 View sectionWelcome = fragment.requireView().findViewById(R.id.section_welcome);
                 assertEquals("Should reset to welcome section after recreate",
                         View.VISIBLE, sectionWelcome.getVisibility());
@@ -427,7 +407,6 @@ public class OnboardingFragmentTest {
     }
 
     private void navigateToProviderSection(OnboardingFragment fragment) {
-        // Navigate to name section
         fragment.requireView().findViewById(R.id.btn_next_1).performClick();
 
         try {
@@ -436,7 +415,6 @@ public class OnboardingFragmentTest {
             e.printStackTrace();
         }
 
-        // Fill name and navigate to provider section
         TextInputEditText etName = fragment.requireView().findViewById(R.id.et_name);
         etName.setText("Test User");
         fragment.requireView().findViewById(R.id.btn_next_2).performClick();

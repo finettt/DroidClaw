@@ -11,9 +11,6 @@ import java.util.List;
 
 import io.finett.droidclaw.model.ChatMessage;
 
-/**
- * Unit tests for TokenEstimator.
- */
 public class TokenEstimatorTest {
 
     @Test

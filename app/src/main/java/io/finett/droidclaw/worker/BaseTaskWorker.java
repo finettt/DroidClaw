@@ -35,20 +35,13 @@ import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.util.DeviceStateHelper;
 import io.finett.droidclaw.util.SettingsManager;
 
-/**
- * Abstract base worker for background task execution.
- * Provides common functionality for creating isolated sessions,
- * loading fresh context, and executing tasks with sandbox limits.
- */
 public abstract class BaseTaskWorker extends Worker {
 
     private static final String TAG = "BaseTaskWorker";
 
-    // Sandbox limits
     protected static final int MAX_ITERATIONS = 10;
-    protected static final long MAX_EXECUTION_TIME_MS = 5 * 60 * 1000L; // 5 minutes
+    protected static final long MAX_EXECUTION_TIME_MS = 5 * 60 * 1000L;
 
-    // Worker components
     protected final Context appContext;
     protected WorkspaceManager workspaceManager;
     protected IdentityManager identityManager;
@@ -63,9 +56,6 @@ public abstract class BaseTaskWorker extends Worker {
         initializeComponents();
     }
 
-    /**
-     * Initialize common dependencies used by all workers.
-     */
     private void initializeComponents() {
         this.workspaceManager = new WorkspaceManager(appContext);
         this.identityManager = new IdentityManager(appContext, workspaceManager);
@@ -75,13 +65,6 @@ public abstract class BaseTaskWorker extends Worker {
         this.memoryRepository = new MemoryRepository(workspaceManager);
     }
 
-    /**
-     * Create an isolated chat session for background execution.
-     * Hidden sessions are not shown in the regular chat list.
-     *
-     * @param sessionType Type of session (HIDDEN_HEARTBEAT or HIDDEN_CRON)
-     * @return Created ChatSession object
-     */
     protected ChatSession createIsolatedSession(int sessionType) {
         String sessionId = UUID.randomUUID().toString();
         String title = getTaskTitle(sessionType);
@@ -91,7 +74,6 @@ public abstract class BaseTaskWorker extends Worker {
         session.setSessionType(sessionType);
         session.setParentTaskId(getParentTaskId());
 
-        // Save session to repository
         List<ChatSession> sessions = chatRepository.loadSessions();
         sessions.add(session);
         chatRepository.saveSessions(sessions);
@@ -100,17 +82,9 @@ public abstract class BaseTaskWorker extends Worker {
         return session;
     }
 
-    /**
-     * Load fresh context for the isolated session.
-     * This includes identity messages and relevant memories.
-     *
-     * @param session The isolated chat session
-     * @return List of identity and context messages to prepend
-     */
     protected List<ChatMessage> loadFreshContext(ChatSession session) {
         List<ChatMessage> contextMessages = new ArrayList<>();
 
-        // Load identity messages (soul.md + user.md)
         try {
             if (identityManager.identityFilesExist()) {
                 List<ChatMessage> identityMessages = identityManager.getIdentityMessages();
@@ -123,7 +97,6 @@ public abstract class BaseTaskWorker extends Worker {
             Log.w(TAG, "Failed to load identity messages", e);
         }
 
-        // Load memory context (from memory repository)
         try {
             String memoryContext = buildMemoryContext();
             if (!memoryContext.isEmpty()) {
@@ -138,14 +111,6 @@ public abstract class BaseTaskWorker extends Worker {
         return contextMessages;
     }
 
-    /**
-     * Execute a prompt in a sandboxed agent loop.
-     * Enforces resource limits (max iterations, timeout).
-     *
-     * @param session The isolated chat session
-     * @param prompt The prompt to execute
-     * @return TaskResult containing the execution outcome
-     */
     protected TaskResult executeWithSandbox(ChatSession session, String prompt) {
         String taskId = session.getId();
         int taskType = getTaskType();
@@ -154,7 +119,6 @@ public abstract class BaseTaskWorker extends Worker {
         TaskExecutionRecord executionRecord = new TaskExecutionRecord(taskId, session.getId(), taskType, startTime);
         TaskResult result;
 
-        // Check device state before executing
         if (!DeviceStateHelper.shouldExecuteTask(appContext)) {
             String skipReason = buildSkipReason();
             Log.w(TAG, "Skipping task execution due to device state: " + skipReason);
@@ -165,32 +129,26 @@ public abstract class BaseTaskWorker extends Worker {
         }
 
         try {
-            // Setup agent loop
             LlmApiService apiService = createApiService();
             ToolRegistry toolRegistry = createToolRegistry();
 
             AgentLoop agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager);
 
-            // Allow subclasses to customize the agent loop (e.g., set response schema)
             customizeAgentLoop(agentLoop);
 
-            // Prepare conversation with identity context
             List<ChatMessage> contextMessages = loadFreshContext(session);
             agentLoop.setIdentityContext(contextMessages);
 
-            // Create user message with prompt
             ChatMessage userMessage = new ChatMessage(prompt, ChatMessage.TYPE_USER);
 
             List<ChatMessage> conversationHistory = new ArrayList<>();
             conversationHistory.add(userMessage);
 
-            // Use CountDownLatch to wait for completion or timeout
             CountDownLatch latch = new CountDownLatch(1);
             AtomicReference<String> finalResponse = new AtomicReference<>();
             AtomicReference<List<ChatMessage>> finalHistory = new AtomicReference<>();
             AtomicReference<String> errorRef = new AtomicReference<>();
 
-            // Start agent loop asynchronously
             agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
                 @Override
                 public void onProgress(String status) {
@@ -222,31 +180,26 @@ public abstract class BaseTaskWorker extends Worker {
 
                 @Override
                 public void onApprovalRequired(String toolName, String description, com.google.gson.JsonObject arguments, AgentLoop.ApprovalCallback approvalCallback) {
-                    // Auto-approve in background tasks (no user interaction)
                     Log.d(TAG, "Auto-approving tool: " + toolName);
                     approvalCallback.onApproved();
                 }
             });
 
-            // Wait for completion or timeout
             boolean completed = latch.await(MAX_EXECUTION_TIME_MS, TimeUnit.MILLISECONDS);
 
             long endTime = System.currentTimeMillis();
 
             if (!completed) {
-                // Timeout occurred
                 String errorMsg = "Task execution timed out after " + (MAX_EXECUTION_TIME_MS / 1000) + " seconds";
                 Log.w(TAG, errorMsg);
                 executionRecord.fail(endTime, errorMsg);
                 result = createFailureResult(taskId, taskType, endTime, errorMsg);
             } else if (errorRef.get() != null) {
-                // Error occurred
                 String errorMsg = "Task execution failed: " + errorRef.get();
                 Log.e(TAG, errorMsg);
                 executionRecord.fail(endTime, errorMsg);
                 result = createFailureResult(taskId, taskType, endTime, errorMsg);
             } else {
-                // Success
                 String response = finalResponse.get();
                 List<ChatMessage> history = finalHistory.get();
 
@@ -254,11 +207,9 @@ public abstract class BaseTaskWorker extends Worker {
                 executionRecord.setIterations(countIterations(history));
                 executionRecord.setTokensUsed(estimateTokens(response));
 
-                // Extract and cache agent-generated notification content
                 result = createSuccessResult(taskId, taskType, endTime, response, history);
                 extractAndCacheNotificationContent(result, response, history);
 
-                // Save conversation history
                 if (history != null && !history.isEmpty()) {
                     chatRepository.saveMessages(session.getId(), history);
                 }
@@ -272,18 +223,14 @@ public abstract class BaseTaskWorker extends Worker {
             result = createFailureResult(taskId, taskType, endTime, errorMsg);
         }
 
-        // Save execution record
         taskRepository.saveExecutionRecord(executionRecord);
 
         return result;
     }
 
-    /**
-     * Build human-readable reason why task was skipped.
-     */
     private String buildSkipReason() {
         StringBuilder sb = new StringBuilder("Task skipped due to device state: ");
-        
+
         if (DeviceStateHelper.isAirplaneModeOn(appContext)) {
             sb.append("Airplane mode is ON");
         } else if (DeviceStateHelper.isBatteryCritical(appContext)) {
@@ -293,23 +240,16 @@ public abstract class BaseTaskWorker extends Worker {
         } else {
             sb.append("Device conditions not suitable");
         }
-        
+
         return sb.toString();
     }
 
-    /**
-     * Generate notification content from task result.
-     *
-     * @param result The task result
-     * @return Content string for notification display
-     */
     protected String generateNotificationContent(TaskResult result) {
         String content = result.getContent();
         if (content == null || content.isEmpty()) {
             return "Task completed with no output";
         }
 
-        // Truncate long content for notification
         int maxLength = 500;
         if (content.length() > maxLength) {
             content = content.substring(0, maxLength) + "...";
@@ -318,15 +258,10 @@ public abstract class BaseTaskWorker extends Worker {
         return content;
     }
 
-    /**
-     * Build memory context string from memory repository.
-     * Combines long-term memory and recent daily notes.
-     */
     private String buildMemoryContext() {
         StringBuilder context = new StringBuilder();
 
         try {
-            // Load long-term memory
             String longTermMemory = memoryRepository.readLongTermMemory();
             if (longTermMemory != null && !longTermMemory.trim().isEmpty()) {
                 context.append("# Long-term Memory\n\n");
@@ -334,7 +269,6 @@ public abstract class BaseTaskWorker extends Worker {
                 context.append("\n\n");
             }
 
-            // Load today's note if it exists
             String todayNote = memoryRepository.readTodayNote();
             if (todayNote != null && !todayNote.trim().isEmpty()) {
                 context.append("# Today's Notes\n\n");
@@ -348,25 +282,14 @@ public abstract class BaseTaskWorker extends Worker {
         return context.toString();
     }
 
-    /**
-     * Create an API service instance for background execution.
-     * Uses the currently configured provider and model.
-     */
     private LlmApiService createApiService() {
         return new LlmApiService(settingsManager);
     }
 
-    /**
-     * Create a tool registry with all available tools.
-     * Tools are sandboxed to workspace directory.
-     */
     private ToolRegistry createToolRegistry() {
         return new ToolRegistry(appContext, settingsManager);
     }
 
-    /**
-     * Count the number of iterations (assistant messages) in conversation history.
-     */
     private int countIterations(List<ChatMessage> history) {
         if (history == null) return 0;
         int count = 0;
@@ -378,18 +301,12 @@ public abstract class BaseTaskWorker extends Worker {
         return count;
     }
 
-    /**
-     * Estimate token count for a string (rough approximation).
-     * Uses 1 token ≈ 4 characters for English text.
-     */
+    /** Uses 1 token ≈ 4 characters as a rough approximation. */
     private int estimateTokens(String text) {
         if (text == null || text.isEmpty()) return 0;
         return text.length() / 4;
     }
 
-    /**
-     * Create a success result.
-     */
     private TaskResult createSuccessResult(String taskId, int taskType, long timestamp,
                                            String content, List<ChatMessage> history) {
         TaskResult result = new TaskResult(taskId, taskType, timestamp, content);
@@ -398,9 +315,6 @@ public abstract class BaseTaskWorker extends Worker {
         return result;
     }
 
-    /**
-     * Create a failure result.
-     */
     private TaskResult createFailureResult(String taskId, int taskType, long timestamp,
                                            String errorMessage) {
         TaskResult result = new TaskResult(taskId, taskType, timestamp, "Failed: " + errorMessage);
@@ -421,7 +335,6 @@ public abstract class BaseTaskWorker extends Worker {
      * @param history Full conversation history including tool calls
      */
     private void extractAndCacheNotificationContent(TaskResult result, String response, List<ChatMessage> history) {
-        // Priority 1: Check for submit_notification tool call
         JsonObject notification = SubmitNotificationTool.getLastNotification();
         if (notification != null && notification.has("title") && notification.has("summary")) {
             result.putMetadata("notification_title", notification.get("title").getAsString());
@@ -435,12 +348,10 @@ public abstract class BaseTaskWorker extends Worker {
             
             Log.d(TAG, "Extracted notification from submit_notification tool: " + notification.get("title").getAsString());
             
-            // Clear to prevent stale data
             SubmitNotificationTool.clearLastNotification();
             return;
         }
 
-        // Priority 2: Legacy fallback - parse TITLE: and SUMMARY: markers from text
         if (response == null || response.isEmpty()) {
             return;
         }
@@ -448,7 +359,6 @@ public abstract class BaseTaskWorker extends Worker {
         String notificationTitle = null;
         String notificationSummary = null;
 
-        // Try to parse TITLE: and SUMMARY: markers (use first occurrence)
         String[] lines = response.split("\n");
         for (String line : lines) {
             line = line.trim();
@@ -457,13 +367,11 @@ public abstract class BaseTaskWorker extends Worker {
             } else if (notificationSummary == null && line.startsWith("SUMMARY:")) {
                 notificationSummary = line.substring(8).trim();
             }
-            // Stop when both are found
             if (notificationTitle != null && notificationSummary != null) {
                 break;
             }
         }
 
-        // Cache in metadata for notification system
         if (notificationTitle != null && !notificationTitle.isEmpty()) {
             result.putMetadata("notification_title", notificationTitle);
             Log.d(TAG, "Extracted notification title from text: " + notificationTitle);

@@ -52,11 +52,6 @@ public class NotificationHelper {
         }
     }
 
-    /**
-     * Show a heartbeat notification with issues that need attention.
-     *
-     * @param content The notification content describing issues
-     */
     public void showHeartbeatNotification(String content) {
         Intent intent = new Intent(context, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -80,11 +75,6 @@ public class NotificationHelper {
         notificationManager.notify(NOTIFICATION_ID_HEARTBEAT, builder.build());
     }
 
-    /**
-     * Show a heartbeat error notification.
-     *
-     * @param errorMessage The error message
-     */
     public void showHeartbeatError(String errorMessage) {
         Intent intent = new Intent(context, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -108,17 +98,11 @@ public class NotificationHelper {
         notificationManager.notify(NOTIFICATION_ID_ERROR, builder.build());
     }
 
-    /**
-     * Cancel all heartbeat notifications.
-     */
     public void cancelAllNotifications() {
         notificationManager.cancel(NOTIFICATION_ID_HEARTBEAT);
         notificationManager.cancel(NOTIFICATION_ID_ERROR);
     }
 
-    /**
-     * Truncate text to maximum length.
-     */
     private String truncate(String text, int maxLength) {
         if (text == null) {
             return "";

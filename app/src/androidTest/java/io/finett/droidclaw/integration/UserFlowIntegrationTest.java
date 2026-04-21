@@ -35,9 +35,6 @@ import io.finett.droidclaw.util.ActivityLaunchHelper;
 import io.finett.droidclaw.util.SettingsManager;
 import io.finett.droidclaw.util.TestUtils;
 
-/**
- * Integration tests that verify complete user flows end-to-end.
- */
 @RunWith(AndroidJUnit4.class)
 public class UserFlowIntegrationTest {
 
@@ -48,7 +45,6 @@ public class UserFlowIntegrationTest {
 
     @Before
     public void setUp() {
-        // Clear all preferences before each test
         SharedPreferences settingsPrefs = getApplicationContext()
                 .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
         settingsPrefs.edit().clear().commit();
@@ -57,7 +53,6 @@ public class UserFlowIntegrationTest {
                 .getSharedPreferences(CHAT_PREFS, Context.MODE_PRIVATE);
         chatPrefs.edit().clear().commit();
         
-        // Mark onboarding as completed so integration tests skip onboarding screen
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
         settingsManager.setOnboardingCompleted(true);
     }
@@ -73,21 +68,16 @@ public class UserFlowIntegrationTest {
     @Test
     public void completeFlow_firstTimeUser_canNavigateToSettings() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for UI to be fully ready (drawer_layout always present, no chat fragment needed)
             TestUtils.waitForUiReady();
             
-            // First time user - no configuration
-            // Open drawer
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
 
-            // Navigate to settings
             onView(withId(R.id.button_settings))
                     .perform(click());
             TestUtils.waitForUiReady();
 
-            // Should see settings list
             onView(withId(R.id.recycler_settings))
                     .check(matches(isDisplayed()));
         }
@@ -98,50 +88,40 @@ public class UserFlowIntegrationTest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready
             TestUtils.waitForChatFragment();
             
-            // Open drawer
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
 
-            // Create first new chat
             onView(withId(R.id.button_new_chat))
                     .perform(click());
             TestUtils.waitForUiReady();
 
-            // Send a message in first chat
             onView(withId(R.id.messageInput))
                     .perform(replaceText("First chat message"), closeSoftKeyboard());
             TestUtils.waitForUiReady();
 
-            // Open drawer again
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
 
-            // Create second new chat
             onView(withId(R.id.button_new_chat))
                     .perform(click());
             TestUtils.waitForUiReady();
 
-            // Send a message in second chat
             onView(withId(R.id.messageInput))
                     .perform(replaceText("Second chat message"), closeSoftKeyboard());
             TestUtils.waitForUiReady();
 
-            // Open drawer and verify multiple sessions exist
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
 
-            // Click on first chat session (index 1, since 0 is the current one)
             onView(withId(R.id.recycler_chat_sessions))
                     .perform(RecyclerViewActions.actionOnItemAtPosition(1, click()));
             TestUtils.waitForUiReady();
 
-            // Should switch to the first chat
             onView(withId(R.id.messageInput))
                     .check(matches(isDisplayed()));
         }
@@ -152,10 +132,8 @@ public class UserFlowIntegrationTest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready
             TestUtils.waitForChatFragment();
             
-            // Type and send a message
             onView(withId(R.id.messageInput))
                     .perform(replaceText("Test message"), closeSoftKeyboard());
             TestUtils.waitForUiReady();
@@ -164,12 +142,9 @@ public class UserFlowIntegrationTest {
                     .perform(click());
             TestUtils.waitForUiReady();
 
-            // Message input should be cleared after sending
             onView(withId(R.id.messageInput))
                     .check(matches(withText("")));
 
-            // Note: Actual API call will fail since we're using a test API key
-            // but the app should handle it gracefully without crashing
         }
     }
 
@@ -178,20 +153,16 @@ public class UserFlowIntegrationTest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready (ensures navigation settled before opening drawer)
             TestUtils.waitForChatFragment();
             
-            // Open drawer
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
 
-            // Navigate to settings
             onView(withId(R.id.button_settings))
                     .perform(click());
             TestUtils.waitForUiReady();
 
-            // Should see settings list
             onView(withId(R.id.recycler_settings))
                     .check(matches(isDisplayed()));
         }
@@ -202,10 +173,8 @@ public class UserFlowIntegrationTest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready
             TestUtils.waitForChatFragment();
             
-            // Try to send empty message
             onView(withId(R.id.messageInput))
                     .perform(replaceText(""), closeSoftKeyboard());
             TestUtils.waitForUiReady();
@@ -214,7 +183,6 @@ public class UserFlowIntegrationTest {
                     .perform(click());
             TestUtils.waitForUiReady();
 
-            // Send button should still be enabled (message wasn't sent)
             onView(withId(R.id.sendButton))
                     .check(matches(isEnabled()));
         }
@@ -225,10 +193,8 @@ public class UserFlowIntegrationTest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready
             TestUtils.waitForChatFragment();
             
-            // Try to send whitespace-only message
             onView(withId(R.id.messageInput))
                     .perform(replaceText("      "), closeSoftKeyboard());
             TestUtils.waitForUiReady();
@@ -237,7 +203,6 @@ public class UserFlowIntegrationTest {
                     .perform(click());
             TestUtils.waitForUiReady();
 
-            // Input should still be enabled
             onView(withId(R.id.messageInput))
                     .check(matches(isEnabled()));
         }
@@ -246,15 +211,12 @@ public class UserFlowIntegrationTest {
     @Test
     public void completeFlow_drawerNavigation_opensAndCloses() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready (ensures navigation settled)
             TestUtils.waitForChatFragment();
             
-            // Open drawer
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
 
-            // Drawer content should be visible
             onView(withId(R.id.button_new_chat))
                     .check(matches(isDisplayed()));
             onView(withId(R.id.button_settings))
@@ -269,20 +231,15 @@ public class UserFlowIntegrationTest {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready
             TestUtils.waitForChatFragment();
             
-            // Type a message
             onView(withId(R.id.messageInput))
                     .perform(replaceText("Test message before rotation"), closeSoftKeyboard());
             TestUtils.waitForUiReady();
 
-            // Simulate configuration change (rotation)
             scenario.recreate();
             TestUtils.waitForUiReady();
 
-            // Message input should be cleared after recreate (new session loaded)
-            // But the app should not crash
             onView(withId(R.id.messageInput))
                     .check(matches(isDisplayed()));
         }
@@ -291,10 +248,8 @@ public class UserFlowIntegrationTest {
     @Test
     public void completeFlow_multipleNewChats_allPersist() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready (ensures navigation settled)
             TestUtils.waitForChatFragment();
             
-            // Create multiple new chats
             for (int i = 0; i < 3; i++) {
                 onView(withId(R.id.drawer_layout))
                         .perform(open());
@@ -305,7 +260,6 @@ public class UserFlowIntegrationTest {
                 TestUtils.waitForUiReady();
             }
 
-            // Verify all chats are in the list
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
@@ -318,20 +272,16 @@ public class UserFlowIntegrationTest {
     @Test
     public void completeFlow_backNavigation_handledCorrectly() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready (ensures navigation settled)
             TestUtils.waitForChatFragment();
             
-            // Open drawer
             onView(withId(R.id.drawer_layout))
                     .perform(open());
             TestUtils.waitForUiReady();
 
-            // Navigate to settings
             onView(withId(R.id.button_settings))
                     .perform(click());
             TestUtils.waitForUiReady();
 
-            // The navigation component should handle this
             onView(withId(R.id.recycler_settings))
                     .check(matches(isDisplayed()));
         }
@@ -340,22 +290,18 @@ public class UserFlowIntegrationTest {
     @Test
     public void completeFlow_rapidClicks_handledGracefully() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready (ensures navigation settled)
             TestUtils.waitForChatFragment();
             
-            // Rapidly open drawer multiple times
             for (int i = 0; i < 5; i++) {
                 onView(withId(R.id.drawer_layout))
                         .perform(open());
                 TestUtils.waitForUiReady();
             }
 
-            // Close drawer to see the main content
             onView(withId(R.id.drawer_layout))
                     .perform(androidx.test.espresso.contrib.DrawerActions.close());
             TestUtils.waitForUiReady();
 
-            // App should still be functional
             onView(withId(R.id.messageInput))
                     .check(matches(isDisplayed()));
         }
@@ -363,7 +309,6 @@ public class UserFlowIntegrationTest {
 
     @Test
     public void completeFlow_settingsPersistence_surviveAppRestart() {
-        // Configure settings
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
         Provider testProvider = new Provider("persistent-provider", "Persistent Provider",
                 "http://persistent.url", "persistent-key", "openai-completions");
@@ -372,14 +317,11 @@ public class UserFlowIntegrationTest {
         testProvider.addModel(testModel);
         settingsManager.addProvider(testProvider);
         settingsManager.setDefaultModel("persistent-provider/persistent-model");
-        // Mark onboarding as completed
         settingsManager.setOnboardingCompleted(true);
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
-            // Wait for ChatFragment to be fully ready
             TestUtils.waitForChatFragment();
             
-            // Verify settings were loaded by checking we can interact with chat
             onView(withId(R.id.messageInput))
                     .check(matches(isDisplayed()));
         }
@@ -387,7 +329,6 @@ public class UserFlowIntegrationTest {
 
     private void configureSettings() {
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
-        // Create a test provider with a model
         Provider testProvider = new Provider("test-provider", "Test Provider",
                 "http://localhost:1234/v1", "test-api-key", "openai-completions");
         Model testModel = new Model("test-model", "Test Model", "openai-completions",
@@ -395,7 +336,6 @@ public class UserFlowIntegrationTest {
         testProvider.addModel(testModel);
         settingsManager.addProvider(testProvider);
         settingsManager.setDefaultModel("test-provider/test-model");
-        // Mark onboarding as completed so integration tests skip onboarding screen
         settingsManager.setOnboardingCompleted(true);
     }
 }

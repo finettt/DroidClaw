@@ -15,9 +15,6 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/**
- * Unit tests for MemoryContextBuilder.
- */
 @RunWith(MockitoJUnitRunner.Silent.class)
 public class MemoryContextBuilderTest {
 
@@ -33,7 +30,6 @@ public class MemoryContextBuilderTest {
 
     @Test
     public void testBuildMemoryContext_noMemory_returnsEmpty() throws IOException {
-        // Mock all repository methods to return empty
         when(mockMemoryRepository.readLongTermMemory()).thenReturn("");
         when(mockMemoryRepository.readTodayNote()).thenReturn("");
         when(mockMemoryRepository.readYesterdayNote()).thenReturn("");
@@ -138,7 +134,6 @@ public class MemoryContextBuilderTest {
 
     @Test
     public void testBuildMemoryContext_withIOException_returnsEmpty() throws IOException {
-        // Mock to throw IOException
         when(mockMemoryRepository.readLongTermMemory()).thenThrow(new IOException("Read error"));
         when(mockMemoryRepository.readTodayNote()).thenThrow(new IOException("Read error"));
         when(mockMemoryRepository.readYesterdayNote()).thenThrow(new IOException("Read error"));
@@ -205,7 +200,6 @@ public class MemoryContextBuilderTest {
 
     @Test
     public void testHasMemory_withIOException_returnsFalse() throws IOException {
-        // longTermMemoryExists doesn't throw IOException (just returns boolean)
         when(mockMemoryRepository.longTermMemoryExists()).thenReturn(false);
         when(mockMemoryRepository.readTodayNote()).thenThrow(new IOException("Error"));
 
@@ -216,7 +210,6 @@ public class MemoryContextBuilderTest {
 
     @Test
     public void testBuildMemoryContext_contentTrimsProperly() throws IOException {
-        // Content with leading/trailing newlines should be trimmed
         String longTermContent = "\n\n# Long-term Memory\n\nContent\n\n";
         when(mockMemoryRepository.readLongTermMemory()).thenReturn(longTermContent);
         when(mockMemoryRepository.readTodayNote()).thenReturn("");
@@ -224,7 +217,6 @@ public class MemoryContextBuilderTest {
 
         String context = memoryContextBuilder.buildMemoryContext();
 
-        // The trim() in the builder should remove leading/trailing from content
         assertTrue("Should contain trimmed content", context.contains("Content"));
     }
 
@@ -246,7 +238,6 @@ public class MemoryContextBuilderTest {
 
     @Test
     public void testHasMemory_longTermExists_returnsTrue() throws IOException {
-        // Java doesn't short-circuit || for method calls - all are evaluated
         when(mockMemoryRepository.longTermMemoryExists()).thenReturn(true);
         when(mockMemoryRepository.readTodayNote()).thenReturn("");
         when(mockMemoryRepository.readYesterdayNote()).thenReturn("");

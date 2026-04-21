@@ -72,7 +72,7 @@ public class AgentSettingsFragment extends Fragment {
     }
 
     private void setupDropdowns() {
-        // Setup default model dropdown
+
         if (availableModels.isEmpty()) {
             String[] noModels = {getString(R.string.agent_default_model_hint)};
             ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(
@@ -95,7 +95,7 @@ public class AgentSettingsFragment extends Fragment {
             dropdownDefaultModel.setAdapter(modelAdapter);
         }
 
-        // Setup sandbox mode dropdown
+
         String[] sandboxModes = {
                 getString(R.string.sandbox_strict),
                 getString(R.string.sandbox_relaxed)
@@ -110,7 +110,7 @@ public class AgentSettingsFragment extends Fragment {
 
     private void loadAgentSettings() {
         if (agentConfig != null) {
-            // Load default model
+
             String defaultModel = agentConfig.getDefaultModel();
             if (defaultModel != null && !defaultModel.isEmpty() && !availableModels.isEmpty()) {
                 String displayName = settingsManager.getModelDisplayName(defaultModel);
@@ -119,7 +119,7 @@ public class AgentSettingsFragment extends Fragment {
                 dropdownDefaultModel.setText(getString(R.string.agent_default_model_hint), false);
             }
 
-            // Load other settings
+
             switchShellAccess.setChecked(agentConfig.isShellAccess());
 
             String sandboxMode = agentConfig.getSandboxMode();
@@ -143,7 +143,7 @@ public class AgentSettingsFragment extends Fragment {
         String maxIterationsStr = inputMaxIterations.getText().toString().trim();
         String shellTimeoutStr = inputShellTimeout.getText().toString().trim();
 
-        // Validation
+
         int maxIterations;
         try {
             maxIterations = Integer.parseInt(maxIterationsStr);
@@ -168,7 +168,7 @@ public class AgentSettingsFragment extends Fragment {
             return;
         }
 
-        // Get selected model
+
         String selectedModelDisplay = dropdownDefaultModel.getText().toString();
         String selectedModel = "";
         if (!availableModels.isEmpty()) {
@@ -180,14 +180,14 @@ public class AgentSettingsFragment extends Fragment {
             }
         }
 
-        // Get sandbox mode
+
         String sandboxMode = "strict";
         String selectedSandbox = dropdownSandboxMode.getText().toString();
         if (selectedSandbox.equals(getString(R.string.sandbox_relaxed))) {
             sandboxMode = "relaxed";
         }
 
-        // Update agent config
+
         agentConfig.setDefaultModel(selectedModel);
         agentConfig.setShellAccess(switchShellAccess.isChecked());
         agentConfig.setSandboxMode(sandboxMode);
@@ -195,7 +195,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setRequireApproval(switchRequireApproval.isChecked());
         agentConfig.setShellTimeout(shellTimeout);
 
-        // Save to settings
+
         settingsManager.setAgentConfig(agentConfig);
 
         Toast.makeText(requireContext(), R.string.save_settings, Toast.LENGTH_SHORT).show();

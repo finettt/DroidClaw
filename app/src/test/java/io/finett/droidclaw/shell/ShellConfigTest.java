@@ -8,9 +8,6 @@ import java.util.Set;
 
 import static org.junit.Assert.*;
 
-/**
- * Unit tests for ShellConfig.
- */
 public class ShellConfigTest {
 
     @Test
@@ -190,8 +187,7 @@ public class ShellConfigTest {
     @Test
     public void testDefaultBlockedCommands() {
         ShellConfig config = ShellConfig.createDefault();
-        
-        // Check some of the dangerous commands are blocked
+
         assertTrue(config.getBlockedCommands().contains("rm -rf /"));
         assertTrue(config.getBlockedCommands().contains("mkfs"));
     }
@@ -205,7 +201,6 @@ public class ShellConfigTest {
             blocked.add("new_command");
             fail("Should have thrown UnsupportedOperationException");
         } catch (UnsupportedOperationException e) {
-            // Expected - sets should be unmodifiable
         }
     }
 
@@ -221,7 +216,6 @@ public class ShellConfigTest {
             allowed.add("ls");
             fail("Should have thrown UnsupportedOperationException");
         } catch (UnsupportedOperationException e) {
-            // Expected - sets should be unmodifiable
         }
     }
 

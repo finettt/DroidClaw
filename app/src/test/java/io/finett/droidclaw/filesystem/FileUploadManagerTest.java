@@ -4,9 +4,6 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-/**
- * Unit tests for FileUploadManager utility methods.
- */
 public class FileUploadManagerTest {
 
     @Test

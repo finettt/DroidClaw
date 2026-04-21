@@ -22,10 +22,6 @@ import java.util.List;
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.SessionType;
 
-/**
- * Instrumented tests for ChatRepository hidden session functionality.
- * Tests the visibility filtering and session type management.
- */
 @RunWith(AndroidJUnit4.class)
 public class ChatRepositoryHiddenSessionInstrumentedTest {
 
@@ -33,7 +29,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
 
     @Before
     public void setUp() {
-        // Clear SharedPreferences before each test
         getApplicationContext()
                 .getSharedPreferences("chat_messages", Context.MODE_PRIVATE)
                 .edit()
@@ -45,7 +40,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
 
     @After
     public void tearDown() {
-        // Clean up after tests
         getApplicationContext()
                 .getSharedPreferences("chat_messages", Context.MODE_PRIVATE)
                 .edit()
@@ -97,7 +91,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
 
     @Test
     public void saveAndLoadSession_withoutSessionType_defaultsToNormal() {
-        // Create session without explicitly setting session type
         ChatSession session = new ChatSession("session-default", "Default Chat", 1000L);
         repository.saveSessions(Arrays.asList(session));
 
@@ -227,8 +220,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
         assertEquals(SessionType.HIDDEN_CRON, retrieved.getSessionType());
     }
 
-    // ==================== ALL SESSIONS TESTS ====================
-
     @Test
     public void getAllSessionsIncludingHidden_returnsAllSessions() {
         ChatSession normalSession = new ChatSession("normal", "Normal Chat", 1000L);
@@ -252,8 +243,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
         List<ChatSession> allSessions = repository.getAllSessionsIncludingHidden();
         assertEquals("Should have 0 sessions", 0, allSessions.size());
     }
-
-    // ==================== PARENT TASK ID TESTS ====================
 
     @Test
     public void session_parentTaskId_persistsCorrectly() {
@@ -286,7 +275,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
         session.setParentTaskId("old-task-id");
         repository.saveSessions(Arrays.asList(session));
 
-        // Update parent task ID
         session.setParentTaskId("new-task-id");
         repository.saveSessions(Arrays.asList(session));
 
@@ -299,7 +287,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
 
     @Test
     public void mixedSessionTypes_filterAndRetrieveCorrectly() {
-        // Create a mix of sessions
         ChatSession normal1 = new ChatSession("normal-1", "Normal 1", 1000L);
         normal1.setSessionType(SessionType.NORMAL);
 
@@ -320,11 +307,9 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
 
         repository.saveSessions(Arrays.asList(normal1, normal2, heartbeat1, heartbeat2, cron1));
 
-        // Test visible sessions
         List<ChatSession> visibleSessions = repository.getVisibleSessions();
         assertEquals("Should have 2 visible sessions", 2, visibleSessions.size());
 
-        // Test hidden sessions retrieval
         ChatSession hb1 = repository.getHiddenSession("heartbeat-1");
         assertNotNull("Should find heartbeat-1", hb1);
         assertTrue("Should be hidden", hb1.isHidden());
@@ -333,7 +318,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
         assertNotNull("Should find cron-1", cron1Retrieved);
         assertTrue("Should be hidden", cron1Retrieved.isHidden());
 
-        // Test all sessions
         List<ChatSession> allSessions = repository.getAllSessionsIncludingHidden();
         assertEquals("Should have 5 total sessions", 5, allSessions.size());
     }
@@ -345,10 +329,8 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
         session.setParentTaskId("heartbeat-persist");
         repository.saveSessions(Arrays.asList(session));
 
-        // Create new repository instance
         ChatRepository newRepository = new ChatRepository(getApplicationContext());
 
-        // Verify session type persisted
         List<ChatSession> visibleSessions = newRepository.getVisibleSessions();
         assertEquals("Should have 0 visible sessions", 0, visibleSessions.size());
 
@@ -368,11 +350,9 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
 
         repository.saveSessions(Arrays.asList(normalSession, hiddenSession));
 
-        // Verify both sessions exist before deletion
         List<ChatSession> sessionsBefore = repository.getAllSessionsIncludingHidden();
         assertEquals("Should have 2 sessions before deletion", 2, sessionsBefore.size());
 
-        // Delete hidden session (remove from list first, then call deleteSession)
         List<ChatSession> currentSessions = repository.loadSessions();
         ChatSession toDelete = null;
         for (ChatSession s : currentSessions) {
@@ -384,12 +364,10 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
         currentSessions.remove(toDelete);
         repository.deleteSession("hidden", currentSessions);
 
-        // Verify visible sessions unchanged
         List<ChatSession> visibleSessions = repository.getVisibleSessions();
         assertEquals("Should still have 1 visible session", 1, visibleSessions.size());
         assertEquals("Visible session should be normal", "normal", visibleSessions.get(0).getId());
 
-        // Verify hidden session is gone
         List<ChatSession> sessionsAfter = repository.getAllSessionsIncludingHidden();
         assertEquals("Should have 1 session after deletion", 1, sessionsAfter.size());
         assertEquals("Remaining session should be normal", "normal", sessionsAfter.get(0).getId());
@@ -397,7 +375,6 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
 
     @Test
     public void sessionVisibility_afterMultipleSaves_maintainsCorrectly() {
-        // Initial save
         ChatSession session1 = new ChatSession("session-1", "Normal", 1000L);
         session1.setSessionType(SessionType.NORMAL);
 
@@ -407,12 +384,10 @@ public class ChatRepositoryHiddenSessionInstrumentedTest {
 
         repository.saveSessions(Arrays.asList(session1, session2));
 
-        // Save again with updated timestamps
         session1.setUpdatedAt(3000L);
         session2.setUpdatedAt(4000L);
         repository.saveSessions(Arrays.asList(session1, session2));
 
-        // Verify visibility maintained
         List<ChatSession> visibleSessions = repository.getVisibleSessions();
         assertEquals("Should have 1 visible session", 1, visibleSessions.size());
         assertEquals("session-1", visibleSessions.get(0).getId());

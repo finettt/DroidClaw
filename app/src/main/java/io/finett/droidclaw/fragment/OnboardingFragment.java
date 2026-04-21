@@ -33,22 +33,18 @@ public class OnboardingFragment extends Fragment {
     
     private SettingsManager settingsManager;
     
-    // Section containers
     private ViewGroup sectionWelcome;
     private ViewGroup sectionName;
     private ViewGroup sectionProvider;
     
-    // Section 1: Welcome
     private Button btnNext1;
     private Button btnSkip1;
     
-    // Section 2: Name
     private TextInputLayout tilName;
     private TextInputEditText etName;
     private Button btnNext2;
     private Button btnSkip2;
     
-    // Section 3: Provider
     private TextInputLayout tilProviderName;
     private TextInputEditText etProviderName;
     private TextInputLayout tilBaseUrl;
@@ -79,27 +75,23 @@ public class OnboardingFragment extends Fragment {
         setupListeners();
         setupApiTypeDropdown();
         
-        // Show first section
+
         showSection(1);
     }
 
     private void initializeViews(View view) {
-        // Section containers
         sectionWelcome = view.findViewById(R.id.section_welcome);
         sectionName = view.findViewById(R.id.section_name);
         sectionProvider = view.findViewById(R.id.section_provider);
         
-        // Section 1: Welcome
         btnNext1 = view.findViewById(R.id.btn_next_1);
         btnSkip1 = view.findViewById(R.id.btn_skip_1);
         
-        // Section 2: Name
         tilName = view.findViewById(R.id.til_name);
         etName = view.findViewById(R.id.et_name);
         btnNext2 = view.findViewById(R.id.btn_next_2);
         btnSkip2 = view.findViewById(R.id.btn_skip_2);
         
-        // Section 3: Provider
         tilProviderName = view.findViewById(R.id.til_provider_name);
         etProviderName = view.findViewById(R.id.et_provider_name);
         tilBaseUrl = view.findViewById(R.id.til_base_url);
@@ -113,11 +105,9 @@ public class OnboardingFragment extends Fragment {
     }
 
     private void setupListeners() {
-        // Section 1: Welcome
         btnNext1.setOnClickListener(v -> transitionToSection(2));
         btnSkip1.setOnClickListener(v -> skipOnboarding());
         
-        // Section 2: Name
         btnNext2.setOnClickListener(v -> {
             if (validateName()) {
                 String name = etName.getText().toString().trim();
@@ -127,7 +117,6 @@ public class OnboardingFragment extends Fragment {
         });
         btnSkip2.setOnClickListener(v -> skipOnboarding());
         
-        // Clear error on input
         etName.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -141,7 +130,6 @@ public class OnboardingFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
         
-        // Section 3: Provider
         btnGetStarted.setOnClickListener(v -> {
             if (validateProvider()) {
                 saveProviderAndComplete();
@@ -149,7 +137,6 @@ public class OnboardingFragment extends Fragment {
         });
         btnSkip3.setOnClickListener(v -> skipOnboarding());
         
-        // Clear errors on input
         setupErrorClearingListeners();
     }
 
@@ -228,7 +215,7 @@ public class OnboardingFragment extends Fragment {
     }
 
     private void saveProviderAndComplete() {
-        // Create provider
+
         String providerId = UUID.randomUUID().toString();
         Provider provider = new Provider();
         provider.setId(providerId);
@@ -237,7 +224,7 @@ public class OnboardingFragment extends Fragment {
         provider.setApiKey(etApiKey.getText().toString().trim());
         provider.setApi(actvApiType.getText().toString().trim());
         
-        // Add a default model placeholder (user can configure later)
+
         Model defaultModel = new Model();
         defaultModel.setId("default-model");
         defaultModel.setName("Default Model");
@@ -248,16 +235,16 @@ public class OnboardingFragment extends Fragment {
         defaultModel.getInput().add("text");
         provider.addModel(defaultModel);
         
-        // Save provider
+
         settingsManager.addProvider(provider);
         
-        // Set as default model
+
         settingsManager.setDefaultModel(providerId + "/default-model");
         
-        // Mark onboarding as completed
+
         settingsManager.setOnboardingCompleted(true);
         
-        // Navigate to chat
+
         navigateToChat();
     }
 
@@ -284,7 +271,7 @@ public class OnboardingFragment extends Fragment {
             return;
         }
         
-        // Fade out current section
+
         currentView.animate()
             .alpha(0f)
             .setDuration(ANIMATION_DURATION)
@@ -294,7 +281,7 @@ public class OnboardingFragment extends Fragment {
                     currentView.setVisibility(View.GONE);
                     currentSection = targetSection;
                     
-                    // Fade in target section
+
                     targetView.setAlpha(0f);
                     targetView.setVisibility(View.VISIBLE);
                     targetView.animate()
@@ -328,7 +315,7 @@ public class OnboardingFragment extends Fragment {
         }
     }
 
-    // Simple TextWatcher helper
+
     private static class SimpleTextWatcher implements TextWatcher {
         private final Runnable onChanged;
 

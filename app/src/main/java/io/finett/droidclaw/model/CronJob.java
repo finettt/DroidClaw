@@ -1,27 +1,23 @@
 package io.finett.droidclaw.model;
 
-/**
- * Represents a scheduled cron job that runs automated background tasks.
- * Cron jobs execute prompts on a schedule and store results in hidden sessions.
- */
 public class CronJob {
 
     private String id;
     private String name;
     private String prompt;
-    private String schedule; // Cron expression, interval in milliseconds, or simple schedule (daily/weekly)
+    private String schedule;
     private boolean enabled;
-    private boolean paused; // User-paused without deleting
+    private boolean paused;
     private long lastRunTimestamp;
     private long lastSuccessTimestamp;
     private long createdAt;
-    private int retryCount; // Current retry attempts
-    private int maxRetries; // Maximum retry attempts (default 3)
-    private String lastError; // Last error message
-    private String modelReference; // Optional: specific model to use (providerId/modelId)
-    private int successCount; // Total successful executions
-    private int failureCount; // Total failed executions
-    private long totalExecutionTime; // For calculating averages
+    private int retryCount;
+    private int maxRetries;
+    private String lastError;
+    private String modelReference;
+    private int successCount;
+    private int failureCount;
+    private long totalExecutionTime;
 
     public CronJob() {
         this.id = "";
@@ -189,9 +185,6 @@ public class CronJob {
         this.totalExecutionTime = totalExecutionTime;
     }
 
-    /**
-     * Calculate average execution time in milliseconds.
-     */
     public long getAverageExecutionTime() {
         int totalRuns = successCount + failureCount;
         if (totalRuns == 0 || totalExecutionTime == 0) {
@@ -200,9 +193,6 @@ public class CronJob {
         return totalExecutionTime / totalRuns;
     }
 
-    /**
-     * Calculate success rate as percentage (0-100).
-     */
     public int getSuccessRate() {
         int totalRuns = successCount + failureCount;
         if (totalRuns == 0) {
@@ -211,30 +201,18 @@ public class CronJob {
         return (successCount * 100) / totalRuns;
     }
 
-    /**
-     * Increment retry count after failure.
-     */
     public void incrementRetry() {
         this.retryCount++;
     }
 
-    /**
-     * Reset retry count after success.
-     */
     public void resetRetry() {
         this.retryCount = 0;
     }
 
-    /**
-     * Check if this job can be retried.
-     */
     public boolean canRetry() {
         return retryCount < maxRetries;
     }
 
-    /**
-     * Record a successful execution.
-     */
     public void recordSuccess(long duration) {
         this.successCount++;
         this.lastSuccessTimestamp = System.currentTimeMillis();
@@ -243,32 +221,23 @@ public class CronJob {
         this.lastError = "";
     }
 
-    /**
-     * Record a failed execution.
-     */
     public void recordFailure(String error) {
         this.failureCount++;
         this.lastError = error;
         this.incrementRetry();
     }
 
-    /**
-     * Check if this job should run based on the current time.
-     * Supports simple interval in milliseconds or cron-like patterns.
-     */
     public boolean shouldRun(long currentTimeMillis) {
         if (!enabled || paused) {
             return false;
         }
 
-        // If schedule is a number, treat it as milliseconds interval
         try {
             long interval = Long.parseLong(schedule);
             return (currentTimeMillis - lastRunTimestamp) >= interval;
         } catch (NumberFormatException e) {
-            // For cron expressions or simple schedules, use basic interval
-            // Full cron parsing would be more complex; this is a simplified version
-            return (currentTimeMillis - lastRunTimestamp) >= 60 * 60 * 1000L; // 1 hour default
+            // Full cron expression parsing is not supported; fall back to 1-hour interval
+            return (currentTimeMillis - lastRunTimestamp) >= 60 * 60 * 1000L;
         }
     }
 }

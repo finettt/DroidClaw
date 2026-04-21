@@ -24,10 +24,6 @@ import java.util.stream.Collectors;
 import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.repository.TaskRepository;
 
-/**
- * Instrumented tests for CronJobScheduler.
- * Tests the scheduler's work management and schedule parsing.
- */
 @RunWith(AndroidJUnit4.class)
 public class CronJobSchedulerInstrumentedTest {
 
@@ -404,10 +400,8 @@ public class CronJobSchedulerInstrumentedTest {
         CronJob job = new CronJob("cron-now", "Job Now", "Prompt", "3600000");
         taskRepository.saveCronJob(job);
 
-        // Execute job now (this enqueues work to WorkManager)
         scheduler.executeJobNow(job.getId());
 
-        // Verify work was enqueued by checking WorkManager
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_now_" + job.getId()).get();
 
@@ -424,7 +418,6 @@ public class CronJobSchedulerInstrumentedTest {
 
         scheduler.scheduleJob(job);
 
-        // Verify work was enqueued
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_cron-schedule").get();
 
@@ -439,18 +432,14 @@ public class CronJobSchedulerInstrumentedTest {
         job.setPaused(false);
         taskRepository.saveCronJob(job);
 
-        // First schedule the job
         scheduler.scheduleJob(job);
 
-        // Then disable and reschedule
         job.setEnabled(false);
         scheduler.scheduleJob(job);
 
-        // Work should be cancelled
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_cron-disabled").get();
 
-        // Work info should be cancelled
         boolean allCancelled = workInfos.stream().allMatch(w -> w.getState() == WorkInfo.State.CANCELLED);
         assertTrue("Disabled job should not have active work", workInfos != null && allCancelled);
     }
@@ -464,7 +453,6 @@ public class CronJobSchedulerInstrumentedTest {
 
         scheduler.scheduleJob(job);
 
-        // Work should be cancelled
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_cron-paused").get();
 
@@ -479,18 +467,14 @@ public class CronJobSchedulerInstrumentedTest {
         job.setPaused(false);
         taskRepository.saveCronJob(job);
 
-        // Schedule job first
         scheduler.scheduleJob(job);
 
-        // Verify work exists
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfosBefore = workManager.getWorkInfosForUniqueWork("cron_job_cron-cancel").get();
         assertTrue("Work should exist before cancel", workInfosBefore != null && !workInfosBefore.isEmpty());
 
-        // Cancel job
         scheduler.cancelJob(job.getId());
 
-        // Verify work is cancelled
         List<WorkInfo> workInfosAfter = workManager.getWorkInfosForUniqueWork("cron_job_cron-cancel").get();
         boolean allCancelled = workInfosAfter.stream().allMatch(w -> w.getState() == WorkInfo.State.CANCELLED);
         assertTrue("Work should be cancelled", workInfosAfter != null && allCancelled);
@@ -498,7 +482,6 @@ public class CronJobSchedulerInstrumentedTest {
 
     @Test
     public void cancelAllJobs_cancelsAllCronWork() throws Exception {
-        // Create multiple jobs
         CronJob job1 = new CronJob("cron-all-1", "Job 1", "Prompt 1", "3600000");
         job1.setEnabled(true);
         taskRepository.saveCronJob(job1);
@@ -507,14 +490,11 @@ public class CronJobSchedulerInstrumentedTest {
         job2.setEnabled(true);
         taskRepository.saveCronJob(job2);
 
-        // Schedule both jobs
         scheduler.scheduleJob(job1);
         scheduler.scheduleJob(job2);
 
-        // Cancel all jobs
         scheduler.cancelAllJobs();
 
-        // Verify all cron work is cancelled
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosByTag("cron_job").get();
 
@@ -529,7 +509,6 @@ public class CronJobSchedulerInstrumentedTest {
 
         scheduler.executeJobNow(job.getId());
 
-        // Verify the work request contains the correct job ID
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_now_" + job.getId()).get();
 
@@ -546,7 +525,6 @@ public class CronJobSchedulerInstrumentedTest {
 
         scheduler.scheduleJob(job);
 
-        // Verify work was enqueued
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_cron-custom").get();
 
@@ -563,7 +541,6 @@ public class CronJobSchedulerInstrumentedTest {
 
         scheduler.scheduleJob(job);
 
-        // Verify work was enqueued
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_cron-daily").get();
 
@@ -580,7 +557,6 @@ public class CronJobSchedulerInstrumentedTest {
 
         scheduler.scheduleJob(job);
 
-        // Verify work was enqueued
         WorkManager workManager = WorkManager.getInstance(context);
         List<WorkInfo> workInfos = workManager.getWorkInfosForUniqueWork("cron_job_cron-weekly").get();
 
@@ -590,19 +566,16 @@ public class CronJobSchedulerInstrumentedTest {
 
     @Test
     public void scheduleJob_nullJob_doesNotCrash() {
-        // Should not crash when job is null
         scheduler.scheduleJob(null);
     }
 
     @Test
     public void cancelJob_nullId_doesNotCrash() {
-        // Should not crash when id is null
         scheduler.cancelJob(null);
     }
 
     @Test
     public void executeJobNow_nullId_doesNotCrash() {
-        // Should not crash when id is null
         scheduler.executeJobNow(null);
     }
 

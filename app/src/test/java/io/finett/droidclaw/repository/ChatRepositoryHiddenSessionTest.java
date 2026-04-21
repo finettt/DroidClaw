@@ -36,8 +36,6 @@ public class ChatRepositoryHiddenSessionTest {
         sharedPreferences.edit().clear().commit();
     }
 
-    // ==================== HIDDEN SESSION PERSISTENCE TESTS ====================
-
     @Test
     public void saveSessions_andLoadSessions_persistsSessionType() {
         ChatSession normal = new ChatSession("session-1", "Normal", 100L);
@@ -83,13 +81,10 @@ public class ChatRepositoryHiddenSessionTest {
 
         repository.saveSessions(Arrays.asList(normal));
 
-        // Verify it loads correctly
         List<ChatSession> loaded = repository.loadSessions();
         assertEquals(1, loaded.size());
         assertNull(loaded.get(0).getParentTaskId());
     }
-
-    // ==================== getVisibleSessions TESTS ====================
 
     @Test
     public void getVisibleSessions_excludesHiddenSessions() {
@@ -155,8 +150,6 @@ public class ChatRepositoryHiddenSessionTest {
         assertEquals("session-1", visible.get(2).getId()); // Oldest
     }
 
-    // ==================== getHiddenSession TESTS ====================
-
     @Test
     public void getHiddenSession_returnsSession_whenTaskIdMatches() {
         ChatSession hidden = new ChatSession("session-1", "Hidden Session", 100L);
@@ -215,8 +208,6 @@ public class ChatRepositoryHiddenSessionTest {
         assertEquals("cron-job-1", found.getParentTaskId());
     }
 
-    // ==================== getAllSessionsIncludingHidden TESTS ====================
-
     @Test
     public void getAllSessionsIncludingHidden_returnsAllSessions() {
         ChatSession normal1 = new ChatSession("session-1", "Normal 1", 100L);
@@ -246,8 +237,6 @@ public class ChatRepositoryHiddenSessionTest {
 
         assertEquals(loaded.size(), all.size());
     }
-
-    // ==================== BACKWARD COMPATIBILITY TESTS ====================
 
     @Test
     public void loadSessions_handlesOldDataWithoutSessionType() {
@@ -281,8 +270,6 @@ public class ChatRepositoryHiddenSessionTest {
         assertEquals(SessionType.NORMAL, loaded.get(0).getSessionType());
         assertFalse(loaded.get(0).isHidden());
     }
-
-    // ==================== HELPER METHODS ====================
 
     private ChatSession findSessionById(List<ChatSession> sessions, String id) {
         for (ChatSession session : sessions) {

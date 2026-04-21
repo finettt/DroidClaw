@@ -9,7 +9,6 @@ public class AgentConfig {
     private int shellTimeout;
 
     public AgentConfig() {
-        // Default constructor for JSON deserialization
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
@@ -24,12 +23,12 @@ public class AgentConfig {
 
     public static AgentConfig getDefaults() {
         return new AgentConfig(
-                "", // No default model initially
-                false, // Shell access disabled
-                "strict", // Strict sandbox mode
-                20, // Max 20 iterations
-                true, // Require approval
-                30 // 30 seconds timeout
+                "",
+                false,
+                "strict",
+                20,
+                true,
+                30
         );
     }
 
@@ -81,7 +80,6 @@ public class AgentConfig {
         this.shellTimeout = shellTimeout;
     }
 
-    // Helper methods to parse provider and model from defaultModel string
     public String getDefaultProviderId() {
         if (defaultModel == null || !defaultModel.contains("/")) {
             return null;

@@ -58,8 +58,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Show FreeDroidWarn deprecation notice about Google developer verification
-        // Skip during instrumentation tests to avoid blocking Espresso interactions
+
+
         if (!isInstrumentationTest()) {
             FreeDroidWarn.showWarningOnUpgrade(this, BuildConfig.VERSION_CODE);
         }
@@ -99,13 +99,13 @@ public class MainActivity extends AppCompatActivity {
             drawerLayout.addDrawerListener(drawerToggle);
             drawerToggle.syncState();
 
-            // Update toolbar icon and behavior when destination changes
+
             navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
                 if (appBarConfiguration.getTopLevelDestinations().contains(destination.getId())) {
-                    // Top-level destination: show hamburger icon
+
                     drawerToggle.setDrawerIndicatorEnabled(true);
                 } else {
-                    // Sub-screen: show back arrow and override click to navigate up
+
                     drawerToggle.setDrawerIndicatorEnabled(false);
                     toolbar.setNavigationIcon(com.google.android.material.R.drawable.abc_ic_ab_back_material);
                     toolbar.setNavigationOnClickListener(v -> {
@@ -113,29 +113,29 @@ public class MainActivity extends AppCompatActivity {
                         if (nc.getPreviousBackStackEntry() != null) {
                             nc.navigateUp();
                         } else {
-                            // Fallback: open drawer
+
                             drawerLayout.openDrawer(GravityCompat.START);
                         }
                     });
                 }
             });
 
-            // On fresh app launch, check onboarding status
-            // Post navigation to ensure NavController is fully initialized
+
+
             if (savedInstanceState == null) {
                 drawerLayout.post(() -> {
                     if (!settingsManager.isOnboardingCompleted()) {
-                        // Navigate to onboarding
+
                         Log.d(TAG, "Onboarding not completed, navigating to onboarding screen");
                         navController.navigate(R.id.onboardingFragment);
                     } else {
-                        // Check if launched from notification deep link
+
                         TaskResult deepLinkTask = getDeepLinkTaskFromIntent(getIntent());
                         if (deepLinkTask != null) {
                             Log.d(TAG, "Launched from notification deep link, navigating to ZenResultFragment");
                             navigateToZenResult(deepLinkTask);
                         } else {
-                            // Open the most recent persisted session or create one if none exist
+
                             ChatSession initialSession;
                             if (chatSessions.isEmpty()) {
                                 initialSession = addNewChatSession();
@@ -251,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
             ChatSession newSession = addNewChatSession();
             
             if (navController != null) {
-                // Set current session and navigate with session ID
+
                 currentSessionId = newSession.getId();
                 Bundle args = new Bundle();
                 args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
@@ -321,10 +321,10 @@ public class MainActivity extends AppCompatActivity {
                 System.currentTimeMillis()
         );
         
-        // Link to task
+
         if (taskResult != null) {
             newSession.setParentTaskId(taskResult.getId());
-            // Set session type based on task type
+
             if (taskResult.getType() == TaskResult.TYPE_HEARTBEAT) {
                 newSession.setSessionType(SessionType.HIDDEN_HEARTBEAT);
             } else if (taskResult.getType() == TaskResult.TYPE_CRON_JOB) {
@@ -477,7 +477,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Reload chat sessions when returning to the activity
+
         loadPersistedChatSessions();
     }
 

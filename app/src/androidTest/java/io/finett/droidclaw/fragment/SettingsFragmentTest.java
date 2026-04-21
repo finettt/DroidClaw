@@ -59,7 +59,6 @@ public class SettingsFragmentTest {
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recycler_settings);
                 RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
                 
-                // Should have 4 settings items: Providers, Agent, Skills, Reset Onboarding
                 assertNotNull("Adapter should not be null", adapter);
                 assertTrue("Should have at least 4 settings items", adapter.getItemCount() >= 4);
             });
@@ -75,7 +74,6 @@ public class SettingsFragmentTest {
 
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recycler_settings);
                 
-                // Verify that the adapter is SettingsAdapter
                 assertNotNull("Adapter should be SettingsAdapter", 
                         recyclerView.getAdapter() instanceof SettingsAdapter);
             });
@@ -84,7 +82,6 @@ public class SettingsFragmentTest {
 
     @Test
     public void launch_withConfiguredProviders_showsProviderCount() {
-        // Configure a test provider
         SettingsManager settingsManager = new SettingsManager(getApplicationContext());
         io.finett.droidclaw.model.Provider testProvider = 
                 new io.finett.droidclaw.model.Provider("test-id", "Test Provider", 
@@ -99,7 +96,6 @@ public class SettingsFragmentTest {
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recycler_settings);
                 assertNotNull("RecyclerView should be present", recyclerView);
                 
-                // The settings should reflect the configured provider
                 assertEquals("Should have 1 provider", 1, settingsManager.getProviderCount());
             });
         }
@@ -114,11 +110,8 @@ public class SettingsFragmentTest {
 
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recycler_settings);
                 
-                // Perform click on first item
                 recyclerView.getChildAt(0).performClick();
                 
-                // Navigation should be triggered (tested via mock nav controller)
-                // The important thing is it doesn't crash
             });
         }
     }
@@ -131,7 +124,6 @@ public class SettingsFragmentTest {
                 attachNavController(fragment, R.id.settingsFragment);
             });
 
-            // Recreate the fragment
             scenario.recreate();
 
             scenario.onFragment(fragment -> {
@@ -153,7 +145,6 @@ public class SettingsFragmentTest {
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recycler_settings);
                 RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
                 
-                // Verify skills item exists (should be 3rd item: Providers, Agent, Skills, Reset)
                 assertTrue("Should have at least 3 items for Skills to exist",
                         adapter.getItemCount() >= 3);
             });
@@ -169,7 +160,6 @@ public class SettingsFragmentTest {
 
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recycler_settings);
                 
-                // Click on Skills item (3rd item - index 2)
                 if (recyclerView.getAdapter().getItemCount() > 2) {
                     View skillsItem = recyclerView.getLayoutManager().findViewByPosition(2);
                     if (skillsItem != null) {
@@ -177,7 +167,6 @@ public class SettingsFragmentTest {
                     }
                 }
                 
-                // Verify navigation was triggered (fragment shouldn't crash)
                 assertNotNull("Fragment should still exist after navigation", fragment.requireView());
             });
         }
@@ -192,7 +181,6 @@ public class SettingsFragmentTest {
 
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recycler_settings);
                 
-                // Click on Providers item (1st item - index 0)
                 if (recyclerView.getAdapter().getItemCount() > 0) {
                     View providersItem = recyclerView.getLayoutManager().findViewByPosition(0);
                     if (providersItem != null) {
@@ -200,7 +188,6 @@ public class SettingsFragmentTest {
                     }
                 }
                 
-                // Verify navigation doesn't crash
                 assertNotNull("Fragment should still exist after navigation", fragment.requireView());
             });
         }
@@ -215,7 +202,6 @@ public class SettingsFragmentTest {
 
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recycler_settings);
                 
-                // Click on Agent item (2nd item - index 1)
                 if (recyclerView.getAdapter().getItemCount() > 1) {
                     View agentItem = recyclerView.getLayoutManager().findViewByPosition(1);
                     if (agentItem != null) {
@@ -223,7 +209,6 @@ public class SettingsFragmentTest {
                     }
                 }
                 
-                // Verify navigation doesn't crash
                 assertNotNull("Fragment should still exist after navigation", fragment.requireView());
             });
         }

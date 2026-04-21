@@ -2,13 +2,10 @@ package io.finett.droidclaw.model;
 
 import io.finett.droidclaw.R;
 
-/**
- * Represents a file attachment associated with a chat message.
- */
 public class FileAttachment {
-    private String filename;       // Name stored in uploads directory
-    private String originalName;   // Original display name
-    private String absolutePath;   // Full file path
+    private String filename;
+    private String originalName;
+    private String absolutePath;
     private String mimeType;
 
     public FileAttachment(String filename, String originalName, String absolutePath, String mimeType) {
@@ -54,9 +51,6 @@ public class FileAttachment {
         return mimeType != null && mimeType.startsWith("image/");
     }
 
-    /**
-     * Returns the drawable resource ID for the attachment icon based on MIME type.
-     */
     public int getDisplayIconResId() {
         if (mimeType == null) return R.drawable.ic_attachment;
         if (mimeType.startsWith("image/")) return R.drawable.ic_file_image;

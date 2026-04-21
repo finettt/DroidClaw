@@ -16,9 +16,6 @@ import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for listing scheduled tasks with their status and statistics.
- */
 public class ListTasksTool implements Tool {
 
     private static final String TAG = "ListTasksTool";
@@ -84,7 +81,6 @@ public class ListTasksTool implements Tool {
                 boolean isPaused = job.isEnabled() && job.isPaused();
                 boolean isDisabled = !job.isEnabled();
 
-                // Apply filter
                 if (filter.equals("active") && !isActive) continue;
                 if (filter.equals("paused") && !isPaused) continue;
                 if (filter.equals("disabled") && !isDisabled) continue;
@@ -114,12 +110,10 @@ public class ListTasksTool implements Tool {
                 taskObj.addProperty("status", status);
                 taskObj.addProperty("status_icon", icon);
 
-                // Add statistics
                 int totalRuns = job.getSuccessCount() + job.getFailureCount();
                 taskObj.addProperty("success_rate", job.getSuccessRate());
                 taskObj.addProperty("total_runs", totalRuns);
 
-                // Last run info
                 long lastRun = job.getLastRunTimestamp();
                 if (lastRun > 0) {
                     taskObj.addProperty("last_run_ms", lastRun);
@@ -138,7 +132,6 @@ public class ListTasksTool implements Tool {
             result.addProperty("paused_count", pausedCount);
             result.addProperty("disabled_count", disabledCount);
 
-            // Create human-readable summary
             StringBuilder summary = new StringBuilder();
             summary.append("Scheduled Tasks: ").append(tasksArray.size()).append("\n\n");
 

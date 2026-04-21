@@ -38,10 +38,7 @@ public class WorkspaceManagerTest {
         filesDir = tempFolder.newFolder("app_files");
         when(mockContext.getFilesDir()).thenReturn(filesDir);
         when(mockContext.getAssets()).thenReturn(mockAssets);
-        
-        // Mock asset loading for skills - throw IOException to simulate missing assets in unit test
         when(mockAssets.open(anyString())).thenThrow(new IOException("Asset not available in unit test"));
-        
         workspaceManager = new WorkspaceManager(mockContext);
     }
 
@@ -49,7 +46,6 @@ public class WorkspaceManagerTest {
     public void testInitialize() throws Exception {
         assertTrue(workspaceManager.initialize());
 
-        // Verify workspace root exists
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
         assertTrue(workspaceRoot.exists());
         assertTrue(workspaceRoot.isDirectory());
@@ -59,7 +55,6 @@ public class WorkspaceManagerTest {
     public void testInitializeCreatesStandardDirectories() throws Exception {
         workspaceManager.initialize();
 
-        // Verify all standard directories exist
         assertTrue(workspaceManager.getHomeDirectory().exists());
         assertTrue(workspaceManager.getDocumentsDirectory().exists());
         assertTrue(workspaceManager.getScriptsDirectory().exists());
@@ -72,11 +67,9 @@ public class WorkspaceManagerTest {
 
     @Test
     public void testInitializeIdempotent() throws Exception {
-        // Initialize twice
         assertTrue(workspaceManager.initialize());
         assertTrue(workspaceManager.initialize());
 
-        // Should still work
         assertTrue(workspaceManager.getWorkspaceRoot().exists());
     }
 
@@ -99,17 +92,14 @@ public class WorkspaceManagerTest {
     public void testClearTempDirectory() throws Exception {
         workspaceManager.initialize();
 
-        // Create some files in temp
         File tempDir = workspaceManager.getTempDirectory();
         File tempFile = new File(tempDir, "temp_file.txt");
         tempFile.createNewFile();
 
         assertTrue(tempFile.exists());
 
-        // Clear temp
         assertTrue(workspaceManager.clearTempDirectory());
 
-        // Temp dir should exist but be empty
         assertTrue(tempDir.exists());
         assertFalse(tempFile.exists());
     }
@@ -118,14 +108,12 @@ public class WorkspaceManagerTest {
     public void testClearTempDirectoryWhenEmpty() throws Exception {
         workspaceManager.initialize();
 
-        // Clear empty temp directory
         assertTrue(workspaceManager.clearTempDirectory());
         assertTrue(workspaceManager.getTempDirectory().exists());
     }
 
     @Test
     public void testClearTempDirectoryWhenNotExists() {
-        // Don't initialize, so temp doesn't exist
         assertTrue(workspaceManager.clearTempDirectory());
     }
 
@@ -133,7 +121,6 @@ public class WorkspaceManagerTest {
     public void testGetStats() throws Exception {
         workspaceManager.initialize();
 
-        // Create some files
         File homeDir = workspaceManager.getHomeDirectory();
         File testFile = new File(homeDir, "test.txt");
         testFile.createNewFile();
@@ -155,8 +142,7 @@ public class WorkspaceManagerTest {
         
         String formatted = stats.getFormattedSize();
         assertNotNull(formatted);
-        // Should contain a unit (B, KB, MB, or GB)
-        assertTrue(formatted.contains("B") || formatted.contains("KB") || 
+        assertTrue(formatted.contains("B") || formatted.contains("KB") ||
                    formatted.contains("MB") || formatted.contains("GB"));
     }
 
@@ -171,7 +157,6 @@ public class WorkspaceManagerTest {
     public void testDirectoryGetters() throws Exception {
         workspaceManager.initialize();
 
-        // Test all directory getters
         assertNotNull(workspaceManager.getHomeDirectory());
         assertNotNull(workspaceManager.getDocumentsDirectory());
         assertNotNull(workspaceManager.getScriptsDirectory());
@@ -181,10 +166,9 @@ public class WorkspaceManagerTest {
         assertNotNull(workspaceManager.getMemoryDirectory());
         assertNotNull(workspaceManager.getConfigDirectory());
 
-        // Verify they're within workspace
         File workspace = workspaceManager.getWorkspaceRoot();
         String workspacePath = workspace.getCanonicalPath();
-        
+
         assertTrue(workspaceManager.getHomeDirectory().getCanonicalPath().startsWith(workspacePath));
         assertTrue(workspaceManager.getAgentDirectory().getCanonicalPath().startsWith(workspacePath));
     }
@@ -193,10 +177,8 @@ public class WorkspaceManagerTest {
     public void testWorkspaceStatsWithLargeFile() throws Exception {
         workspaceManager.initialize();
 
-        // Create a larger file
         File testFile = new File(workspaceManager.getHomeDirectory(), "large.txt");
         testFile.createNewFile();
-        // Write some content
         java.io.FileWriter writer = new java.io.FileWriter(testFile);
         for (int i = 0; i < 1000; i++) {
             writer.write("This is line " + i + "\n");
@@ -211,7 +193,6 @@ public class WorkspaceManagerTest {
 
     @Test
     public void testWorkspaceStatsFormattedSizes() {
-        // Test different size formats
         WorkspaceManager.WorkspaceStats smallStats = new WorkspaceManager.WorkspaceStats(
             new File(filesDir, "nonexistent")
         );
@@ -224,26 +205,21 @@ public class WorkspaceManagerTest {
 
     @Test
     public void testInitializeWithSkills() throws Exception {
-        // Verify initializeWithSkills works without error
         assertTrue(workspaceManager.initializeWithSkills());
 
-        // Verify workspace root exists
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
         assertTrue(workspaceRoot.exists());
         assertTrue(workspaceRoot.isDirectory());
 
-        // Verify skills directory exists
         File skillsDir = workspaceManager.getSkillsDirectory();
         assertTrue(skillsDir.exists());
     }
 
     @Test
     public void testInitializeWithSkillsIdempotent() throws Exception {
-        // Initialize twice
         assertTrue(workspaceManager.initialize());
         assertTrue(workspaceManager.initializeWithSkills());
 
-        // Should still work
         assertTrue(workspaceManager.getWorkspaceRoot().exists());
     }
 }

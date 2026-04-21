@@ -20,9 +20,6 @@ import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.MemoryRepository;
 
-/**
- * Unit tests for ConversationSummarizer.
- */
 @RunWith(MockitoJUnitRunner.class)
 public class ConversationSummarizerTest {
 
@@ -44,8 +41,6 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testNeedsSummarization_belowThreshold_returnsFalse() {
-        // Create messages with actual token count below 3000
-        // "word " repeated 100 times = 100 words * 1.3 = 130 tokens
         List<ChatMessage> messages = createSmallMessages(5);
 
         boolean needs = summarizer.needsSummarization(messages);
@@ -55,10 +50,6 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testNeedsSummarization_atThreshold_returnsTrue() {
-        // Create messages with token count >= 3000
-        // Need 3000 / 1.3 = ~2308 words
-        // "word " repeated 800 times = 800 words * 1.3 = 1040 tokens per message
-        // 3 messages * 1040 = 3120 tokens
         List<ChatMessage> messages = createLargeMessages(3, 800);
 
         boolean needs = summarizer.needsSummarization(messages);
@@ -68,7 +59,6 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testNeedsSummarization_aboveThreshold_returnsTrue() {
-        // Create messages well above threshold
         List<ChatMessage> messages = createLargeMessages(5, 800);
 
         boolean needs = summarizer.needsSummarization(messages);
@@ -107,13 +97,10 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testSummarizeAndSave_fewMessages_callsOnResult() {
-        // With 2 messages, keepCount = min(8, 2/3) = 0
-        // summarizeCount = 2 - 0 = 2, but implementation may require min messages
         List<ChatMessage> messages = createSmallMessages(2);
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        // Mock the API to respond when called
         doAnswer(invocation -> {
             LlmApiService.ChatCallback cb = invocation.getArgument(2);
             cb.onSuccess("Summary");
@@ -122,20 +109,15 @@ public class ConversationSummarizerTest {
 
         summarizer.summarizeAndSave(messages, callback);
 
-        // Verify callback was called
         verify(callback).onResult(any());
     }
 
     @Test
     public void testSummarizeAndSave_llmSuccess_savesAndReturnsCompressed() throws IOException {
-        // Create enough messages to trigger summarization
         List<ChatMessage> messages = createMessagesWithTokens(500, 600, 700, 800, 900, 1000, 1100, 1200);
-        // Total: 8 messages, keepCount = min(8, 8/3) = min(8, 2) = 2
-        // Should keep last 2 messages
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        // Mock LLM response - use sendMessage (not sendMessageWithTools)
         doAnswer(invocation -> {
             LlmApiService.ChatCallback cb = invocation.getArgument(2);
             cb.onSuccess("Summary of conversation");
@@ -144,14 +126,12 @@ public class ConversationSummarizerTest {
 
         summarizer.summarizeAndSave(messages, callback);
 
-        // Verify callback received compressed list
         ArgumentCaptor<List<ChatMessage>> resultCaptor = ArgumentCaptor.forClass(List.class);
         verify(callback).onResult(resultCaptor.capture());
 
         List<ChatMessage> result = resultCaptor.getValue();
         assertTrue("Should return compressed list with recent messages", result.size() <= 3);
 
-        // Verify summary was saved to daily note
         ArgumentCaptor<String> entryCaptor = ArgumentCaptor.forClass(String.class);
         verify(mockMemoryRepository).appendToDailyNote(entryCaptor.capture());
 
@@ -166,7 +146,6 @@ public class ConversationSummarizerTest {
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        // Mock LLM error - use sendMessage (not sendMessageWithTools)
         doAnswer(invocation -> {
             LlmApiService.ChatCallback cb = invocation.getArgument(2);
             cb.onError("API error");
@@ -175,14 +154,12 @@ public class ConversationSummarizerTest {
 
         summarizer.summarizeAndSave(messages, callback);
 
-        // Verify callback received compressed list (fallback still compresses)
         ArgumentCaptor<List<ChatMessage>> resultCaptor = ArgumentCaptor.forClass(List.class);
         verify(callback).onResult(resultCaptor.capture());
 
         List<ChatMessage> result = resultCaptor.getValue();
         assertTrue("Should return compressed list even on error", result.size() <= 3);
 
-        // Verify fallback summary was saved
         ArgumentCaptor<String> entryCaptor = ArgumentCaptor.forClass(String.class);
         verify(mockMemoryRepository).appendToDailyNote(entryCaptor.capture());
 
@@ -197,19 +174,16 @@ public class ConversationSummarizerTest {
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        // Mock LLM success - use sendMessage (not sendMessageWithTools)
         doAnswer(invocation -> {
             LlmApiService.ChatCallback cb = invocation.getArgument(2);
             cb.onSuccess("Summary");
             return null;
         }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
 
-        // Mock save error
         doThrow(new IOException("Disk full")).when(mockMemoryRepository).appendToDailyNote(anyString());
 
         summarizer.summarizeAndSave(messages, callback);
 
-        // Verify callback still receives compressed list (even though save failed)
         ArgumentCaptor<List<ChatMessage>> resultCaptor = ArgumentCaptor.forClass(List.class);
         verify(callback).onResult(resultCaptor.capture());
 
@@ -222,10 +196,8 @@ public class ConversationSummarizerTest {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage("Hello", ChatMessage.TYPE_USER));
         messages.add(new ChatMessage("Hi there", ChatMessage.TYPE_ASSISTANT));
-        messages.add(new ChatMessage("More messages", ChatMessage.TYPE_USER)); // Need at least 3 to summarize
+        messages.add(new ChatMessage("More messages", ChatMessage.TYPE_USER));
 
-        // Use reflection to access the private generateSummary method via a test subclass
-        // Or test through the public API
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
         doAnswer(invocation -> {
@@ -236,7 +208,6 @@ public class ConversationSummarizerTest {
 
         summarizer.summarizeAndSave(messages, callback);
 
-        // Verify LLM was called with a prompt
         ArgumentCaptor<List<ChatMessage>> requestCaptor = ArgumentCaptor.forClass(List.class);
         verify(mockApiService).sendMessage(requestCaptor.capture(), any(), any());
 
@@ -248,11 +219,10 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testBuildSummaryPrompt_formatsMessagesCorrectly() throws IOException {
-        // Test through the public API - the prompt building happens internally
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage("Hello world", ChatMessage.TYPE_USER));
         messages.add(new ChatMessage("Hi there", ChatMessage.TYPE_ASSISTANT));
-        messages.add(new ChatMessage("More content", ChatMessage.TYPE_USER)); // Need at least 3 to summarize
+        messages.add(new ChatMessage("More content", ChatMessage.TYPE_USER));
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
@@ -276,7 +246,6 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testBuildSummaryPrompt_truncatesLongMessages() throws IOException {
-        // Create a very long message
         StringBuilder longContent = new StringBuilder();
         for (int i = 0; i < 600; i++) {
             longContent.append("word ");
@@ -286,7 +255,7 @@ public class ConversationSummarizerTest {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new ChatMessage(longMessage, ChatMessage.TYPE_USER));
         messages.add(new ChatMessage("Second message", ChatMessage.TYPE_ASSISTANT));
-        messages.add(new ChatMessage("Third message", ChatMessage.TYPE_USER)); // Need at least 3
+        messages.add(new ChatMessage("Third message", ChatMessage.TYPE_USER));
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
@@ -302,7 +271,6 @@ public class ConversationSummarizerTest {
         verify(mockApiService).sendMessage(requestCaptor.capture(), any(), any());
 
         String prompt = requestCaptor.getValue().get(0).getContent();
-        // Message should be truncated (500 chars + ...)
         assertTrue("Should truncate long message", prompt.length() < longMessage.length());
         assertTrue("Should show ellipsis", prompt.contains("..."));
     }
@@ -316,7 +284,6 @@ public class ConversationSummarizerTest {
         messages.add(new ChatMessage("Assistant 2", ChatMessage.TYPE_ASSISTANT));
         messages.add(new ChatMessage("Assistant 3", ChatMessage.TYPE_ASSISTANT));
 
-        // Use reflection or test through public API
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
         doAnswer(invocation -> {
@@ -331,15 +298,12 @@ public class ConversationSummarizerTest {
         verify(mockMemoryRepository).appendToDailyNote(entryCaptor.capture());
 
         String savedEntry = entryCaptor.getValue();
-        // Only the summarized messages count (not all messages)
         assertTrue("Should count messages", savedEntry.contains("user messages and"));
         assertTrue("Should count assistant messages", savedEntry.contains("assistant messages"));
     }
 
     @Test
     public void testGetTokenThreshold_returnsConstant() {
-        // Token threshold is now 75% of context window (default 4096)
-        // 4096 * 0.75 = 3072
         assertEquals("Should return correct threshold", 3072, summarizer.getTokenThreshold());
     }
 
@@ -349,7 +313,6 @@ public class ConversationSummarizerTest {
 
         ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
 
-        // Mock LLM error that calls onError - use sendMessage (not sendMessageWithTools)
         doAnswer(invocation -> {
             LlmApiService.ChatCallback cb = invocation.getArgument(2);
             cb.onError("Network error");
@@ -369,8 +332,6 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testNeedsSummarization_singleLargeMessage() {
-        // One very large message with enough words for 4000+ tokens
-        // Need 4000 / 1.3 = ~3077 words
         List<ChatMessage> messages = createLargeMessages(1, 3100);
 
         boolean needs = summarizer.needsSummarization(messages);
@@ -380,10 +341,6 @@ public class ConversationSummarizerTest {
 
     @Test
     public void testNeedsSummarization_manySmallMessages() {
-        // Many small messages that sum to over threshold
-        // Need 3000+ tokens total
-        // Each "small message" = 2 words * 1.3 = 2.6 -> ceil = 3 tokens
-        // Need 3000 / 3 = 1000 messages
         List<ChatMessage> messages = new ArrayList<>();
         for (int i = 0; i < 1100; i++) {
             messages.add(new ChatMessage("small message", ChatMessage.TYPE_USER));
@@ -393,8 +350,6 @@ public class ConversationSummarizerTest {
 
         assertTrue("Many small messages should need summarization", needs);
     }
-
-    // Helper methods
 
     private List<ChatMessage> createSmallMessages(int count) {
         List<ChatMessage> messages = new ArrayList<>();
@@ -419,8 +374,6 @@ public class ConversationSummarizerTest {
     private List<ChatMessage> createMessagesWithTokens(int... tokenCounts) {
         List<ChatMessage> messages = new ArrayList<>();
         for (int count : tokenCounts) {
-            // With ceil(words * 1.3) = tokens
-            // words = ceil(tokens / 1.3) approximately
             int words = (int) Math.ceil(count / 1.3);
             StringBuilder content = new StringBuilder();
             for (int i = 0; i < words; i++) {

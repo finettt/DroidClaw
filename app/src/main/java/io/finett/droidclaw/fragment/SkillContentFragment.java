@@ -82,37 +82,37 @@ public class SkillContentFragment extends Fragment {
     }
 
     private void parseSkillContent(SkillInfo skill, String content) {
-        // Extract description
+
         String description = extractYamlField(content, "description");
         if (description != null && !description.isEmpty()) {
             skill.setDescription(description);
         }
 
-        // Extract capabilities section
+
         String capabilities = extractSection(content, "## Capabilities", "## Guidelines");
         if (capabilities != null) {
             skill.setCapabilities(capabilities);
         }
 
-        // Extract guidelines
+
         String guidelines = extractSection(content, "## Guidelines", "## Example");
         if (guidelines != null) {
             skill.setGuidelines(guidelines);
         }
 
-        // Extract examples
+
         String examples = extractSection(content, "## Example Usage", "## Limitations");
         if (examples != null) {
             skill.setExamples(examples);
         }
 
-        // Extract limitations
+
         String limitations = extractSection(content, "## Limitations", null);
         if (limitations != null) {
             skill.setLimitations(limitations);
         }
 
-        // Extract other YAML fields
+
         skill.setCategory(extractYamlField(content, "category"));
         skill.setAuthor(extractYamlField(content, "author"));
         skill.setVersion(extractYamlField(content, "version"));
@@ -163,7 +163,7 @@ public class SkillContentFragment extends Fragment {
     private void displaySkill(SkillInfo skill) {
         skillName.setText(skill.getName());
 
-        // Version
+
         if (skill.getVersion() != null && !skill.getVersion().isEmpty()) {
             skillVersion.setText("v" + skill.getVersion());
             skillVersion.setVisibility(View.VISIBLE);
@@ -171,7 +171,7 @@ public class SkillContentFragment extends Fragment {
             skillVersion.setVisibility(View.GONE);
         }
 
-        // Category
+
         if (skill.getCategory() != null && !skill.getCategory().isEmpty()) {
             skillCategory.setText(skill.getCategory());
             skillCategory.setVisibility(View.VISIBLE);
@@ -179,7 +179,7 @@ public class SkillContentFragment extends Fragment {
             skillCategory.setVisibility(View.GONE);
         }
 
-        // Description
+
         if (skill.getDescription() != null && !skill.getDescription().isEmpty()) {
             skillDescription.setText(skill.getDescription());
             skillDescription.setVisibility(View.VISIBLE);
@@ -187,7 +187,7 @@ public class SkillContentFragment extends Fragment {
             skillDescription.setVisibility(View.GONE);
         }
 
-        // Capabilities
+
         if (skill.getCapabilities() != null && !skill.getCapabilities().isEmpty()) {
             skillCapabilities.setText(skill.getCapabilities());
             skillCapabilities.setVisibility(View.VISIBLE);

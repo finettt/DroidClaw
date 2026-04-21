@@ -115,7 +115,6 @@ public class PathValidatorTest {
 
     @Test
     public void testValidatePathWithBackslash() throws Exception {
-        // Test Windows-style path separators
         File result = pathValidator.validateAndResolve("\\test.txt");
         assertNotNull(result);
         assertTrue(result.getCanonicalPath().startsWith(workspaceRoot.getCanonicalPath()));
@@ -123,7 +122,6 @@ public class PathValidatorTest {
 
     @Test
     public void testValidatePathWithDots() throws Exception {
-        // Test path with . (current directory)
         File result = pathValidator.validateAndResolve("./test.txt");
         assertNotNull(result);
         assertTrue(result.getCanonicalPath().startsWith(workspaceRoot.getCanonicalPath()));
@@ -142,10 +140,9 @@ public class PathValidatorTest {
 
     @Test
     public void testValidatePathWithMultipleDots() throws Exception {
-        // Test that staying within workspace with .. is allowed
         File testDir = new File(workspaceRoot, "dir/subdir");
         testDir.mkdirs();
-        
+
         File result = pathValidator.validateAndResolve("dir/subdir/../file.txt");
         assertNotNull(result);
         assertTrue(result.getCanonicalPath().startsWith(workspaceRoot.getCanonicalPath()));

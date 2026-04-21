@@ -13,10 +13,6 @@ import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
-/**
- * Tool for executing Python code and scripts on the Android device.
- * Supports inline code execution, script file execution, and package installation.
- */
 public class PythonTool implements Tool {
     private static final String TOOL_NAME = "execute_python";
 
@@ -24,23 +20,10 @@ public class PythonTool implements Tool {
     private final File workspaceRoot;
     private final PythonConfig config;
 
-    /**
-     * Creates a PythonTool with default configuration.
-     *
-     * @param context      Android application context
-     * @param workspaceRoot The workspace root directory for relative paths
-     */
     public PythonTool(Context context, File workspaceRoot) {
         this(context, workspaceRoot, PythonConfig.createDefault());
     }
 
-    /**
-     * Creates a PythonTool with custom configuration.
-     *
-     * @param context       Android application context
-     * @param workspaceRoot The workspace root directory for relative paths
-     * @param config        Python execution configuration
-     */
     public PythonTool(Context context, File workspaceRoot, PythonConfig config) {
         this.workspaceRoot = workspaceRoot;
         this.config = config;
@@ -54,7 +37,7 @@ public class PythonTool implements Tool {
 
     @Override
     public boolean requiresApproval() {
-        return true; // Python execution can be dangerous
+        return true;
     }
     
     @Override
@@ -92,12 +75,10 @@ public class PythonTool implements Tool {
     @Override
     public ToolResult execute(JsonObject arguments) {
         try {
-            // Determine execution mode
             boolean hasCode = arguments.has("code") && !arguments.get("code").getAsString().isEmpty();
             boolean hasScript = arguments.has("script_path") && !arguments.get("script_path").getAsString().isEmpty();
             boolean hasPackage = arguments.has("package") && !arguments.get("package").getAsString().isEmpty();
 
-            // Validate mutually exclusive parameters
             int modeCount = (hasCode ? 1 : 0) + (hasScript ? 1 : 0) + (hasPackage ? 1 : 0);
             if (modeCount == 0) {
                 return ToolResult.error("Must provide one of: code, script_path, or package");
@@ -106,7 +87,6 @@ public class PythonTool implements Tool {
                 return ToolResult.error("Can only provide one of: code, script_path, or package");
             }
 
-            // Get timeout if specified
             int timeout = config.getTimeoutSeconds();
             if (arguments.has("timeout_seconds") && !arguments.get("timeout_seconds").isJsonNull()) {
                 timeout = arguments.get("timeout_seconds").getAsInt();
@@ -118,15 +98,12 @@ public class PythonTool implements Tool {
             PythonResult result;
 
             if (hasPackage) {
-                // Install package
                 String packageName = arguments.get("package").getAsString();
                 result = executor.installPackage(packageName);
             } else if (hasCode) {
-                // Execute code
                 String code = arguments.get("code").getAsString();
                 result = executor.executeCode(code, timeout);
             } else {
-                // Execute script
                 String scriptPath = arguments.get("script_path").getAsString();
                 File scriptFile = resolveScriptPath(scriptPath);
 
@@ -137,7 +114,6 @@ public class PythonTool implements Tool {
                 result = executor.executeScript(scriptFile);
             }
 
-            // Format result
             JsonObject resultJson = new JsonObject();
             resultJson.addProperty("success", result.isSuccess());
             resultJson.addProperty("execution_time_ms", result.getExecutionTimeMs());
@@ -160,35 +136,23 @@ public class PythonTool implements Tool {
         }
     }
 
-    /**
-     * Resolve script path relative to workspace.
-     *
-     * @param path Relative path to the script file
-     * @return Resolved File object, or null if invalid
-     */
     private File resolveScriptPath(String path) {
         if (path == null || path.trim().isEmpty()) {
             return null;
         }
 
-        // Reject absolute paths
-        if (path.startsWith("/")) {
-            return null;
-        }
-
-        // Reject paths with directory traversal (check for ".." as path component)
-        if (path.contains("/..") || path.startsWith("..") || path.contains("/../")) {
+        // Reject absolute paths and directory traversal
+        if (path.startsWith("/") || path.contains("/..") || path.startsWith("..") || path.contains("/../")) {
             return null;
         }
 
         File scriptFile = new File(workspaceRoot, path);
 
-        // Verify file exists and is within workspace
         if (!scriptFile.exists() || !scriptFile.isFile()) {
             return null;
         }
 
-        // Security check: ensure path is within workspace
+        // Ensure path is within workspace
         try {
             String canonicalWorkspace = workspaceRoot.getCanonicalPath();
             String canonicalScript = scriptFile.getCanonicalPath();
@@ -203,10 +167,6 @@ public class PythonTool implements Tool {
         }
     }
 
-    /**
-     * Shutdown the Python executor.
-     * Should be called when the tool is no longer needed.
-     */
     public void shutdown() {
         executor.shutdown();
     }

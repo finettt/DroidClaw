@@ -18,15 +18,10 @@ import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.model.TaskExecutionRecord;
 import io.finett.droidclaw.model.TaskResult;
 
-/**
- * Repository for background task data.
- * Manages task results, cron jobs, and execution history using SharedPreferences.
- */
 public class TaskRepository {
     private static final String TAG = "TaskRepository";
     private static final String PREFS_NAME = "droidclaw_tasks";
 
-    // SharedPreferences keys
     private static final String KEY_TASK_RESULTS = "task_results";
     private static final String KEY_CRON_JOBS = "cron_jobs";
     private static final String KEY_EXECUTION_RECORDS = "execution_records";
@@ -37,16 +32,10 @@ public class TaskRepository {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
-    // ==================== TASK RESULTS ====================
-
-    /**
-     * Save a task result. Overwrites existing result with same ID.
-     */
     public void saveTaskResult(TaskResult result) {
         try {
             List<TaskResult> results = getTaskResultsInternal();
 
-            // Remove existing result with same ID
             results.removeIf(r -> r.getId().equals(result.getId()));
             results.add(result);
 
@@ -57,10 +46,6 @@ public class TaskRepository {
         }
     }
 
-    /**
-     * Get task results filtered by type, limited to specified count.
-     * Returns results sorted by timestamp (newest first).
-     */
     public List<TaskResult> getTaskResults(int type, int limit) {
         List<TaskResult> allResults = getTaskResultsInternal();
         List<TaskResult> filtered = new ArrayList<>();
@@ -71,10 +56,8 @@ public class TaskRepository {
             }
         }
 
-        // Sort by timestamp descending
         Collections.sort(filtered, (a, b) -> Long.compare(b.getTimestamp(), a.getTimestamp()));
 
-        // Apply limit
         if (limit > 0 && filtered.size() > limit) {
             return filtered.subList(0, limit);
         }
@@ -82,18 +65,10 @@ public class TaskRepository {
         return filtered;
     }
 
-    /**
-     * Get all task results without filtering.
-     */
     public List<TaskResult> getAllTaskResults() {
         return getTaskResultsInternal();
     }
 
-    /**
-     * Get the most recent heartbeat task result.
-     *
-     * @return Latest heartbeat TaskResult or null if none exists
-     */
     public TaskResult getLastHeartbeatResult() {
         List<TaskResult> heartbeatResults = getTaskResults(TaskResult.TYPE_HEARTBEAT, 1);
         if (heartbeatResults.isEmpty()) {
@@ -102,9 +77,6 @@ public class TaskRepository {
         return heartbeatResults.get(0);
     }
 
-    /**
-     * Delete a task result by ID.
-     */
     public void deleteTaskResult(String id) {
         List<TaskResult> results = getTaskResultsInternal();
         results.removeIf(r -> r.getId().equals(id));
@@ -132,7 +104,6 @@ public class TaskRepository {
 
                 TaskResult result = new TaskResult(id, type, timestamp, content);
 
-                // Load metadata
                 if (jsonObject.has("metadata")) {
                     JSONObject metadataObj = jsonObject.getJSONObject("metadata");
                     Iterator<String> keys = metadataObj.keys();
@@ -162,7 +133,6 @@ public class TaskRepository {
                 jsonObject.put("timestamp", result.getTimestamp());
                 jsonObject.put("content", result.getContent() != null ? result.getContent() : "");
 
-                // Save metadata
                 if (result.getMetadata() != null && !result.getMetadata().isEmpty()) {
                     JSONObject metadataObj = new JSONObject();
                     for (Map.Entry<String, String> entry : result.getMetadata().entrySet()) {
@@ -180,16 +150,10 @@ public class TaskRepository {
         }
     }
 
-    // ==================== CRON JOBS ====================
-
-    /**
-     * Save a cron job. Overwrites existing job with same ID.
-     */
     public void saveCronJob(CronJob job) {
         try {
             List<CronJob> jobs = getCronJobsInternal();
 
-            // Remove existing job with same ID
             jobs.removeIf(j -> j.getId().equals(job.getId()));
             jobs.add(job);
 
@@ -200,24 +164,15 @@ public class TaskRepository {
         }
     }
 
-    /**
-     * Get all cron jobs.
-     */
     public List<CronJob> getCronJobs() {
         return getCronJobsInternal();
     }
 
-    /**
-     * Update an existing cron job.
-     */
     public void updateCronJob(CronJob job) {
         saveCronJob(job);
         Log.d(TAG, "Updated cron job: " + job.getId());
     }
 
-    /**
-     * Delete a cron job by ID.
-     */
     public void deleteCronJob(String id) {
         List<CronJob> jobs = getCronJobsInternal();
         jobs.removeIf(j -> j.getId().equals(id));
@@ -225,9 +180,6 @@ public class TaskRepository {
         Log.d(TAG, "Deleted cron job: " + id);
     }
 
-    /**
-     * Get a specific cron job by ID.
-     */
     public CronJob getCronJob(String id) {
         List<CronJob> jobs = getCronJobsInternal();
         for (CronJob job : jobs) {
@@ -310,11 +262,6 @@ public class TaskRepository {
         }
     }
 
-    // ==================== EXECUTION RECORDS ====================
-
-    /**
-     * Save an execution record.
-     */
     public void saveExecutionRecord(TaskExecutionRecord record) {
         try {
             List<TaskExecutionRecord> records = getExecutionRecordsInternal();
@@ -327,10 +274,6 @@ public class TaskRepository {
         }
     }
 
-    /**
-     * Get execution history for a specific task.
-     * Returns records sorted by start time (newest first).
-     */
     public List<TaskExecutionRecord> getExecutionHistory(String taskId) {
         List<TaskExecutionRecord> allRecords = getExecutionRecordsInternal();
         List<TaskExecutionRecord> filtered = new ArrayList<>();
@@ -341,22 +284,15 @@ public class TaskRepository {
             }
         }
 
-        // Sort by start time descending
         Collections.sort(filtered, (a, b) -> Long.compare(b.getStartTime(), a.getStartTime()));
 
         return filtered;
     }
 
-    /**
-     * Get all execution records.
-     */
     public List<TaskExecutionRecord> getAllExecutionRecords() {
         return getExecutionRecordsInternal();
     }
 
-    /**
-     * Delete execution records for a specific task.
-     */
     public void deleteExecutionRecords(String taskId) {
         List<TaskExecutionRecord> records = getExecutionRecordsInternal();
         records.removeIf(r -> r.getTaskId().equals(taskId));
@@ -364,9 +300,6 @@ public class TaskRepository {
         Log.d(TAG, "Deleted execution records for task: " + taskId);
     }
 
-    /**
-     * Clear all execution records.
-     */
     public void clearAllExecutionRecords() {
         prefs.edit().remove(KEY_EXECUTION_RECORDS).apply();
         Log.d(TAG, "Cleared all execution records");

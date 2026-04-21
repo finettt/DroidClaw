@@ -11,45 +11,20 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Virtual filesystem implementation providing sandboxed file operations.
- * All operations are confined to the workspace directory.
- */
 public class VirtualFileSystem {
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     private static final int MAX_LINES_PER_READ = 10000;
 
     private final PathValidator pathValidator;
 
-    /**
-     * Creates a VirtualFileSystem with the given WorkspaceManager.
-     *
-     * @param workspaceManager WorkspaceManager for workspace directory management
-     */
     public VirtualFileSystem(WorkspaceManager workspaceManager) {
         this.pathValidator = workspaceManager.getPathValidator();
     }
 
-    /**
-     * Creates a VirtualFileSystem with the given PathValidator.
-     * Useful for testing without needing Android Context.
-     *
-     * @param pathValidator PathValidator for path validation
-     */
     public VirtualFileSystem(PathValidator pathValidator) {
         this.pathValidator = pathValidator;
     }
 
-    /**
-     * Reads the contents of a file.
-     * 
-     * @param path File path relative to workspace root
-     * @param offset Starting line number (0-based), null for beginning
-     * @param limit Maximum number of lines to read, null for all
-     * @return FileReadResult containing file contents
-     * @throws IOException if read fails
-     * @throws SecurityException if path is invalid
-     */
     public FileReadResult readFile(String path, Integer offset, Integer limit) 
             throws IOException, SecurityException {
         File file = pathValidator.validateAndResolve(path);
@@ -90,21 +65,10 @@ public class VirtualFileSystem {
         return new FileReadResult(content, totalLines, linesRead, truncated);
     }
 
-    /**
-     * Writes content to a file.
-     * 
-     * @param path File path relative to workspace root
-     * @param content Content to write
-     * @param append If true, append to existing file
-     * @return true if successful
-     * @throws IOException if write fails
-     * @throws SecurityException if path is invalid
-     */
-    public boolean writeFile(String path, String content, boolean append) 
+    public boolean writeFile(String path, String content, boolean append)
             throws IOException, SecurityException {
         File file = pathValidator.validateAndResolve(path);
 
-        // Create parent directories if needed
         File parentDir = file.getParentFile();
         if (parentDir != null && !parentDir.exists()) {
             if (!parentDir.mkdirs()) {
@@ -112,7 +76,6 @@ public class VirtualFileSystem {
             }
         }
 
-        // Check content size
         if (content.length() > MAX_FILE_SIZE) {
             throw new IOException("Content too large (max " + MAX_FILE_SIZE + " bytes)");
         }
@@ -124,15 +87,6 @@ public class VirtualFileSystem {
         return true;
     }
 
-    /**
-     * Lists files and directories in a path.
-     * 
-     * @param path Directory path relative to workspace root
-     * @param recursive If true, list recursively
-     * @return FileListResult containing file information
-     * @throws IOException if listing fails
-     * @throws SecurityException if path is invalid
-     */
     public FileListResult listFiles(String path, boolean recursive) 
             throws IOException, SecurityException {
         File dir = pathValidator.validateAndResolve(path != null ? path : ".");
@@ -172,14 +126,6 @@ public class VirtualFileSystem {
         }
     }
 
-    /**
-     * Deletes a file or empty directory.
-     * 
-     * @param path File path relative to workspace root
-     * @return true if successful
-     * @throws IOException if deletion fails
-     * @throws SecurityException if path is invalid
-     */
     public boolean deleteFile(String path) throws IOException, SecurityException {
         File file = pathValidator.validateAndResolve(path);
 
@@ -198,16 +144,6 @@ public class VirtualFileSystem {
         return true;
     }
 
-    /**
-     * Searches for content in files.
-     * 
-     * @param path Directory to search in
-     * @param pattern Regex pattern to search for
-     * @param filePattern Glob pattern to filter files (e.g., "*.txt")
-     * @return FileSearchResult containing matches
-     * @throws IOException if search fails
-     * @throws SecurityException if path is invalid
-     */
     public FileSearchResult searchFiles(String path, String pattern, String filePattern) 
             throws IOException, SecurityException {
         File dir = pathValidator.validateAndResolve(path != null ? path : ".");
@@ -229,7 +165,7 @@ public class VirtualFileSystem {
         return new FileSearchResult(matches);
     }
 
-    private void searchRecursive(File dir, Pattern pattern, Pattern filePattern, 
+    private void searchRecursive(File dir, Pattern pattern, Pattern filePattern,
                                  List<SearchMatch> matches) throws IOException {
         File[] files = dir.listFiles();
         if (files == null) {
@@ -241,13 +177,11 @@ public class VirtualFileSystem {
                 searchRecursive(file, pattern, filePattern, matches);
             } else if (file.isFile()) {
                 String relativePath = pathValidator.toRelativePath(file);
-                
-                // Check if file matches the file pattern
+
                 if (filePattern != null && !filePattern.matcher(relativePath).matches()) {
                     continue;
                 }
 
-                // Search file contents
                 searchInFile(file, relativePath, pattern, matches);
             }
         }
@@ -289,14 +223,6 @@ public class VirtualFileSystem {
         return Pattern.compile(regex.toString());
     }
 
-    /**
-     * Gets file information.
-     * 
-     * @param path File path relative to workspace root
-     * @return FileInfo object
-     * @throws IOException if file doesn't exist
-     * @throws SecurityException if path is invalid
-     */
     public FileInfo getFileInfo(String path) throws IOException, SecurityException {
         File file = pathValidator.validateAndResolve(path);
 
@@ -312,9 +238,6 @@ public class VirtualFileSystem {
         );
     }
 
-    /**
-     * Result of a file read operation.
-     */
     public static class FileReadResult {
         private final String content;
         private final int totalLines;
@@ -345,9 +268,6 @@ public class VirtualFileSystem {
         }
     }
 
-    /**
-     * Result of a file list operation.
-     */
     public static class FileListResult {
         private final List<FileInfo> files;
 
@@ -360,9 +280,6 @@ public class VirtualFileSystem {
         }
     }
 
-    /**
-     * Information about a file or directory.
-     */
     public static class FileInfo {
         private final String path;
         private final boolean isDirectory;
@@ -393,9 +310,6 @@ public class VirtualFileSystem {
         }
     }
 
-    /**
-     * Result of a file search operation.
-     */
     public static class FileSearchResult {
         private final List<SearchMatch> matches;
 
@@ -408,9 +322,6 @@ public class VirtualFileSystem {
         }
     }
 
-    /**
-     * A single search match.
-     */
     public static class SearchMatch {
         private final String file;
         private final int lineNumber;

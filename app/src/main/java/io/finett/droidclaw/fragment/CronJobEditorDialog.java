@@ -108,14 +108,14 @@ public class CronJobEditorDialog extends DialogFragment {
     }
 
     private void setupSpinners() {
-        // Weekly day spinner
+
         String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         ArrayAdapter<String> dayAdapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_item, days);
         dayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerWeeklyDay.setAdapter(dayAdapter);
 
-        // Custom unit spinner
+
         String[] units = {"Minutes", "Hours", "Days"};
         ArrayAdapter<String> unitAdapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_item, units);
@@ -136,10 +136,10 @@ public class CronJobEditorDialog extends DialogFragment {
             } else if (checkedId == R.id.radio_custom) {
                 layoutCustomInterval.setVisibility(View.VISIBLE);
             }
-            // hourly needs no additional UI
+
         });
 
-        // Default to daily
+
         radioDaily.setChecked(true);
     }
 
@@ -157,7 +157,7 @@ public class CronJobEditorDialog extends DialogFragment {
                 editJobName.setText(jobToEdit.getName());
                 editJobPrompt.setText(jobToEdit.getPrompt());
 
-                // Parse schedule to set radio buttons
+
                 parseAndSetSchedule(originalSchedule);
             }
         }
@@ -188,7 +188,7 @@ public class CronJobEditorDialog extends DialogFragment {
                     String time = parts[1];
                     editWeeklyTime.setText(time);
 
-                    // Set day in spinner
+
                     String[] days = {"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"};
                     for (int i = 0; i < days.length; i++) {
                         if (days[i].equals(day)) {
@@ -199,7 +199,7 @@ public class CronJobEditorDialog extends DialogFragment {
                 }
             }
         } else {
-            // Try parsing as custom interval
+
             try {
                 long ms = Long.parseLong(normalized);
                 long minutes = ms / (1000 * 60);
@@ -233,7 +233,7 @@ public class CronJobEditorDialog extends DialogFragment {
     }
 
     private void saveJob() {
-        // Validate
+
         String name = editJobName.getText() != null ? editJobName.getText().toString().trim() : "";
         String prompt = editJobPrompt.getText() != null ? editJobPrompt.getText().toString().trim() : "";
 
@@ -255,10 +255,10 @@ public class CronJobEditorDialog extends DialogFragment {
 
         if (hasError) return;
 
-        // Build schedule string
+
         String schedule = buildScheduleString();
 
-        // Create or update job
+
         CronJob job;
         if (jobToEdit != null) {
             job = jobToEdit;
@@ -271,7 +271,7 @@ public class CronJobEditorDialog extends DialogFragment {
         job.setPrompt(prompt);
         job.setSchedule(schedule);
 
-        // Notify parent fragment
+
         if (getTargetFragment() instanceof OnCronJobSavedListener) {
             ((OnCronJobSavedListener) getTargetFragment()).onCronJobSaved(job);
         }
