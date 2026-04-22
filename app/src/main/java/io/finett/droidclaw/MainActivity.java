@@ -15,6 +15,7 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
+import androidx.navigation.NavOptions;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
@@ -99,25 +100,22 @@ public class MainActivity extends AppCompatActivity {
             drawerLayout.addDrawerListener(drawerToggle);
             drawerToggle.syncState();
 
+            toolbar.setNavigationOnClickListener(v -> {
+                NavDestination currentDest = navController.getCurrentDestination();
+                if (currentDest != null && appBarConfiguration.getTopLevelDestinations().contains(currentDest.getId())) {
+                    drawerLayout.openDrawer(GravityCompat.START);
+                } else {
+                    navController.navigateUp();
+                }
+            });
 
             navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
                 if (appBarConfiguration.getTopLevelDestinations().contains(destination.getId())) {
-
                     drawerToggle.setDrawerIndicatorEnabled(true);
                 } else {
-
                     drawerToggle.setDrawerIndicatorEnabled(false);
-                    toolbar.setNavigationIcon(com.google.android.material.R.drawable.abc_ic_ab_back_material);
-                    toolbar.setNavigationOnClickListener(v -> {
-                        NavController nc = controller;
-                        if (nc.getPreviousBackStackEntry() != null) {
-                            nc.navigateUp();
-                        } else {
-
-                            drawerLayout.openDrawer(GravityCompat.START);
-                        }
-                    });
                 }
+                drawerToggle.syncState();
             });
 
 
@@ -148,7 +146,11 @@ public class MainActivity extends AppCompatActivity {
                             currentSessionId = initialSession.getId();
                             Bundle args = new Bundle();
                             args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
-                            navController.navigate(R.id.chatFragment, args);
+                            NavOptions navOptions = new NavOptions.Builder()
+                                    .setPopUpTo(R.id.nav_graph, true)
+                                    .setLaunchSingleTop(true)
+                                    .build();
+                            navController.navigate(R.id.chatFragment, args, navOptions);
                         }
                     }
                 });
