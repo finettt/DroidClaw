@@ -50,6 +50,8 @@ public class CriticalUserJourneysUITest {
 
     @Before
     public void setUp() {
+        TestUtils.resetRootViewPicker();
+
         SharedPreferences settingsPrefs = getApplicationContext()
                 .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
         settingsPrefs.edit().clear().commit();
