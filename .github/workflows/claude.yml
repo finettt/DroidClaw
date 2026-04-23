@@ -43,9 +43,8 @@ jobs:
           # assignee_trigger: "claude-bot"
 
           # Optional: Configure Claude's behavior with CLI arguments
-          # claude_args: |
-          #   --model claude-opus-4-1-20250805
-          #   --max-turns 10
+          claude_args: |
+           --max-turns 10
           #   --allowedTools "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
           #   --system-prompt "Follow our coding standards. Ensure all new code has tests. Use TypeScript for new files."
 
@@ -56,8 +55,8 @@ jobs:
                   "NODE_ENV": "test",
                   "ANTHROPIC_BASE_URL": "${{ secrets.OPENAI_URL }}",
                   "ANTHROPIC_AUTH_TOKEN": "${{ secrets.LLAMA_CPP_API_KEY }}",
-                  "ANTHROPIC_DEFAULT_OPUS_MODEL": "Qwen-3-Coder-Next",
-                  "ANTHROPIC_DEFAULT_SONNET_MODEL": "Qwen-3-Coder-Next",
-                  "ANTHROPIC_DEFAULT_HAIKU_MODEL": "Qwen-3-Coder-Next"
+                  "ANTHROPIC_DEFAULT_OPUS_MODEL": "Qwopus-3. 5-27B",
+                  "ANTHROPIC_DEFAULT_SONNET_MODEL": "Qwopus-3.5-27B",
+                  "ANTHROPIC_DEFAULT_HAIKU_MODEL": "Qwopus-3.5-27B"
                 }
               }
