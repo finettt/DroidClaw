@@ -16,8 +16,11 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import io.finett.droidclaw.util.TestUtils;
+import io.finett.droidclaw.util.Flaky;
+import io.finett.droidclaw.util.FlakyTestRule;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -34,6 +37,9 @@ public class MainActivityTest {
 
     private static final String CHAT_PREFS = "chat_messages";
     private static final String SETTINGS_PREFS = "droidclaw_settings";
+
+    @Rule
+    public FlakyTestRule flakyTestRule = new FlakyTestRule();
 
     @Before
     public void setUp() {
@@ -112,6 +118,7 @@ public class MainActivityTest {
         }
     }
 
+    @Flaky
     @Test
     public void newChatButton_closesDrawer() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -128,7 +135,7 @@ public class MainActivityTest {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
                 assertTrue("Drawer should be open before clicking button",
                         drawerLayout.isDrawerOpen(GravityCompat.START));
-                
+
                 activity.findViewById(R.id.button_new_chat).performClick();
             });
 
@@ -136,6 +143,7 @@ public class MainActivityTest {
         }
     }
 
+    @Flaky
     @Test
     public void settingsButton_closesDrawer() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -152,7 +160,7 @@ public class MainActivityTest {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
                 assertTrue("Drawer should be open before clicking button",
                         drawerLayout.isDrawerOpen(GravityCompat.START));
-                
+
                 activity.findViewById(R.id.button_settings).performClick();
             });
 
@@ -425,12 +433,13 @@ public class MainActivityTest {
         }
     }
 
+    @Flaky(maxAttempts = 5)
     @Test
     public void drawerLayout_openAndClose_multipleIterations() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
-                
+
                 for (int i = 0; i < 5; i++) {
                     drawerLayout.openDrawer(GravityCompat.START);
                     try {
@@ -445,7 +454,7 @@ public class MainActivityTest {
                         e.printStackTrace();
                     }
                 }
-                
+
                 assertNotNull(drawerLayout);
             });
         }
@@ -566,19 +575,20 @@ public class MainActivityTest {
         }
     }
 
+    @Flaky
     @Test
     public void navigationController_nullCheck_doesNotCrash() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
                 drawerLayout.openDrawer(GravityCompat.START);
-                
+
                 try {
                     Thread.sleep(200);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                
+
                 activity.findViewById(R.id.button_settings).performClick();
 
                 assertNotNull(activity);

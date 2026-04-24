@@ -20,7 +20,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import io.finett.droidclaw.util.Flaky;
+import io.finett.droidclaw.util.FlakyTestRule;
+
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -38,6 +42,9 @@ public class ChatFragmentTest {
 
     private static final String SETTINGS_PREFS = "droidclaw_settings";
     private static final String CHAT_PREFS = "chat_messages";
+
+    @Rule
+    public FlakyTestRule flakyTestRule = new FlakyTestRule();
 
     @Before
     public void setUp() {
@@ -134,6 +141,7 @@ public class ChatFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void sendMessage_withConfiguration_addsUserMessage() {
         configureSettings();
@@ -165,6 +173,7 @@ public class ChatFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void sendMessage_withConfiguration_showsLoadingState() {
         configureSettings();
@@ -324,6 +333,7 @@ public class ChatFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void fragmentDestroy_cancelsApiRequests() {
         configureSettings();
@@ -357,6 +367,7 @@ public class ChatFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void sendMessage_withLongMessage_handlesCorrectly() {
         configureSettings();

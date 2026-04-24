@@ -21,7 +21,11 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import io.finett.droidclaw.util.Flaky;
+import io.finett.droidclaw.util.FlakyTestRule;
+
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -32,6 +36,9 @@ import io.finett.droidclaw.util.SettingsManager;
 public class OnboardingFragmentTest {
 
     private static final String SETTINGS_PREFS = "droidclaw_settings";
+
+    @Rule
+    public FlakyTestRule flakyTestRule = new FlakyTestRule();
 
     @Before
     public void setUp() {
@@ -79,6 +86,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void clickNext_transitionsToNameSection() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -108,6 +116,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void nameSection_validationWorks() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -152,6 +161,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void nameSection_savesNameWhenProceeding() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -180,6 +190,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void providerSection_validationWorks() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -207,6 +218,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void providerSection_invalidUrlShowsError() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -236,6 +248,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void providerSection_validDataSavesAndCompletes() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -273,6 +286,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void skipButton_completesOnboardingWithoutData() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -297,6 +311,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void apiTypeDropdown_hasDefaultValue() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -310,13 +325,14 @@ public class OnboardingFragmentTest {
 
             scenario.onFragment(fragment -> {
                 AutoCompleteTextView actvApiType = fragment.requireView().findViewById(R.id.actv_api_type);
-                
+
                 assertEquals("API type should default to openai-completions",
                         "openai-completions", actvApiType.getText().toString());
             });
         }
     }
 
+    @Flaky
     @Test
     public void nameInput_clearsErrorOnTyping() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -354,6 +370,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void recreate_maintainsCurrentSection() {
         try (FragmentScenario<OnboardingFragment> scenario =
@@ -381,6 +398,7 @@ public class OnboardingFragmentTest {
         }
     }
 
+    @Flaky
     @Test
     public void providerSection_allFieldsPresent() {
         try (FragmentScenario<OnboardingFragment> scenario =

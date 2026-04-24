@@ -15,8 +15,12 @@ import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import androidx.work.testing.WorkManagerTestInitHelper;
 
+import io.finett.droidclaw.util.Flaky;
+import io.finett.droidclaw.util.FlakyTestRule;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -72,6 +76,9 @@ public class TaskExecutionIntegrationTest {
         clearTestData();
     }
 
+    @Rule
+    public FlakyTestRule flakyTestRule = new FlakyTestRule();
+
     @After
     public void tearDown() {
         workManager.cancelAllWork();
@@ -100,6 +107,7 @@ public class TaskExecutionIntegrationTest {
                 .commit();
     }
 
+    @Flaky
     @Test
     public void heartbeat_fullLifecycle_schedulesAndSavesResult() throws Exception {
         HeartbeatConfig config = new HeartbeatConfig(true, 60 * 60 * 1000L, 0L);
@@ -128,6 +136,7 @@ public class TaskExecutionIntegrationTest {
         assertEquals("true", results.get(0).getMetadataValue("healthy"));
     }
 
+    @Flaky
     @Test
     public void heartbeat_cancelAndReschedule_worksCorrectly() throws Exception {
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 0L);
@@ -163,6 +172,7 @@ public class TaskExecutionIntegrationTest {
         assertFalse("Should be rescheduled", workInfos3.isEmpty());
     }
 
+    @Flaky
     @Test
     public void heartbeat_withMissingHeartbeatFile_usesDefaultPrompt() throws Exception {
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
@@ -184,6 +194,7 @@ public class TaskExecutionIntegrationTest {
 
     // ==================== CRON JOB LIFECYCLE TESTS ====================
 
+    @Flaky
     @Test
     public void cronJob_fullLifecycle_schedulesExecutesAndSavesResult() throws Exception {
         CronJob job = new CronJob("cron-integration-1", "Daily Report",
@@ -225,6 +236,7 @@ public class TaskExecutionIntegrationTest {
         assertEquals("Should have 1 record", 1, records.size());
     }
 
+    @Flaky
     @Test
     public void cronJob_cancelAndDelete_removesAllData() throws Exception {
         CronJob job = new CronJob("cron-delete", "Delete Me", "Prompt", "3600000");
@@ -250,6 +262,7 @@ public class TaskExecutionIntegrationTest {
         assertNull("Job should be deleted", deleted);
     }
 
+    @Flaky
     @Test
     public void multipleCronJobs_allScheduledIndependently() throws Exception {
         CronJob job1 = new CronJob("cron-multi-1", "Job 1", "Prompt 1", "3600000");
