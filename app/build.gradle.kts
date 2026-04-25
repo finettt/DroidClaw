@@ -86,6 +86,7 @@ chaquopy {
             install("python-dateutil")
             install("openpyxl")
             install("python-docx")
+            install("python-pptx")
         }
     }
 }
