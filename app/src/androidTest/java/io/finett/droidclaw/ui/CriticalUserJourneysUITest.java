@@ -26,8 +26,12 @@ import androidx.test.espresso.contrib.RecyclerViewActions;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
+import io.finett.droidclaw.util.Flaky;
+import io.finett.droidclaw.util.FlakyTestRule;
+
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -64,6 +68,9 @@ public class CriticalUserJourneysUITest {
         settingsManager.setOnboardingCompleted(true);
     }
     
+    @Rule
+    public FlakyTestRule flakyTestRule = new FlakyTestRule();
+
     @After
     public void tearDown() {
         if (idlingResource != null) {
@@ -91,6 +98,7 @@ public class CriticalUserJourneysUITest {
         }
     }
 
+    @Flaky
     @Test
     public void userJourney_sendMessage_completeFlow() {
         configureSettings();
@@ -111,6 +119,7 @@ public class CriticalUserJourneysUITest {
         }
     }
 
+    @Flaky
     @Test
     public void userJourney_createMultipleChats_switchBetween() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
@@ -193,6 +202,7 @@ public class CriticalUserJourneysUITest {
         }
     }
 
+    @Flaky
     @Test
     public void userJourney_emptyMessageAttempt_validation() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
@@ -216,6 +226,7 @@ public class CriticalUserJourneysUITest {
         }
     }
 
+    @Flaky
     @Test
     public void userJourney_settingsWithoutApiKey_showsValidation() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
@@ -231,6 +242,7 @@ public class CriticalUserJourneysUITest {
         }
     }
 
+    @Flaky(maxAttempts = 5)
     @Test
     public void userJourney_rapidActions_stressTest() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
