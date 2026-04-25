@@ -82,8 +82,7 @@ public class MainActivity extends AppCompatActivity {
             appBarConfiguration = new AppBarConfiguration.Builder(
                     R.id.chatFragment,
                     R.id.fileBrowserFragment,
-                    R.id.memoryBrowserFragment,
-                    R.id.cronJobListFragment
+                    R.id.memoryBrowserFragment
             )
                     .setOpenableLayout(drawerLayout)
                     .build();
@@ -219,7 +218,6 @@ public class MainActivity extends AppCompatActivity {
         MaterialButton newChatButton = findViewById(R.id.button_new_chat);
         MaterialButton filesButton = findViewById(R.id.button_files);
         MaterialButton memoryButton = findViewById(R.id.button_memory);
-        MaterialButton scheduledTasksButton = findViewById(R.id.button_scheduled_tasks);
         MaterialButton settingsButton = findViewById(R.id.button_settings);
         RecyclerView chatSessionsRecyclerView = findViewById(R.id.recycler_chat_sessions);
 
@@ -273,13 +271,6 @@ public class MainActivity extends AppCompatActivity {
         memoryButton.setOnClickListener(v -> {
             if (navController != null) {
                 navController.navigate(R.id.memoryBrowserFragment);
-            }
-            drawerLayout.closeDrawer(GravityCompat.START);
-        });
-
-        scheduledTasksButton.setOnClickListener(v -> {
-            if (navController != null) {
-                navController.navigate(R.id.cronJobListFragment);
             }
             drawerLayout.closeDrawer(GravityCompat.START);
         });

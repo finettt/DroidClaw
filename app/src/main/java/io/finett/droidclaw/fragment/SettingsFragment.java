@@ -155,7 +155,7 @@ public class SettingsFragment extends Fragment {
                 break;
             case ITEM_CRON_JOBS:
                 Navigation.findNavController(requireView())
-                        .navigate(R.id.cronJobListFragment);
+                        .navigate(R.id.action_settingsFragment_to_cronJobListFragment);
                 break;
             case ITEM_SKILLS:
                 Navigation.findNavController(requireView())
