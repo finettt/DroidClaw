@@ -81,18 +81,6 @@
             android:text="@string/memory" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_scheduled_tasks"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="start|center_vertical"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"
-            android:text="@string/cron_jobs" />
-
-        <com.google.android.material.button.MaterialButton
             android:id="@+id/button_settings"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="match_parent"
