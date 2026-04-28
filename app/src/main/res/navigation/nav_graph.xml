@@ -78,6 +78,13 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_settingsFragment_to_envVarsSettingsFragment"
+            app:destination="@id/envVarsSettingsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -146,6 +153,17 @@
         android:label="Agent Settings">
         <action
             android:id="@+id/action_agentSettingsFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/envVarsSettingsFragment"
+        android:name="io.finett.droidclaw.fragment.EnvVarsSettingsFragment"
+        android:label="@string/env_vars_title">
+        <action
+            android:id="@+id/action_envVarsSettingsFragment_to_settingsFragment"
             app:destination="@id/settingsFragment"
             app:popUpTo="@id/settingsFragment"
             app:popUpToInclusive="false" />

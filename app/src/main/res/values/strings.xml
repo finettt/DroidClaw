@@ -264,4 +264,22 @@
     <string name="notification_channel_task_results_desc">Results from scheduled cron jobs and manual tasks</string>
     <string name="notification_channel_task_errors">Task Errors</string>
     <string name="notification_channel_task_errors_desc">Error notifications when tasks fail</string>
+
+    <!-- Environment Variables Settings -->
+    <string name="settings_env_vars">Environment Variables</string>
+    <string name="settings_env_vars_subtitle">Configure agent environment variables</string>
+    <string name="env_vars_title">Environment Variables</string>
+    <string name="env_vars_empty">No environment variables set.\nTap + to add one.</string>
+    <string name="env_var_key">Variable Name (e.g. SEARXNG_URL)</string>
+    <string name="env_var_value">Value</string>
+    <string name="env_var_add">Add Variable</string>
+    <string name="env_var_edit">Edit Variable</string>
+    <string name="env_var_delete_confirm">Delete this environment variable?</string>
+    <string name="env_var_key_required">Variable name is required</string>
+    <string name="env_var_key_invalid">Use only uppercase letters, digits and underscores (A-Z, 0-9, _)</string>
+    <string name="env_var_saved">Environment variable saved</string>
+    <string name="env_var_deleted">Environment variable deleted</string>
+
+    <!-- SearXNG Search Tool -->
+    <string name="searxng_url_hint">e.g. SEARXNG_URL = https://searx.example.com</string>
 </resources>

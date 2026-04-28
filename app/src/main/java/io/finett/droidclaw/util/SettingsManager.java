@@ -31,6 +31,7 @@ public class SettingsManager {
     private AgentConfig agentConfig;
     private boolean onboardingCompleted;
     private String userName;
+    private Map<String, String> envVars;
 
     public SettingsManager(Context context) {
         this.context = context;
@@ -81,6 +82,17 @@ public class SettingsManager {
                 userName = "";
             }
 
+            // Load env vars
+            envVars = new HashMap<>();
+            if (root.has("envVars")) {
+                JSONObject envVarsObj = root.getJSONObject("envVars");
+                Iterator<String> envKeys = envVarsObj.keys();
+                while (envKeys.hasNext()) {
+                    String key = envKeys.next();
+                    envVars.put(key, envVarsObj.getString(key));
+                }
+            }
+
         } catch (JSONException e) {
             Log.e(TAG, "Failed to parse settings JSON", e);
             initializeDefaults();
@@ -92,6 +104,7 @@ public class SettingsManager {
         agentConfig = AgentConfig.getDefaults();
         onboardingCompleted = false;
         userName = "";
+        envVars = new HashMap<>();
     }
 
     private Provider parseProvider(String id, JSONObject json) throws JSONException {
@@ -166,6 +179,12 @@ public class SettingsManager {
             onboardingObj.put("completed", onboardingCompleted);
             onboardingObj.put("userName", userName);
             root.put("onboarding", onboardingObj);
+
+            JSONObject envVarsObj = new JSONObject();
+            for (Map.Entry<String, String> entry : envVars.entrySet()) {
+                envVarsObj.put(entry.getKey(), entry.getValue());
+            }
+            root.put("envVars", envVarsObj);
 
             prefs.edit().putString(KEY_SETTINGS_JSON, root.toString()).apply();
             Log.d(TAG, "Settings saved to JSON");
@@ -539,6 +558,43 @@ public class SettingsManager {
     public void setModelName(String modelRef) {
         if (modelRef != null && modelRef.contains("/")) {
             agentConfig.setDefaultModel(modelRef);
+            saveToJson();
+        }
+    }
+
+    // ==================== Environment Variables ====================
+
+    /**
+     * Get all environment variables as an unmodifiable copy.
+     */
+    public Map<String, String> getAllEnvVars() {
+        return new HashMap<>(envVars);
+    }
+
+    /**
+     * Get a specific environment variable value, or null if not set.
+     */
+    public String getEnvVar(String key) {
+        if (key == null) return null;
+        return envVars.get(key);
+    }
+
+    /**
+     * Set (add or update) an environment variable.
+     */
+    public void setEnvVar(String key, String value) {
+        if (key != null && !key.isEmpty()) {
+            envVars.put(key, value != null ? value : "");
+            saveToJson();
+        }
+    }
+
+    /**
+     * Remove an environment variable.
+     */
+    public void removeEnvVar(String key) {
+        if (key != null && envVars.containsKey(key)) {
+            envVars.remove(key);
             saveToJson();
         }
     }
