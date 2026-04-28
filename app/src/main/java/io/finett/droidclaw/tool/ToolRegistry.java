@@ -39,7 +39,6 @@ import io.finett.droidclaw.tool.impl.ViewTaskHistoryTool;
 import io.finett.droidclaw.tool.impl.TaskStatsTool;
 import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
-import io.finett.droidclaw.tool.impl.SearxngSearchTool;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class ToolRegistry {
@@ -108,10 +107,6 @@ public class ToolRegistry {
         registerTool(new SetupHeartbeatTool(context));
 
         registerTool(new SubmitNotificationTool(context));
-
-        if (settingsManager != null) {
-            registerTool(new SearxngSearchTool(settingsManager));
-        }
     }
 
     public boolean isShellAccessEnabled() {
