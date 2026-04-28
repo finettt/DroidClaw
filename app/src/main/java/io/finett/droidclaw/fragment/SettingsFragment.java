@@ -25,6 +25,7 @@ public class SettingsFragment extends Fragment {
 
     private static final String ITEM_PROVIDERS = "providers";
     private static final String ITEM_AGENT = "agent";
+    private static final String ITEM_ENV_VARS = "env_vars";
     private static final String ITEM_HEARTBEAT = "heartbeat";
     private static final String ITEM_CRON_JOBS = "cron_jobs";
     private static final String ITEM_SKILLS = "skills";
@@ -93,6 +94,14 @@ public class SettingsFragment extends Fragment {
 
 
         items.add(new SettingsAdapter.SettingsItem(
+                ITEM_ENV_VARS,
+                R.drawable.ic_settings_env_vars,
+                getString(R.string.settings_env_vars),
+                getString(R.string.settings_env_vars_subtitle),
+                true
+        ));
+
+        items.add(new SettingsAdapter.SettingsItem(
                 ITEM_HEARTBEAT,
                 R.drawable.ic_settings_heartbeat,
                 getString(R.string.settings_heartbeat),
@@ -148,6 +157,10 @@ public class SettingsFragment extends Fragment {
             case ITEM_AGENT:
                 Navigation.findNavController(requireView())
                         .navigate(R.id.action_settingsFragment_to_agentSettingsFragment);
+                break;
+            case ITEM_ENV_VARS:
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.action_settingsFragment_to_envVarsSettingsFragment);
                 break;
             case ITEM_HEARTBEAT:
                 Navigation.findNavController(requireView())
