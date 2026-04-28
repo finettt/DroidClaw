@@ -39,6 +39,24 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = System.getenv("RELEASE_KEYSTORE_PATH")
+            val keystorePassword = System.getenv("RELEASE_STORE_PASSWORD")
+            val keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+            val keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+
+            if (!keystoreFile.isNullOrBlank() && !keystorePassword.isNullOrBlank()
+                && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()
+            ) {
+                storeFile = file(keystoreFile)
+                storePassword = keystorePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
     buildTypes {
         debug {
             val gitHash = try {
@@ -58,6 +76,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val releaseSigningConfig = signingConfigs.getByName("release")
+            if (releaseSigningConfig.storeFile != null) {
+                signingConfig = releaseSigningConfig
+            }
         }
     }
     compileOptions {
