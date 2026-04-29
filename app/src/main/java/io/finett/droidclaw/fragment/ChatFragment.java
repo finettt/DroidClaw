@@ -87,9 +87,15 @@ public class ChatFragment extends Fragment {
         super.onCreate(savedInstanceState);
 
         settingsManager = new SettingsManager(requireContext());
-        apiService = new LlmApiService(settingsManager);
         chatRepository = new ChatRepository(requireContext());
         continuationService = new ChatContinuationService(requireContext());
+        
+        // Use Activity-scoped API service so requests survive chat switches
+        if (requireActivity() instanceof MainActivity) {
+            apiService = ((MainActivity) requireActivity()).getApiService();
+        } else {
+            apiService = new LlmApiService(settingsManager);
+        }
 
 
         Bundle taskArgs = getArguments();
@@ -706,9 +712,11 @@ public class ChatFragment extends Fragment {
         super.onResume();
         // Reload settings in case the user changed provider/model in the Settings screen
         settingsManager = new SettingsManager(requireContext());
-        apiService = new LlmApiService(settingsManager);
+        // Refresh the Activity-scoped API service with new settings
+        if (requireActivity() instanceof MainActivity) {
+            apiService = ((MainActivity) requireActivity()).getApiService();
+        }
         // Propagate the refreshed service to the agent loop components
-        // (ConversationSummarizer and AgentLoop hold their own apiService reference)
         int contextWindow = getModelContextWindow();
         io.finett.droidclaw.agent.ConversationSummarizer summarizer =
                 new io.finett.droidclaw.agent.ConversationSummarizer(apiService, memoryRepository, contextWindow);
@@ -721,7 +729,8 @@ public class ChatFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        apiService.cancelAllRequests();
+        // Do NOT cancel requests here — the API service is Activity-scoped
+        // and requests should survive chat switches. Only shut down tools.
         if (toolRegistry != null) {
             toolRegistry.shutdown();
         }
