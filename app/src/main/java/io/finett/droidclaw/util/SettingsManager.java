@@ -377,11 +377,6 @@ public class SettingsManager {
         return agentConfig.getShellTimeout();
     }
 
-    public void setShellTimeoutSeconds(int seconds) {
-        agentConfig.setShellTimeout(seconds);
-        saveToJson();
-    }
-
     // ==================== Onboarding ====================
 
     public boolean isOnboardingCompleted() {
@@ -538,28 +533,6 @@ public class SettingsManager {
             return modelRef;
         }
         return provider.getName() + " / " + model.getName();
-    }
-
-    // ==================== Setter Methods ====================
-
-    /**
-     * Add or update a provider.
-     * @param provider The provider to add/update
-     */
-    public void setProvider(Provider provider) {
-        providers.put(provider.getId(), provider);
-        saveToJson();
-    }
-
-    /**
-     * Set model for the default provider in agent config.
-     * @param modelRef Model reference in format "providerId/modelId"
-     */
-    public void setModelName(String modelRef) {
-        if (modelRef != null && modelRef.contains("/")) {
-            agentConfig.setDefaultModel(modelRef);
-            saveToJson();
-        }
     }
 
     // ==================== Environment Variables ====================

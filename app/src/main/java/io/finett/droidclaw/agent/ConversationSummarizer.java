@@ -12,7 +12,6 @@ import java.util.Locale;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.MemoryRepository;
-import io.finett.droidclaw.util.TokenEstimator;
 
 public class ConversationSummarizer {
     private static final String TAG = "ConversationSummarizer";
@@ -40,19 +39,6 @@ public class ConversationSummarizer {
         if (needs) {
             Log.d(TAG, "Summarization needed: " + currentContextTokens + " tokens >= " +
                   threshold + " (" + (COMPRESSION_THRESHOLD * 100) + "% of " + contextWindow + ")");
-        }
-        
-        return needs;
-    }
-    
-    @Deprecated
-    public boolean needsSummarization(List<ChatMessage> messages) {
-        int estimatedTokens = TokenEstimator.estimateTokens(messages);
-        int threshold = (int) (contextWindow * COMPRESSION_THRESHOLD);
-        boolean needs = estimatedTokens >= threshold;
-        
-        if (needs) {
-            Log.d(TAG, "Summarization needed (estimated): " + estimatedTokens + " tokens >= " + threshold);
         }
         
         return needs;

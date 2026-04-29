@@ -31,15 +31,6 @@ public class SkillContentFragment extends Fragment {
     private TextView skillTags;
     private TextView skillAuthor;
 
-    public static SkillContentFragment newInstance(String skillName, String skillContent) {
-        SkillContentFragment fragment = new SkillContentFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_SKILL_NAME, skillName);
-        args.putString(ARG_SKILL_CONTENT, skillContent);
-        fragment.setArguments(args);
-        return fragment;
-    }
-
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {

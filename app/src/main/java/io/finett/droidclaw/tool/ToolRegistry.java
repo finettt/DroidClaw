@@ -17,9 +17,7 @@ import java.util.Set;
 import io.finett.droidclaw.filesystem.VirtualFileSystem;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.python.PythonConfig;
-import io.finett.droidclaw.python.PythonExecutor;
 import io.finett.droidclaw.shell.ShellConfig;
-import io.finett.droidclaw.shell.ShellExecutor;
 import io.finett.droidclaw.tool.impl.FileDeleteTool;
 import io.finett.droidclaw.tool.impl.FileEditTool;
 import io.finett.droidclaw.tool.impl.FileInfoTool;
@@ -54,8 +52,6 @@ public class ToolRegistry {
     private final Context context;
     private final WorkspaceManager workspaceManager;
     private final VirtualFileSystem vfs;
-    private final ShellExecutor shellExecutor;
-    private final PythonExecutor pythonExecutor;
     private final SettingsManager settingsManager;
 
     public ToolRegistry(Context context) {
@@ -73,12 +69,6 @@ public class ToolRegistry {
             throw new RuntimeException("Failed to initialize workspace", e);
         }
         this.vfs = new VirtualFileSystem(workspaceManager);
-
-        ShellConfig shellConfig = ShellConfig.createDefault();
-        this.shellExecutor = new ShellExecutor(shellConfig, workspaceManager.getPathValidator());
-
-        PythonConfig pythonConfig = PythonConfig.createDefault();
-        this.pythonExecutor = new PythonExecutor(context, pythonConfig);
 
         registerTools();
     }
@@ -173,13 +163,5 @@ public class ToolRegistry {
 
     public File getWorkspaceRoot() {
         return workspaceManager.getWorkspaceRoot();
-    }
-
-    public ShellExecutor getShellExecutor() {
-        return shellExecutor;
-    }
-
-    public PythonExecutor getPythonExecutor() {
-        return pythonExecutor;
     }
 }

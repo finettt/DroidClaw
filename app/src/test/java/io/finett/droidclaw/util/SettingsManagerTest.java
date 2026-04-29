@@ -212,13 +212,17 @@ public class SettingsManagerTest {
 
     @Test
     public void setShellTimeoutSeconds_storesAndRetrievesValue() {
-        settingsManager.setShellTimeoutSeconds(60);
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setShellTimeout(60);
+        settingsManager.setAgentConfig(config);
         assertEquals(60, settingsManager.getShellTimeoutSeconds());
     }
 
     @Test
     public void setShellTimeoutSeconds_canBeSetToMaximum() {
-        settingsManager.setShellTimeoutSeconds(300);
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setShellTimeout(300);
+        settingsManager.setAgentConfig(config);
         assertEquals(300, settingsManager.getShellTimeoutSeconds());
     }
 
@@ -383,7 +387,9 @@ public class SettingsManagerTest {
         settingsManager.setSandboxMode("relaxed");
         settingsManager.setMaxAgentIterations(30);
         settingsManager.setRequireApproval(false);
-        settingsManager.setShellTimeoutSeconds(120);
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setShellTimeout(120);
+        settingsManager.setAgentConfig(config);
 
         SettingsManager newInstance = new SettingsManager(context);
 

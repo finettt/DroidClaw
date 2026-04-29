@@ -184,50 +184,6 @@ public class AgentConfigTest {
     }
 
     @Test
-    public void setDefaultModelFromIds_withValidIds_setsCorrectFormat() {
-        config.setDefaultModelFromIds("openai", "gpt-4");
-        assertEquals("openai/gpt-4", config.getDefaultModel());
-    }
-
-    @Test
-    public void setDefaultModelFromIds_withNullProviderId_setsEmptyString() {
-        config.setDefaultModelFromIds(null, "gpt-4");
-        assertEquals("", config.getDefaultModel());
-    }
-
-    @Test
-    public void setDefaultModelFromIds_withNullModelId_setsEmptyString() {
-        config.setDefaultModelFromIds("openai", null);
-        assertEquals("", config.getDefaultModel());
-    }
-
-    @Test
-    public void setDefaultModelFromIds_withBothNull_setsEmptyString() {
-        config.setDefaultModelFromIds(null, null);
-        assertEquals("", config.getDefaultModel());
-    }
-
-    @Test
-    public void setDefaultModelFromIds_withEmptyStrings_setsSlashFormat() {
-        config.setDefaultModelFromIds("", "");
-        assertEquals("/", config.getDefaultModel());
-    }
-
-    @Test
-    public void setDefaultModelFromIds_withComplexIds_setsCorrectFormat() {
-        config.setDefaultModelFromIds("anthropic-ai", "claude-3-opus-20240229");
-        assertEquals("anthropic-ai/claude-3-opus-20240229", config.getDefaultModel());
-    }
-
-    @Test
-    public void setDefaultModelFromIds_thenGetIds_returnsCorrectValues() {
-        config.setDefaultModelFromIds("openai", "gpt-4-turbo");
-        
-        assertEquals("openai", config.getDefaultProviderId());
-        assertEquals("gpt-4-turbo", config.getDefaultModelId());
-    }
-
-    @Test
     public void setDefaultModel_thenGetIds_returnsCorrectValues() {
         config.setDefaultModel("anthropic/claude-3-sonnet");
         

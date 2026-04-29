@@ -23,6 +23,7 @@ import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.tool.ToolResult;
+import io.finett.droidclaw.util.TokenEstimator;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -121,7 +122,8 @@ public class MemorySystemIntegrationTest {
             return null;
         }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
 
-        assertTrue("Should need summarization for large conversation", summarizer.needsSummarization(conversation));
+        assertTrue("Should need summarization for large conversation",
+            summarizer.needsSummarization(TokenEstimator.estimateTokens(conversation)));
 
         final boolean[] callbackCalled = {false};
         final List<ChatMessage>[] resultHolder = new List[1];
@@ -271,7 +273,8 @@ public class MemorySystemIntegrationTest {
 
         ConversationSummarizer summarizer = new ConversationSummarizer(mockApiService, memoryRepository);
 
-        assertTrue("Should need summarization", summarizer.needsSummarization(conversation));
+        assertTrue("Should need summarization",
+            summarizer.needsSummarization(TokenEstimator.estimateTokens(conversation)));
 
         doAnswer(invocation -> {
             LlmApiService.ChatCallback callback = invocation.getArgument(2);

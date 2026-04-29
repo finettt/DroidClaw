@@ -33,7 +33,6 @@ import java.util.UUID;
 
 import io.finett.droidclaw.adapter.ChatSessionAdapter;
 import io.finett.droidclaw.fragment.ChatFragment;
-import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.SessionType;
 import io.finett.droidclaw.model.TaskResult;
@@ -497,14 +496,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return null;
-    }
-
-    /**
-     * Get the messages of the current chat session for LLM-based title generation.
-     */
-    public List<ChatMessage> getCurrentSessionMessages() {
-        if (currentSessionId == null) return null;
-        return chatRepository.loadMessages(currentSessionId);
     }
 
     /**

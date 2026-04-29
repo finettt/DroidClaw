@@ -48,7 +48,7 @@ public class AgentLoopTest {
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        agentLoop = new AgentLoop(mockApiService, mockToolRegistry);
+        agentLoop = new AgentLoop(mockApiService, mockToolRegistry, null);
     }
 
     @Test
@@ -739,53 +739,6 @@ public class AgentLoopTest {
         assertEquals("Total completion should be cumulative", 500, agentLoop.getTotalCompletionTokens()); // 200 + 300
         
         assertEquals("Total tool calls should be 1", 1, agentLoop.getTotalToolCalls());
-    }
-
-    @Test
-    public void testTokenTracking_resetTokens() {
-        agentLoop.setTokensFromSession(1000, 800, 200, 5000, 4000, 1000, 10);
-        
-        assertEquals(1000, agentLoop.getCurrentContextTokens());
-        assertEquals(5000, agentLoop.getTotalTokens());
-        
-        agentLoop.resetTokens();
-        
-        assertEquals("All tokens should be reset", 0, agentLoop.getCurrentContextTokens());
-        assertEquals("All tokens should be reset", 0, agentLoop.getCurrentPromptTokens());
-        assertEquals("All tokens should be reset", 0, agentLoop.getCurrentCompletionTokens());
-        assertEquals("All tokens should be reset", 0, agentLoop.getTotalTokens());
-        assertEquals("All tokens should be reset", 0, agentLoop.getTotalPromptTokens());
-        assertEquals("All tokens should be reset", 0, agentLoop.getTotalCompletionTokens());
-        assertEquals("All tokens should be reset", 0, agentLoop.getTotalToolCalls());
-    }
-
-    @Test
-    public void testTokenTracking_resetCurrentContextOnly() {
-        agentLoop.setTokensFromSession(1000, 800, 200, 5000, 4000, 1000, 10);
-        
-        agentLoop.resetCurrentContext();
-        
-        assertEquals("Current context should be reset", 0, agentLoop.getCurrentContextTokens());
-        assertEquals("Current prompt should be reset", 0, agentLoop.getCurrentPromptTokens());
-        assertEquals("Current completion should be reset", 0, agentLoop.getCurrentCompletionTokens());
-        
-        assertEquals("Total tokens should be preserved", 5000, agentLoop.getTotalTokens());
-        assertEquals("Total prompt should be preserved", 4000, agentLoop.getTotalPromptTokens());
-        assertEquals("Total completion should be preserved", 1000, agentLoop.getTotalCompletionTokens());
-        assertEquals("Tool calls should be preserved", 10, agentLoop.getTotalToolCalls());
-    }
-
-    @Test
-    public void testTokenTracking_setFromSession() {
-        agentLoop.setTokensFromSession(1500, 1200, 300, 10000, 8000, 2000, 25);
-        
-        assertEquals(1500, agentLoop.getCurrentContextTokens());
-        assertEquals(1200, agentLoop.getCurrentPromptTokens());
-        assertEquals(300, agentLoop.getCurrentCompletionTokens());
-        assertEquals(10000, agentLoop.getTotalTokens());
-        assertEquals(8000, agentLoop.getTotalPromptTokens());
-        assertEquals(2000, agentLoop.getTotalCompletionTokens());
-        assertEquals(25, agentLoop.getTotalToolCalls());
     }
 
     @Test
