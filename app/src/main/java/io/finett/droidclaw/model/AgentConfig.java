@@ -95,11 +95,4 @@ public class AgentConfig {
         return parts.length > 1 ? parts[1] : null;
     }
 
-    public void setDefaultModelFromIds(String providerId, String modelId) {
-        if (providerId != null && modelId != null) {
-            this.defaultModel = providerId + "/" + modelId;
-        } else {
-            this.defaultModel = "";
-        }
-    }
 }

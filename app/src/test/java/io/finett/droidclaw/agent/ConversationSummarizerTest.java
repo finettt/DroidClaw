@@ -19,6 +19,7 @@ import java.util.List;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.MemoryRepository;
+import io.finett.droidclaw.util.TokenEstimator;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ConversationSummarizerTest {
@@ -43,7 +44,7 @@ public class ConversationSummarizerTest {
     public void testNeedsSummarization_belowThreshold_returnsFalse() {
         List<ChatMessage> messages = createSmallMessages(5);
 
-        boolean needs = summarizer.needsSummarization(messages);
+        boolean needs = summarizer.needsSummarization(TokenEstimator.estimateTokens(messages));
 
         assertFalse("Should not need summarization below threshold", needs);
     }
@@ -52,7 +53,7 @@ public class ConversationSummarizerTest {
     public void testNeedsSummarization_atThreshold_returnsTrue() {
         List<ChatMessage> messages = createLargeMessages(3, 800);
 
-        boolean needs = summarizer.needsSummarization(messages);
+        boolean needs = summarizer.needsSummarization(TokenEstimator.estimateTokens(messages));
 
         assertTrue("Should need summarization at threshold", needs);
     }
@@ -61,7 +62,7 @@ public class ConversationSummarizerTest {
     public void testNeedsSummarization_aboveThreshold_returnsTrue() {
         List<ChatMessage> messages = createLargeMessages(5, 800);
 
-        boolean needs = summarizer.needsSummarization(messages);
+        boolean needs = summarizer.needsSummarization(TokenEstimator.estimateTokens(messages));
 
         assertTrue("Should need summarization above threshold", needs);
     }
@@ -70,16 +71,16 @@ public class ConversationSummarizerTest {
     public void testNeedsSummarization_emptyList_returnsFalse() {
         List<ChatMessage> messages = new ArrayList<>();
 
-        boolean needs = summarizer.needsSummarization(messages);
+        boolean needs = summarizer.needsSummarization(TokenEstimator.estimateTokens(messages));
 
         assertFalse("Empty list should not need summarization", needs);
     }
 
     @Test
-    public void testNeedsSummarization_nullList_returnsFalse() {
-        boolean needs = summarizer.needsSummarization(null);
+    public void testNeedsSummarization_zeroTokens_returnsFalse() {
+        boolean needs = summarizer.needsSummarization(0);
 
-        assertFalse("Null list should not need summarization", needs);
+        assertFalse("Zero tokens should not need summarization", needs);
     }
 
     @Test
@@ -334,7 +335,7 @@ public class ConversationSummarizerTest {
     public void testNeedsSummarization_singleLargeMessage() {
         List<ChatMessage> messages = createLargeMessages(1, 3100);
 
-        boolean needs = summarizer.needsSummarization(messages);
+        boolean needs = summarizer.needsSummarization(TokenEstimator.estimateTokens(messages));
 
         assertTrue("Single large message should need summarization", needs);
     }
@@ -346,7 +347,7 @@ public class ConversationSummarizerTest {
             messages.add(new ChatMessage("small message", ChatMessage.TYPE_USER));
         }
 
-        boolean needs = summarizer.needsSummarization(messages);
+        boolean needs = summarizer.needsSummarization(TokenEstimator.estimateTokens(messages));
 
         assertTrue("Many small messages should need summarization", needs);
     }

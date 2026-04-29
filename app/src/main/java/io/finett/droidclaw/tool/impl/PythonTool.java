@@ -167,7 +167,4 @@ public class PythonTool implements Tool {
         }
     }
 
-    public void shutdown() {
-        executor.shutdown();
-    }
 }

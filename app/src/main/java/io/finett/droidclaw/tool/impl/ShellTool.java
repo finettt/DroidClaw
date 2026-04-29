@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.IOException;
 
 import io.finett.droidclaw.filesystem.PathValidator;
-import io.finett.droidclaw.filesystem.VirtualFileSystem;
 import io.finett.droidclaw.shell.ShellConfig;
 import io.finett.droidclaw.shell.ShellExecutor;
 import io.finett.droidclaw.shell.ShellResult;
@@ -20,47 +19,9 @@ public class ShellTool implements Tool {
     private final ShellExecutor executor;
     private final PathValidator pathValidator;
 
-    /** @deprecated Use {@link #ShellTool(VirtualFileSystem)} instead for proper sandboxing. */
-    @Deprecated
-    public ShellTool(File workspaceRoot) {
-        this(workspaceRoot, ShellConfig.createDefault());
-    }
-
-    /** @deprecated Use {@link #ShellTool(VirtualFileSystem, ShellConfig)} instead for proper sandboxing. */
-    @Deprecated
-    public ShellTool(File workspaceRoot, ShellConfig config) {
-        this.pathValidator = new PathValidator(workspaceRoot);
-        this.executor = new ShellExecutor(config, pathValidator);
-    }
-
-    public ShellTool(VirtualFileSystem virtualFileSystem) {
-        this(virtualFileSystem, ShellConfig.createDefault());
-    }
-
-    public ShellTool(VirtualFileSystem virtualFileSystem, ShellConfig config) {
-        // VirtualFileSystem does not expose PathValidator directly; use extractPathValidator as workaround
-        this.pathValidator = extractPathValidator(virtualFileSystem);
-        this.executor = new ShellExecutor(config, pathValidator);
-    }
-
     public ShellTool(PathValidator pathValidator, ShellConfig config) {
         this.pathValidator = pathValidator;
         this.executor = new ShellExecutor(config, pathValidator);
-    }
-
-    private static PathValidator extractPathValidator(VirtualFileSystem vfs) {
-        // VirtualFileSystem does not expose PathValidator; callers should use ShellTool(PathValidator, ShellConfig)
-        try {
-            vfs.listFiles(".", false);
-            throw new UnsupportedOperationException(
-                "VirtualFileSystem does not expose PathValidator. " +
-                "Use ShellTool(PathValidator, ShellConfig) constructor instead."
-            );
-        } catch (Exception e) {
-            throw new IllegalArgumentException(
-                "Cannot extract PathValidator from VirtualFileSystem: " + e.getMessage()
-            );
-        }
     }
 
     @Override

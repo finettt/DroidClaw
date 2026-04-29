@@ -74,10 +74,6 @@ public class AgentLoop {
         void onDenied();
     }
 
-    public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry) {
-        this(apiService, toolRegistry, null, null, null);
-    }
-    
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager) {
         this(apiService, toolRegistry, settingsManager, null, null);
     }
@@ -541,17 +537,6 @@ public class AgentLoop {
         return totalToolCalls;
     }
 
-    public void resetTokens() {
-        currentContextTokens = 0;
-        currentPromptTokens = 0;
-        currentCompletionTokens = 0;
-        totalTokens = 0;
-        totalPromptTokens = 0;
-        totalCompletionTokens = 0;
-        totalToolCalls = 0;
-        Log.d(TAG, "Token counters reset");
-    }
-
     public void resetCurrentContext() {
         currentContextTokens = 0;
         currentPromptTokens = 0;
@@ -559,15 +544,4 @@ public class AgentLoop {
         Log.d(TAG, "Current context tokens reset (session totals preserved)");
     }
 
-    public void setTokensFromSession(int currentContext, int currentPrompt, int currentCompletion,
-                                      int total, int totalPrompt, int totalCompletion, int toolCalls) {
-        this.currentContextTokens = currentContext;
-        this.currentPromptTokens = currentPrompt;
-        this.currentCompletionTokens = currentCompletion;
-        this.totalTokens = total;
-        this.totalPromptTokens = totalPrompt;
-        this.totalCompletionTokens = totalCompletion;
-        this.totalToolCalls = toolCalls;
-        Log.d(TAG, "Token counters restored from session");
-    }
 }

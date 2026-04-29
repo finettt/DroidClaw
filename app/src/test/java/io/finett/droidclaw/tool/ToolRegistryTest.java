@@ -20,8 +20,6 @@ import java.io.File;
 import java.util.List;
 
 import io.finett.droidclaw.filesystem.VirtualFileSystem;
-import io.finett.droidclaw.python.PythonExecutor;
-import io.finett.droidclaw.shell.ShellExecutor;
 
 @RunWith(RobolectricTestRunner.class)
 public class ToolRegistryTest {
@@ -189,18 +187,6 @@ public class ToolRegistryTest {
     public void testGetVirtualFileSystem() {
         VirtualFileSystem vfs = toolRegistry.getVirtualFileSystem();
         assertNotNull("VirtualFileSystem should not be null", vfs);
-    }
-
-    @Test
-    public void testGetShellExecutor() {
-        ShellExecutor shellExecutor = toolRegistry.getShellExecutor();
-        assertNotNull("ShellExecutor should not be null", shellExecutor);
-    }
-
-    @Test
-    public void testGetPythonExecutor() {
-        PythonExecutor pythonExecutor = toolRegistry.getPythonExecutor();
-        assertNotNull("PythonExecutor should not be null", pythonExecutor);
     }
 
     @Test
