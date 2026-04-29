@@ -164,4 +164,16 @@ public class ToolRegistry {
     public File getWorkspaceRoot() {
         return workspaceManager.getWorkspaceRoot();
     }
+
+    /**
+     * Release resources held by registered tools that own lifecycle-managed executors.
+     * Must be called when the registry is discarded (e.g. fragment onDestroy, worker completion).
+     */
+    public void shutdown() {
+        for (Tool tool : tools.values()) {
+            if (tool instanceof PythonTool) {
+                ((PythonTool) tool).shutdown();
+            }
+        }
+    }
 }

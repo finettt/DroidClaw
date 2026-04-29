@@ -722,5 +722,8 @@ public class ChatFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         apiService.cancelAllRequests();
+        if (toolRegistry != null) {
+            toolRegistry.shutdown();
+        }
     }
 }
