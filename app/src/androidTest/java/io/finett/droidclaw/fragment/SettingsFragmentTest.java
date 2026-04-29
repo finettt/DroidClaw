@@ -5,9 +5,6 @@ import static androidx.test.core.app.ApplicationProvider.getApplicationContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.view.View;
 import android.view.View;
 
 import androidx.fragment.app.testing.FragmentScenario;
@@ -26,13 +23,9 @@ import io.finett.droidclaw.util.SettingsManager;
 @RunWith(AndroidJUnit4.class)
 public class SettingsFragmentTest {
 
-    private static final String PREFS_NAME = "droidclaw_settings";
-
     @Before
     public void setUp() {
-        SharedPreferences prefs = getApplicationContext()
-                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        prefs.edit().clear().commit();
+        new SettingsManager(getApplicationContext()).clear();
     }
 
     @Test

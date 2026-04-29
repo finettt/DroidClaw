@@ -40,7 +40,6 @@ import io.finett.droidclaw.util.SettingsManager;
 @RunWith(AndroidJUnit4.class)
 public class ChatFragmentTest {
 
-    private static final String SETTINGS_PREFS = "droidclaw_settings";
     private static final String CHAT_PREFS = "chat_messages";
 
     @Rule
@@ -48,9 +47,7 @@ public class ChatFragmentTest {
 
     @Before
     public void setUp() {
-        SharedPreferences settingsPrefs = getApplicationContext()
-                .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
-        settingsPrefs.edit().clear().commit();
+        new SettingsManager(getApplicationContext()).clear();
 
         SharedPreferences chatPrefs = getApplicationContext()
                 .getSharedPreferences(CHAT_PREFS, Context.MODE_PRIVATE);

@@ -7,8 +7,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.view.View;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -35,16 +33,12 @@ import io.finett.droidclaw.util.SettingsManager;
 @RunWith(AndroidJUnit4.class)
 public class OnboardingFragmentTest {
 
-    private static final String SETTINGS_PREFS = "droidclaw_settings";
-
     @Rule
     public FlakyTestRule flakyTestRule = new FlakyTestRule();
 
     @Before
     public void setUp() {
-        SharedPreferences prefs = getApplicationContext()
-                .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
-        prefs.edit().clear().commit();
+        new SettingsManager(getApplicationContext()).clear();
     }
 
     @Test

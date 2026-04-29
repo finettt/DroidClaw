@@ -4,10 +4,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import androidx.security.crypto.EncryptedSharedPreferences;
+import androidx.security.crypto.MasterKey;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -20,7 +25,10 @@ import io.finett.droidclaw.model.Provider;
 
 public class SettingsManager {
     private static final String TAG = "SettingsManager";
-    private static final String PREFS_NAME = "droidclaw_settings";
+    /** Legacy plaintext prefs name – kept for migration only. */
+    private static final String LEGACY_PREFS_NAME = "droidclaw_settings";
+    /** Encrypted prefs file name. */
+    private static final String ENCRYPTED_PREFS_NAME = "droidclaw_settings_secure";
     private static final String KEY_SETTINGS_JSON = "settings_json";
 
     private final SharedPreferences prefs;
@@ -35,8 +43,68 @@ public class SettingsManager {
 
     public SettingsManager(Context context) {
         this.context = context;
-        this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        this.prefs = getOrCreateEncryptedPrefs(context);
         loadFromJson();
+    }
+
+    /**
+     * Returns an EncryptedSharedPreferences instance backed by the Android Keystore.
+     * On first run after the migration, existing plaintext data is copied over and the
+     * legacy file is deleted.
+     */
+    private SharedPreferences getOrCreateEncryptedPrefs(Context ctx) {
+        try {
+            MasterKey masterKey = new MasterKey.Builder(ctx)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build();
+
+            SharedPreferences encryptedPrefs = EncryptedSharedPreferences.create(
+                    ctx,
+                    ENCRYPTED_PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            );
+
+            // Migrate from legacy plaintext prefs if they still exist
+            migrateLegacyPrefsIfNeeded(ctx, encryptedPrefs);
+
+            return encryptedPrefs;
+        } catch (GeneralSecurityException | IOException e) {
+            // Fallback to plaintext prefs if encryption fails (should not happen on API 23+)
+            Log.e(TAG, "Failed to create EncryptedSharedPreferences, falling back to plaintext", e);
+            return ctx.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE);
+        }
+    }
+
+    /**
+     * One-time migration: copy data from the old plaintext SharedPreferences to the new
+     * encrypted store and then delete the legacy file.
+     */
+    private void migrateLegacyPrefsIfNeeded(Context ctx, SharedPreferences encryptedPrefs) {
+        SharedPreferences legacyPrefs = ctx.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE);
+        String legacyJson = legacyPrefs.getString(KEY_SETTINGS_JSON, null);
+
+        if (legacyJson != null) {
+            // Only migrate if encrypted store is empty (first run after upgrade)
+            if (!encryptedPrefs.contains(KEY_SETTINGS_JSON)) {
+                encryptedPrefs.edit().putString(KEY_SETTINGS_JSON, legacyJson).apply();
+                Log.i(TAG, "Migrated settings from plaintext to encrypted storage");
+            }
+            // Clear legacy prefs so migration doesn't repeat
+            legacyPrefs.edit().clear().apply();
+
+            // Attempt to delete the legacy file from disk
+            try {
+                java.io.File legacyFile = new java.io.File(
+                        ctx.getApplicationInfo().dataDir + "/shared_prefs/" + LEGACY_PREFS_NAME + ".xml");
+                if (legacyFile.exists() && legacyFile.delete()) {
+                    Log.i(TAG, "Deleted legacy plaintext prefs file");
+                }
+            } catch (SecurityException se) {
+                Log.w(TAG, "Could not delete legacy prefs file", se);
+            }
+        }
     }
 
     // ==================== JSON Serialization ====================
@@ -570,5 +638,17 @@ public class SettingsManager {
             envVars.remove(key);
             saveToJson();
         }
+    }
+
+    // ==================== Test / Reset Helpers ====================
+
+    /**
+     * Clears all settings from the encrypted storage and resets in-memory state.
+     * Use this in tests or for a factory reset, rather than reaching for the
+     * underlying SharedPreferences file directly.
+     */
+    public void clear() {
+        prefs.edit().clear().apply();
+        initializeDefaults();
     }
 }
