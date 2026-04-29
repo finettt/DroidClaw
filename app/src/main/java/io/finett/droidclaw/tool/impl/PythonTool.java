@@ -167,4 +167,9 @@ public class PythonTool implements Tool {
         }
     }
 
+    public void shutdown() {
+        if (executor != null) {
+            executor.shutdown();
+        }
+    }
 }

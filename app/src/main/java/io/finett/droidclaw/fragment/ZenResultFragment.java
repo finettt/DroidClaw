@@ -19,6 +19,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import io.finett.droidclaw.MainActivity;
@@ -165,21 +166,43 @@ public class ZenResultFragment extends Fragment {
             return;
         }
 
-
-        // In a full implementation, you'd show a picker of existing chats
-        MainActivity mainActivity = (MainActivity) requireActivity();
-        ChatSession session = mainActivity.getMostRecentChatSession();
-
-        if (session != null) {
-            // Inject task result into existing chat to add context
-            continuationService.continueInExistingChat(taskResult, session.getId());
-
-            Bundle args = new Bundle();
-            args.putString(ChatFragment.ARG_SESSION_ID, session.getId());
-            Navigation.findNavController(requireView()).navigate(R.id.chatFragment, args);
-        } else {
+        List<ChatSession> visibleSessions = new ChatRepository(requireContext()).getVisibleSessions();
+        if (visibleSessions.isEmpty()) {
             Toast.makeText(requireContext(), "No existing chats available", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        if (visibleSessions.size() == 1) {
+            continueInSelectedChat(visibleSessions.get(0));
+            return;
+        }
+
+        CharSequence[] sessionTitles = new CharSequence[visibleSessions.size()];
+        for (int i = 0; i < visibleSessions.size(); i++) {
+            ChatSession session = visibleSessions.get(i);
+            String title = session.getTitle();
+            sessionTitles[i] = (title == null || title.trim().isEmpty())
+                    ? getString(R.string.new_chat)
+                    : title;
+        }
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.chat_continuation_existing)
+                .setItems(sessionTitles, (dialog, which) -> continueInSelectedChat(visibleSessions.get(which)))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void continueInSelectedChat(ChatSession session) {
+        if (session == null) {
+            return;
+        }
+
+        continuationService.continueInExistingChat(taskResult, session.getId());
+
+        Bundle args = new Bundle();
+        args.putString(ChatFragment.ARG_SESSION_ID, session.getId());
+        Navigation.findNavController(requireView()).navigate(R.id.chatFragment, args);
     }
 
     private void shareResult() {

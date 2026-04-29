@@ -128,9 +128,10 @@ public abstract class BaseTaskWorker extends Worker {
             return result;
         }
 
+        ToolRegistry toolRegistry = null;
         try {
             LlmApiService apiService = createApiService();
-            ToolRegistry toolRegistry = createToolRegistry();
+            toolRegistry = createToolRegistry();
 
             AgentLoop agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager);
 
@@ -221,6 +222,10 @@ public abstract class BaseTaskWorker extends Worker {
             Log.e(TAG, errorMsg, e);
             executionRecord.fail(endTime, errorMsg);
             result = createFailureResult(taskId, taskType, endTime, errorMsg);
+        } finally {
+            if (toolRegistry != null) {
+                toolRegistry.shutdown();
+            }
         }
 
         taskRepository.saveExecutionRecord(executionRecord);
