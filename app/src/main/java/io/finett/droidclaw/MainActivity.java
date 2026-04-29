@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.UUID;
 
 import io.finett.droidclaw.adapter.ChatSessionAdapter;
+import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.fragment.ChatFragment;
 import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.SessionType;
@@ -51,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private final List<ChatSession> chatSessions = new ArrayList<>();
     private ChatRepository chatRepository;
     private SettingsManager settingsManager;
+    private LlmApiService apiService;
     private String currentSessionId;
 
     @Override
@@ -67,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout = findViewById(R.id.drawer_layout);
         chatRepository = new ChatRepository(this);
         settingsManager = new SettingsManager(this);
+        apiService = new LlmApiService(settingsManager);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -518,6 +521,14 @@ public class MainActivity extends AppCompatActivity {
         chatRepository.saveSessions(chatSessions);
         chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
         Log.d(TAG, "Updated session title: " + sessionId + " -> " + newTitle);
+    }
+
+    /**
+     * Returns the shared LlmApiService scoped to the Activity.
+     * ChatFragment uses this to avoid canceling requests on chat switches.
+     */
+    public LlmApiService getApiService() {
+        return apiService;
     }
 
     @Override
