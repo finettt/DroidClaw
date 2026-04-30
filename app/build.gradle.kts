@@ -127,6 +127,7 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.okhttp)
     implementation(libs.gson)
+    implementation(libs.security.crypto)
     
     // WorkManager for background task execution
     implementation("androidx.work:work-runtime-ktx:2.9.0")

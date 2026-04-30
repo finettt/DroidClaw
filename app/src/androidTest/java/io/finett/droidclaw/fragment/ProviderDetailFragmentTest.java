@@ -7,8 +7,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -34,13 +32,9 @@ import io.finett.droidclaw.util.SettingsManager;
 @RunWith(AndroidJUnit4.class)
 public class ProviderDetailFragmentTest {
 
-    private static final String SETTINGS_PREFS = "droidclaw_settings";
-
     @Before
     public void setUp() {
-        SharedPreferences prefs = getApplicationContext()
-                .getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE);
-        prefs.edit().clear().commit();
+        new SettingsManager(getApplicationContext()).clear();
     }
 
     @Test
