@@ -1,5 +1,6 @@
 package io.finett.droidclaw.shell;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,10 +29,16 @@ public class ShellConfig {
     /**
      * Directories searched (in order) when resolving unqualified executable names.
      * Only these directories are trusted; PATH from the environment is ignored.
+     *
+     * <p>Android paths come first; Linux/desktop paths are included so unit tests
+     * can run on development workstations. Non-existent directories are silently
+     * skipped at resolution time.
      */
     static final List<String> DEFAULT_TRUSTED_DIRS = Collections.unmodifiableList(Arrays.asList(
         "/system/bin",
-        "/system/xbin"
+        "/system/xbin",
+        "/usr/bin",
+        "/bin"
     ));
 
     private final int timeoutSeconds;
@@ -201,76 +208,127 @@ public class ShellConfig {
         List<AllowlistEntry> list = new ArrayList<>();
 
         // ls — directory listing; only safe display flags
-        list.add(new AllowlistEntry.Builder("/system/bin/ls")
-                .allowFlags("-l", "-a", "-h", "-1", "-A", "-p", "-la", "-lah", "-lh", "--help")
-                .build());
+        for (String path : resolveAllPaths("ls")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .allowFlags("-l", "-a", "-h", "-1", "-A", "-p", "-la", "-lah", "-lh", "--help")
+                    .build());
+        }
 
         // cat — file content; limit to 1 file at a time to reduce exfil surface
-        list.add(new AllowlistEntry.Builder("/system/bin/cat")
-                .maxPositionalArgs(1)
-                .build());
+        for (String path : resolveAllPaths("cat")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .maxPositionalArgs(1)
+                    .build());
+        }
 
         // echo — output only; no flags that write to files
-        list.add(new AllowlistEntry.Builder("/system/bin/echo")
-                .denyFlags("-e")   // -e enables escape interpretation (potential injection)
-                .build());
+        for (String path : resolveAllPaths("echo")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .denyFlags("-e")   // -e enables escape interpretation (potential injection)
+                    .build());
+        }
 
         // pwd — current directory
-        list.add(new AllowlistEntry.Builder("/system/bin/pwd")
-                .maxPositionalArgs(0)
-                .build());
+        for (String path : resolveAllPaths("pwd")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .maxPositionalArgs(0)
+                    .build());
+        }
 
         // date — current date/time
-        list.add(new AllowlistEntry.Builder("/system/bin/date")
-                .maxPositionalArgs(1)
-                .build());
+        for (String path : resolveAllPaths("date")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .maxPositionalArgs(1)
+                    .build());
+        }
 
         // grep — text search; read-only
-        list.add(new AllowlistEntry.Builder("/system/bin/grep")
-                .allowFlags("-r", "-l", "-n", "-i", "-E", "-F", "-c", "-v",
-                            "--include", "--exclude", "-m", "--help")
-                .build());
+        for (String path : resolveAllPaths("grep")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .allowFlags("-r", "-l", "-n", "-i", "-E", "-F", "-c", "-v",
+                                "--include", "--exclude", "-m", "--help")
+                    .build());
+        }
 
         // find — file search; -exec, -delete, -execdir are denied
-        list.add(new AllowlistEntry.Builder("/system/bin/find")
-                .denyFlags("-exec", "-execdir", "-delete", "-ok", "-okdir")
-                .build());
+        for (String path : resolveAllPaths("find")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .denyFlags("-exec", "-execdir", "-delete", "-ok", "-okdir")
+                    .build());
+        }
 
         // wc — word/line/byte count
-        list.add(new AllowlistEntry.Builder("/system/bin/wc")
-                .allowFlags("-l", "-c", "-w", "-m", "--help")
-                .build());
+        for (String path : resolveAllPaths("wc")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .allowFlags("-l", "-c", "-w", "-m", "--help")
+                    .build());
+        }
 
         // head — first N lines
-        list.add(new AllowlistEntry.Builder("/system/bin/head")
-                .allowFlags("-n", "--help")
-                .maxPositionalArgs(1)
-                .build());
+        for (String path : resolveAllPaths("head")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .allowFlags("-n", "--help")
+                    .maxPositionalArgs(1)
+                    .build());
+        }
 
         // tail — last N lines (no -f to prevent hang)
-        list.add(new AllowlistEntry.Builder("/system/bin/tail")
-                .allowFlags("-n", "--help")
-                .denyFlags("-f", "--follow")
-                .maxPositionalArgs(1)
-                .build());
+        for (String path : resolveAllPaths("tail")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .allowFlags("-n", "--help")
+                    .denyFlags("-f", "--follow")
+                    .maxPositionalArgs(1)
+                    .build());
+        }
 
         // uname — system info
-        list.add(new AllowlistEntry.Builder("/system/bin/uname")
-                .allowFlags("-a", "-r", "-m", "-s", "--help")
-                .maxPositionalArgs(0)
-                .build());
+        for (String path : resolveAllPaths("uname")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .allowFlags("-a", "-r", "-m", "-s", "--help")
+                    .maxPositionalArgs(0)
+                    .build());
+        }
 
         // id — current user/group info
-        list.add(new AllowlistEntry.Builder("/system/bin/id")
-                .maxPositionalArgs(0)
-                .build());
+        for (String path : resolveAllPaths("id")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .maxPositionalArgs(0)
+                    .build());
+        }
 
         // env — list environment variables (read-only; no set/unset)
-        list.add(new AllowlistEntry.Builder("/system/bin/env")
-                .maxPositionalArgs(0)
-                .build());
+        for (String path : resolveAllPaths("env")) {
+            list.add(new AllowlistEntry.Builder(path)
+                    .maxPositionalArgs(0)
+                    .build());
+        }
 
         return list;
+    }
+
+    /**
+     * Resolve all canonical paths for {@code exeName} across every trusted directory.
+     *
+     * <p>On Android the binary lives in {@code /system/bin}; on Linux CI it may be in
+     * {@code /usr/bin} or {@code /bin} (or a Nix store path reached via a symlink).
+     * We add an entry for every path found so the allowlist works on both platforms
+     * without hardcoding OS-specific locations.
+     *
+     * <p>If no trusted directory contains {@code exeName}, the list will be empty and
+     * the command simply won't appear in the allowlist — which is the safe default.
+     */
+    private static List<String> resolveAllPaths(String exeName) {
+        List<String> paths = new ArrayList<>();
+        for (String dir : DEFAULT_TRUSTED_DIRS) {
+            File candidate = new File(dir, exeName);
+            if (candidate.exists() && candidate.canExecute()) {
+                String absolute = candidate.getAbsolutePath();
+                if (!paths.contains(absolute)) {
+                    paths.add(absolute);
+                }
+            }
+        }
+        return paths;
     }
 
     // ==================== Builder ====================

@@ -11,14 +11,37 @@ import static org.junit.Assert.*;
 
 /**
  * Unit tests for {@link ShellExecutor} using the new ExecPlan-based API.
+ *
+ * <p>Executable paths are resolved at runtime via {@link #findExe(String)} so the
+ * tests work on both Android (where binaries live in {@code /system/bin}) and on
+ * Linux development / CI hosts (where they live in {@code /usr/bin} or {@code /bin}).
  */
 public class ShellExecutorTest {
 
     private File cwd;
 
+    /** Resolve an unqualified executable name through the trusted-dirs list. */
+    private static String findExe(String name) throws Exception {
+        ShellConfig cfg = ShellConfig.createFull();
+        File tmp = new File(System.getProperty("java.io.tmpdir"));
+        ExecPlanner planner = new ExecPlanner(cfg, tmp);
+        return planner.plan(name, tmp).getCanonicalExePath();
+    }
+
+    private static String ECHO;
+    private static String PRINTF;
+    private static String SLEEP;
+    private static String SH;
+    private static String PWD_EXE;
+
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         cwd = new File(System.getProperty("java.io.tmpdir"));
+        ECHO    = findExe("echo");
+        PRINTF  = findExe("printf");
+        SLEEP   = findExe("sleep");
+        SH      = findExe("sh");
+        PWD_EXE = findExe("pwd");
     }
 
     private ExecPlan plan(String exe, String... argv) {
@@ -31,7 +54,7 @@ public class ShellExecutorTest {
     public void execute_simpleEchoCommand_succeeds() {
         ShellConfig config = ShellConfig.createFull();
         ShellExecutor executor = new ShellExecutor(config);
-        ExecPlan p = plan("/system/bin/echo", "Hello World");
+        ExecPlan p = plan(ECHO, "Hello World");
 
         ShellResult result = executor.execute(p);
 
@@ -46,7 +69,7 @@ public class ShellExecutorTest {
         ShellConfig config = ShellConfig.createFull();
         ShellExecutor executor = new ShellExecutor(config);
         // ls on a non-existent directory produces stderr
-        ExecPlan p = plan("/system/bin/ls", "/nonexistent_directory_12345");
+        ExecPlan p = plan(findExeSilent("ls"), "/nonexistent_directory_12345");
 
         ShellResult result = executor.execute(p);
 
@@ -60,7 +83,7 @@ public class ShellExecutorTest {
         ShellConfig config = ShellConfig.createFull();
         ShellExecutor executor = new ShellExecutor(config);
         // Use printf for predictable multiline output
-        ExecPlan p = plan("/system/bin/printf", "line1\\nline2\\nline3\\n");
+        ExecPlan p = plan(PRINTF, "line1\\nline2\\nline3\\n");
 
         ShellResult result = executor.execute(p);
 
@@ -80,7 +103,7 @@ public class ShellExecutorTest {
                 .timeoutSeconds(1)
                 .build();
         ShellExecutor executor = new ShellExecutor(shortConfig);
-        ExecPlan p = plan("/system/bin/sleep", "5");
+        ExecPlan p = plan(SLEEP, "5");
 
         ShellResult result = executor.execute(p);
 
@@ -92,7 +115,7 @@ public class ShellExecutorTest {
     public void execute_customTimeoutViaParameter() {
         ShellConfig config = ShellConfig.createFull();
         ShellExecutor executor = new ShellExecutor(config);
-        ExecPlan p = plan("/system/bin/echo", "test");
+        ExecPlan p = plan(ECHO, "test");
 
         ShellResult result = executor.execute(p, 60);
 
@@ -109,7 +132,7 @@ public class ShellExecutorTest {
         File subDir = new File(cwd, "shell_exec_test_subdir");
         subDir.mkdirs();
         try {
-            ExecPlan p = new ExecPlan("/system/bin/pwd", Collections.emptyList(),
+            ExecPlan p = new ExecPlan(PWD_EXE, Collections.emptyList(),
                     subDir, ExecPlan.ExecMode.DIRECT);
             ShellResult result = executor.execute(p);
 
@@ -128,9 +151,10 @@ public class ShellExecutorTest {
     public void execute_exitCodeCaptured() {
         ShellConfig config = ShellConfig.createFull();
         ShellExecutor executor = new ShellExecutor(config);
-        // Use sh -c to run exit 42, but we need SHELL mode for that
-        ExecPlan p = new ExecPlan("/system/bin/sh",
-                Arrays.asList("-c", "exit 42"),
+        // In SHELL mode, the executor wraps the plan as: sh -c "<exe> <argv...>".
+        // So represent the shell built-in directly instead of nesting "sh -c" twice.
+        ExecPlan p = new ExecPlan("exit",
+                Arrays.asList("42"),
                 cwd, ExecPlan.ExecMode.SHELL);
 
         ShellResult result = executor.execute(p);
@@ -144,7 +168,7 @@ public class ShellExecutorTest {
     public void execute_denyPolicy_rejectsAll() {
         ShellConfig config = ShellConfig.createDefault(); // DENY
         ShellExecutor executor = new ShellExecutor(config);
-        ExecPlan p = plan("/system/bin/echo", "test");
+        ExecPlan p = plan(ECHO, "test");
 
         executor.execute(p);
     }
@@ -153,7 +177,8 @@ public class ShellExecutorTest {
     public void execute_allowlistPolicy_allowsListedCommand() {
         ShellConfig config = ShellConfig.createAllowlistDefault();
         ShellExecutor executor = new ShellExecutor(config);
-        ExecPlan p = plan("/system/bin/echo", "allowlisted");
+        // Use the allowlisted echo path (resolved via planner in setUp)
+        ExecPlan p = plan(ECHO, "allowlisted");
 
         ShellResult result = executor.execute(p);
 
@@ -165,7 +190,7 @@ public class ShellExecutorTest {
     public void execute_allowlistPolicy_rejectsUnlistedCommand() {
         ShellConfig config = ShellConfig.createAllowlistDefault();
         ShellExecutor executor = new ShellExecutor(config);
-        ExecPlan p = plan("/system/bin/rm", "-rf", "/");
+        ExecPlan p = plan(findExeSilent("rm"), "-rf", "/");
 
         executor.execute(p);
     }
@@ -179,9 +204,9 @@ public class ShellExecutorTest {
 
         // Build a plan then tamper with its internal state by creating a forged plan
         // with a mismatched hash.
-        ExecPlan original = plan("/system/bin/echo", "original");
+        ExecPlan original = plan(ECHO, "original");
         // Create a plan that claims the hash of a different plan
-        ExecPlan forged = new ExecPlan("/system/bin/echo",
+        ExecPlan forged = new ExecPlan(ECHO,
                 Arrays.asList("tampered"), cwd, ExecPlan.ExecMode.DIRECT) {
             @Override
             public String getPlanHash() {
@@ -208,7 +233,7 @@ public class ShellExecutorTest {
         ShellConfig config = ShellConfig.createFull();
         ShellExecutor executor = new ShellExecutor(config);
         // In SHELL mode, sh -c is used so pipes work
-        ExecPlan p = new ExecPlan("/system/bin/echo",
+        ExecPlan p = new ExecPlan(ECHO,
                 Arrays.asList("hello"),
                 cwd, ExecPlan.ExecMode.SHELL);
 
@@ -216,5 +241,16 @@ public class ShellExecutorTest {
 
         assertEquals(0, result.getExitCode());
         assertTrue(result.getStdout().contains("hello"));
+    }
+
+    // ==================== Helper ====================
+
+    /** Like {@link #findExe} but wraps checked exception (for use in lambda/field init). */
+    private static String findExeSilent(String name) {
+        try {
+            return findExe(name);
+        } catch (Exception e) {
+            throw new RuntimeException("Cannot resolve executable: " + name, e);
+        }
     }
 }

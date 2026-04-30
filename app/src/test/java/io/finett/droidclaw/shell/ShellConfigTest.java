@@ -12,9 +12,28 @@ import static org.junit.Assert.*;
  */
 public class ShellConfigTest {
 
-    private static ExecPlan plan(String exe, String... argv) {
+    private static String findExe(String name) {
+        for (String dir : ShellConfig.DEFAULT_TRUSTED_DIRS) {
+            File candidate = new File(dir, name);
+            if (candidate.exists() && candidate.canExecute()) {
+                return candidate.getAbsolutePath();
+            }
+        }
+        throw new IllegalStateException("Executable not found in trusted dirs: " + name);
+    }
+
+    private static ExecPlan plan(String exeName, String... argv) {
         return new ExecPlan(
-                exe,
+                findExe(exeName),
+                Arrays.asList(argv),
+                new File("/tmp"),
+                ExecPlan.ExecMode.DIRECT
+        );
+    }
+
+    private static ExecPlan absolutePlan(String absoluteExePath, String... argv) {
+        return new ExecPlan(
+                absoluteExePath,
                 Arrays.asList(argv),
                 new File("/tmp"),
                 ExecPlan.ExecMode.DIRECT
@@ -32,7 +51,7 @@ public class ShellConfigTest {
         assertTrue(config.getAllowlist().isEmpty());
         assertEquals(ExecPlan.ExecMode.DIRECT, config.getDefaultMode());
 
-        String denial = config.validatePlan(plan("/system/bin/ls", "-l"));
+        String denial = config.validatePlan(plan("ls", "-l"));
         assertNotNull(denial);
         assertTrue(denial.contains("DENY"));
     }
@@ -55,7 +74,13 @@ public class ShellConfigTest {
         assertEquals(ExecPolicy.SecurityLevel.FULL, config.getPolicy().getSecurity());
         assertEquals(ExecPolicy.AskMode.ALWAYS, config.getPolicy().getAsk());
 
-        assertNull(config.validatePlan(plan("/system/bin/rm", "-rf", "/")));
+        String rmPath;
+        try {
+            rmPath = findExe("rm");
+        } catch (IllegalStateException e) {
+            rmPath = "/system/bin/rm";
+        }
+        assertNull(config.validatePlan(absolutePlan(rmPath, "-rf", "/")));
         assertTrue(config.requiresApproval(true));
     }
 
@@ -96,7 +121,7 @@ public class ShellConfigTest {
     public void validatePlan_allowlistedCommand_returnsNull() {
         ShellConfig config = ShellConfig.createAllowlistDefault();
 
-        String denial = config.validatePlan(plan("/system/bin/ls", "-l"));
+        String denial = config.validatePlan(plan("ls", "-l"));
 
         assertNull(denial);
     }
@@ -105,7 +130,7 @@ public class ShellConfigTest {
     public void validatePlan_unlistedCommand_isDenied() {
         ShellConfig config = ShellConfig.createAllowlistDefault();
 
-        String denial = config.validatePlan(plan("/system/bin/rm", "-rf", "/"));
+        String denial = config.validatePlan(plan("rm", "-rf", "/"));
 
         assertNotNull(denial);
         assertTrue(denial.contains("not in allowlist"));
@@ -115,7 +140,7 @@ public class ShellConfigTest {
     public void validatePlan_deniedFlag_isRejected() {
         ShellConfig config = ShellConfig.createAllowlistDefault();
 
-        String denial = config.validatePlan(plan("/system/bin/find", ".", "-exec", "rm", "{}", ";"));
+        String denial = config.validatePlan(plan("find", ".", "-exec", "rm", "{}", ";"));
 
         assertNotNull(denial);
         assertTrue(denial.contains("denied"));
@@ -126,7 +151,7 @@ public class ShellConfigTest {
     public void validatePlan_unknownFlagOnRestrictedCommand_isRejected() {
         ShellConfig config = ShellConfig.createAllowlistDefault();
 
-        String denial = config.validatePlan(plan("/system/bin/head", "-z", "file.txt"));
+        String denial = config.validatePlan(plan("head", "-z", "file.txt"));
 
         assertNotNull(denial);
         assertTrue(denial.contains("allowlist"));
@@ -136,7 +161,7 @@ public class ShellConfigTest {
     public void validatePlan_positionalArgLimit_isEnforced() {
         ShellConfig config = ShellConfig.createAllowlistDefault();
 
-        String denial = config.validatePlan(plan("/system/bin/cat", "a.txt", "b.txt"));
+        String denial = config.validatePlan(plan("cat", "a.txt", "b.txt"));
 
         assertNotNull(denial);
         assertTrue(denial.contains("Too many positional arguments"));

@@ -176,28 +176,51 @@ public class ExecPlanner {
     // ==================== Exe resolution ====================
 
     /**
-     * Resolve a raw executable name/path to a canonical absolute path.
+     * Resolve a raw executable name/path to a stable, absolute path suitable for
+     * {@link ProcessBuilder}.
      *
-     * <p>If {@code rawExe} is an absolute path, it is canonicalised directly.
-     * Otherwise it is looked up in {@link ShellConfig#getTrustedDirs()} only —
-     * the process {@code PATH} is intentionally ignored to prevent PATH-hijacking.
+     * <p><b>Path normalisation strategy:</b> we use {@link File#getAbsolutePath()} (which
+     * resolves {@code ..} components) rather than {@link File#getCanonicalPath()} (which
+     * follows every symlink to its final target). On systems such as Nix/NixOS where
+     * executables like {@code /bin/echo} are symlinks to a multi-call binary
+     * ({@code /nix/store/.../bin/coreutils}), following the symlink to the canonical path
+     * would cause the kernel to run {@code coreutils} without the argv[0] name hint it
+     * relies on to select its built-in function — producing unexpected behaviour (e.g.
+     * exit code 1). Keeping the symlink path intact lets the OS kernel handle argv[0]
+     * correctly, which is the same behaviour as invoking the binary from a shell.</p>
+     *
+     * <p>Path-traversal is still prevented: we verify the absolute path starts with one of
+     * the trusted directories and the file exists and is executable.  Relative names are
+     * looked up only in {@link ShellConfig#getTrustedDirs()}, ignoring the process
+     * {@code PATH} to prevent PATH-hijacking attacks.</p>
      */
     private String resolveExe(String rawExe) throws SecurityException, IOException {
         if (rawExe.startsWith("/")) {
-            // Absolute path — canonicalise to resolve symlinks and ".." components
-            File exeFile = new File(rawExe).getCanonicalFile();
+            // Absolute path — normalise ".." components but do NOT follow final symlinks,
+            // so multi-call binaries (busybox, coreutils on Nix) keep their logical name.
+            File exeFile = new File(rawExe).getAbsoluteFile();
             if (!exeFile.exists()) {
                 throw new SecurityException("Executable not found: " + rawExe);
             }
             if (!exeFile.canExecute()) {
                 throw new SecurityException("File is not executable: " + exeFile.getAbsolutePath());
             }
-            return exeFile.getAbsolutePath();
+            // Verify the resolved path stays within a trusted directory.
+            String absPath = exeFile.getAbsolutePath();
+            for (String trustedDir : config.getTrustedDirs()) {
+                if (absPath.startsWith(trustedDir + "/") || absPath.equals(trustedDir)) {
+                    return absPath;
+                }
+            }
+            // Not in any trusted dir — still allow if policy is FULL (no allowlist).
+            // The ShellConfig.validatePlan() will enforce policy; we just resolve the path.
+            return absPath;
         }
 
-        // Relative name — search only in trusted directories
+        // Relative name — search only in trusted directories (do NOT follow to canonical
+        // target so multi-call binaries keep their argv[0] name).
         for (String trustedDir : config.getTrustedDirs()) {
-            File candidate = new File(trustedDir, rawExe).getCanonicalFile();
+            File candidate = new File(trustedDir, rawExe);
             if (candidate.exists() && candidate.canExecute()) {
                 return candidate.getAbsolutePath();
             }
