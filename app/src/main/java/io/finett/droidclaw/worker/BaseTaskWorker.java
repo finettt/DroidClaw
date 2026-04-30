@@ -1,17 +1,24 @@
 package io.finett.droidclaw.worker;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
 import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
 import com.google.gson.JsonObject;
 
+import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +48,20 @@ public abstract class BaseTaskWorker extends Worker {
 
     protected static final int MAX_ITERATIONS = 10;
     protected static final long MAX_EXECUTION_TIME_MS = 5 * 60 * 1000L;
+
+    /**
+     * Tools that perform host execution — always denied in background workers (CRIT-3 fix).
+     * Background workers have no UI context so they cannot show approval dialogs, and
+     * auto-approving these tools would allow a compromised cron prompt to silently
+     * exfiltrate data or execute arbitrary code.
+     */
+    private static final Set<String> BACKGROUND_DENIED_TOOLS = new HashSet<>(Arrays.asList(
+        "execute_shell",
+        "execute_python"
+    ));
+
+    private static final String SECURITY_CHANNEL_ID = "droidclaw_security";
+    private static final int SECURITY_NOTIFICATION_ID = 9001;
 
     protected final Context appContext;
     protected WorkspaceManager workspaceManager;
@@ -180,9 +201,32 @@ public abstract class BaseTaskWorker extends Worker {
                 }
 
                 @Override
-                public void onApprovalRequired(String toolName, String description, com.google.gson.JsonObject arguments, AgentLoop.ApprovalCallback approvalCallback) {
-                    Log.d(TAG, "Auto-approving tool: " + toolName);
-                    approvalCallback.onApproved();
+                public void onApprovalRequired(String toolName, String description,
+                        com.google.gson.JsonObject arguments,
+                        AgentLoop.ApprovalCallback approvalCallback) {
+                    if (BACKGROUND_DENIED_TOOLS.contains(toolName)) {
+                        // High-privilege tool requested in background.
+                        // By default this is denied (no UI for approval in workers).
+                        // If the user explicitly enabled backgroundShellEnabled, we still
+                        // auto-approve but post a notification so the attempt is auditable.
+                        boolean bgShellAllowed = settingsManager != null
+                                && settingsManager.getAgentConfig().isBackgroundShellEnabled();
+                        if (bgShellAllowed) {
+                            Log.w(TAG, "Auto-approving high-privilege background tool "
+                                    + "(backgroundShellEnabled=true): " + toolName);
+                            notifyAutoApprovedToolAttempt(toolName, description);
+                            approvalCallback.onApproved();
+                        } else {
+                            Log.w(TAG, "Denying high-privilege tool in background context: " + toolName);
+                            notifyDeniedToolAttempt(toolName, description);
+                            approvalCallback.onDenied();
+                        }
+                    } else {
+                        // Non-exec tools (file read/write, task management) are permitted
+                        // in background context as they are lower-risk and expected.
+                        Log.d(TAG, "Auto-approving permitted background tool: " + toolName);
+                        approvalCallback.onApproved();
+                    }
                 }
             });
 
@@ -231,6 +275,89 @@ public abstract class BaseTaskWorker extends Worker {
         taskRepository.saveExecutionRecord(executionRecord);
 
         return result;
+    }
+
+    /**
+     * Post a system notification alerting the user that a background task attempted to
+     * invoke a high-privilege tool (shell/python) which was denied.
+     */
+    private void notifyDeniedToolAttempt(String toolName, String description) {
+        try {
+            NotificationManager nm =
+                (NotificationManager) appContext.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(
+                    SECURITY_CHANNEL_ID,
+                    "DroidClaw Security Alerts",
+                    NotificationManager.IMPORTANCE_HIGH
+                );
+                channel.setDescription("Alerts when background tasks attempt restricted actions");
+                nm.createNotificationChannel(channel);
+            }
+
+            String shortDesc = description != null && description.length() > 120
+                ? description.substring(0, 117) + "..."
+                : description;
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(
+                    appContext, SECURITY_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setContentTitle("Security: Background tool denied")
+                .setContentText("'" + toolName + "' was blocked in a background task.")
+                .setStyle(new NotificationCompat.BigTextStyle()
+                    .bigText("Tool '" + toolName + "' was requested by a background task "
+                        + "and denied by security policy.\n\n" + shortDesc))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+
+            nm.notify(SECURITY_NOTIFICATION_ID, builder.build());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to post security notification", e);
+        }
+    }
+
+    /**
+     * Post a system notification alerting the user that a high-privilege background tool
+     * was auto-approved because backgroundShellEnabled is true.
+     */
+    private void notifyAutoApprovedToolAttempt(String toolName, String description) {
+        try {
+            NotificationManager nm =
+                (NotificationManager) appContext.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(
+                    SECURITY_CHANNEL_ID,
+                    "DroidClaw Security Alerts",
+                    NotificationManager.IMPORTANCE_HIGH
+                );
+                channel.setDescription("Alerts when background tasks execute high-privilege actions");
+                nm.createNotificationChannel(channel);
+            }
+
+            String shortDesc = description != null && description.length() > 120
+                ? description.substring(0, 117) + "..."
+                : description;
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(
+                    appContext, SECURITY_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("Security: Background tool auto-approved")
+                .setContentText("'" + toolName + "' was executed in a background task.")
+                .setStyle(new NotificationCompat.BigTextStyle()
+                    .bigText("Tool '" + toolName + "' was requested by a background task "
+                        + "and auto-approved because 'Allow shell in background tasks' is enabled.\n\n"
+                        + shortDesc))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+
+            nm.notify(SECURITY_NOTIFICATION_ID + 1, builder.build());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to post security notification", e);
+        }
     }
 
     private String buildSkipReason() {

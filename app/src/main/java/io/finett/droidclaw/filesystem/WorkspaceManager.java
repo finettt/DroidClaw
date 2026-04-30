@@ -144,6 +144,10 @@ public class WorkspaceManager {
 
         if (file.exists()) {
             Log.d(TAG, "Identity file already exists: " + workspacePath);
+            // Ensure existing file is also read-only (idempotent hardening)
+            if (file.canWrite()) {
+                file.setWritable(false, false);
+            }
             return;
         }
 
@@ -151,7 +155,13 @@ public class WorkspaceManager {
 
         try (InputStream inputStream = context.getAssets().open(assetPath)) {
             copyInputStreamToFile(inputStream, file);
-            Log.d(TAG, "Created identity file: " + workspacePath);
+            // Mark read-only to prevent LLM-instructed persistent prompt injection (MED-1).
+            // The VirtualFileSystem also enforces this via PROTECTED_PATHS, but defence-in-depth
+            // means the OS-level read-only bit provides a second layer.
+            if (!file.setWritable(false, false)) {
+                Log.w(TAG, "Could not mark identity file as read-only: " + workspacePath);
+            }
+            Log.d(TAG, "Created identity file (read-only): " + workspacePath);
         }
     }
 
@@ -160,6 +170,9 @@ public class WorkspaceManager {
 
         if (file.exists()) {
             Log.d(TAG, "Heartbeat template already exists: " + HEARTBEAT_FILE);
+            if (file.canWrite()) {
+                file.setWritable(false, false);
+            }
             return;
         }
 
@@ -167,10 +180,14 @@ public class WorkspaceManager {
 
         try (InputStream inputStream = context.getAssets().open("heartbeat/HEARTBEAT.md")) {
             copyInputStreamToFile(inputStream, file);
-            Log.d(TAG, "Created heartbeat template: " + HEARTBEAT_FILE);
+            if (!file.setWritable(false, false)) {
+                Log.w(TAG, "Could not mark heartbeat template as read-only: " + HEARTBEAT_FILE);
+            }
+            Log.d(TAG, "Created heartbeat template (read-only): " + HEARTBEAT_FILE);
         } catch (IOException e) {
             Log.w(TAG, "Failed to copy heartbeat template, using empty file", e);
             file.createNewFile();
+            file.setWritable(false, false);
         }
     }
 

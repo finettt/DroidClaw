@@ -3,83 +3,124 @@ package io.finett.droidclaw.shell;
 import android.os.Build;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import io.finett.droidclaw.filesystem.PathValidator;
-
+/**
+ * Executes shell commands via normalised {@link ExecPlan} objects.
+ *
+ * <p>Security model:
+ * <ul>
+ *   <li>The primary API is {@link #execute(ExecPlan, int)} which accepts only a pre-validated,
+ *       approved plan — never a raw string.</li>
+ *   <li>In {@link ExecPlan.ExecMode#DIRECT} mode, the process is started via
+ *       {@code ProcessBuilder(argv[])} with no shell interpreter. Shell metacharacters
+ *       (already rejected by {@link ExecPlanner}) cannot be interpreted.</li>
+ *   <li>In {@link ExecPlan.ExecMode#SHELL} mode, {@code sh -c} is used. This mode
+ *       requires explicit opt-in and the policy must mandate {@code ask=ALWAYS}.</li>
+ *   <li>The plan's SHA-256 hash is re-verified immediately before the process starts.
+ *       If any field was mutated between approval and execution, the hash will not match
+ *       and execution is aborted (substitution-attack prevention).</li>
+ * </ul>
+ *
+ * <p>The old {@code execute(String command, ...)} API that accepted raw shell strings
+ * is removed. Callers must use {@link ExecPlanner} to build an {@link ExecPlan} first.
+ */
 public class ShellExecutor {
+
     private final ShellConfig config;
-    private final PathValidator pathValidator;
 
     public ShellExecutor(ShellConfig config) {
         this.config = config;
-        this.pathValidator = null;
     }
 
-    public ShellExecutor(ShellConfig config, PathValidator pathValidator) {
-        this.config = config;
-        this.pathValidator = pathValidator;
+    // ==================== Primary API ====================
+
+    /**
+     * Execute a pre-validated, approved {@link ExecPlan} with the config's default timeout.
+     */
+    public ShellResult execute(ExecPlan plan) throws SecurityException {
+        return execute(plan, config.getTimeoutSeconds());
     }
 
-    public ShellResult execute(String command) throws SecurityException {
-        return execute(command, null);
-    }
-
-    public ShellResult execute(String command, File workingDirectory) throws SecurityException {
-        return execute(command, workingDirectory, config.getTimeoutSeconds());
-    }
-
-    public ShellResult executeWithRelativeDir(String command, String relativeWorkingDir)
-            throws SecurityException, IllegalStateException {
-        if (pathValidator == null) {
-            throw new IllegalStateException(
-                "PathValidator not configured. Use execute() with absolute File path instead."
-            );
-        }
-        
-        File workingDir;
-        try {
-            workingDir = pathValidator.validateAndResolve(relativeWorkingDir);
-        } catch (IOException e) {
-            throw new SecurityException("Invalid working directory: " + relativeWorkingDir +
-                " - " + e.getMessage());
-        }
-        
-        return execute(command, workingDir, config.getTimeoutSeconds());
-    }
-
-    public ShellResult execute(String command, File workingDirectory, int timeoutSeconds)
-            throws SecurityException {
-        if (!config.isEnabled()) {
-            throw new SecurityException("Shell execution is disabled");
+    /**
+     * Execute a pre-validated, approved {@link ExecPlan}.
+     *
+     * <p>Steps:
+     * <ol>
+     *   <li>Re-verify the plan hash (substitution-attack prevention).</li>
+     *   <li>Validate the plan against the policy/allowlist.</li>
+     *   <li>Build the process command (DIRECT: argv[]; SHELL: sh -c ...).</li>
+     *   <li>Start the process, capture stdout/stderr, enforce timeout.</li>
+     * </ol>
+     *
+     * @param plan           the normalised, hash-locked execution plan
+     * @param timeoutSeconds maximum execution time before forcible termination
+     * @throws SecurityException if the plan hash has changed, the policy denies the command,
+     *                           or the working directory is outside the workspace
+     */
+    public ShellResult execute(ExecPlan plan, int timeoutSeconds) throws SecurityException {
+        if (plan == null) {
+            throw new SecurityException("ExecPlan must not be null");
         }
 
-        if (!config.isCommandAllowed(command)) {
-            throw new SecurityException("Command is not allowed: " + command);
+        // 1. Re-verify plan hash (TOCTOU / substitution-attack prevention)
+        String recomputedHash = ExecPlan.computeHash(
+                plan.getCanonicalExePath(),
+                plan.getArgv(),
+                plan.getCwd(),
+                plan.getMode());
+        if (!recomputedHash.equals(plan.getPlanHash())) {
+            throw new SecurityException(
+                "ExecPlan hash mismatch — plan may have been tampered with. "
+                + "Expected: " + plan.getPlanHash().substring(0, 8) + "..."
+                + "  Got: " + recomputedHash.substring(0, 8) + "...");
         }
 
-        // Validate working directory is within the workspace sandbox
-        if (workingDirectory != null && pathValidator != null) {
-            try {
-                String canonicalWorkspace = pathValidator.getWorkspaceRoot().getCanonicalPath();
-                String canonicalDir = workingDirectory.getCanonicalPath();
-                
-                if (!canonicalDir.startsWith(canonicalWorkspace)) {
-                    throw new SecurityException(
-                        "Working directory is outside workspace sandbox: " + workingDirectory
-                    );
-                }
-            } catch (IOException e) {
-                throw new SecurityException(
-                    "Cannot validate working directory: " + e.getMessage()
-                );
+        // 2. Policy/allowlist validation
+        String denial = config.validatePlan(plan);
+        if (denial != null) {
+            throw new SecurityException(denial);
+        }
+
+        // 3. Build process command
+        List<String> command = buildCommand(plan);
+
+        // 4. Execute
+        return runProcess(command, plan.getCwd(), timeoutSeconds);
+    }
+
+    // ==================== Command building ====================
+
+    private List<String> buildCommand(ExecPlan plan) {
+        List<String> command = new ArrayList<>();
+
+        if (plan.getMode() == ExecPlan.ExecMode.DIRECT) {
+            // No shell — exe + argv directly
+            command.add(plan.getCanonicalExePath());
+            command.addAll(plan.getArgv());
+        } else {
+            // SHELL mode — reconstruct command string for sh -c
+            // (only reached when policy explicitly permits shell mode)
+            StringBuilder sb = new StringBuilder(plan.getCanonicalExePath());
+            for (String arg : plan.getArgv()) {
+                sb.append(' ').append(arg);
             }
+            command.add("sh");
+            command.add("-c");
+            command.add(sb.toString());
         }
 
+        return command;
+    }
+
+    // ==================== Process runner ====================
+
+    private ShellResult runProcess(List<String> command, java.io.File cwd, int timeoutSeconds) {
         long startTime = System.currentTimeMillis();
         Process process = null;
         boolean timedOut = false;
@@ -88,27 +129,20 @@ public class ShellExecutor {
         String stderr = "";
 
         try {
-            ProcessBuilder builder = new ProcessBuilder("sh", "-c", command);
-            if (workingDirectory != null && workingDirectory.exists() && workingDirectory.isDirectory()) {
-                builder.directory(workingDirectory);
-            }
-
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.directory(cwd);
             builder.redirectErrorStream(false);
             process = builder.start();
 
-            // Read stdout and stderr in separate threads to avoid deadlock
+            // Read stdout and stderr concurrently to avoid deadlock
             StreamGobbler stdoutGobbler = new StreamGobbler(
-                process.getInputStream(), 
-                config.getMaxOutputSize()
-            );
+                    process.getInputStream(), config.getMaxOutputSize());
             StreamGobbler stderrGobbler = new StreamGobbler(
-                process.getErrorStream(), 
-                config.getMaxOutputSize()
-            );
+                    process.getErrorStream(), config.getMaxOutputSize());
 
-            Thread stdoutThread = new Thread(stdoutGobbler);
-            Thread stderrThread = new Thread(stderrGobbler);
-            
+            Thread stdoutThread = new Thread(stdoutGobbler, "shell-stdout");
+            Thread stderrThread = new Thread(stderrGobbler, "shell-stderr");
+
             stdoutThread.start();
             stderrThread.start();
 
@@ -129,10 +163,10 @@ public class ShellExecutor {
             stderr = stderrGobbler.getOutput();
 
         } catch (IOException e) {
-            stderr = "Failed to execute command: " + e.getMessage();
+            stderr = "Failed to start process: " + e.getMessage();
             exitCode = -1;
         } catch (InterruptedException e) {
-            stderr = "Command execution interrupted: " + e.getMessage();
+            stderr = "Process execution interrupted: " + e.getMessage();
             exitCode = -1;
             timedOut = true;
             destroyProcessForcibly(process);
@@ -145,7 +179,10 @@ public class ShellExecutor {
         return new ShellResult(stdout, stderr, exitCode, timedOut, executionTime);
     }
 
-    private boolean waitForProcess(Process process, int timeoutSeconds) throws InterruptedException {
+    // ==================== Process lifecycle helpers ====================
+
+    private boolean waitForProcess(Process process, int timeoutSeconds)
+            throws InterruptedException {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             return process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
         } else {
@@ -156,9 +193,9 @@ public class ShellExecutor {
                     process.waitFor();
                     finished[0] = true;
                 } catch (InterruptedException e) {
-                    // interrupted by timeout
+                    Thread.currentThread().interrupt();
                 }
-            });
+            }, "shell-wait");
             processThread.start();
             processThread.join(timeoutSeconds * 1000L);
             if (finished[0]) {
@@ -171,9 +208,7 @@ public class ShellExecutor {
     }
 
     private void destroyProcessForcibly(Process process) {
-        if (process == null) {
-            return;
-        }
+        if (process == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (process.isAlive()) {
                 process.destroyForcibly();
@@ -183,15 +218,16 @@ public class ShellExecutor {
         }
     }
 
+    // ==================== Stream gobbler ====================
+
     private static class StreamGobbler implements Runnable {
         private final InputStream inputStream;
         private final int maxSize;
-        private final StringBuilder output;
+        private final StringBuilder output = new StringBuilder();
 
-        public StreamGobbler(InputStream inputStream, int maxSize) {
+        StreamGobbler(InputStream inputStream, int maxSize) {
             this.inputStream = inputStream;
             this.maxSize = maxSize;
-            this.output = new StringBuilder();
         }
 
         @Override
@@ -200,20 +236,20 @@ public class ShellExecutor {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     if (output.length() + line.length() + 1 > maxSize) {
-                        output.append("\n[Output truncated - size limit reached]");
+                        output.append("\n[Output truncated — size limit reached]");
                         break;
                     }
                     if (output.length() > 0) {
-                        output.append("\n");
+                        output.append('\n');
                     }
                     output.append(line);
                 }
             } catch (IOException e) {
-                // stream was closed when the process terminated
+                // Stream closed when process terminated — expected
             }
         }
 
-        public String getOutput() {
+        String getOutput() {
             return output.toString();
         }
     }

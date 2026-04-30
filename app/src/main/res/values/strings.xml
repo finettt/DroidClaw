@@ -78,13 +78,18 @@
     <string name="shell_access_description">Allow agent to execute shell commands</string>
     <string name="sandbox_mode">Sandbox Mode</string>
     <string name="sandbox_strict">Strict (Workspace only)</string>
-    <string name="sandbox_relaxed">Relaxed (External storage access)</string>
+    <string name="sandbox_relaxed">Relaxed (Allowlisted commands)</string>
+    <string name="sandbox_full">Full (Any command, always ask)</string>
     <string name="max_iterations">Max Iterations</string>
     <string name="max_iterations_description">Maximum tool execution cycles</string>
     <string name="require_approval">Require Approval</string>
     <string name="require_approval_description">Confirm before executing tools</string>
     <string name="shell_timeout">Shell Timeout (seconds)</string>
     <string name="shell_timeout_description">Command execution limit</string>
+    <string name="background_shell_access">Shell in Background Tasks</string>
+    <string name="background_shell_access_description">Allow cron jobs and workers to run shell/Python commands</string>
+    <string name="custom_allowlist">Custom Command Allowlist</string>
+    <string name="custom_allowlist_description">Extra executable paths allowed in Relaxed mode (one per line)</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Welcome to DroidClaw</string>

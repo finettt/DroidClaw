@@ -2,38 +2,74 @@ package io.finett.droidclaw.shell;
 
 import org.junit.Test;
 
+import java.io.File;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 import static org.junit.Assert.*;
 
+/**
+ * Unit tests for {@link ShellConfig} after the allowlist/policy hardening rewrite.
+ */
 public class ShellConfigTest {
 
-    @Test
-    public void testDefaultConfig() {
-        ShellConfig config = ShellConfig.createDefault();
-        
-        assertTrue(config.isEnabled());
-        assertEquals(30, config.getTimeoutSeconds());
-        assertEquals(1024 * 1024, config.getMaxOutputSize());
-        assertFalse(config.isRequireApproval());
-        assertNotNull(config.getBlockedCommands());
-        assertFalse(config.getBlockedCommands().isEmpty());
-        assertTrue(config.getAllowedCommands().isEmpty());
+    private static ExecPlan plan(String exe, String... argv) {
+        return new ExecPlan(
+                exe,
+                Arrays.asList(argv),
+                new File("/tmp"),
+                ExecPlan.ExecMode.DIRECT
+        );
     }
 
     @Test
-    public void testBuilderTimeout() {
+    public void createDefault_deniesAllExecution() {
+        ShellConfig config = ShellConfig.createDefault();
+
+        assertEquals(30, config.getTimeoutSeconds());
+        assertEquals(1024 * 1024, config.getMaxOutputSize());
+        assertEquals(ExecPolicy.SecurityLevel.DENY, config.getPolicy().getSecurity());
+        assertEquals(ExecPolicy.AskMode.OFF, config.getPolicy().getAsk());
+        assertTrue(config.getAllowlist().isEmpty());
+        assertEquals(ExecPlan.ExecMode.DIRECT, config.getDefaultMode());
+
+        String denial = config.validatePlan(plan("/system/bin/ls", "-l"));
+        assertNotNull(denial);
+        assertTrue(denial.contains("DENY"));
+    }
+
+    @Test
+    public void createAllowlistDefault_usesAllowlistPolicy() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        assertEquals(ExecPolicy.SecurityLevel.ALLOWLIST, config.getPolicy().getSecurity());
+        assertEquals(ExecPolicy.AskMode.ON_MISS, config.getPolicy().getAsk());
+        assertFalse(config.getAllowlist().isEmpty());
+        assertEquals(ExecPlan.ExecMode.DIRECT, config.getDefaultMode());
+        assertTrue(config.getTrustedDirs().contains("/system/bin"));
+    }
+
+    @Test
+    public void createFull_usesFullPolicyAndAlwaysAsk() {
+        ShellConfig config = ShellConfig.createFull();
+
+        assertEquals(ExecPolicy.SecurityLevel.FULL, config.getPolicy().getSecurity());
+        assertEquals(ExecPolicy.AskMode.ALWAYS, config.getPolicy().getAsk());
+
+        assertNull(config.validatePlan(plan("/system/bin/rm", "-rf", "/")));
+        assertTrue(config.requiresApproval(true));
+    }
+
+    @Test
+    public void builder_timeoutSeconds_setsTimeout() {
         ShellConfig config = new ShellConfig.Builder()
                 .timeoutSeconds(60)
                 .build();
-        
+
         assertEquals(60, config.getTimeoutSeconds());
     }
 
     @Test
-    public void testBuilderInvalidTimeout() {
+    public void builder_invalidTimeout_throws() {
         try {
             new ShellConfig.Builder()
                     .timeoutSeconds(0)
@@ -45,202 +81,7 @@ public class ShellConfigTest {
     }
 
     @Test
-    public void testBuilderNegativeTimeout() {
-        try {
-            new ShellConfig.Builder()
-                    .timeoutSeconds(-5)
-                    .build();
-            fail("Should have thrown IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("positive"));
-        }
-    }
-
-    @Test
-    public void testBuilderEnabled() {
-        ShellConfig config = new ShellConfig.Builder()
-                .enabled(false)
-                .build();
-        
-        assertFalse(config.isEnabled());
-    }
-
-    @Test
-    public void testBuilderRequireApproval() {
-        ShellConfig config = new ShellConfig.Builder()
-                .requireApproval(true)
-                .build();
-        
-        assertTrue(config.isRequireApproval());
-    }
-
-    @Test
-    public void testAddBlockedCommand() {
-        ShellConfig config = new ShellConfig.Builder()
-                .addBlockedCommand("rm")
-                .build();
-        
-        assertTrue(config.getBlockedCommands().contains("rm"));
-    }
-
-    @Test
-    public void testAddBlockedCommands() {
-        Set<String> blocked = new HashSet<>(Arrays.asList("rm", "mkfs", "dd"));
-        ShellConfig config = new ShellConfig.Builder()
-                .addBlockedCommands(blocked)
-                .build();
-        
-        assertEquals(3, config.getBlockedCommands().size());
-        assertTrue(config.getBlockedCommands().contains("rm"));
-        assertTrue(config.getBlockedCommands().contains("mkfs"));
-        assertTrue(config.getBlockedCommands().contains("dd"));
-    }
-
-    @Test
-    public void testAddAllowedCommand() {
-        ShellConfig config = new ShellConfig.Builder()
-                .addAllowedCommand("echo")
-                .build();
-        
-        assertTrue(config.getAllowedCommands().contains("echo"));
-    }
-
-    @Test
-    public void testAddAllowedCommands() {
-        Set<String> allowed = new HashSet<>(Arrays.asList("echo", "pwd", "ls"));
-        ShellConfig config = new ShellConfig.Builder()
-                .addAllowedCommands(allowed)
-                .build();
-        
-        assertEquals(3, config.getAllowedCommands().size());
-    }
-
-    @Test
-    public void testIsCommandAllowed_AllowedWhenNoRestrictions() {
-        ShellConfig config = ShellConfig.createDefault();
-        
-        assertTrue(config.isCommandAllowed("echo test"));
-        assertTrue(config.isCommandAllowed("ls -la"));
-        assertTrue(config.isCommandAllowed("pwd"));
-    }
-
-    @Test
-    public void testIsCommandAllowed_BlockedCommand() {
-        ShellConfig config = new ShellConfig.Builder()
-                .addBlockedCommand("rm -rf")
-                .enabled(true)
-                .build();
-        
-        assertFalse(config.isCommandAllowed("rm -rf /"));
-        assertFalse(config.isCommandAllowed("rm -rf /home"));
-    }
-
-    @Test
-    public void testIsCommandAllowed_BlockedCommandByFirstToken() {
-        ShellConfig config = new ShellConfig.Builder()
-                .addBlockedCommand("rm")
-                .enabled(true)
-                .build();
-        
-        assertFalse(config.isCommandAllowed("rm -rf /"));
-        assertFalse(config.isCommandAllowed("rm -f file.txt"));
-    }
-
-    @Test
-    public void testIsCommandAllowed_WhitelistOnly() {
-        ShellConfig config = new ShellConfig.Builder()
-                .addAllowedCommand("echo")
-                .addAllowedCommand("pwd")
-                .enabled(true)
-                .build();
-        
-        assertTrue(config.isCommandAllowed("echo test"));
-        assertTrue(config.isCommandAllowed("pwd"));
-        assertFalse(config.isCommandAllowed("ls"));
-        assertFalse(config.isCommandAllowed("cat file.txt"));
-    }
-
-    @Test
-    public void testIsCommandAllowed_BothWhitelistAndBlocklist() {
-        ShellConfig config = new ShellConfig.Builder()
-                .addAllowedCommand("echo")
-                .addAllowedCommand("rm")
-                .addBlockedCommand("rm -rf /")
-                .enabled(true)
-                .build();
-        
-        assertTrue(config.isCommandAllowed("echo test"));
-        assertTrue(config.isCommandAllowed("rm file.txt"));
-        assertFalse(config.isCommandAllowed("rm -rf /"));
-        assertFalse(config.isCommandAllowed("ls"));
-    }
-
-    @Test
-    public void testIsCommandAllowed_Disabled() {
-        ShellConfig config = new ShellConfig.Builder()
-                .enabled(false)
-                .build();
-        
-        assertFalse(config.isCommandAllowed("echo test"));
-    }
-
-    @Test
-    public void testDefaultBlockedCommands() {
-        ShellConfig config = ShellConfig.createDefault();
-
-        assertTrue(config.getBlockedCommands().contains("rm -rf /"));
-        assertTrue(config.getBlockedCommands().contains("mkfs"));
-    }
-
-    @Test
-    public void testBlockedCommandsAreImmutable() {
-        ShellConfig config = ShellConfig.createDefault();
-        Set<String> blocked = config.getBlockedCommands();
-        
-        try {
-            blocked.add("new_command");
-            fail("Should have thrown UnsupportedOperationException");
-        } catch (UnsupportedOperationException e) {
-        }
-    }
-
-    @Test
-    public void testAllowedCommandsAreImmutable() {
-        ShellConfig config = new ShellConfig.Builder()
-                .addAllowedCommand("echo")
-                .build();
-        
-        Set<String> allowed = config.getAllowedCommands();
-        
-        try {
-            allowed.add("ls");
-            fail("Should have thrown UnsupportedOperationException");
-        } catch (UnsupportedOperationException e) {
-        }
-    }
-
-    @Test
-    public void testCommandWithWhitespace() {
-        ShellConfig config = new ShellConfig.Builder()
-                .addBlockedCommand("rm -rf")
-                .enabled(true)
-                .build();
-        
-        // Command with extra whitespace should still be blocked
-        assertFalse(config.isCommandAllowed("   rm -rf /   "));
-    }
-
-    @Test
-    public void testMaxOutputSize() {
-        ShellConfig config = new ShellConfig.Builder()
-                .maxOutputSize(2048)
-                .build();
-        
-        assertEquals(2048, config.getMaxOutputSize());
-    }
-
-    @Test
-    public void testBuilderInvalidMaxOutputSize() {
+    public void builder_invalidMaxOutputSize_throws() {
         try {
             new ShellConfig.Builder()
                     .maxOutputSize(0)
@@ -248,6 +89,98 @@ public class ShellConfigTest {
             fail("Should have thrown IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("positive"));
+        }
+    }
+
+    @Test
+    public void validatePlan_allowlistedCommand_returnsNull() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        String denial = config.validatePlan(plan("/system/bin/ls", "-l"));
+
+        assertNull(denial);
+    }
+
+    @Test
+    public void validatePlan_unlistedCommand_isDenied() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        String denial = config.validatePlan(plan("/system/bin/rm", "-rf", "/"));
+
+        assertNotNull(denial);
+        assertTrue(denial.contains("not in allowlist"));
+    }
+
+    @Test
+    public void validatePlan_deniedFlag_isRejected() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        String denial = config.validatePlan(plan("/system/bin/find", ".", "-exec", "rm", "{}", ";"));
+
+        assertNotNull(denial);
+        assertTrue(denial.contains("denied"));
+        assertTrue(denial.contains("-exec"));
+    }
+
+    @Test
+    public void validatePlan_unknownFlagOnRestrictedCommand_isRejected() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        String denial = config.validatePlan(plan("/system/bin/head", "-z", "file.txt"));
+
+        assertNotNull(denial);
+        assertTrue(denial.contains("allowlist"));
+    }
+
+    @Test
+    public void validatePlan_positionalArgLimit_isEnforced() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        String denial = config.validatePlan(plan("/system/bin/cat", "a.txt", "b.txt"));
+
+        assertNotNull(denial);
+        assertTrue(denial.contains("Too many positional arguments"));
+    }
+
+    @Test
+    public void requiresApproval_alwaysAskPolicy_returnsTrue() {
+        ShellConfig config = new ShellConfig.Builder()
+                .policy(ExecPolicy.allowlistAlwaysAsk())
+                .build();
+
+        assertTrue(config.requiresApproval(true));
+        assertTrue(config.requiresApproval(false));
+    }
+
+    @Test
+    public void requiresApproval_onMiss_returnsFalseWhenAllowed_trueWhenDenied() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        assertFalse(config.requiresApproval(true));
+        assertTrue(config.requiresApproval(false));
+    }
+
+    @Test
+    public void trustedDirs_areImmutable() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        try {
+            config.getTrustedDirs().add("/tmp");
+            fail("trustedDirs should be immutable");
+        } catch (UnsupportedOperationException expected) {
+            // expected
+        }
+    }
+
+    @Test
+    public void allowlist_isImmutable() {
+        ShellConfig config = ShellConfig.createAllowlistDefault();
+
+        try {
+            config.getAllowlist().clear();
+            fail("allowlist should be immutable");
+        } catch (UnsupportedOperationException expected) {
+            // expected
         }
     }
 }

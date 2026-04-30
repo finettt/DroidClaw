@@ -7,13 +7,30 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class VirtualFileSystem {
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     private static final int MAX_LINES_PER_READ = 10000;
+
+    /**
+     * Paths (relative to workspace root, normalised with forward slashes, no leading slash)
+     * that the LLM/agent is NOT allowed to write or delete.
+     * Prevents persistent prompt injection via identity-file overwrite (MED-1).
+     */
+    private static final Set<String> PROTECTED_PATHS = Collections.unmodifiableSet(
+        new HashSet<>(Arrays.asList(
+            ".agent/soul.md",
+            ".agent/user.md",
+            ".agent/HEARTBEAT.md"
+        ))
+    );
 
     private final PathValidator pathValidator;
 
@@ -65,8 +82,28 @@ public class VirtualFileSystem {
         return new FileReadResult(content, totalLines, linesRead, truncated);
     }
 
+    /**
+     * Normalise a caller-supplied path to the canonical form used in PROTECTED_PATHS:
+     * forward slashes, no leading slash, trimmed.
+     */
+    private static String normaliseForProtectionCheck(String path) {
+        if (path == null) return "";
+        return path.replace('\\', '/').replaceAll("^/+", "").trim();
+    }
+
+    /**
+     * Throw SecurityException if the path resolves to a protected identity file.
+     */
+    private void checkNotProtected(String path) throws SecurityException {
+        if (PROTECTED_PATHS.contains(normaliseForProtectionCheck(path))) {
+            throw new SecurityException(
+                "Path is protected and cannot be written or deleted: " + path);
+        }
+    }
+
     public boolean writeFile(String path, String content, boolean append)
             throws IOException, SecurityException {
+        checkNotProtected(path);
         File file = pathValidator.validateAndResolve(path);
 
         File parentDir = file.getParentFile();
@@ -127,6 +164,7 @@ public class VirtualFileSystem {
     }
 
     public boolean deleteFile(String path) throws IOException, SecurityException {
+        checkNotProtected(path);
         File file = pathValidator.validateAndResolve(path);
 
         if (!file.exists()) {

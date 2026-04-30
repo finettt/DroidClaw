@@ -30,9 +30,12 @@ public class PathValidator {
         String canonicalWorkspace = workspaceRoot.getCanonicalPath();
         String canonicalTarget = targetFile.getCanonicalPath();
 
-        if (!canonicalTarget.startsWith(canonicalWorkspace)) {
+        // Use separator-terminated prefix to prevent sibling-directory bypass:
+        // e.g. /workspace-evil would wrongly pass startsWith(/workspace) without the separator.
+        if (!canonicalTarget.equals(canonicalWorkspace)
+                && !canonicalTarget.startsWith(canonicalWorkspace + File.separator)) {
             throw new SecurityException(
-                "Path traversal detected: " + relativePath + 
+                "Path traversal detected: " + relativePath +
                 " resolves outside workspace"
             );
         }
@@ -58,7 +61,8 @@ public class PathValidator {
             String canonicalWorkspace = workspaceRoot.getCanonicalPath();
             String canonicalFile = file.getCanonicalPath();
 
-            if (!canonicalFile.startsWith(canonicalWorkspace)) {
+            if (!canonicalFile.equals(canonicalWorkspace)
+                    && !canonicalFile.startsWith(canonicalWorkspace + File.separator)) {
                 throw new IllegalArgumentException("File is not within workspace");
             }
 

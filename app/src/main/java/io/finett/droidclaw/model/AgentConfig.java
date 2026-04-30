@@ -1,24 +1,33 @@
 package io.finett.droidclaw.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class AgentConfig {
     private String defaultModel; // Format: "provider-id/model-id"
     private boolean shellAccess;
-    private String sandboxMode; // "strict" or "relaxed"
+    private String sandboxMode; // "strict", "relaxed", or "full"
     private int maxIterations;
     private boolean requireApproval;
     private int shellTimeout;
+    private boolean backgroundShellEnabled; // allow shell/python in background workers
+    private List<String> customAllowlist; // extra executable paths for relaxed mode
 
     public AgentConfig() {
+        this.customAllowlist = new ArrayList<>();
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
-                       int maxIterations, boolean requireApproval, int shellTimeout) {
+                       int maxIterations, boolean requireApproval, int shellTimeout,
+                       boolean backgroundShellEnabled, List<String> customAllowlist) {
         this.defaultModel = defaultModel;
         this.shellAccess = shellAccess;
         this.sandboxMode = sandboxMode;
         this.maxIterations = maxIterations;
         this.requireApproval = requireApproval;
         this.shellTimeout = shellTimeout;
+        this.backgroundShellEnabled = backgroundShellEnabled;
+        this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
     }
 
     public static AgentConfig getDefaults() {
@@ -28,7 +37,9 @@ public class AgentConfig {
                 "strict",
                 20,
                 true,
-                30
+                30,
+                false,
+                new ArrayList<>()
         );
     }
 
@@ -78,6 +89,22 @@ public class AgentConfig {
 
     public void setShellTimeout(int shellTimeout) {
         this.shellTimeout = shellTimeout;
+    }
+
+    public boolean isBackgroundShellEnabled() {
+        return backgroundShellEnabled;
+    }
+
+    public void setBackgroundShellEnabled(boolean backgroundShellEnabled) {
+        this.backgroundShellEnabled = backgroundShellEnabled;
+    }
+
+    public List<String> getCustomAllowlist() {
+        return customAllowlist;
+    }
+
+    public void setCustomAllowlist(List<String> customAllowlist) {
+        this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
     }
 
     public String getDefaultProviderId() {

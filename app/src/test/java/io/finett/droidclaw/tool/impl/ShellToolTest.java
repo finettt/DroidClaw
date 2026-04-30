@@ -15,6 +15,9 @@ import io.finett.droidclaw.tool.ToolResult;
 
 import static org.junit.Assert.*;
 
+/**
+ * Unit tests for {@link ShellTool} using the new ExecPlan-based security model.
+ */
 public class ShellToolTest {
     private ShellTool tool;
     private File workspaceRoot;
@@ -146,27 +149,20 @@ public class ShellToolTest {
     }
 
     @Test
-    public void testExecuteBlockedCommand() {
-        ShellConfig secureConfig = new ShellConfig.Builder()
-                .enabled(true)
-                .addBlockedCommand("rm -rf")
-                .build();
-        ShellTool secureTool = new ShellTool(pathValidator, secureConfig);
-        
+    public void testExecuteDeniedByPolicy() {
+        // ShellConfig.createDefault() has DENY policy — all commands rejected
         JsonObject args = new JsonObject();
-        args.addProperty("command", "rm -rf /");
+        args.addProperty("command", "echo test");
         
-        ToolResult result = secureTool.execute(args);
+        ToolResult result = tool.execute(args);
         
         assertFalse(result.isSuccess());
-        assertTrue(result.getError().contains("Security error"));
+        assertTrue(result.getError().contains("Security"));
     }
 
     @Test
     public void testExecuteWithDisabledShell() {
-        ShellConfig disabledConfig = new ShellConfig.Builder()
-                .enabled(false)
-                .build();
+        ShellConfig disabledConfig = ShellConfig.createDefault(); // DENY
         ShellTool disabledTool = new ShellTool(pathValidator, disabledConfig);
         
         JsonObject args = new JsonObject();
@@ -175,15 +171,19 @@ public class ShellToolTest {
         ToolResult result = disabledTool.execute(args);
         
         assertFalse(result.isSuccess());
-        assertTrue(result.getError().contains("Security error"));
+        assertTrue(result.getError().contains("Security"));
     }
 
     @Test
     public void testExecuteCommandWithNonZeroExitCode() {
+        // Need FULL policy to run sh -c exit 42
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        
         JsonObject args = new JsonObject();
         args.addProperty("command", "exit 42");
         
-        ToolResult result = tool.execute(args);
+        ToolResult result = fullTool.execute(args);
         
         // Even though exit code is non-zero, tool execution itself succeeds
         // The LLM can interpret the exit code from the result
@@ -193,10 +193,13 @@ public class ShellToolTest {
 
     @Test
     public void testExecuteCommandWithStderr() {
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        
         JsonObject args = new JsonObject();
         args.addProperty("command", "ls /nonexistent_dir_98765");
         
-        ToolResult result = tool.execute(args);
+        ToolResult result = fullTool.execute(args);
         
         // Tool execution succeeds, but stderr is captured
         assertTrue(result.isSuccess());
@@ -206,10 +209,13 @@ public class ShellToolTest {
 
     @Test
     public void testResultContainsExecutionTime() {
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo test");
         
-        ToolResult result = tool.execute(args);
+        ToolResult result = fullTool.execute(args);
         
         assertTrue(result.isSuccess());
         assertTrue(result.getContent().contains("execution_time_ms"));
@@ -217,10 +223,13 @@ public class ShellToolTest {
 
     @Test
     public void testResultContainsTimedOutFlag() {
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo test");
         
-        ToolResult result = tool.execute(args);
+        ToolResult result = fullTool.execute(args);
         
         assertTrue(result.isSuccess());
         assertTrue(result.getContent().contains("timed_out"));
@@ -297,11 +306,14 @@ public class ShellToolTest {
 
     @Test
     public void testEmptyWorkingDirectory() {
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo test");
         args.addProperty("working_directory", "");
         
-        ToolResult result = tool.execute(args);
+        ToolResult result = fullTool.execute(args);
         
         // Empty working directory should default to workspace root
         assertTrue("Empty working directory should use workspace root", result.isSuccess());
@@ -309,6 +321,9 @@ public class ShellToolTest {
     
     @Test
     public void testPathValidatorIntegration() throws IOException {
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        
         File nestedDir = new File(workspaceRoot, "level1/level2");
         nestedDir.mkdirs();
         
@@ -317,7 +332,7 @@ public class ShellToolTest {
             args.addProperty("command", "pwd");
             args.addProperty("working_directory", "level1/level2");
             
-            ToolResult result = tool.execute(args);
+            ToolResult result = fullTool.execute(args);
             
             assertTrue("Should succeed with nested directory", result.isSuccess());
         } finally {
@@ -329,10 +344,13 @@ public class ShellToolTest {
 
     @Test
     public void testToolResultJsonFormat() {
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo 'test output'");
         
-        ToolResult result = tool.execute(args);
+        ToolResult result = fullTool.execute(args);
         
         assertTrue(result.isSuccess());
         String json = result.toJson();
@@ -346,12 +364,7 @@ public class ShellToolTest {
     }
     
     @Test
-    public void testConstructorWithVirtualFileSystemNotSupported() {
-        // The VirtualFileSystem constructor should throw because
-        // VirtualFileSystem doesn't expose its PathValidator
-        // This test verifies that behavior
-        // Note: We can't easily test this without mocking VirtualFileSystem
-        // Instead, verify the recommended constructor works
+    public void testConstructorWithPathValidator() {
         ShellTool pathValidatorTool = new ShellTool(pathValidator, ShellConfig.createDefault());
         assertNotNull(pathValidatorTool);
         assertEquals("execute_shell", pathValidatorTool.getName());
