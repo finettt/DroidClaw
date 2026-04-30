@@ -17,6 +17,7 @@ import androidx.navigation.Navigation;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import io.finett.droidclaw.R;
@@ -31,6 +32,8 @@ public class AgentSettingsFragment extends Fragment {
     private TextInputEditText inputMaxIterations;
     private SwitchMaterial switchRequireApproval;
     private TextInputEditText inputShellTimeout;
+    private SwitchMaterial switchBackgroundShellAccess;
+    private TextInputEditText inputCustomAllowlist;
     private Button buttonSave;
 
     private SettingsManager settingsManager;
@@ -68,6 +71,8 @@ public class AgentSettingsFragment extends Fragment {
         inputMaxIterations = view.findViewById(R.id.input_max_iterations);
         switchRequireApproval = view.findViewById(R.id.switch_require_approval);
         inputShellTimeout = view.findViewById(R.id.input_shell_timeout);
+        switchBackgroundShellAccess = view.findViewById(R.id.switch_background_shell_access);
+        inputCustomAllowlist = view.findViewById(R.id.input_custom_allowlist);
         buttonSave = view.findViewById(R.id.button_save);
     }
 
@@ -98,7 +103,8 @@ public class AgentSettingsFragment extends Fragment {
 
         String[] sandboxModes = {
                 getString(R.string.sandbox_strict),
-                getString(R.string.sandbox_relaxed)
+                getString(R.string.sandbox_relaxed),
+                getString(R.string.sandbox_full)
         };
         ArrayAdapter<String> sandboxAdapter = new ArrayAdapter<>(
                 requireContext(),
@@ -125,6 +131,8 @@ public class AgentSettingsFragment extends Fragment {
             String sandboxMode = agentConfig.getSandboxMode();
             if ("relaxed".equals(sandboxMode)) {
                 dropdownSandboxMode.setText(getString(R.string.sandbox_relaxed), false);
+            } else if ("full".equals(sandboxMode)) {
+                dropdownSandboxMode.setText(getString(R.string.sandbox_full), false);
             } else {
                 dropdownSandboxMode.setText(getString(R.string.sandbox_strict), false);
             }
@@ -132,6 +140,14 @@ public class AgentSettingsFragment extends Fragment {
             inputMaxIterations.setText(String.valueOf(agentConfig.getMaxIterations()));
             switchRequireApproval.setChecked(agentConfig.isRequireApproval());
             inputShellTimeout.setText(String.valueOf(agentConfig.getShellTimeout()));
+            switchBackgroundShellAccess.setChecked(agentConfig.isBackgroundShellEnabled());
+
+            StringBuilder allowlistText = new StringBuilder();
+            for (String path : agentConfig.getCustomAllowlist()) {
+                if (allowlistText.length() > 0) allowlistText.append('\n');
+                allowlistText.append(path);
+            }
+            inputCustomAllowlist.setText(allowlistText.toString());
         }
     }
 
@@ -185,8 +201,20 @@ public class AgentSettingsFragment extends Fragment {
         String selectedSandbox = dropdownSandboxMode.getText().toString();
         if (selectedSandbox.equals(getString(R.string.sandbox_relaxed))) {
             sandboxMode = "relaxed";
+        } else if (selectedSandbox.equals(getString(R.string.sandbox_full))) {
+            sandboxMode = "full";
         }
 
+        // Parse custom allowlist (one path per line)
+        List<String> customAllowlist = new ArrayList<>();
+        String allowlistRaw = inputCustomAllowlist.getText() != null
+                ? inputCustomAllowlist.getText().toString() : "";
+        for (String line : allowlistRaw.split("\\r?\\n")) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                customAllowlist.add(trimmed);
+            }
+        }
 
         agentConfig.setDefaultModel(selectedModel);
         agentConfig.setShellAccess(switchShellAccess.isChecked());
@@ -194,6 +222,8 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setMaxIterations(maxIterations);
         agentConfig.setRequireApproval(switchRequireApproval.isChecked());
         agentConfig.setShellTimeout(shellTimeout);
+        agentConfig.setBackgroundShellEnabled(switchBackgroundShellAccess.isChecked());
+        agentConfig.setCustomAllowlist(customAllowlist);
 
 
         settingsManager.setAgentConfig(agentConfig);

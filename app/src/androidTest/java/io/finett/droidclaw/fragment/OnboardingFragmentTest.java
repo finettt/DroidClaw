@@ -267,8 +267,11 @@ public class OnboardingFragmentTest {
                 btnGetStarted.performClick();
             });
 
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            // Give apply() time to flush to disk
             try {
-                Thread.sleep(200);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

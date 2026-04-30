@@ -43,15 +43,17 @@ public class ToolRegistryTest {
     @Test
     public void testGetToolCount() {
         int toolCount = toolRegistry.getToolCount();
-        // Should have 19 tools: 7 file tools + shell + python + heartbeat_ok + 9 automation/notification tools
-        assertEquals("Should have exactly 19 tools", 19, toolCount);
+        // Without SettingsManager: sandboxMode="strict", shellEnabled=true but strict blocks
+        // shell/python and also mutating file tools (write/edit/delete).
+        // Read-only file tools (4) + automation/notification tools (10) = 14.
+        assertEquals("Should have exactly 14 tools in strict mode without settings", 14, toolCount);
     }
 
     @Test
     public void testGetAllTools() {
         List<Tool> tools = toolRegistry.getAllTools();
         assertNotNull("Tools list should not be null", tools);
-        assertEquals("Should return all registered tools", 19, tools.size());
+        assertEquals("Should return all registered tools", 14, tools.size());
     }
 
     @Test
@@ -62,17 +64,17 @@ public class ToolRegistryTest {
     }
 
     @Test
-    public void testGetToolByName_FileWrite() {
+    public void testGetToolByName_FileWrite_notInStrictMode() {
+        // write_file is only registered when sandboxMode != "strict"
         Tool tool = toolRegistry.getTool("write_file");
-        assertNotNull("write_file tool should exist", tool);
-        assertEquals("Tool name should match", "write_file", tool.getName());
+        assertNull("write_file should NOT exist in strict mode", tool);
     }
 
     @Test
-    public void testGetToolByName_FileEdit() {
+    public void testGetToolByName_FileEdit_notInStrictMode() {
+        // edit_file is only registered when sandboxMode != "strict"
         Tool tool = toolRegistry.getTool("edit_file");
-        assertNotNull("edit_file tool should exist", tool);
-        assertEquals("Tool name should match", "edit_file", tool.getName());
+        assertNull("edit_file should NOT exist in strict mode", tool);
     }
 
     @Test
@@ -83,10 +85,10 @@ public class ToolRegistryTest {
     }
 
     @Test
-    public void testGetToolByName_FileDelete() {
+    public void testGetToolByName_FileDelete_notInStrictMode() {
+        // delete_file is only registered when sandboxMode != "strict"
         Tool tool = toolRegistry.getTool("delete_file");
-        assertNotNull("delete_file tool should exist", tool);
-        assertEquals("Tool name should match", "delete_file", tool.getName());
+        assertNull("delete_file should NOT exist in strict mode", tool);
     }
 
     @Test
@@ -104,17 +106,15 @@ public class ToolRegistryTest {
     }
 
     @Test
-    public void testGetToolByName_Shell() {
+    public void testGetToolByName_Shell_notInStrictMode() {
         Tool tool = toolRegistry.getTool("execute_shell");
-        assertNotNull("execute_shell tool should exist", tool);
-        assertEquals("Tool name should match", "execute_shell", tool.getName());
+        assertNull("execute_shell should NOT exist in strict mode", tool);
     }
 
     @Test
-    public void testGetToolByName_Python() {
+    public void testGetToolByName_Python_notInStrictMode() {
         Tool tool = toolRegistry.getTool("execute_python");
-        assertNotNull("execute_python tool should exist", tool);
-        assertEquals("Tool name should match", "execute_python", tool.getName());
+        assertNull("execute_python should NOT exist in strict mode", tool);
     }
 
     @Test
@@ -126,8 +126,11 @@ public class ToolRegistryTest {
     @Test
     public void testHasToolWithName_Existing() {
         assertTrue("Should find read_file tool", toolRegistry.hasToolWithName("read_file"));
-        assertTrue("Should find execute_shell tool", toolRegistry.hasToolWithName("execute_shell"));
-        assertTrue("Should find execute_python tool", toolRegistry.hasToolWithName("execute_python"));
+        assertFalse("Should NOT find execute_shell in strict mode", toolRegistry.hasToolWithName("execute_shell"));
+        assertFalse("Should NOT find execute_python in strict mode", toolRegistry.hasToolWithName("execute_python"));
+        assertFalse("Should NOT find write_file in strict mode", toolRegistry.hasToolWithName("write_file"));
+        assertFalse("Should NOT find edit_file in strict mode", toolRegistry.hasToolWithName("edit_file"));
+        assertFalse("Should NOT find delete_file in strict mode", toolRegistry.hasToolWithName("delete_file"));
     }
 
     @Test
@@ -139,7 +142,7 @@ public class ToolRegistryTest {
     public void testGetToolDefinitions() {
         JsonArray definitions = toolRegistry.getToolDefinitions();
         assertNotNull("Tool definitions should not be null", definitions);
-        assertEquals("Should have definitions for all tools", 19, definitions.size());
+        assertEquals("Should have definitions for all tools in strict mode", 14, definitions.size());
         
         JsonObject firstDef = definitions.get(0).getAsJsonObject();
         assertTrue("Should have 'type' field", firstDef.has("type"));
@@ -261,6 +264,6 @@ public class ToolRegistryTest {
         t1.join();
         t2.join();
 
-        assertEquals("Tool count should remain consistent", 19, toolRegistry.getToolCount());
+        assertEquals("Tool count should remain consistent", 14, toolRegistry.getToolCount());
     }
 }

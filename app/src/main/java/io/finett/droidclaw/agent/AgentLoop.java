@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.FileAttachment;
+import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.tool.ToolResult;
@@ -307,8 +308,15 @@ public class AgentLoop {
         boolean needsApproval = requireApproval && tool != null && tool.requiresApproval();
         
         if (needsApproval) {
-            // Request approval from user
-            String description = tool.getApprovalDescription(arguments);
+            // Build a normalised ExecPlan for exec-type tools (shell, etc.).
+            // The approval dialog shows the plan's description — the canonical exe path,
+            // tokenised argv, and plan hash — NOT the raw LLM-provided string.
+            // This prevents prompt-injection where approval description differs from execution.
+            ExecPlan execPlan = tool.buildExecPlan(arguments);
+            String description = (execPlan != null)
+                    ? execPlan.toApprovalDescription()
+                    : tool.getApprovalDescription(arguments);
+
             callback.onApprovalRequired(toolName, description, arguments, new ApprovalCallback() {
                 @Override
                 public void onApproved() {

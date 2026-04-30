@@ -74,16 +74,36 @@ public class ToolRegistry {
     }
 
     private void registerTools() {
+        String sandboxMode = (settingsManager != null)
+                ? settingsManager.getSandboxMode() : "strict";
+        boolean shellEnabled = (settingsManager == null) || settingsManager.isShellAccessEnabled();
+
+        // Read-only file tools — always available in all sandbox modes
         registerTool(new FileReadTool(vfs));
-        registerTool(new FileWriteTool(vfs));
-        registerTool(new FileEditTool(vfs, workspaceManager.getPathValidator()));
         registerTool(new FileListTool(vfs));
-        registerTool(new FileDeleteTool(vfs));
         registerTool(new FileInfoTool(vfs));
         registerTool(new FileSearchTool(vfs));
 
-        registerTool(new ShellTool(workspaceManager.getPathValidator(), ShellConfig.createDefault()));
-        registerTool(new PythonTool(context, workspaceManager.getWorkspaceRoot(), PythonConfig.createDefault()));
+        // Destructive/mutating file tools — disabled in strict mode
+        if (!"strict".equals(sandboxMode)) {
+            registerTool(new FileWriteTool(vfs));
+            registerTool(new FileEditTool(vfs, workspaceManager.getPathValidator()));
+            registerTool(new FileDeleteTool(vfs));
+        }
+
+        // Shell and Python execution — only when shell access is explicitly enabled
+        // AND sandbox mode is not strict.
+        // In "relaxed" mode: allowlist policy (safe command set, user approval on miss).
+        // In "full" mode: full policy (any command, approval always required).
+        if (shellEnabled && !"strict".equals(sandboxMode)) {
+            ShellConfig shellConfig = buildShellConfig(sandboxMode);
+            registerTool(new ShellTool(workspaceManager.getPathValidator(), shellConfig));
+
+            PythonConfig pythonConfig = PythonConfig.builder()
+                    .safeMode(!"full".equals(sandboxMode))
+                    .build();
+            registerTool(new PythonTool(context, workspaceManager.getWorkspaceRoot(), pythonConfig));
+        }
 
         registerTool(new HeartbeatOkTool());
 
@@ -99,8 +119,42 @@ public class ToolRegistry {
         registerTool(new SubmitNotificationTool(context));
     }
 
+    /**
+     * Build a ShellConfig appropriate for the given sandbox mode.
+     * <ul>
+     *   <li>"relaxed" → ALLOWLIST policy with the safe minimal allowlist + ON_MISS ask,
+     *       plus any user-defined custom allowlist entries.</li>
+     *   <li>"full"    → FULL policy (any command) + ALWAYS ask.</li>
+     *   <li>anything else → DENY (belt-and-suspenders, should not be reached).</li>
+     * </ul>
+     */
+    private ShellConfig buildShellConfig(String sandboxMode) {
+        int timeout = (settingsManager != null)
+                ? settingsManager.getShellTimeoutSeconds() : 30;
+
+        if ("full".equals(sandboxMode)) {
+            return new ShellConfig.Builder()
+                    .policy(io.finett.droidclaw.shell.ExecPolicy.full())
+                    .defaultMode(io.finett.droidclaw.shell.ExecPlan.ExecMode.DIRECT)
+                    .timeoutSeconds(timeout)
+                    .build();
+        }
+
+        // "relaxed" — allowlist with safe defaults + user custom entries
+        List<io.finett.droidclaw.shell.AllowlistEntry> extra = new ArrayList<>();
+        if (settingsManager != null) {
+            for (String path : settingsManager.getAgentConfig().getCustomAllowlist()) {
+                if (path != null && !path.trim().isEmpty()) {
+                    extra.add(new io.finett.droidclaw.shell.AllowlistEntry.Builder(path.trim()).build());
+                }
+            }
+        }
+        return ShellConfig.createAllowlistDefault(extra);
+    }
+
     public boolean isShellAccessEnabled() {
-        return settingsManager == null || settingsManager.isShellAccessEnabled();
+        return settingsManager != null && settingsManager.isShellAccessEnabled()
+                && !"strict".equals(settingsManager.getSandboxMode());
     }
 
     public boolean requiresShellAccess(String toolName) {

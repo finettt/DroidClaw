@@ -226,6 +226,16 @@ public class SettingsManager {
         config.setMaxIterations(json.optInt("maxIterations", 20));
         config.setRequireApproval(json.optBoolean("requireApproval", true));
         config.setShellTimeout(json.optInt("shellTimeout", 30));
+        config.setBackgroundShellEnabled(json.optBoolean("backgroundShellEnabled", false));
+
+        List<String> customAllowlist = new ArrayList<>();
+        if (json.has("customAllowlist")) {
+            JSONArray arr = json.getJSONArray("customAllowlist");
+            for (int i = 0; i < arr.length(); i++) {
+                customAllowlist.add(arr.getString(i));
+            }
+        }
+        config.setCustomAllowlist(customAllowlist);
         return config;
     }
 
@@ -304,6 +314,13 @@ public class SettingsManager {
         json.put("maxIterations", config.getMaxIterations());
         json.put("requireApproval", config.isRequireApproval());
         json.put("shellTimeout", config.getShellTimeout());
+        json.put("backgroundShellEnabled", config.isBackgroundShellEnabled());
+
+        JSONArray allowlistArr = new JSONArray();
+        for (String path : config.getCustomAllowlist()) {
+            allowlistArr.put(path);
+        }
+        json.put("customAllowlist", allowlistArr);
         return json;
     }
 

@@ -59,7 +59,29 @@ public class FileBrowserFragmentTest {
         file.delete();
     }
 
-        private void waitForAdapterItems(FragmentScenario<FileBrowserFragment> scenario, int minItems) {
+        private void waitForAdapterItemsExact(FragmentScenario<FileBrowserFragment> scenario, int expectedItems) {
+        long startTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() - startTime < WAIT_TIMEOUT_MS) {
+            AtomicInteger itemCount = new AtomicInteger(-1);
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                if (fileList.getAdapter() != null) {
+                    itemCount.set(fileList.getAdapter().getItemCount());
+                }
+            });
+            if (itemCount.get() == expectedItems) {
+                return;
+            }
+            try {
+                Thread.sleep(POLL_INTERVAL_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+
+    private void waitForAdapterItems(FragmentScenario<FileBrowserFragment> scenario, int minItems) {
         long startTime = System.currentTimeMillis();
         while (System.currentTimeMillis() - startTime < WAIT_TIMEOUT_MS) {
             AtomicInteger itemCount = new AtomicInteger(0);
@@ -363,7 +385,8 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            waitForAdapterItems(scenario, 1);
+            // Wait for async directory load to complete and verify parent directory entry appears
+            waitForParentDirectoryEntry(scenario);
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
@@ -433,7 +456,8 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            waitForAdapterItems(scenario, 1);
+            // Wait for navigation to parent_dir and verify
+            waitForPathChange(scenario, "/parent_dir");
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
@@ -443,7 +467,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            waitForAdapterItems(scenario, 1);
+            waitForPathChange(scenario, "/parent_dir/child_dir");
 
             scenario.onFragment(fragment -> {
                 TextView pathText = fragment.requireView().findViewById(R.id.pathText);
@@ -461,7 +485,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            waitForAdapterItems(scenario, 1);
+            waitForPathChange(scenario, "/parent_dir");
 
             scenario.onFragment(fragment -> {
                 TextView pathText = fragment.requireView().findViewById(R.id.pathText);
@@ -470,6 +494,63 @@ public class FileBrowserFragmentTest {
                 assertTrue("Should not be in child directory anymore",
                         !pathText.getText().toString().contains("child_dir"));
             });
+        }
+    }
+
+    private void waitForParentDirectoryEntry(FragmentScenario<FileBrowserFragment> scenario) {
+        final long startTime = System.currentTimeMillis();
+        final boolean[] foundParentEntry = {false};
+        while (System.currentTimeMillis() - startTime < WAIT_TIMEOUT_MS) {
+            AtomicInteger itemCount = new AtomicInteger(0);
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                if (fileList.getAdapter() != null) {
+                    itemCount.set(fileList.getAdapter().getItemCount());
+                    if (itemCount.get() > 0) {
+                        View firstItem = fileList.getLayoutManager().findViewByPosition(0);
+                        if (firstItem != null) {
+                            TextView fileName = firstItem.findViewById(R.id.fileName);
+                            if ("..".equals(fileName.getText().toString())) {
+                                foundParentEntry[0] = true;
+                            }
+                        }
+                    }
+                }
+            });
+            if (foundParentEntry[0]) {
+                break;
+            }
+            try {
+                Thread.sleep(POLL_INTERVAL_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
+
+    private void waitForPathChange(FragmentScenario<FileBrowserFragment> scenario, String expectedPath) {
+        final long startTime = System.currentTimeMillis();
+        final String[] currentPathRef = {""};
+        while (System.currentTimeMillis() - startTime < WAIT_TIMEOUT_MS) {
+            AtomicInteger itemCount = new AtomicInteger(0);
+            scenario.onFragment(fragment -> {
+                TextView pathText = fragment.requireView().findViewById(R.id.pathText);
+                currentPathRef[0] = pathText.getText().toString();
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                if (fileList.getAdapter() != null) {
+                    itemCount.set(fileList.getAdapter().getItemCount());
+                }
+            });
+            if (currentPathRef[0].contains(expectedPath.replace("/", "")) && itemCount.get() >= 1) {
+                break;
+            }
+            try {
+                Thread.sleep(POLL_INTERVAL_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
     }
 
@@ -494,7 +575,7 @@ public class FileBrowserFragmentTest {
                 }
             });
 
-            waitForAdapterItems(scenario, 1);
+            waitForPathChange(scenario, "/test_subdir");
 
             scenario.onFragment(fragment -> {
                 RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
