@@ -35,7 +35,7 @@ public class DeviceStateHelper {
                     capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
                     capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
         }
-        
+
         // For API level 22, use deprecated method
         android.net.NetworkInfo networkInfo = cm.getActiveNetworkInfo();
         return networkInfo != null && networkInfo.isConnected();
@@ -47,7 +47,7 @@ public class DeviceStateHelper {
     public static boolean isBatteryCritical(Context context) {
         BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
         if (batteryManager == null) return false;
-        
+
         int batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
         return batteryLevel > 0 && batteryLevel < 15;
     }
@@ -58,8 +58,8 @@ public class DeviceStateHelper {
     public static boolean isPowerSavingMode(Context context) {
         PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         if (powerManager == null) return false;
-        
-        return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1 
+
+        return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1
                 && powerManager.isPowerSaveMode();
     }
 
@@ -75,7 +75,7 @@ public class DeviceStateHelper {
                 return freeMB < 100; // Less than 100MB
             }
         } catch (Exception e) {
-    
+
         }
         return false;
     }
@@ -86,7 +86,7 @@ public class DeviceStateHelper {
     public static int getBatteryLevel(Context context) {
         BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
         if (batteryManager == null) return 100;
-        
+
         return batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
     }
 
@@ -112,7 +112,7 @@ public class DeviceStateHelper {
 
 
 
-        
+
         return true;
     }
 
@@ -121,26 +121,26 @@ public class DeviceStateHelper {
      */
     public static String getDeviceStateDescription(Context context) {
         StringBuilder sb = new StringBuilder();
-        
+
         if (isAirplaneModeOn(context)) {
             sb.append("Airplane mode: ON\n");
         }
-        
+
         sb.append("Network: ").append(hasNetworkConnection(context) ? "Connected" : "Disconnected").append("\n");
         sb.append("Battery: ").append(getBatteryLevel(context)).append("%\n");
-        
+
         if (isBatteryCritical(context)) {
             sb.append("Battery status: CRITICAL\n");
         }
-        
+
         if (isPowerSavingMode(context)) {
             sb.append("Power saving: ON\n");
         }
-        
+
         if (isStorageCritical(context)) {
             sb.append("Storage: CRITICAL\n");
         }
-        
+
         return sb.toString();
     }
 }

@@ -39,7 +39,7 @@ public class PythonTool implements Tool {
     public boolean requiresApproval() {
         return true;
     }
-    
+
     @Override
     public String getApprovalDescription(JsonObject arguments) {
         if (arguments.has("package")) {

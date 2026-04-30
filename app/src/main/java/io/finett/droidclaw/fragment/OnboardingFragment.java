@@ -30,21 +30,21 @@ import io.finett.droidclaw.util.SettingsManager;
 
 public class OnboardingFragment extends Fragment {
     private static final int ANIMATION_DURATION = 300;
-    
+
     private SettingsManager settingsManager;
-    
+
     private ViewGroup sectionWelcome;
     private ViewGroup sectionName;
     private ViewGroup sectionProvider;
-    
+
     private Button btnNext1;
     private Button btnSkip1;
-    
+
     private TextInputLayout tilName;
     private TextInputEditText etName;
     private Button btnNext2;
     private Button btnSkip2;
-    
+
     private TextInputLayout tilProviderName;
     private TextInputEditText etProviderName;
     private TextInputLayout tilBaseUrl;
@@ -55,7 +55,7 @@ public class OnboardingFragment extends Fragment {
     private AutoCompleteTextView actvApiType;
     private Button btnGetStarted;
     private Button btnSkip3;
-    
+
     private int currentSection = 1;
 
     @Nullable
@@ -68,13 +68,13 @@ public class OnboardingFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        
+
         settingsManager = new SettingsManager(requireContext());
-        
+
         initializeViews(view);
         setupListeners();
         setupApiTypeDropdown();
-        
+
 
         showSection(1);
     }
@@ -83,15 +83,15 @@ public class OnboardingFragment extends Fragment {
         sectionWelcome = view.findViewById(R.id.section_welcome);
         sectionName = view.findViewById(R.id.section_name);
         sectionProvider = view.findViewById(R.id.section_provider);
-        
+
         btnNext1 = view.findViewById(R.id.btn_next_1);
         btnSkip1 = view.findViewById(R.id.btn_skip_1);
-        
+
         tilName = view.findViewById(R.id.til_name);
         etName = view.findViewById(R.id.et_name);
         btnNext2 = view.findViewById(R.id.btn_next_2);
         btnSkip2 = view.findViewById(R.id.btn_skip_2);
-        
+
         tilProviderName = view.findViewById(R.id.til_provider_name);
         etProviderName = view.findViewById(R.id.et_provider_name);
         tilBaseUrl = view.findViewById(R.id.til_base_url);
@@ -107,7 +107,7 @@ public class OnboardingFragment extends Fragment {
     private void setupListeners() {
         btnNext1.setOnClickListener(v -> transitionToSection(2));
         btnSkip1.setOnClickListener(v -> skipOnboarding());
-        
+
         btnNext2.setOnClickListener(v -> {
             if (validateName()) {
                 String name = etName.getText().toString().trim();
@@ -116,7 +116,7 @@ public class OnboardingFragment extends Fragment {
             }
         });
         btnSkip2.setOnClickListener(v -> skipOnboarding());
-        
+
         etName.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -129,14 +129,14 @@ public class OnboardingFragment extends Fragment {
             @Override
             public void afterTextChanged(Editable s) {}
         });
-        
+
         btnGetStarted.setOnClickListener(v -> {
             if (validateProvider()) {
                 saveProviderAndComplete();
             }
         });
         btnSkip3.setOnClickListener(v -> skipOnboarding());
-        
+
         setupErrorClearingListeners();
     }
 
@@ -158,7 +158,7 @@ public class OnboardingFragment extends Fragment {
             "anthropic",
             "google"
         };
-        
+
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
             requireContext(),
             android.R.layout.simple_dropdown_item_1line,
@@ -179,13 +179,13 @@ public class OnboardingFragment extends Fragment {
 
     private boolean validateProvider() {
         boolean valid = true;
-        
+
         String providerName = etProviderName.getText().toString().trim();
         if (providerName.isEmpty()) {
             tilProviderName.setError(getString(R.string.validation_required));
             valid = false;
         }
-        
+
         String baseUrl = etBaseUrl.getText().toString().trim();
         if (baseUrl.isEmpty()) {
             tilBaseUrl.setError(getString(R.string.validation_required));
@@ -194,19 +194,19 @@ public class OnboardingFragment extends Fragment {
             tilBaseUrl.setError(getString(R.string.validation_invalid_url));
             valid = false;
         }
-        
+
         String apiKey = etApiKey.getText().toString().trim();
         if (apiKey.isEmpty()) {
             tilApiKey.setError(getString(R.string.validation_required));
             valid = false;
         }
-        
+
         String apiType = actvApiType.getText().toString().trim();
         if (apiType.isEmpty()) {
             tilApiType.setError(getString(R.string.validation_required));
             valid = false;
         }
-        
+
         return valid;
     }
 
@@ -223,7 +223,7 @@ public class OnboardingFragment extends Fragment {
         provider.setBaseUrl(etBaseUrl.getText().toString().trim());
         provider.setApiKey(etApiKey.getText().toString().trim());
         provider.setApi(actvApiType.getText().toString().trim());
-        
+
 
         Model defaultModel = new Model();
         defaultModel.setId("default-model");
@@ -234,16 +234,16 @@ public class OnboardingFragment extends Fragment {
         defaultModel.setMaxTokens(4096);
         defaultModel.getInput().add("text");
         provider.addModel(defaultModel);
-        
+
 
         settingsManager.addProvider(provider);
-        
+
 
         settingsManager.setDefaultModel(providerId + "/default-model");
-        
+
 
         settingsManager.setOnboardingCompleted(true);
-        
+
 
         navigateToChat();
     }
@@ -263,14 +263,14 @@ public class OnboardingFragment extends Fragment {
         if (targetSection == currentSection) {
             return;
         }
-        
+
         ViewGroup currentView = getSectionView(currentSection);
         ViewGroup targetView = getSectionView(targetSection);
-        
+
         if (currentView == null || targetView == null) {
             return;
         }
-        
+
 
         currentView.animate()
             .alpha(0f)
@@ -280,7 +280,7 @@ public class OnboardingFragment extends Fragment {
                 public void onAnimationEnd(Animator animation) {
                     currentView.setVisibility(View.GONE);
                     currentSection = targetSection;
-                    
+
 
                     targetView.setAlpha(0f);
                     targetView.setVisibility(View.VISIBLE);
@@ -298,11 +298,11 @@ public class OnboardingFragment extends Fragment {
         sectionWelcome.setVisibility(section == 1 ? View.VISIBLE : View.GONE);
         sectionName.setVisibility(section == 2 ? View.VISIBLE : View.GONE);
         sectionProvider.setVisibility(section == 3 ? View.VISIBLE : View.GONE);
-        
+
         sectionWelcome.setAlpha(section == 1 ? 1f : 0f);
         sectionName.setAlpha(section == 2 ? 1f : 0f);
         sectionProvider.setAlpha(section == 3 ? 1f : 0f);
-        
+
         currentSection = section;
     }
 

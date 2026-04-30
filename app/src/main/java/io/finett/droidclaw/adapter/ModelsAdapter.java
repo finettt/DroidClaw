@@ -76,7 +76,7 @@ public class ModelsAdapter extends ListAdapter<Model, ModelsAdapter.ModelViewHol
 
         void bind(Model model) {
             nameText.setText(model.getName());
-            
+
             String contextStr = itemView.getContext().getString(
                     R.string.model_context_window_tokens, model.getContextWindow());
             contextText.setText(contextStr);

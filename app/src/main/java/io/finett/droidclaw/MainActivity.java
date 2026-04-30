@@ -251,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
 
         newChatButton.setOnClickListener(v -> {
             ChatSession newSession = addNewChatSession();
-            
+
             if (navController != null) {
 
                 currentSessionId = newSession.getId();
@@ -315,7 +315,7 @@ public class MainActivity extends AppCompatActivity {
                 title,
                 System.currentTimeMillis()
         );
-        
+
 
         if (taskResult != null) {
             newSession.setParentTaskId(taskResult.getId());
@@ -326,7 +326,7 @@ public class MainActivity extends AppCompatActivity {
                 newSession.setSessionType(SessionType.HIDDEN_CRON);
             }
         }
-        
+
         chatSessions.add(0, newSession);
         chatRepository.saveSessions(chatSessions);
         chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
@@ -353,7 +353,7 @@ public class MainActivity extends AppCompatActivity {
         chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
         Log.d(TAG, "Added chat session to list: " + session.getId());
     }
-    
+
     public void updateSessionMetadata(String sessionId, String firstUserMessage, long updatedAt) {
         if (sessionId == null || sessionId.isEmpty()) {
             return;

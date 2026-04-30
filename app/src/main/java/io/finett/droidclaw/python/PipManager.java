@@ -22,7 +22,7 @@ public class PipManager {
             Log.e(TAG, "Package name cannot be null or empty");
             return false;
         }
-        
+
         try {
             // Chaquopy has limited subprocess support; fall back to checking if the package is importable
             Log.i(TAG, "Checking package: " + packageName);
@@ -49,7 +49,7 @@ public class PipManager {
         try {
             PyObject importlibMetadata = python.getModule("importlib.metadata");
             PyObject distributions = importlibMetadata.callAttr("distributions");
-            
+
             for (PyObject dist : distributions.asList()) {
                 PyObject name = dist.callAttr("name");
                 PyObject version = dist.callAttr("version");

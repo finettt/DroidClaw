@@ -217,8 +217,8 @@ public class FileBrowserFragment extends Fragment {
             File file = new File(workspaceDir, filePath);
 
             if (!file.exists()) {
-                Toast.makeText(requireContext(), 
-                    getString(R.string.file_viewer_file_not_found, filePath), 
+                Toast.makeText(requireContext(),
+                    getString(R.string.file_viewer_file_not_found, filePath),
                     Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -234,16 +234,16 @@ public class FileBrowserFragment extends Fragment {
             intent.setDataAndType(fileUri, mimeType);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-            startActivity(Intent.createChooser(intent, 
+            startActivity(Intent.createChooser(intent,
                 getString(R.string.file_viewer_open_with)));
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(requireContext(), 
-                getString(R.string.file_viewer_no_app_found), 
+            Toast.makeText(requireContext(),
+                getString(R.string.file_viewer_no_app_found),
                 Toast.LENGTH_LONG).show();
             Log.e(TAG, "No app found to handle file", e);
         } catch (Exception e) {
-            Toast.makeText(requireContext(), 
-                getString(R.string.file_viewer_open_error, e.getMessage()), 
+            Toast.makeText(requireContext(),
+                getString(R.string.file_viewer_open_error, e.getMessage()),
                 Toast.LENGTH_LONG).show();
             Log.e(TAG, "Failed to open file externally", e);
         }

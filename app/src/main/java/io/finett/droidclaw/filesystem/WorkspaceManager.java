@@ -20,7 +20,7 @@ public class WorkspaceManager {
         "document_editor"
     };
     private static final String WORKSPACE_DIR = "workspace";
-    
+
     private static final String HOME_DIR = "home";
     private static final String DOCUMENTS_DIR = "home/documents";
     private static final String SCRIPTS_DIR = "home/scripts";
@@ -31,7 +31,7 @@ public class WorkspaceManager {
     private static final String SKILLS_DIR = ".agent/skills";
     private static final String CONFIG_DIR = ".agent/config";
     private static final String UPLOADS_DIR = "uploads";
-    
+
     private static final String SOUL_FILE = ".agent/soul.md";
     private static final String USER_FILE = ".agent/user.md";
     private static final String HEARTBEAT_FILE = ".agent/HEARTBEAT.md";

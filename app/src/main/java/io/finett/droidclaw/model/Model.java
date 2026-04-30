@@ -16,7 +16,7 @@ public class Model {
         this.input = new ArrayList<>();
     }
 
-    public Model(String id, String name, String api, boolean reasoning, 
+    public Model(String id, String name, String api, boolean reasoning,
                  List<String> input, int contextWindow, int maxTokens) {
         this.id = id;
         this.name = name;

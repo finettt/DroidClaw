@@ -17,44 +17,44 @@ public class ConversationSummarizer {
     private static final String TAG = "ConversationSummarizer";
     private static final int KEEP_RECENT_MESSAGES = 8;
     private static final double COMPRESSION_THRESHOLD = 0.75;
-    
+
     private final LlmApiService apiService;
     private final MemoryRepository memoryRepository;
     private final int contextWindow;
-    
+
     public ConversationSummarizer(LlmApiService apiService, MemoryRepository memoryRepository) {
         this(apiService, memoryRepository, 4096);
     }
-    
+
     public ConversationSummarizer(LlmApiService apiService, MemoryRepository memoryRepository, int contextWindow) {
         this.apiService = apiService;
         this.memoryRepository = memoryRepository;
         this.contextWindow = contextWindow;
     }
-    
+
     public boolean needsSummarization(int currentContextTokens) {
         int threshold = (int) (contextWindow * COMPRESSION_THRESHOLD);
         boolean needs = currentContextTokens >= threshold;
-        
+
         if (needs) {
             Log.d(TAG, "Summarization needed: " + currentContextTokens + " tokens >= " +
                   threshold + " (" + (COMPRESSION_THRESHOLD * 100) + "% of " + contextWindow + ")");
         }
-        
+
         return needs;
     }
-    
+
     public interface SummarizeCallback {
         void onResult(List<ChatMessage> compressedHistory);
         void onError(Throwable error);
     }
-    
+
     public void summarizeAndSave(List<ChatMessage> messages, SummarizeCallback callback) {
         if (messages.isEmpty()) {
             callback.onResult(messages);
             return;
         }
-        
+
         int totalMessages = messages.size();
         int keepCount = Math.min(KEEP_RECENT_MESSAGES, totalMessages / 3);
         int summarizeCount = totalMessages - keepCount;
@@ -88,7 +88,7 @@ public class ConversationSummarizer {
                     callback.onResult(toKeep);
                 }
             }
-            
+
             @Override
             public void onError(Throwable error) {
                 Log.e(TAG, "Failed to generate summary", error);
@@ -97,12 +97,12 @@ public class ConversationSummarizer {
             }
         });
     }
-    
+
     private interface SummaryCallback {
         void onResult(String summary);
         void onError(Throwable error);
     }
-    
+
     private void generateSummary(List<ChatMessage> messages, SummaryCallback callback) {
         String prompt = buildSummaryPrompt(messages);
 
@@ -115,7 +115,7 @@ public class ConversationSummarizer {
                 Log.d(TAG, "Summary generated: " + response.length() + " chars");
                 callback.onResult(response.trim());
             }
-            
+
             @Override
             public void onError(String error) {
                 Log.e(TAG, "Summary generation failed: " + error);
@@ -137,7 +137,7 @@ public class ConversationSummarizer {
         prompt.append("- Action items\n\n");
         prompt.append("Format as a brief paragraph or bullet points. Keep under 200 words.\n\n");
         prompt.append("Conversation:\n\n");
-        
+
         for (ChatMessage msg : messages) {
             if (msg.getContent() == null || msg.getContent().isEmpty()) {
                 continue;

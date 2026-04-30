@@ -80,7 +80,7 @@ public class ProvidersAdapter extends ListAdapter<Provider, ProvidersAdapter.Pro
         void bind(Provider provider) {
             nameText.setText(provider.getName());
             urlText.setText(provider.getBaseUrl());
-            
+
             int modelCount = provider.getModelCount();
             String modelCountStr = itemView.getContext().getString(R.string.provider_models_count, modelCount);
             modelCountText.setText(modelCountStr);

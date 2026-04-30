@@ -55,7 +55,7 @@ public class MarkdownRenderer {
             textView.setText("");
             return;
         }
-        
+
         getInstance(context).setMarkdown(textView, markdown);
     }
 
@@ -70,7 +70,7 @@ public class MarkdownRenderer {
         if (markdown == null || markdown.isEmpty()) {
             return "";
         }
-        
+
         return getInstance(context).toMarkdown(markdown);
     }
 
@@ -85,7 +85,7 @@ public class MarkdownRenderer {
         if (text == null || text.isEmpty()) {
             return false;
         }
-        
+
 
         return text.contains("**") ||     // Bold
                text.contains("__") ||     // Bold

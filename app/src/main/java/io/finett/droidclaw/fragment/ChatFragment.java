@@ -89,7 +89,7 @@ public class ChatFragment extends Fragment {
         settingsManager = new SettingsManager(requireContext());
         chatRepository = new ChatRepository(requireContext());
         continuationService = new ChatContinuationService(requireContext());
-        
+
         // Use Activity-scoped API service so requests survive chat switches
         if (requireActivity() instanceof MainActivity) {
             apiService = ((MainActivity) requireActivity()).getApiService();
@@ -129,24 +129,24 @@ public class ChatFragment extends Fragment {
         );
 
         identityManager = new IdentityManager(requireContext(), workspaceManager);
-        
+
 
         memoryRepository = new MemoryRepository(workspaceManager);
-        
+
 
         int contextWindow = getModelContextWindow();
         ConversationSummarizer summarizer = new ConversationSummarizer(apiService, memoryRepository, contextWindow);
         MemoryContextBuilder memoryContext = new MemoryContextBuilder(memoryRepository);
-        
+
 
         toolRegistry = new ToolRegistry(requireContext(), settingsManager);
-        
+
 
         agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);
-        
+
 
         loadIdentityContext();
-        
+
 
         Bundle args = getArguments();
         if (args != null) {
@@ -156,7 +156,7 @@ public class ChatFragment extends Fragment {
             Log.w(TAG, "onCreate: No session_id received");
         }
     }
-    
+
     /**
      * Loads identity context (soul.md and user.md) and sets it in the agent loop.
      */
@@ -201,16 +201,16 @@ public class ChatFragment extends Fragment {
 
     private void setupRecyclerView() {
         chatAdapter = new ChatAdapter();
-        
+
         LinearLayoutManager layoutManager = new LinearLayoutManager(requireContext());
         layoutManager.setStackFromEnd(true);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(chatAdapter);
-        
+
 
         loadChatHistory();
     }
-    
+
     private void loadChatHistory() {
         if (currentSessionId == null || currentSessionId.isEmpty()) {
             Log.w(TAG, "loadChatHistory: No session ID, cannot load messages");
@@ -256,42 +256,42 @@ public class ChatFragment extends Fragment {
      */
     private void addTaskResultContext(TaskResult taskResult) {
         List<ChatMessage> messages = new ArrayList<>();
-        
+
         // Add context card
         ChatMessage contextCard = continuationService.createContextMessage(taskResult);
         messages.add(contextCard);
         chatAdapter.addMessage(contextCard);
-        
+
         // Add agent prompt
         ChatMessage agentPrompt = new ChatMessage(
-            String.format("I've added the %s results above. What would you like to clarify or explore?", 
+            String.format("I've added the %s results above. What would you like to clarify or explore?",
                          TaskResult.typeToString(taskResult.getType()).toLowerCase()),
             ChatMessage.TYPE_SYSTEM
         );
         messages.add(agentPrompt);
         chatAdapter.addMessage(agentPrompt);
-        
+
 
         saveMessages();
         scrollToBottom();
-        
+
         Log.d(TAG, "Added task result context: " + messages.size() + " messages");
     }
-    
+
     private void saveMessages() {
         if (currentSessionId == null || currentSessionId.isEmpty()) {
             Log.w(TAG, "saveMessages: No session ID, cannot save messages");
             return;
         }
-        
+
         chatRepository.saveMessages(currentSessionId, chatAdapter.getMessages());
     }
-    
+
     private void updateSessionMetadata(String firstUserMessage) {
         if (!(requireActivity() instanceof MainActivity)) {
             return;
         }
-        
+
         ((MainActivity) requireActivity()).updateSessionMetadata(
                 currentSessionId,
                 firstUserMessage,
@@ -504,7 +504,7 @@ public class ChatFragment extends Fragment {
         }
         chatAdapter.addMessage(userMessage);
         scrollToBottom();
-        
+
 
         saveMessages();
         updateSessionMetadata(messageText);
@@ -516,7 +516,7 @@ public class ChatFragment extends Fragment {
 
 
         List<ChatMessage> conversationHistory = new ArrayList<>(chatAdapter.getMessages());
-        
+
         agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
             @Override
             public void onProgress(String status) {
@@ -526,7 +526,7 @@ public class ChatFragment extends Fragment {
             @Override
             public void onToolCall(String toolName, String arguments) {
                 Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
-                
+
 
                 String statusMessage = getToolStatusMessage(toolName, arguments);
                 String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
@@ -536,7 +536,7 @@ public class ChatFragment extends Fragment {
             @Override
             public void onToolResult(String toolName, String result) {
                 Log.d(TAG, "Tool result: " + toolName + " -> " + result.substring(0, Math.min(100, result.length())));
-                
+
 
                 String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
                 updateStatus("✓ " + formatToolName(toolName) + " completed", iterationInfo);
@@ -571,7 +571,7 @@ public class ChatFragment extends Fragment {
                 setLoading(false);
                 Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
             }
-            
+
             @Override
             public void onApprovalRequired(String toolName, String description, JsonObject arguments,
                                            AgentLoop.ApprovalCallback approvalCallback) {
@@ -582,7 +582,7 @@ public class ChatFragment extends Fragment {
             }
         });
     }
-    
+
     /**
      * Show a dialog asking user to approve or deny a tool execution.
      */
@@ -632,7 +632,7 @@ public class ChatFragment extends Fragment {
             recyclerView.scrollToPosition(chatAdapter.getItemCount() - 1);
         }
     }
-    
+
     /**
      * Get a user-friendly status message for tool execution.
      */
@@ -672,7 +672,7 @@ public class ChatFragment extends Fragment {
                 return "Executing: " + formatToolName(toolName);
         }
     }
-    
+
     /**
      * Format tool name from snake_case to Title Case.
      */
@@ -688,7 +688,7 @@ public class ChatFragment extends Fragment {
         }
         return formatted.toString();
     }
-    
+
     /**
      * Get the context window size from the currently selected model.
      * Falls back to default if model is not configured.
@@ -701,7 +701,7 @@ public class ChatFragment extends Fragment {
             Log.d(TAG, "Using model context window: " + contextWindow);
             return contextWindow;
         }
-        
+
         // Fallback to default
         Log.w(TAG, "Model not configured, using default context window: 4096");
         return 4096;

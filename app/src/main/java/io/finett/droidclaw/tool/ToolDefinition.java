@@ -71,7 +71,7 @@ public class ToolDefinition {
             prop.addProperty("type", "string");
             prop.addProperty("description", description);
             properties.add(name, prop);
-            
+
             if (required) {
                 addRequired(name);
             }
@@ -83,7 +83,7 @@ public class ToolDefinition {
             prop.addProperty("type", "integer");
             prop.addProperty("description", description);
             properties.add(name, prop);
-            
+
             if (required) {
                 addRequired(name);
             }
@@ -95,7 +95,7 @@ public class ToolDefinition {
             prop.addProperty("type", "boolean");
             prop.addProperty("description", description);
             properties.add(name, prop);
-            
+
             if (required) {
                 addRequired(name);
             }

@@ -178,7 +178,7 @@ public class ModelDetailFragment extends Fragment {
 
         String apiType = provider.getApi();
         boolean reasoning = switchReasoning.isChecked();
-        
+
         List<String> inputTypes = new ArrayList<>();
         if (checkboxInputText.isChecked()) {
             inputTypes.add("text");
