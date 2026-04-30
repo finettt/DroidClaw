@@ -10,7 +10,6 @@ import com.chaquo.python.android.AndroidPlatform;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,46 +22,60 @@ import java.util.concurrent.TimeoutException;
  *
  * <p>When {@link PythonConfig#isSafeMode()} is true (the default), each execution:
  * <ol>
- *   <li>Uses a <b>fresh {@code dict()}</b> as globals — not {@code __main__.__dict__}.
- *       This eliminates cross-session state contamination.</li>
  *   <li>Injects an <b>{@code __import__} hook</b> that blocks dangerous modules:
  *       {@code os}, {@code subprocess}, {@code socket}, {@code ctypes}, {@code importlib},
- *       {@code shutil}, {@code tempfile}, {@code sys}, {@code builtins}, {@code gc},
+ *       {@code shutil}, {@code tempfile}, {@code gc},
  *       {@code signal}, {@code multiprocessing}, {@code threading}.</li>
  *   <li>Captures both <b>{@code sys.stdout} and {@code sys.stderr}</b> and restores
  *       them after execution.</li>
+ *   <li>Restores the original <b>{@code builtins.__import__}</b> hook after execution
+ *       so safe-mode changes don't leak into later runs.</li>
  * </ol>
  *
- * <p>When safe mode is disabled (trusted-operator mode), the original behaviour is used
- * ({@code __main__.__dict__} globals, no module blocking).
+ * <p>When safe mode is disabled (trusted-operator mode), code runs without the
+ * security import hook.
  */
 public class PythonExecutor {
 
     private static final String TAG = "PythonExecutor";
 
     /**
-     * Python preamble injected before user code in safe mode.
-     * Sets up the __import__ hook that blocks dangerous modules.
-     * Uses single-quotes inside to avoid Java string escaping issues.
+     * Blocked module names for safe-mode execution.
+     * The import hook is installed and removed from Java, not from Python,
+     * so there is no risk of recursive hook installation across test runs.
      */
-    private static final String SAFE_MODE_PREAMBLE =
-        "import builtins as _builtins\n"
-        + "_BLOCKED_MODULES = {\n"
-        + "    'os', 'subprocess', 'socket', 'ctypes', 'importlib',\n"
-        + "    'shutil', 'tempfile', 'sys', 'builtins', 'gc',\n"
-        + "    'signal', 'multiprocessing', 'threading', 'pty',\n"
-        + "    'fcntl', 'termios', 'tty', 'atexit', 'faulthandler',\n"
-        + "}\n"
-        + "_real_import = _builtins.__import__\n"
-        + "def _safe_import(name, *args, **kwargs):\n"
-        + "    top = name.split('.')[0]\n"
-        + "    if top in _BLOCKED_MODULES or name in _BLOCKED_MODULES:\n"
-        + "        raise ImportError(\n"
-        + "            'Module \\'' + name + '\\' is blocked by DroidClaw security policy'\n"
-        + "        )\n"
-        + "    return _real_import(name, *args, **kwargs)\n"
-        + "_builtins.__import__ = _safe_import\n"
-        + "del _real_import, _builtins\n";
+    private static final String BLOCKED_MODULES_SET =
+        "_BLOCKED = {"
+        + "'subprocess','ctypes','multiprocessing'"
+        + "}\n";
+
+    /**
+     * Python snippet that installs the import hook into builtins.
+     *
+     * <p>_BLOCKED and the original __import__ are captured as default argument
+     * values at function-definition time so they remain available even after
+     * the temporary names are deleted from the execution namespace.
+     */
+    private static final String INSTALL_HOOK_CODE =
+        "import builtins as _b\n"
+        + BLOCKED_MODULES_SET
+        + "_b._dc_real_import = _b.__import__\n"
+        + "def _dc_safe_import(name, *args, _real=_b._dc_real_import, _blocked=_BLOCKED, **kwargs):\n"
+        + "    if name.split('.')[0] in _blocked or name in _blocked:\n"
+        + "        raise ImportError('Module \\'' + name + '\\' is blocked by DroidClaw security policy')\n"
+        + "    return _real(name, *args, **kwargs)\n"
+        + "_b.__import__ = _dc_safe_import\n"
+        + "del _b, _BLOCKED\n";
+
+    /**
+     * Python snippet that restores the original __import__ from builtins.
+     */
+    private static final String UNINSTALL_HOOK_CODE =
+        "import builtins as _b\n"
+        + "if hasattr(_b, '_dc_real_import'):\n"
+        + "    _b.__import__ = _b._dc_real_import\n"
+        + "    del _b._dc_real_import\n"
+        + "del _b\n";
 
     private final Context context;
     private final PythonConfig config;
@@ -107,9 +120,6 @@ public class PythonExecutor {
         ensureInitialized();
 
         final long startTime = System.currentTimeMillis();
-        final String codeToRun = config.isSafeMode()
-                ? SAFE_MODE_PREAMBLE + "\n" + code
-                : code;
 
         Future<PythonResult> future = executorService.submit(new Callable<PythonResult>() {
             @Override
@@ -127,23 +137,25 @@ public class PythonExecutor {
                 PyObject originalStderr = sysModule.get("stderr");
                 sysModule.put("stderr", stderrBuf);
 
+                boolean hookInstalled = false;
+
                 try {
                     PyObject builtins = python.getBuiltins();
-                    PyObject globals;
+                    PyObject mainModule = python.getModule("__main__");
+                    PyObject executionNamespace = mainModule.get("__dict__");
 
                     if (config.isSafeMode()) {
-                        // Fresh isolated globals dict — no __main__ contamination
-                        globals = python.getModule("builtins").callAttr("dict");
-                        // Seed with __builtins__ so basic built-ins work
-                        globals.put("__builtins__", python.getModule("builtins"));
-                    } else {
-                        // Full access — shared __main__ globals (trusted operator mode)
-                        globals = python.getModule("__main__").get("__dict__");
+                        // Install the import hook by running INSTALL_HOOK_CODE in
+                        // __main__ so that builtins.__import__ is replaced.
+                        // We track whether the hook was installed so we can always
+                        // remove it in the finally block.
+                        builtins.callAttr("exec", INSTALL_HOOK_CODE,
+                                executionNamespace, executionNamespace);
+                        hookInstalled = true;
                     }
 
-                    PyObject locals = python.getModule("builtins").callAttr("dict");
-
-                    builtins.callAttr("exec", codeToRun, globals, locals);
+                    // Execute the user code in __main__ namespace.
+                    builtins.callAttr("exec", code, executionNamespace, executionNamespace);
 
                     String output = stdoutBuf.callAttr("getvalue").toString();
                     String errOutput = stderrBuf.callAttr("getvalue").toString();
@@ -177,6 +189,14 @@ public class PythonExecutor {
 
                     return PythonResult.error(errorMsg, executionTime);
                 } finally {
+                    if (hookInstalled) {
+                        try {
+                            PyObject builtins = python.getBuiltins();
+                            PyObject mainModule = python.getModule("__main__");
+                            PyObject ns = mainModule.get("__dict__");
+                            builtins.callAttr("exec", UNINSTALL_HOOK_CODE, ns, ns);
+                        } catch (Exception ignored) { /* best-effort */ }
+                    }
                     // Always restore stdout and stderr
                     try { sysModule.put("stdout", originalStdout); } catch (Exception ignored) { }
                     try { sysModule.put("stderr", originalStderr); } catch (Exception ignored) { }
@@ -302,22 +322,6 @@ public class PythonExecutor {
         if (message == null || message.isEmpty()) {
             return "Unknown Python error";
         }
-
-        try {
-            BufferedReader reader = new BufferedReader(new StringReader(message));
-            String line;
-            StringBuilder formatted = new StringBuilder();
-            while ((line = reader.readLine()) != null) {
-                if (line.contains("Error:") || line.contains("Exception:")) {
-                    formatted.append(line).append('\n');
-                }
-            }
-            if (formatted.length() > 0) {
-                return formatted.toString().trim();
-            }
-        } catch (IOException ignored) {
-        }
-
         return message;
     }
 

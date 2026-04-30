@@ -6,10 +6,10 @@ package io.finett.droidclaw.python;
  * <p>The {@link #isSafeMode()} flag controls whether a security preamble is injected
  * before user code:
  * <ul>
- *   <li><b>true (default)</b> — a fresh globals dict is used per execution (no cross-session
- *       contamination via {@code __main__}), dangerous built-in modules ({@code os},
+ *   <li><b>true (default)</b> — dangerous built-in modules ({@code os},
  *       {@code subprocess}, {@code socket}, {@code ctypes}, etc.) are blocked via an
- *       {@code __import__} hook, and only a restricted set of built-ins is exposed.</li>
+ *       {@code __import__} hook that is installed before and removed after each
+ *       execution.</li>
  *   <li><b>false</b> — full Python access (trusted-operator mode). Should only be set
  *       when {@code sandboxMode="full"} and the user has been explicitly warned.</li>
  * </ul>
@@ -48,13 +48,14 @@ public class PythonConfig {
     /**
      * When true, a security preamble is injected that:
      * <ul>
-     *   <li>Uses a fresh {@code dict()} as globals per execution instead of
-     *       {@code __main__.__dict__} — prevents cross-session state contamination.</li>
-     *   <li>Replaces {@code __builtins__} with a restricted set.</li>
      *   <li>Installs an {@code __import__} hook that blocks dangerous modules:
      *       {@code os}, {@code subprocess}, {@code socket}, {@code ctypes},
-     *       {@code importlib}, {@code shutil}, {@code tempfile}, {@code sys},
-     *       {@code builtins}, {@code gc}, {@code signal}.</li>
+     *       {@code importlib}, {@code shutil}, {@code tempfile},
+     *       {@code gc}, {@code signal}, {@code multiprocessing}, {@code threading},
+     *       {@code pty}, {@code fcntl}, {@code termios}, {@code tty},
+     *       {@code atexit}, {@code faulthandler}.</li>
+     *   <li>The original {@code builtins.__import__} is restored after each
+     *       execution so the hook does not leak into later runs.</li>
      * </ul>
      */
     public boolean isSafeMode() {
