@@ -47,7 +47,6 @@ public class FileWriteTool implements Tool {
         return true;
     }
 
-    
     @Override
     public String getApprovalDescription(JsonObject arguments) {
         String path = arguments.has("path") ?

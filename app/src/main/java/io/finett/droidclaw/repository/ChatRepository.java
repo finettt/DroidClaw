@@ -36,7 +36,7 @@ public class ChatRepository {
     public ChatRepository(Context context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
-    
+
     public void saveSessions(List<ChatSession> sessions) {
         try {
             JSONArray jsonArray = new JSONArray();
@@ -62,33 +62,33 @@ public class ChatRepository {
 
                 jsonArray.put(jsonObject);
             }
-            
+
             prefs.edit().putString(KEY_SESSIONS, jsonArray.toString()).apply();
             Log.d(TAG, "Saved " + sessions.size() + " sessions");
         } catch (JSONException e) {
             Log.e(TAG, "Error saving sessions", e);
         }
     }
-    
+
     public List<ChatSession> loadSessions() {
         List<ChatSession> sessions = new ArrayList<>();
-        
+
         try {
             String jsonString = prefs.getString(KEY_SESSIONS, null);
-            
+
             if (jsonString == null || jsonString.isEmpty()) {
                 Log.d(TAG, "No saved sessions found");
                 return sessions;
             }
-            
+
             JSONArray jsonArray = new JSONArray(jsonString);
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
-                
+
                 String id = jsonObject.getString("id");
                 String title = jsonObject.getString("title");
                 long updatedAt = jsonObject.getLong("updatedAt");
-                
+
                 ChatSession session = new ChatSession(id, title, updatedAt);
 
                 session.setCurrentContextTokens(jsonObject.optInt("currentContextTokens", 0));
@@ -107,24 +107,24 @@ public class ChatRepository {
 
                 sessions.add(session);
             }
-            
+
             Collections.sort(sessions, (s1, s2) -> Long.compare(s2.getUpdatedAt(), s1.getUpdatedAt()));
-            
+
             Log.d(TAG, "Loaded " + sessions.size() + " sessions");
         } catch (JSONException e) {
             Log.e(TAG, "Error loading sessions - clearing corrupted data", e);
             prefs.edit().remove(KEY_SESSIONS).apply();
         }
-        
+
         return sessions;
     }
-    
+
     public void deleteSession(String sessionId, List<ChatSession> remainingSessions) {
         deleteMessages(sessionId);
         saveSessions(remainingSessions);
         Log.d(TAG, "Deleted session and messages for: " + sessionId);
     }
-    
+
     public void updateSession(String sessionId, String newTitle, long newTimestamp, List<ChatSession> allSessions) {
         for (ChatSession session : allSessions) {
             if (session.getId().equals(sessionId)) {
@@ -136,22 +136,22 @@ public class ChatRepository {
         saveSessions(allSessions);
         Log.d(TAG, "Updated session: " + sessionId + " with title: " + newTitle);
     }
-    
+
     public String generateTitleFromMessage(String messageContent) {
         if (messageContent == null || messageContent.trim().isEmpty()) {
             return "New Chat";
         }
-        
+
         String trimmed = messageContent.trim();
         if (trimmed.length() <= 30) {
             return trimmed;
         }
-        
+
         int lastSpace = trimmed.lastIndexOf(' ', 30);
         if (lastSpace > 15) {
             return trimmed.substring(0, lastSpace) + "...";
         }
-        
+
         return trimmed.substring(0, 27) + "...";
     }
 
@@ -295,10 +295,10 @@ public class ChatRepository {
 
                 jsonArray.put(jsonObject);
             }
-            
+
             String key = KEY_PREFIX + sessionId;
             prefs.edit().putString(key, jsonArray.toString()).apply();
-            
+
             Log.d(TAG, "Saved " + messages.size() + " messages for session: " + sessionId);
         } catch (JSONException e) {
             Log.e(TAG, "Error saving messages for session: " + sessionId, e);
@@ -307,21 +307,21 @@ public class ChatRepository {
 
     public List<ChatMessage> loadMessages(String sessionId) {
         List<ChatMessage> messages = new ArrayList<>();
-        
+
         try {
             String key = KEY_PREFIX + sessionId;
             String jsonString = prefs.getString(key, null);
-            
+
             if (jsonString == null || jsonString.isEmpty()) {
                 Log.d(TAG, "No saved messages found for session: " + sessionId);
                 return messages;
             }
-            
+
             JSONArray jsonArray = new JSONArray(jsonString);
             for (int i = 0; i < jsonArray.length(); i++) {
                 try {
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
-                    
+
                     String content = jsonObject.has("content") && !jsonObject.isNull("content")
                         ? jsonObject.getString("content")
                         : null;
@@ -401,12 +401,12 @@ public class ChatRepository {
                     Log.e(TAG, "Error loading message at index " + i + " for session: " + sessionId, e);
                 }
             }
-            
+
             Log.d(TAG, "Loaded " + messages.size() + " messages for session: " + sessionId);
         } catch (JSONException e) {
             Log.e(TAG, "Error loading messages for session: " + sessionId, e);
         }
-        
+
         return messages;
     }
 

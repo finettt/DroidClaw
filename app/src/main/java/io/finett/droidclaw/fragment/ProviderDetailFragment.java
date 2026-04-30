@@ -174,7 +174,7 @@ public class ProviderDetailFragment extends Fragment {
         buttonAddModel.setOnClickListener(v -> navigateToNewModel());
         buttonSave.setOnClickListener(v -> saveProvider());
         buttonDelete.setOnClickListener(v -> confirmDeleteProvider());
-        
+
 
         inputProviderName.addTextChangedListener(new SimpleTextWatcher(() ->
             tilProviderName.setError(null)));
@@ -255,25 +255,25 @@ public class ProviderDetailFragment extends Fragment {
     private void navigateToNewModel() {
 
         updateProviderFromForm();
-        
+
         Bundle args = new Bundle();
         args.putString("providerId", provider.getId());
         Navigation.findNavController(requireView())
                 .navigate(R.id.action_providerDetailFragment_to_modelDetailFragment, args);
     }
-    
+
     private void updateProviderFromForm() {
         String name = inputProviderName.getText().toString().trim();
         String baseUrl = inputBaseUrl.getText().toString().trim();
         String apiKey = inputApiKey.getText().toString().trim();
         String apiTypeDisplay = dropdownApiType.getText().toString();
         String apiType = getApiTypeValue(apiTypeDisplay);
-        
+
         provider.setName(name);
         provider.setBaseUrl(baseUrl);
         provider.setApiKey(apiKey);
         provider.setApi(apiType);
-        
+
 
         if (isNewProvider) {
             settingsManager.addProvider(provider);

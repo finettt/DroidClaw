@@ -158,7 +158,6 @@ public class LlmApiService {
         }
     }
 
-
     public interface ChatCallback {
         void onSuccess(String response);
         void onError(String error);
@@ -174,7 +173,6 @@ public class LlmApiService {
         void onError(String error);
     }
 
-
     public LlmApiService(SettingsManager settingsManager) {
         this.settingsManager = settingsManager;
         this.gson = new Gson();
@@ -186,7 +184,6 @@ public class LlmApiService {
                 .retryOnConnectionFailure(true)
                 .build();
     }
-
 
     public void sendMessage(List<ChatMessage> conversationHistory, ChatCallback callback) {
         sendMessage(conversationHistory, null, null, callback);
@@ -464,21 +461,18 @@ public class LlmApiService {
 
         JsonArray messages = new JsonArray();
 
-        // Add identity messages first (system messages with soul.md and user.md)
         if (identityMessages != null) {
             for (ChatMessage msg : identityMessages) {
                 messages.add(msg.toApiMessage());
             }
         }
 
-        // Add conversation history
         for (ChatMessage chatMessage : conversationHistory) {
             messages.add(chatMessage.toApiMessage());
         }
 
         requestBody.add("messages", messages);
 
-        // Add tools if provided
         if (tools != null && tools.size() > 0) {
             requestBody.add("tools", tools);
             requestBody.addProperty("tool_choice", "auto");
@@ -504,7 +498,6 @@ public class LlmApiService {
         requestBody.add("response_format", responseFormat);
         return requestBody;
     }
-
 
     /**
      * Build the JSON request body for the Anthropic Messages API.
@@ -539,7 +532,6 @@ public class LlmApiService {
             requestBody.addProperty("system", systemBuilder.toString());
         }
 
-        // Convert conversation history to Anthropic format
         JsonArray messages = new JsonArray();
         for (ChatMessage chatMessage : conversationHistory) {
             JsonObject anthropicMsg = chatMessage.toAnthropicApiMessage();
@@ -548,13 +540,9 @@ public class LlmApiService {
             }
         }
 
-        // Anthropic requires messages to start with a user turn and alternate roles.
-        // Merge consecutive same-role messages to satisfy this constraint.
         messages = mergeConsecutiveSameRoleMessages(messages);
-
         requestBody.add("messages", messages);
 
-        // Convert OpenAI-format tools to Anthropic format
         if (openAiTools != null && openAiTools.size() > 0) {
             JsonArray anthropicTools = convertToolsToAnthropicFormat(openAiTools);
             if (anthropicTools.size() > 0) {

@@ -42,7 +42,7 @@ public class VirtualFileSystem {
         this.pathValidator = pathValidator;
     }
 
-    public FileReadResult readFile(String path, Integer offset, Integer limit) 
+    public FileReadResult readFile(String path, Integer offset, Integer limit)
             throws IOException, SecurityException {
         File file = pathValidator.validateAndResolve(path);
 
@@ -124,7 +124,7 @@ public class VirtualFileSystem {
         return true;
     }
 
-    public FileListResult listFiles(String path, boolean recursive) 
+    public FileListResult listFiles(String path, boolean recursive)
             throws IOException, SecurityException {
         File dir = pathValidator.validateAndResolve(path != null ? path : ".");
 
@@ -182,7 +182,7 @@ public class VirtualFileSystem {
         return true;
     }
 
-    public FileSearchResult searchFiles(String path, String pattern, String filePattern) 
+    public FileSearchResult searchFiles(String path, String pattern, String filePattern)
             throws IOException, SecurityException {
         File dir = pathValidator.validateAndResolve(path != null ? path : ".");
 
@@ -225,7 +225,7 @@ public class VirtualFileSystem {
         }
     }
 
-    private void searchInFile(File file, String relativePath, Pattern pattern, 
+    private void searchInFile(File file, String relativePath, Pattern pattern,
                              List<SearchMatch> matches) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;

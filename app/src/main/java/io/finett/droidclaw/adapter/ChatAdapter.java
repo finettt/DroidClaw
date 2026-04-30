@@ -233,7 +233,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         @Override
         void bind(ChatMessage message) {
             String content = message.getContent();
-            // Always render assistant messages as markdown since they often contain formatting
             if (content != null) {
                 MarkdownRenderer.render(context, messageText, content);
             } else {
@@ -292,7 +291,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 return R.drawable.ic_tool_generic;
             }
         }
-        
+
         private String formatToolName(String toolName) {
             String[] parts = toolName.split("_");
             StringBuilder formatted = new StringBuilder();
@@ -305,7 +304,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             }
             return formatted.toString();
         }
-        
+
         private String formatArguments(String args) {
             if (args.length() > 200) {
                 return args.substring(0, 197) + "...";
@@ -336,8 +335,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             toolResultToggle = itemView.findViewById(R.id.toolResultToggle);
             toolResultContent = itemView.findViewById(R.id.toolResultContent);
             filesContainer = itemView.findViewById(R.id.toolResultFilesContainer);
-
-            // Set up click listener for expand/collapse
             toolResultHeader.setOnClickListener(v -> toggleExpanded());
         }
 
@@ -347,21 +344,17 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             String toolName = message.getToolName();
             Context context = itemView.getContext();
 
-            // Set label with tool name
             if (toolName != null) {
                 toolResultLabel.setText(formatToolName(toolName) + " result");
             } else {
                 toolResultLabel.setText("Tool result");
             }
 
-            // Determine if result indicates success or error
             boolean isError = content != null && (content.toLowerCase().contains("error:")
                     || content.toLowerCase().startsWith("error"));
 
-            // Set icon based on success/error
             toolResultIcon.setImageResource(isError ? R.drawable.ic_status_error : R.drawable.ic_status_success);
-            
-            // Set content with markdown rendering if applicable
+
             if (content != null) {
                 if (MarkdownRenderer.containsMarkdown(content)) {
                     MarkdownRenderer.render(context, toolResultContent, content);
@@ -371,8 +364,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             } else {
                 toolResultContent.setText("No output");
             }
-            
-            // Start collapsed if content is long
+
             if (content != null && content.length() > 100) {
                 isExpanded = false;
                 updateExpandState();
@@ -382,15 +374,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 toolResultContent.setMaxLines(Integer.MAX_VALUE);
             }
 
-            // Detect and render file references
             renderFileReferences(content);
         }
-        
+
         private void toggleExpanded() {
             isExpanded = !isExpanded;
             updateExpandState();
         }
-        
+
         private void updateExpandState() {
             if (isExpanded) {
                 toolResultToggle.setText("▲");
@@ -400,9 +391,8 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 toolResultContent.setMaxLines(3);
             }
         }
-        
+
         private String formatToolName(String toolName) {
-            // Convert snake_case to Title Case
             String[] parts = toolName.split("_");
             StringBuilder formatted = new StringBuilder();
             for (String part : parts) {
@@ -432,7 +422,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 String rawPath = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
                 if (rawPath == null || rawPath.isEmpty()) continue;
 
-                // Skip common non-file patterns
                 if (rawPath.contains("```") || rawPath.contains("\n") ||
                     rawPath.startsWith("[") || rawPath.startsWith("(")) continue;
 
@@ -552,8 +541,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             contextCardTimestamp = itemView.findViewById(R.id.contextCardTimestamp);
             contextCardToggle = itemView.findViewById(R.id.contextCardToggle);
             contextCardContent = itemView.findViewById(R.id.contextCardContent);
-
-            // Set up click listener for expand/collapse
             contextCardHeader.setOnClickListener(v -> toggleExpanded());
         }
 
@@ -561,22 +548,18 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         void bind(ChatMessage message) {
             Context context = itemView.getContext();
 
-            // Set icon based on context type
             String contextType = message.getContextType();
             int iconRes = getContextIcon(contextType);
             contextCardIcon.setImageResource(iconRes);
 
-            // Set title
             String title = getContextTitle(contextType, context);
             contextCardTitle.setText(title);
 
-            // Set timestamp
             long timestamp = message.getTimestamp();
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", 
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MMM dd, yyyy HH:mm",
                     java.util.Locale.getDefault());
             contextCardTimestamp.setText(sdf.format(new java.util.Date(timestamp)));
 
-            // Set content with markdown rendering if applicable
             String content = message.getContent();
             if (content != null) {
                 if (MarkdownRenderer.containsMarkdown(content)) {
@@ -588,7 +571,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 contextCardContent.setText("No content available");
             }
 
-            // Start collapsed if content is long
             if (content != null && content.length() > 150) {
                 isExpanded = false;
                 updateExpandState();
@@ -634,7 +616,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
         private String getContextTitle(String contextType, Context context) {
             if (contextType == null) return "Task Result";
-            
+
             switch (contextType.toLowerCase()) {
                 case "heartbeat":
                     return "Heartbeat Check";

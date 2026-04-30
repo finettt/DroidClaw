@@ -190,7 +190,7 @@ public class SettingsFragment extends Fragment {
                 .setMessage(R.string.settings_reset_onboarding_confirm)
                 .setPositiveButton(R.string.confirm, (dialog, which) -> {
                     settingsManager.resetOnboarding();
-        
+
                     Navigation.findNavController(requireView())
                             .navigate(R.id.action_settingsFragment_to_onboardingFragment);
                 })

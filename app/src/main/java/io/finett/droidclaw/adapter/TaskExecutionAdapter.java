@@ -111,13 +111,11 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
             String time = timeFormat.format(record.getStartTime());
             textExecutionTime.setText(itemView.getContext().getString(R.string.execution_datetime_fmt, date, time));
 
-
             if (record.isSuccess()) {
                 chipExecutionStatus.setText(R.string.status_success);
             } else {
                 chipExecutionStatus.setText(R.string.status_failed);
             }
-
 
             long durationSec = record.getDurationMillis() / 1000;
             String durationText;
@@ -130,7 +128,6 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
             }
             textDuration.setText(itemView.getContext().getString(R.string.execution_duration, durationText));
 
-
             int tokens = record.getTokensUsed();
             String tokenText;
             if (tokens >= 1000) {
@@ -140,9 +137,7 @@ public class TaskExecutionAdapter extends RecyclerView.Adapter<TaskExecutionAdap
             }
             textTokens.setText(itemView.getContext().getString(R.string.execution_tokens, tokenText));
 
-
             textIterations.setText(itemView.getContext().getString(R.string.execution_iterations, record.getIterations()));
-
 
             if (!record.isSuccess() && record.getErrorMessage() != null && !record.getErrorMessage().isEmpty()) {
                 textErrorMessage.setText(itemView.getContext().getString(R.string.execution_error_prefix, record.getErrorMessage()));

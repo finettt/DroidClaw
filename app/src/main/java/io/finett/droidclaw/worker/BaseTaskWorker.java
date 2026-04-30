@@ -457,7 +457,7 @@ public abstract class BaseTaskWorker extends Worker {
 
     /**
      * Extract agent-generated notification content from the response and cache it in metadata.
-     * 
+     *
      * Priority order:
      * 1. Check for submit_notification tool call in conversation history (structured, guaranteed format)
      * 2. Parse TITLE: and SUMMARY: markers from text response (legacy fallback)
@@ -471,15 +471,15 @@ public abstract class BaseTaskWorker extends Worker {
         if (notification != null && notification.has("title") && notification.has("summary")) {
             result.putMetadata("notification_title", notification.get("title").getAsString());
             result.putMetadata("notification_summary", notification.get("summary").getAsString());
-            
+
             String status = "success";
             if (notification.has("status")) {
                 status = notification.get("status").getAsString();
             }
             result.putMetadata("notification_status", status);
-            
+
             Log.d(TAG, "Extracted notification from submit_notification tool: " + notification.get("title").getAsString());
-            
+
             SubmitNotificationTool.clearLastNotification();
             return;
         }

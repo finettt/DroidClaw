@@ -43,71 +43,71 @@ public class ChatSession {
     public long getUpdatedAt() {
         return updatedAt;
     }
-    
+
     public void setId(String id) {
         this.id = id;
     }
-    
+
     public void setTitle(String title) {
         this.title = title;
     }
-    
+
     public void setUpdatedAt(long updatedAt) {
         this.updatedAt = updatedAt;
     }
-    
+
     public int getCurrentContextTokens() {
         return currentContextTokens;
     }
-    
+
     public void setCurrentContextTokens(int currentContextTokens) {
         this.currentContextTokens = currentContextTokens;
     }
-    
+
     public int getCurrentPromptTokens() {
         return currentPromptTokens;
     }
-    
+
     public void setCurrentPromptTokens(int currentPromptTokens) {
         this.currentPromptTokens = currentPromptTokens;
     }
-    
+
     public int getCurrentCompletionTokens() {
         return currentCompletionTokens;
     }
-    
+
     public void setCurrentCompletionTokens(int currentCompletionTokens) {
         this.currentCompletionTokens = currentCompletionTokens;
     }
-    
+
     public int getTotalTokens() {
         return totalTokens;
     }
-    
+
     public void setTotalTokens(int totalTokens) {
         this.totalTokens = totalTokens;
     }
-    
+
     public int getTotalPromptTokens() {
         return totalPromptTokens;
     }
-    
+
     public void setTotalPromptTokens(int totalPromptTokens) {
         this.totalPromptTokens = totalPromptTokens;
     }
-    
+
     public int getTotalCompletionTokens() {
         return totalCompletionTokens;
     }
-    
+
     public void setTotalCompletionTokens(int totalCompletionTokens) {
         this.totalCompletionTokens = totalCompletionTokens;
     }
-    
+
     public int getTotalToolCalls() {
         return totalToolCalls;
     }
-    
+
     public void setTotalToolCalls(int totalToolCalls) {
         this.totalToolCalls = totalToolCalls;
     }

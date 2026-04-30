@@ -119,15 +119,12 @@ public class HeartbeatSettingsFragment extends Fragment {
     }
 
     private void loadHeartbeatSettings() {
-        // Load enabled state
         switchHeartbeatEnabled.setChecked(config.isEnabled());
 
-        // Load interval
         long interval = config.getIntervalMillis();
         String intervalLabel = getIntervalLabel(interval);
         dropdownInterval.setText(intervalLabel, false);
 
-        // Load last run timestamp
         long lastRun = config.getLastRunTimestamp();
         if (lastRun > 0) {
             SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault());
@@ -136,7 +133,6 @@ public class HeartbeatSettingsFragment extends Fragment {
             textLastRun.setText(R.string.heartbeat_never);
         }
 
-        // Load last status
         loadLastStatus();
         loadStalenessStatus();
     }

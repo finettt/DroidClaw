@@ -50,12 +50,10 @@ public class CronJobWorker extends BaseTaskWorker {
                 return Result.failure();
             }
 
-
             if (!job.isEnabled() || job.isPaused()) {
                 Log.d(TAG, "Cron job is disabled or paused, skipping: " + jobId);
                 return Result.success();
             }
-
 
             String prompt = job.getPrompt();
             if (prompt == null || prompt.trim().isEmpty()) {
@@ -65,16 +63,13 @@ public class CronJobWorker extends BaseTaskWorker {
 
             long startTime = System.currentTimeMillis();
 
-
             ChatSession session = createIsolatedSession(SessionType.HIDDEN_CRON);
             session.setParentTaskId(job.getId());
-
 
             TaskResult result = executeWithSandbox(session, prompt);
 
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-
 
             if (result.isSuccess()) {
                 job.recordSuccess(duration);
@@ -82,7 +77,6 @@ public class CronJobWorker extends BaseTaskWorker {
             } else {
                 job.recordFailure(result.getContent());
                 job.setLastRunTimestamp(System.currentTimeMillis());
-
 
                 if (job.canRetry()) {
                     Log.d(TAG, "Scheduling retry for job: " + jobId + " (attempt " + job.getRetryCount() + ")");
@@ -93,25 +87,19 @@ public class CronJobWorker extends BaseTaskWorker {
                 }
             }
 
-
             taskRepository.updateCronJob(job);
-
 
             taskRepository.saveTaskResult(result);
 
-
             notificationManager.sendTaskNotification(result);
             Log.d(TAG, "Cron job completed: " + job.getName());
-
 
             return Result.success();
 
         } catch (Exception e) {
             Log.e(TAG, "Cron job worker failed: " + jobId, e);
 
-
             notificationManager.showErrorNotification("Cron Job Failed", "Job " + jobId + ": " + e.getMessage());
-
 
             try {
                 CronJob job = taskRepository.getCronJob(jobId);
@@ -147,7 +135,6 @@ public class CronJobWorker extends BaseTaskWorker {
 
     @Override
     protected Result executeTask() {
-
 
         return Result.success();
     }

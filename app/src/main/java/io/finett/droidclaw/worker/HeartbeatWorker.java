@@ -43,7 +43,6 @@ public class HeartbeatWorker extends BaseTaskWorker {
 
     private static final String TAG = "HeartbeatWorker";
 
-
     private static final Pattern HEARTBEAT_JSON_PATTERN = Pattern.compile(
             "\\{\\s*\"HEARTBEAT_OK\"\\s*:\\s*(true|false)\\s*\\}",
             Pattern.CASE_INSENSITIVE
@@ -77,7 +76,6 @@ public class HeartbeatWorker extends BaseTaskWorker {
                 return Result.success();
             }
 
-
             long currentTime = System.currentTimeMillis();
             HeartbeatConfig.StalenessLevel staleness = config.getStalenessLevel(currentTime);
             double stalenessRatio = config.getStalenessRatio(currentTime);
@@ -97,12 +95,10 @@ public class HeartbeatWorker extends BaseTaskWorker {
                 notificationManager.sendWarningNotification("Heartbeat Delayed", msg);
             }
 
-
             if (!config.shouldRun(currentTime)) {
                 Log.d(TAG, "Heartbeat interval not elapsed, skipping");
                 return Result.success();
             }
-
 
             String heartbeatPrompt = readHeartbeatFile();
             if (heartbeatPrompt == null || heartbeatPrompt.trim().isEmpty()) {
@@ -110,24 +106,18 @@ public class HeartbeatWorker extends BaseTaskWorker {
                 heartbeatPrompt = getDefaultHeartbeatPrompt();
             }
 
-
             ChatSession session = createIsolatedSession(SessionType.HIDDEN_HEARTBEAT);
-
 
             TaskResult result = executeWithSandbox(session, heartbeatPrompt);
 
-
             result.putMetadata("staleness_ratio", String.valueOf(stalenessRatio));
             result.putMetadata("staleness_level", staleness.name());
-
 
             boolean isHealthy = checkHeartbeatOk(result.getContent());
             result.putMetadata("healthy", String.valueOf(isHealthy));
             taskRepository.saveTaskResult(result);
 
-
             heartbeatConfigRepo.updateLastRun(currentTime);
-
 
             if (isHealthy) {
                 Log.d(TAG, "Heartbeat completed successfully - system healthy");

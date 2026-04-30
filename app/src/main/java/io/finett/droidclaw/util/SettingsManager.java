@@ -118,7 +118,7 @@ public class SettingsManager {
 
         try {
             JSONObject root = new JSONObject(json);
-            
+
             // Load providers
             providers = new HashMap<>();
             if (root.has("providers")) {

@@ -45,7 +45,7 @@ public class AgentLoop {
     private int currentContextTokens = 0;
     private int currentPromptTokens = 0;
     private int currentCompletionTokens = 0;
-    
+
     // Session cumulative tokens (total spent across all requests)
     private int totalTokens = 0;
     private int totalPromptTokens = 0;
@@ -58,7 +58,7 @@ public class AgentLoop {
         void onToolResult(String toolName, String result);
         void onComplete(String finalResponse, List<ChatMessage> conversationHistory);
         void onError(String error);
-        
+
         /**
          * Called when a tool requires user approval before execution.
          *
@@ -69,7 +69,7 @@ public class AgentLoop {
          */
         void onApprovalRequired(String toolName, String description, JsonObject arguments, ApprovalCallback approvalCallback);
     }
-    
+
     public interface ApprovalCallback {
         void onApproved();
         void onDenied();
@@ -78,7 +78,7 @@ public class AgentLoop {
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager) {
         this(apiService, toolRegistry, settingsManager, null, null);
     }
-    
+
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager,
                      ConversationSummarizer summarizer, MemoryContextBuilder memoryContext) {
         this.apiService = apiService;
@@ -109,10 +109,10 @@ public class AgentLoop {
 
     public void start(List<ChatMessage> conversationHistory, AgentCallback callback) {
         iterationCount = 0;
-        
+
         // Make a mutable copy of the conversation history
         List<ChatMessage> workingHistory = new ArrayList<>(conversationHistory);
-        
+
         callback.onProgress("Sending message to LLM...");
         executeIteration(workingHistory, callback);
     }
@@ -122,7 +122,7 @@ public class AgentLoop {
      */
     private void executeIteration(List<ChatMessage> conversationHistory, AgentCallback callback) {
         iterationCount++;
-        
+
         if (iterationCount > maxIterations) {
             callback.onError("Maximum iterations (" + maxIterations + ") reached. The agent may be stuck in a loop.");
             return;
@@ -134,24 +134,24 @@ public class AgentLoop {
         // Use actual current context tokens instead of estimated tokens
         if (summarizer != null && summarizer.needsSummarization(currentContextTokens)) {
             callback.onProgress("Context limit approaching (" + currentContextTokens + " tokens), summarizing conversation...");
-            
+
             summarizer.summarizeAndSave(conversationHistory, new ConversationSummarizer.SummarizeCallback() {
                 @Override
                 public void onResult(List<ChatMessage> compressedHistory) {
                     callback.onProgress("Summary saved, continuing conversation...");
-                    
+
                     // Replace conversation history with compressed version
                     conversationHistory.clear();
                     conversationHistory.addAll(compressedHistory);
-                    
+
                     // Reset current context tokens after compression (context is now clean)
                     // Session cumulative tokens are preserved
                     resetCurrentContext();
-                    
+
                     // Continue with compressed conversation
                     continueIteration(conversationHistory, callback);
                 }
-                
+
                 @Override
                 public void onError(Throwable error) {
                     Log.e(TAG, "Summarization failed, continuing with full history", error);
@@ -161,11 +161,11 @@ public class AgentLoop {
             });
             return;
         }
-        
+
         // Continue normal iteration
         continueIteration(conversationHistory, callback);
     }
-    
+
     /**
      * Continue iteration with conversation (after optional summarization).
      */
@@ -283,7 +283,7 @@ public class AgentLoop {
 
         processToolCallsWithApproval(toolCalls, 0, conversationHistory, callback);
     }
-    
+
     /**
      * Process tool calls sequentially, requesting approval when needed.
      */
@@ -295,18 +295,18 @@ public class AgentLoop {
             executeIteration(conversationHistory, callback);
             return;
         }
-        
+
         LlmApiService.ToolCall toolCall = toolCalls.get(index);
         String toolName = toolCall.getName();
         JsonObject arguments = toolCall.getArguments();
-        
+
         Log.d(TAG, "Processing tool: " + toolName + " with args: " + arguments.toString());
         callback.onToolCall(toolName, arguments.toString());
-        
+
         // Check if this tool requires approval
         Tool tool = toolRegistry.getTool(toolName);
         boolean needsApproval = requireApproval && tool != null && tool.requiresApproval();
-        
+
         if (needsApproval) {
             // Build a normalised ExecPlan for exec-type tools (shell, etc.).
             // The approval dialog shows the plan's description — the canonical exe path,
@@ -323,21 +323,21 @@ public class AgentLoop {
                     // Execute the tool and continue
                     executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback);
                 }
-                
+
                 @Override
                 public void onDenied() {
                     // Add denial result to history and continue
                     String resultContent = "Tool execution denied by user";
                     Log.d(TAG, "Tool " + toolName + " denied by user");
                     callback.onToolResult(toolName, resultContent);
-                    
+
                     ChatMessage toolResultMessage = ChatMessage.createToolResultMessage(
                         toolCall.getId(),
                         toolName,
                         resultContent
                     );
                     conversationHistory.add(toolResultMessage);
-                    
+
                     // Process next tool call
                     processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
                 }
@@ -347,7 +347,7 @@ public class AgentLoop {
             executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback);
         }
     }
-    
+
     private void executeToolAndContinue(LlmApiService.ToolCall toolCall, List<LlmApiService.ToolCall> toolCalls,
                                         int index, List<ChatMessage> conversationHistory, AgentCallback callback) {
         String toolName = toolCall.getName();
