@@ -352,6 +352,276 @@ public class ConversationSummarizerTest {
         assertTrue("Many small messages should need summarization", needs);
     }
 
+    @Test
+    public void testGetTokenThresholdReturns75PercentOfWindow() {
+        assertEquals("Threshold should be 75% of 4096", 3072, summarizer.getTokenThreshold());
+    }
+
+    @Test
+    public void testGetContextWindowReturnsDefault() {
+        assertEquals("Default window should be 4096", 4096, summarizer.getContextWindow());
+    }
+
+    @Test
+    public void testNeedsSummarizationExactlyAtThresholdReturnsTrue() {
+        boolean needs = summarizer.needsSummarization(3072);
+
+        assertTrue("Should need summarization exactly at threshold", needs);
+    }
+
+    @Test
+    public void testNeedsSummarizationOneTokenBelowThresholdReturnsFalse() {
+        boolean needs = summarizer.needsSummarization(3071);
+
+        assertFalse("Should not need summarization one token below threshold", needs);
+    }
+
+    @Test
+    public void testNeedsSummarizationOneTokenAboveThresholdReturnsTrue() {
+        boolean needs = summarizer.needsSummarization(3073);
+
+        assertTrue("Should need summarization one token above threshold", needs);
+    }
+
+    @Test
+    public void testNeedsSummarizationWithCustomContextWindow() {
+        ConversationSummarizer customSummarizer = new ConversationSummarizer(mockApiService, mockMemoryRepository, 8192);
+
+        assertEquals("Custom window should be 8192", 8192, customSummarizer.getContextWindow());
+        assertEquals("Custom threshold should be 75% of 8192", 6144, customSummarizer.getTokenThreshold());
+
+        assertFalse("Should not need summarization below custom threshold",
+                customSummarizer.needsSummarization(6143));
+        assertTrue("Should need summarization at custom threshold",
+                customSummarizer.needsSummarization(6144));
+    }
+
+    @Test
+    public void testSummarizeAndSaveSplitsMessagesCorrectly() throws IOException {
+        // Create 12 messages - should keep ~4 recent, summarize 8
+        List<ChatMessage> messages = createSmallMessages(12);
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onSuccess("Summary");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        ArgumentCaptor<List<ChatMessage>> resultCaptor = ArgumentCaptor.forClass(List.class);
+        verify(callback).onResult(resultCaptor.capture());
+
+        List<ChatMessage> result = resultCaptor.getValue();
+        assertTrue("Should return fewer messages than original", result.size() < messages.size());
+        assertTrue("Should keep at least some messages", result.size() > 0);
+    }
+
+    @Test
+    public void testSummarizeAndSaveKeepsRecentMessages() throws IOException {
+        List<ChatMessage> messages = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            messages.add(new ChatMessage("Message " + i, i % 2 == 0 ? ChatMessage.TYPE_USER : ChatMessage.TYPE_ASSISTANT));
+        }
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onSuccess("Summary");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        ArgumentCaptor<List<ChatMessage>> resultCaptor = ArgumentCaptor.forClass(List.class);
+        verify(callback).onResult(resultCaptor.capture());
+
+        List<ChatMessage> result = resultCaptor.getValue();
+        // The last few messages should be kept
+        String lastKeptContent = result.get(result.size() - 1).getContent();
+        assertTrue("Should keep recent messages", lastKeptContent.contains("Message"));
+    }
+
+    @Test
+    public void testSummarizeAndSaveZeroMessagesReturnsEmpty() throws IOException {
+        List<ChatMessage> messages = new ArrayList<>();
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        verify(callback).onResult(eq(messages));
+        verifyNoInteractions(mockApiService);
+    }
+
+    @Test
+    public void testSummarizeAndSaveLlmSuccessAppendsToDailyNote() throws IOException {
+        List<ChatMessage> messages = createMessagesWithTokens(500, 600, 700, 800, 900, 1000, 1100, 1200);
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onSuccess("Generated summary text");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        verify(mockMemoryRepository).appendToDailyNote(anyString());
+    }
+
+    @Test
+    public void testSummarizeAndSaveLlmErrorUsesFallbackAndStillCompresses() throws IOException {
+        List<ChatMessage> messages = createMessagesWithTokens(500, 600, 700, 800, 900, 1000, 1100, 1200);
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onError("API failure");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        ArgumentCaptor<List<ChatMessage>> resultCaptor = ArgumentCaptor.forClass(List.class);
+        verify(callback).onResult(resultCaptor.capture());
+
+        List<ChatMessage> result = resultCaptor.getValue();
+        assertTrue("Should return compressed list on LLM error", result.size() < messages.size());
+    }
+
+    @Test
+    public void testBuildSummaryPromptSkipsNullContent() throws IOException {
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(new ChatMessage(null, ChatMessage.TYPE_USER));
+        messages.add(new ChatMessage("Valid message", ChatMessage.TYPE_ASSISTANT));
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onSuccess("Summary");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        ArgumentCaptor<List<ChatMessage>> requestCaptor = ArgumentCaptor.forClass(List.class);
+        verify(mockApiService).sendMessage(requestCaptor.capture(), any(), any());
+
+        String prompt = requestCaptor.getValue().get(0).getContent();
+        assertFalse("Should not contain 'null' as content", prompt.contains("null"));
+        assertTrue("Should contain valid message", prompt.contains("Valid message"));
+    }
+
+    @Test
+    public void testBuildSummaryPromptSkipsEmptyContent() throws IOException {
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(new ChatMessage("", ChatMessage.TYPE_USER));
+        messages.add(new ChatMessage("Non-empty", ChatMessage.TYPE_ASSISTANT));
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onSuccess("Summary");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        ArgumentCaptor<List<ChatMessage>> requestCaptor = ArgumentCaptor.forClass(List.class);
+        verify(mockApiService).sendMessage(requestCaptor.capture(), any(), any());
+
+        String prompt = requestCaptor.getValue().get(0).getContent();
+        assertTrue("Should contain non-empty message", prompt.contains("Non-empty"));
+    }
+
+    @Test
+    public void testCreateFallbackSummaryCountsCorrectly() throws IOException {
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(new ChatMessage("U1", ChatMessage.TYPE_USER));
+        messages.add(new ChatMessage("A1", ChatMessage.TYPE_ASSISTANT));
+        messages.add(new ChatMessage("U2", ChatMessage.TYPE_USER));
+        messages.add(new ChatMessage("A2", ChatMessage.TYPE_ASSISTANT));
+        messages.add(new ChatMessage("A3", ChatMessage.TYPE_ASSISTANT));
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onError("Error");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        ArgumentCaptor<String> entryCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mockMemoryRepository).appendToDailyNote(entryCaptor.capture());
+
+        String savedEntry = entryCaptor.getValue();
+        // With 5 messages: keepCount = min(8, 5/3) = 1, summarizeCount = 4
+        // First 4 messages: U1, A1, U2, A2 = 2 user, 2 assistant
+        assertTrue("Should contain 2 user messages", savedEntry.contains("2 user messages"));
+        assertTrue("Should contain 2 assistant messages", savedEntry.contains("2 assistant messages"));
+    }
+
+    @Test
+    public void testSummarizeAndSaveSaveIOExceptionStillReturnsCompressed() throws IOException {
+        List<ChatMessage> messages = createMessagesWithTokens(500, 600, 700, 800, 900, 1000, 1100, 1200);
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onSuccess("Summary");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        doThrow(new IOException("Write failed")).when(mockMemoryRepository).appendToDailyNote(anyString());
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        ArgumentCaptor<List<ChatMessage>> resultCaptor = ArgumentCaptor.forClass(List.class);
+        verify(callback).onResult(resultCaptor.capture());
+
+        List<ChatMessage> result = resultCaptor.getValue();
+        assertTrue("Should return compressed list even when save fails", result.size() < messages.size());
+    }
+
+    @Test
+    public void testSummarizeAndSavePromptContainsInstructions() throws IOException {
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(new ChatMessage("Hello", ChatMessage.TYPE_USER));
+        messages.add(new ChatMessage("Hi", ChatMessage.TYPE_ASSISTANT));
+
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallback cb = invocation.getArgument(2);
+            cb.onSuccess("Summary");
+            return null;
+        }).when(mockApiService).sendMessage(anyList(), any(), any(LlmApiService.ChatCallback.class));
+
+        summarizer.summarizeAndSave(messages, callback);
+
+        ArgumentCaptor<List<ChatMessage>> requestCaptor = ArgumentCaptor.forClass(List.class);
+        verify(mockApiService).sendMessage(requestCaptor.capture(), any(), any());
+
+        String prompt = requestCaptor.getValue().get(0).getContent();
+        assertTrue("Should ask to summarize", prompt.contains("Summarize"));
+        assertTrue("Should mention key topics", prompt.contains("Key topics"));
+        assertTrue("Should mention decisions", prompt.contains("decisions"));
+        assertTrue("Should mention facts", prompt.contains("Facts"));
+        assertTrue("Should mention action items", prompt.contains("Action items"));
+        assertTrue("Should have word limit", prompt.contains("200 words"));
+    }
+
     private List<ChatMessage> createSmallMessages(int count) {
         List<ChatMessage> messages = new ArrayList<>();
         for (int i = 0; i < count; i++) {
