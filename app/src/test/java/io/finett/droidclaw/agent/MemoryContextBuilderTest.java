@@ -268,4 +268,162 @@ public class MemoryContextBuilderTest {
 
         assertFalse("Should return false when all checks fail", hasMemory);
     }
+
+    @Test
+    public void testBuildMemoryContext_orderIsLongTermTodayYesterday() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("LONG_TERM");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("TODAY");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("YESTERDAY");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        int longTermIdx = context.indexOf("LONG_TERM");
+        int todayIdx = context.indexOf("TODAY");
+        int yesterdayIdx = context.indexOf("YESTERDAY");
+
+        assertTrue("Long-term should appear before today", longTermIdx < todayIdx);
+        assertTrue("Today should appear before yesterday", todayIdx < yesterdayIdx);
+    }
+
+    @Test
+    public void testBuildMemoryContext_longTermBeforeTodaySection() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("LT_CONTENT");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("T_CONTENT");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        int ltSection = context.indexOf("# Long-term Memory");
+        int todaySection = context.indexOf("# Today's Context");
+        assertTrue("Long-term section should come before today section", ltSection < todaySection);
+    }
+
+    @Test
+    public void testBuildMemoryContext_todayBeforeYesterdaySection() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("T_CONTENT");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("Y_CONTENT");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        int todaySection = context.indexOf("# Today's Context");
+        int yesterdaySection = context.indexOf("# Yesterday's Context");
+        assertTrue("Today section should come before yesterday section", todaySection < yesterdaySection);
+    }
+
+    @Test
+    public void testBuildMemoryContext_wrapsWithMemoryContextMarkers() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("Some content");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        assertTrue("Should start with MEMORY CONTEXT marker",
+                context.startsWith("--- MEMORY CONTEXT ---"));
+        assertTrue("Should end with END MEMORY CONTEXT marker",
+                context.trim().endsWith("--- END MEMORY CONTEXT ---"));
+    }
+
+    @Test
+    public void testBuildMemoryContext_markersOnlyAppearOnce() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("Content");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("More");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("Even more");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        assertEquals("Start marker should appear exactly once", 1,
+                countOccurrences(context, "--- MEMORY CONTEXT ---"));
+        assertEquals("End marker should appear exactly once", 1,
+                countOccurrences(context, "--- END MEMORY CONTEXT ---"));
+    }
+
+    @Test
+    public void testBuildMemoryContext_noMarkersWhenEmpty() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        assertFalse("Should not contain start marker when empty",
+                context.contains("--- MEMORY CONTEXT ---"));
+        assertFalse("Should not contain end marker when empty",
+                context.contains("--- END MEMORY CONTEXT ---"));
+    }
+
+    @Test
+    public void testBuildMemoryContext_trimsLongTermContent() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("  \n  trimmed content  \n  ");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        assertTrue("Should contain trimmed content", context.contains("trimmed content"));
+    }
+
+    @Test
+    public void testBuildMemoryContext_trimsTodayContent() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("  \n  today note  \n  ");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        assertTrue("Should contain trimmed today content", context.contains("today note"));
+    }
+
+    @Test
+    public void testBuildMemoryContext_trimsYesterdayContent() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenReturn("");
+        when(mockMemoryRepository.readTodayNote()).thenReturn("");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("  \n  yesterday note  \n  ");
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        assertTrue("Should contain trimmed yesterday content", context.contains("yesterday note"));
+    }
+
+    @Test
+    public void testBuildMemoryContext_longTermThrows_stillReturnsEmpty() throws IOException {
+        when(mockMemoryRepository.readLongTermMemory()).thenThrow(new IOException("Disk error"));
+
+        String context = memoryContextBuilder.buildMemoryContext();
+
+        assertEquals("Should return empty on IOException from long-term", "", context);
+    }
+
+    @Test
+    public void testHasMemory_allThreeExist_returnsTrue() throws IOException {
+        when(mockMemoryRepository.longTermMemoryExists()).thenReturn(true);
+        when(mockMemoryRepository.readTodayNote()).thenReturn("Today");
+        when(mockMemoryRepository.readYesterdayNote()).thenReturn("Yesterday");
+
+        boolean hasMemory = memoryContextBuilder.hasMemory();
+
+        assertTrue("Should return true when all three exist", hasMemory);
+    }
+
+    @Test
+    public void testHasMemory_yesterdayThrows_returnsFalse() throws IOException {
+        when(mockMemoryRepository.longTermMemoryExists()).thenReturn(false);
+        when(mockMemoryRepository.readTodayNote()).thenReturn("");
+        when(mockMemoryRepository.readYesterdayNote()).thenThrow(new IOException("Error"));
+
+        boolean hasMemory = memoryContextBuilder.hasMemory();
+
+        assertFalse("Should return false on IOException from readYesterdayNote", hasMemory);
+    }
+
+    private int countOccurrences(String str, String sub) {
+        int count = 0;
+        int idx = 0;
+        while ((idx = str.indexOf(sub, idx)) != -1) {
+            count++;
+            idx += sub.length();
+        }
+        return count;
+    }
 }

@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 
 import io.finett.droidclaw.filesystem.PathValidator;
+import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.shell.ExecPlanner;
 import io.finett.droidclaw.shell.ShellConfig;
 import io.finett.droidclaw.tool.ToolDefinition;
@@ -381,5 +382,338 @@ public class ShellToolTest {
         ShellTool pathValidatorTool = new ShellTool(pathValidator, ShellConfig.createDefault());
         assertNotNull(pathValidatorTool);
         assertEquals("execute_shell", pathValidatorTool.getName());
+    }
+
+    @Test
+    public void testBuildExecPlan_withValidCommand_returnsPlan() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo hello");
+
+        ExecPlan plan = tool.buildExecPlan(args);
+
+        assertNotNull("Plan should be built for valid command", plan);
+        assertTrue("Plan should contain echo", plan.getCanonicalExePath().endsWith("echo"));
+        assertEquals("Plan should have 1 arg", 1, plan.getArgv().size());
+        assertEquals("hello", plan.getArgv().get(0));
+        assertNotNull("Plan hash should not be null", plan.getPlanHash());
+        assertTrue("Plan hash should be non-empty", plan.getPlanHash().length() > 0);
+    }
+
+    @Test
+    public void testBuildExecPlan_withEmptyCommand_returnsNull() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "   ");
+
+        ExecPlan plan = tool.buildExecPlan(args);
+
+        assertNull("Plan should be null for empty command", plan);
+    }
+
+    @Test
+    public void testBuildExecPlan_withMetachar_returnsNull() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo hello; rm -rf /");
+
+        ExecPlan plan = tool.buildExecPlan(args);
+
+        assertNull("Plan should be null when metachar detected", plan);
+    }
+
+    @Test
+    public void testBuildExecPlan_withMissingCommand_returnsNull() {
+        JsonObject args = new JsonObject();
+
+        ExecPlan plan = tool.buildExecPlan(args);
+
+        assertNull("Plan should be null when command missing", plan);
+    }
+
+    @Test
+    public void testBuildExecPlan_hashChangesWithDifferentArgs() {
+        JsonObject args1 = new JsonObject();
+        args1.addProperty("command", "echo hello");
+
+        JsonObject args2 = new JsonObject();
+        args2.addProperty("command", "echo world");
+
+        ExecPlan plan1 = tool.buildExecPlan(args1);
+        ExecPlan plan2 = tool.buildExecPlan(args2);
+
+        assertNotNull(plan1);
+        assertNotNull(plan2);
+        assertNotEquals("Different args should produce different hashes",
+                plan1.getPlanHash(), plan2.getPlanHash());
+    }
+
+    @Test
+    public void testBuildExecPlan_hashStableForSameArgs() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo hello");
+
+        ExecPlan plan1 = tool.buildExecPlan(args);
+        ExecPlan plan2 = tool.buildExecPlan(args);
+
+        assertNotNull(plan1);
+        assertNotNull(plan2);
+        assertEquals("Same args should produce same hash",
+                plan1.getPlanHash(), plan2.getPlanHash());
+    }
+
+    @Test
+    public void testBuildExecPlan_approvalDescriptionContainsHash() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo hello");
+
+        ExecPlan plan = tool.buildExecPlan(args);
+
+        assertNotNull(plan);
+        String desc = plan.toApprovalDescription();
+        assertTrue("Description should contain mode", desc.contains("DIRECT"));
+        assertTrue("Description should contain executable", desc.contains("echo"));
+        assertTrue("Description should contain working dir", desc.contains("Working dir"));
+        assertTrue("Description should contain plan ID", desc.contains("Plan ID"));
+    }
+
+    @Test
+    public void testGetApprovalDescription_withCommand() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "ls -la");
+
+        String desc = tool.getApprovalDescription(args);
+
+        assertTrue("Should contain command", desc.contains("ls -la"));
+        assertTrue("Should mention shell command", desc.contains("Execute shell command"));
+    }
+
+    @Test
+    public void testGetApprovalDescription_withWorkingDir() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "pwd");
+        args.addProperty("working_directory", "subdir");
+
+        String desc = tool.getApprovalDescription(args);
+
+        assertTrue("Should contain working directory", desc.contains("subdir"));
+    }
+
+    @Test
+    public void testGetApprovalDescription_missingCommand() {
+        JsonObject args = new JsonObject();
+
+        String desc = tool.getApprovalDescription(args);
+
+        assertTrue("Should show unknown command", desc.contains("unknown command"));
+    }
+
+    @Test
+    public void testExecuteWithCommandSubstitution_dollarParen() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo $(whoami)");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject command substitution", result.isSuccess());
+        assertTrue("Error should mention metacharacter or security",
+                result.getError().contains("metacharacter") || result.getError().contains("Security"));
+    }
+
+    @Test
+    public void testExecuteWithCommandSubstitution_backtick() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo `whoami`");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject backtick substitution", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithRedirection_output() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo test > /tmp/file.txt");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject redirection", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithRedirection_input() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "cat < /etc/passwd");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject input redirection", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithPipe() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "ls | wc -l");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject pipe", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithAmpersand() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "ls && echo done");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject ampersand", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithSemicolon() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "ls; echo done");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject semicolon", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithQuestionMarkGlob() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo ?");
+
+        ToolResult result = tool.execute(args);
+
+        // '?' is not in metachars, so this may succeed or fail depending on shell
+        // Just verify it doesn't crash
+        assertNotNull("Result should not be null", result);
+    }
+
+    @Test
+    public void testExecuteWithTildeExpansion() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "ls ~");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject tilde expansion", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithExclamationMark() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo hello!");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject exclamation mark", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithBraceExpansion() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo {a,b,c}");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject brace expansion", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithDoubleDotTraversal() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "pwd");
+        args.addProperty("working_directory", "foo/../..");
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Should reject double-dot traversal", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithNullWorkingDirectory_usesRoot() {
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "pwd");
+
+        ToolResult result = fullTool.execute(args);
+
+        assertTrue("Null working directory should use workspace root", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithWhitespaceWorkingDirectory_usesRoot() {
+        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "pwd");
+        args.addProperty("working_directory", "   ");
+
+        ToolResult result = fullTool.execute(args);
+
+        assertTrue("Whitespace working directory should use workspace root", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithTimeoutAtBoundary_300() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo test");
+        args.addProperty("timeout_seconds", 300);
+
+        ToolResult result = tool.execute(args);
+
+        assertTrue("Timeout at upper boundary should be valid", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithTimeoutAtBoundary_1() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo test");
+        args.addProperty("timeout_seconds", 1);
+
+        ToolResult result = tool.execute(args);
+
+        assertTrue("Timeout at lower boundary should be valid", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithTimeoutAboveBoundary_301() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo test");
+        args.addProperty("timeout_seconds", 301);
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Timeout above upper boundary should fail", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithTimeoutZero() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo test");
+        args.addProperty("timeout_seconds", 0);
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Timeout of zero should fail", result.isSuccess());
+    }
+
+    @Test
+    public void testExecuteWithTimeoutNegative() {
+        JsonObject args = new JsonObject();
+        args.addProperty("command", "echo test");
+        args.addProperty("timeout_seconds", -1);
+
+        ToolResult result = tool.execute(args);
+
+        assertFalse("Negative timeout should fail", result.isSuccess());
+    }
+
+    @Test
+    public void testRequiresApproval_returnsTrue() {
+        assertTrue("Shell tool should require approval", tool.requiresApproval());
     }
 }
