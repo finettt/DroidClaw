@@ -33,10 +33,10 @@ public class ModelTest {
     @Test
     public void parameterizedConstructor_setsAllFields() {
         List<String> input = Arrays.asList("text", "image");
-        Model m = new Model("gpt-4-vision", "GPT-4 Vision", "openai", true, input, 128000, 4096);
+        Model m = new Model("gpt-5.4", "GPT-5.4", "openai", true, input, 128000, 4096);
         
-        assertEquals("gpt-4-vision", m.getId());
-        assertEquals("GPT-4 Vision", m.getName());
+        assertEquals("gpt-5.4", m.getId());
+        assertEquals("GPT-5.4", m.getName());
         assertEquals("openai", m.getApi());
         assertTrue(m.isReasoning());
         assertEquals(2, m.getInput().size());
@@ -48,7 +48,7 @@ public class ModelTest {
 
     @Test
     public void parameterizedConstructor_withNullInput_initializesEmptyList() {
-        Model m = new Model("gpt-4", "GPT-4", "openai", false, null, 8192, 4096);
+        Model m = new Model("gpt-5.4", "GPT-5.4", "openai", false, null, 8192, 4096);
         
         assertNotNull(m.getInput());
         assertTrue(m.getInput().isEmpty());
@@ -57,7 +57,7 @@ public class ModelTest {
     @Test
     public void parameterizedConstructor_createsDefensiveCopyOfInput() {
         List<String> input = new ArrayList<>(Arrays.asList("text"));
-        Model m = new Model("gpt-4", "GPT-4", "openai", false, input, 8192, 4096);
+        Model m = new Model("gpt-5.4", "GPT-5.4", "openai", false, input, 8192, 4096);
         
         // Modify original list
         input.add("image");
@@ -71,8 +71,8 @@ public class ModelTest {
 
     @Test
     public void setId_updatesId() {
-        model.setId("claude-3-opus");
-        assertEquals("claude-3-opus", model.getId());
+        model.setId("claude-opus-4-7");
+        assertEquals("claude-opus-4-7", model.getId());
     }
 
     @Test
@@ -296,12 +296,12 @@ public class ModelTest {
 
     @Test
     public void model_withSpecialCharacters_acceptsValues() {
-        model.setId("claude-3-opus@v1.2.3");
-        model.setName("Claude 3 Opus™ (Latest Version)");
+        model.setId("claude-opus-4-7@v1.2.3");
+        model.setName("Claude Opus 4.7™ (Latest Version)");
         model.setApi("anthropic-v3");
         
-        assertEquals("claude-3-opus@v1.2.3", model.getId());
-        assertEquals("Claude 3 Opus™ (Latest Version)", model.getName());
+        assertEquals("claude-opus-4-7@v1.2.3", model.getId());
+        assertEquals("Claude Opus 4.7™ (Latest Version)", model.getName());
         assertEquals("anthropic-v3", model.getApi());
     }
 
