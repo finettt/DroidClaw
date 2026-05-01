@@ -43,9 +43,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api-level: [34, 35, 36]
-        shard-index: [0, 1, 2]
-        total-shards: [3]
+        api-level: [35, 36]
+        shard-index: [0, 1, 2, 3, 4, 5]
+        total-shards: [6]
 
     steps:
       - name: Checkout repository
