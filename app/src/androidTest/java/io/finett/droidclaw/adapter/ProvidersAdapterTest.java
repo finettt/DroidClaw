@@ -163,8 +163,8 @@ public class ProvidersAdapterTest {
     @Test
     public void onBindViewHolder_bindsModelCount() {
         Provider provider = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
-        provider.addModel(new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096));
-        provider.addModel(new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048));
+        provider.addModel(new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096));
+        provider.addModel(new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048));
         
         List<Provider> providers = Arrays.asList(provider);
         adapter.submitList(providers);
@@ -192,7 +192,6 @@ public class ProvidersAdapterTest {
         RecyclerView recyclerView = new RecyclerView(context);
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
         RecyclerView.ViewHolder viewHolder = adapter.onCreateViewHolder(recyclerView, 0);
-
         adapter.onBindViewHolder((ProvidersAdapter.ProviderViewHolder) viewHolder, 0);
 
         TextView modelCountText = viewHolder.itemView.findViewById(R.id.text_model_count);
@@ -204,11 +203,11 @@ public class ProvidersAdapterTest {
     @Test
     public void onBindViewHolder_multipleProviders_bindsCorrectly() {
         Provider provider1 = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
-        provider1.addModel(new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096));
+        provider1.addModel(new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096));
         
         Provider provider2 = new Provider("anthropic", "Anthropic", "https://api.anthropic.com", "sk-ant", "anthropic");
-        provider2.addModel(new Model("claude-3", "Claude 3", "anthropic", true, Arrays.asList("text"), 100000, 4096));
-        provider2.addModel(new Model("claude-2", "Claude 2", "anthropic", false, Arrays.asList("text"), 100000, 4096));
+        provider2.addModel(new Model("claude-sonnet-4-6", "Claude Sonnet 4.6", "anthropic", true, Arrays.asList("text"), 100000, 4096));
+        provider2.addModel(new Model("claude-opus-4-7", "Claude Opus 4.7", "anthropic", false, Arrays.asList("text"), 100000, 4096));
 
         List<Provider> providers = Arrays.asList(provider1, provider2);
         adapter.submitList(providers);
@@ -305,7 +304,7 @@ public class ProvidersAdapterTest {
     public void diffUtil_detectsModelCountChange() throws InterruptedException {
         Provider provider1 = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
         Provider provider2 = new Provider("openai", "OpenAI", "https://api.openai.com", "sk-test", "openai");
-        provider2.addModel(new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096));
+        provider2.addModel(new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096));
 
         AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(provider1));
         

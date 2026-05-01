@@ -23,7 +23,7 @@ public class AgentConfigTest {
     @Test
     public void parameterizedConstructor_setsAllFields() {
         AgentConfig c = new AgentConfig(
-            "openai/gpt-4",
+            "openai/gpt-5.4",
             true,
             "relaxed",
             50,
@@ -33,7 +33,7 @@ public class AgentConfigTest {
             java.util.Arrays.asList("/system/bin/curl")
         );
         
-        assertEquals("openai/gpt-4", c.getDefaultModel());
+        assertEquals("openai/gpt-5.4", c.getDefaultModel());
         assertTrue(c.isShellAccess());
         assertEquals("relaxed", c.getSandboxMode());
         assertEquals(50, c.getMaxIterations());
@@ -69,8 +69,8 @@ public class AgentConfigTest {
 
     @Test
     public void setDefaultModel_updatesDefaultModel() {
-        config.setDefaultModel("anthropic/claude-3-opus");
-        assertEquals("anthropic/claude-3-opus", config.getDefaultModel());
+        config.setDefaultModel("anthropic/claude-opus-4-7");
+        assertEquals("anthropic/claude-opus-4-7", config.getDefaultModel());
     }
 
     @Test
@@ -114,7 +114,7 @@ public class AgentConfigTest {
 
     @Test
     public void getDefaultProviderId_withValidFormat_returnsProviderId() {
-        config.setDefaultModel("openai/gpt-4");
+        config.setDefaultModel("openai/gpt-5.4");
         assertEquals("openai", config.getDefaultProviderId());
     }
 
@@ -126,7 +126,7 @@ public class AgentConfigTest {
 
     @Test
     public void getDefaultProviderId_withoutSlash_returnsNull() {
-        config.setDefaultModel("gpt-4");
+        config.setDefaultModel("gpt-5.4");
         assertNull(config.getDefaultProviderId());
     }
 
@@ -150,8 +150,8 @@ public class AgentConfigTest {
 
     @Test
     public void getDefaultModelId_withValidFormat_returnsModelId() {
-        config.setDefaultModel("openai/gpt-4");
-        assertEquals("gpt-4", config.getDefaultModelId());
+        config.setDefaultModel("openai/gpt-5.4");
+        assertEquals("gpt-5.4", config.getDefaultModelId());
     }
 
     @Test
@@ -162,7 +162,7 @@ public class AgentConfigTest {
 
     @Test
     public void getDefaultModelId_withoutSlash_returnsNull() {
-        config.setDefaultModel("gpt-4");
+        config.setDefaultModel("gpt-5.4");
         assertNull(config.getDefaultModelId());
     }
 
@@ -186,16 +186,16 @@ public class AgentConfigTest {
 
     @Test
     public void getDefaultModelId_withComplexModelId_returnsFullModelId() {
-        config.setDefaultModel("anthropic/claude-3-opus-20240229");
-        assertEquals("claude-3-opus-20240229", config.getDefaultModelId());
+        config.setDefaultModel("anthropic/claude-opus-4-7");
+        assertEquals("claude-opus-4-7", config.getDefaultModelId());
     }
 
     @Test
     public void setDefaultModel_thenGetIds_returnsCorrectValues() {
-        config.setDefaultModel("anthropic/claude-3-sonnet");
+        config.setDefaultModel("anthropic/claude-sonnet-4-6");
         
         assertEquals("anthropic", config.getDefaultProviderId());
-        assertEquals("claude-3-sonnet", config.getDefaultModelId());
+        assertEquals("claude-sonnet-4-6", config.getDefaultModelId());
     }
 
     @Test
@@ -256,7 +256,7 @@ public class AgentConfigTest {
 
     @Test
     public void config_multipleSetsAndGets_maintainsCorrectState() {
-        config.setDefaultModel("openai/gpt-4");
+        config.setDefaultModel("openai/gpt-5.4");
         config.setShellAccess(true);
         config.setSandboxMode("relaxed");
         config.setMaxIterations(50);
@@ -265,7 +265,7 @@ public class AgentConfigTest {
         config.setBackgroundShellEnabled(true);
         config.setCustomAllowlist(java.util.Arrays.asList("/system/bin/tar", "/system/bin/curl"));
         
-        assertEquals("openai/gpt-4", config.getDefaultModel());
+        assertEquals("openai/gpt-5.4", config.getDefaultModel());
         assertTrue(config.isShellAccess());
         assertEquals("relaxed", config.getSandboxMode());
         assertEquals(50, config.getMaxIterations());
@@ -274,7 +274,7 @@ public class AgentConfigTest {
         assertTrue(config.isBackgroundShellEnabled());
         assertEquals(2, config.getCustomAllowlist().size());
         
-        config.setDefaultModel("anthropic/claude-3");
+        config.setDefaultModel("anthropic/claude-sonnet-4-6");
         config.setShellAccess(false);
         config.setSandboxMode("strict");
         config.setMaxIterations(20);
@@ -283,7 +283,7 @@ public class AgentConfigTest {
         config.setBackgroundShellEnabled(false);
         config.setCustomAllowlist(java.util.Collections.emptyList());
         
-        assertEquals("anthropic/claude-3", config.getDefaultModel());
+        assertEquals("anthropic/claude-sonnet-4-6", config.getDefaultModel());
         assertFalse(config.isShellAccess());
         assertEquals("strict", config.getSandboxMode());
         assertEquals(20, config.getMaxIterations());

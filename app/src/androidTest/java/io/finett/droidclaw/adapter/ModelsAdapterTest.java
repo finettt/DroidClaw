@@ -51,8 +51,8 @@ public class ModelsAdapterTest {
     @Test
     public void submitList_withModels_updatesCount() throws InterruptedException {
         List<Model> models = Arrays.asList(
-            new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096),
-            new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048)
+            new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096),
+            new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048)
         );
 
         AdapterTestHelper.submitListAndWait(adapter, models);
@@ -63,7 +63,7 @@ public class ModelsAdapterTest {
     @Test
     public void submitList_withEmptyList_clearsAdapter() throws InterruptedException {
         List<Model> models = Arrays.asList(
-            new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
+            new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
         AdapterTestHelper.submitListAndWait(adapter, models);
 
@@ -75,7 +75,7 @@ public class ModelsAdapterTest {
     @Test
     public void submitList_withNull_clearsAdapter() throws InterruptedException {
         List<Model> models = Arrays.asList(
-            new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
+            new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
         AdapterTestHelper.submitListAndWait(adapter, models);
 
@@ -87,13 +87,13 @@ public class ModelsAdapterTest {
     @Test
     public void submitList_replacesExistingList() throws InterruptedException {
         List<Model> models1 = Arrays.asList(
-            new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
+            new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
         AdapterTestHelper.submitListAndWait(adapter, models1);
 
         List<Model> models2 = Arrays.asList(
-            new Model("claude-3", "Claude 3", "anthropic", true, Arrays.asList("text", "image"), 100000, 4096),
-            new Model("claude-2", "Claude 2", "anthropic", false, Arrays.asList("text"), 100000, 4096)
+            new Model("claude-sonnet-4-6", "Claude Sonnet 4.6", "anthropic", true, Arrays.asList("text", "image"), 100000, 4096),
+            new Model("claude-opus-4-7", "Claude Opus 4.7", "anthropic", false, Arrays.asList("text"), 100000, 4096)
         );
         AdapterTestHelper.submitListAndWait(adapter, models2);
 
@@ -127,7 +127,7 @@ public class ModelsAdapterTest {
     @Test
     public void onBindViewHolder_bindsModelName() {
         List<Model> models = Arrays.asList(
-            new Model("gpt-4", "GPT-4 Turbo", "openai", false, Arrays.asList("text"), 128000, 4096)
+            new Model("gpt-5.4", "GPT-5.4 Turbo", "openai", false, Arrays.asList("text"), 128000, 4096)
         );
         adapter.submitList(models);
 
@@ -139,13 +139,13 @@ public class ModelsAdapterTest {
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder, 0);
 
         TextView nameText = viewHolder.itemView.findViewById(R.id.text_model_name);
-        assertEquals("GPT-4 Turbo", nameText.getText().toString());
+        assertEquals("GPT-5.4 Turbo", nameText.getText().toString());
     }
 
     @Test
     public void onBindViewHolder_bindsContextWindow() {
         List<Model> models = Arrays.asList(
-            new Model("claude-3", "Claude 3", "anthropic", true, Arrays.asList("text"), 200000, 4096)
+            new Model("claude-sonnet-4-6", "Claude Sonnet 4.6", "anthropic", true, Arrays.asList("text"), 200000, 4096)
         );
         adapter.submitList(models);
 
@@ -165,8 +165,8 @@ public class ModelsAdapterTest {
     @Test
     public void onBindViewHolder_multipleModels_bindsCorrectly() {
         List<Model> models = Arrays.asList(
-            new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096),
-            new Model("claude-3", "Claude 3", "anthropic", true, Arrays.asList("text"), 100000, 4096)
+            new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096),
+            new Model("claude-sonnet-4-6", "Claude 3", "anthropic", true, Arrays.asList("text"), 100000, 4096)
         );
         adapter.submitList(models);
 
@@ -177,7 +177,7 @@ public class ModelsAdapterTest {
         RecyclerView.ViewHolder viewHolder1 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder1, 0);
         TextView nameText1 = viewHolder1.itemView.findViewById(R.id.text_model_name);
-        assertEquals("GPT-4", nameText1.getText().toString());
+        assertEquals("GPT-5.4", nameText1.getText().toString());
 
         RecyclerView.ViewHolder viewHolder2 = adapter.onCreateViewHolder(recyclerView, 0);
         adapter.onBindViewHolder((ModelsAdapter.ModelViewHolder) viewHolder2, 1);
@@ -195,7 +195,7 @@ public class ModelsAdapterTest {
             clickedModel.set(model);
         });
 
-        Model testModel = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model testModel = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
         List<Model> models = Arrays.asList(testModel);
         AdapterTestHelper.submitListAndWait(adapter, models);
 
@@ -221,7 +221,7 @@ public class ModelsAdapterTest {
 
     @Test
     public void clickListener_whenNotSet_doesNotCrash() {
-        Model testModel = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model testModel = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
         List<Model> models = Arrays.asList(testModel);
         adapter.submitList(models);
 
@@ -236,8 +236,8 @@ public class ModelsAdapterTest {
 
     @Test
     public void diffUtil_identifiesSameItems() throws InterruptedException {
-        Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
-        Model model2 = new Model("gpt-4", "GPT-4 Updated", "openai", false, Arrays.asList("text"), 16384, 8192);
+        Model model1 = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model2 = new Model("gpt-5.4", "GPT-5.4 Updated", "openai", false, Arrays.asList("text"), 16384, 8192);
 
         AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(model1));
         assertEquals(1, adapter.getItemCount());
@@ -248,8 +248,8 @@ public class ModelsAdapterTest {
 
     @Test
     public void diffUtil_identifiesDifferentItems() throws InterruptedException {
-        Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
-        Model model2 = new Model("claude-3", "Claude 3", "anthropic", true, Arrays.asList("text"), 100000, 4096);
+        Model model1 = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model2 = new Model("claude-sonnet-4-6", "Claude 3", "anthropic", true, Arrays.asList("text"), 100000, 4096);
 
         AdapterTestHelper.submitListAndWait(adapter, Arrays.asList(model1));
         assertEquals(1, adapter.getItemCount());
@@ -327,14 +327,14 @@ public class ModelsAdapterTest {
     @Test
     public void submitList_multipleUpdates_maintainsCorrectState() throws InterruptedException {
         List<Model> models1 = Arrays.asList(
-            new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096)
+            new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096)
         );
         AdapterTestHelper.submitListAndWait(adapter, models1);
         assertEquals(1, adapter.getItemCount());
 
         List<Model> models2 = Arrays.asList(
-            new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096),
-            new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048)
+            new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096),
+            new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048)
         );
         AdapterTestHelper.submitListAndWait(adapter, models2);
         assertEquals(2, adapter.getItemCount());

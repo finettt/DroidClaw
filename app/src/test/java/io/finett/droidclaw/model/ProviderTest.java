@@ -80,13 +80,13 @@ public class ProviderTest {
     @Test
     public void setModels_withValidList_createsDefensiveCopy() {
         List<Model> models = new ArrayList<>();
-        Model model = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
         models.add(model);
         
         provider.setModels(models);
         
         // Modify original list
-        models.add(new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048));
+        models.add(new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048));
         
         // Provider's list should not be affected
         assertEquals(1, provider.getModels().size());
@@ -102,7 +102,7 @@ public class ProviderTest {
 
     @Test
     public void addModel_withValidModel_addsToList() {
-        Model model = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
         
         provider.addModel(model);
         
@@ -119,8 +119,8 @@ public class ProviderTest {
 
     @Test
     public void addModel_multipleModels_addsAllToList() {
-        Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
-        Model model2 = new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048);
+        Model model1 = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model2 = new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048);
         
         provider.addModel(model1);
         provider.addModel(model2);
@@ -130,7 +130,7 @@ public class ProviderTest {
 
     @Test
     public void removeModel_withExistingModel_removesFromList() {
-        Model model = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
         provider.addModel(model);
         
         provider.removeModel(model);
@@ -147,8 +147,8 @@ public class ProviderTest {
 
     @Test
     public void removeModel_withNonExistingModel_doesNotAffectList() {
-        Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
-        Model model2 = new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048);
+        Model model1 = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model2 = new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048);
         provider.addModel(model1);
         
         provider.removeModel(model2);
@@ -161,28 +161,28 @@ public class ProviderTest {
 
     @Test
     public void getModelById_withExistingId_returnsModel() {
-        Model model = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
         provider.addModel(model);
         
-        Model result = provider.getModelById("gpt-4");
+        Model result = provider.getModelById("gpt-5.4");
         
         assertNotNull(result);
-        assertEquals("gpt-4", result.getId());
+        assertEquals("gpt-5.4", result.getId());
     }
 
     @Test
     public void getModelById_withNonExistingId_returnsNull() {
-        Model model = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
         provider.addModel(model);
         
-        Model result = provider.getModelById("gpt-3.5");
+        Model result = provider.getModelById("gpt-5.4-mini");
         
         assertNull(result);
     }
 
     @Test
     public void getModelById_withNull_returnsNull() {
-        Model model = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
         provider.addModel(model);
         
         Model result = provider.getModelById(null);
@@ -192,24 +192,24 @@ public class ProviderTest {
 
     @Test
     public void getModelById_withEmptyList_returnsNull() {
-        Model result = provider.getModelById("gpt-4");
+        Model result = provider.getModelById("gpt-5.4");
         
         assertNull(result);
     }
 
     @Test
     public void getModelById_withMultipleModels_returnsCorrectModel() {
-        Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
-        Model model2 = new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048);
-        Model model3 = new Model("claude-3", "Claude 3", "anthropic", true, Arrays.asList("text", "image"), 100000, 4096);
+        Model model1 = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model2 = new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048);
+        Model model3 = new Model("claude-sonnet-4-6", "Claude Sonnet 4.6", "anthropic", true, Arrays.asList("text", "image"), 100000, 4096);
         provider.addModel(model1);
         provider.addModel(model2);
         provider.addModel(model3);
         
-        Model result = provider.getModelById("gpt-3.5");
+        Model result = provider.getModelById("gpt-5.4-mini");
         
         assertNotNull(result);
-        assertEquals("GPT-3.5", result.getName());
+        assertEquals("GPT-5.4 Mini", result.getName());
     }
 
     // ==================== getModelCount Tests ====================
@@ -221,8 +221,8 @@ public class ProviderTest {
 
     @Test
     public void getModelCount_withModels_returnsCorrectCount() {
-        Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
-        Model model2 = new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048);
+        Model model1 = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model2 = new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048);
         provider.addModel(model1);
         provider.addModel(model2);
         
@@ -231,8 +231,8 @@ public class ProviderTest {
 
     @Test
     public void getModelCount_afterRemoval_returnsUpdatedCount() {
-        Model model1 = new Model("gpt-4", "GPT-4", "openai", false, Arrays.asList("text"), 8192, 4096);
-        Model model2 = new Model("gpt-3.5", "GPT-3.5", "openai", false, Arrays.asList("text"), 4096, 2048);
+        Model model1 = new Model("gpt-5.4", "GPT-5.4", "openai", false, Arrays.asList("text"), 8192, 4096);
+        Model model2 = new Model("gpt-5.4-mini", "GPT-5.4 Mini", "openai", false, Arrays.asList("text"), 4096, 2048);
         provider.addModel(model1);
         provider.addModel(model2);
         
