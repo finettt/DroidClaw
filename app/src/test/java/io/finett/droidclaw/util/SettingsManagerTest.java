@@ -119,6 +119,22 @@ public class SettingsManagerTest {
         assertEquals(20, config.getMaxIterations());
         assertTrue(config.isRequireApproval());
         assertEquals(30, config.getShellTimeout());
+        assertFalse(config.isBackgroundExecEnabled());
+    }
+
+    @Test
+    public void backgroundExecEnabled_persistsAcrossInstances() {
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setBackgroundExecEnabled(true);
+        settingsManager.setAgentConfig(config);
+
+        SettingsManager newInstance = new SettingsManager(context);
+        assertTrue(newInstance.getAgentConfig().isBackgroundExecEnabled());
+    }
+
+    @Test
+    public void backgroundExecEnabled_defaultIsFalse() {
+        assertFalse(settingsManager.getAgentConfig().isBackgroundExecEnabled());
     }
 
     @Test

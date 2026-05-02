@@ -227,6 +227,7 @@ public class SettingsManager {
         config.setRequireApproval(json.optBoolean("requireApproval", true));
         config.setShellTimeout(json.optInt("shellTimeout", 30));
         config.setBackgroundShellEnabled(json.optBoolean("backgroundShellEnabled", false));
+        config.setBackgroundExecEnabled(json.optBoolean("backgroundExecEnabled", false));
 
         List<String> customAllowlist = new ArrayList<>();
         if (json.has("customAllowlist")) {
@@ -315,6 +316,7 @@ public class SettingsManager {
         json.put("requireApproval", config.isRequireApproval());
         json.put("shellTimeout", config.getShellTimeout());
         json.put("backgroundShellEnabled", config.isBackgroundShellEnabled());
+        json.put("backgroundExecEnabled", config.isBackgroundExecEnabled());
 
         JSONArray allowlistArr = new JSONArray();
         for (String path : config.getCustomAllowlist()) {

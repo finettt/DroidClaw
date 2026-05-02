@@ -11,6 +11,7 @@ public class AgentConfig {
     private boolean requireApproval;
     private int shellTimeout;
     private boolean backgroundShellEnabled; // allow shell/python in background workers
+    private boolean backgroundExecEnabled; // allow agent to dispatch any tool with background=true
     private List<String> customAllowlist; // extra executable paths for relaxed mode
 
     public AgentConfig() {
@@ -27,6 +28,7 @@ public class AgentConfig {
         this.requireApproval = requireApproval;
         this.shellTimeout = shellTimeout;
         this.backgroundShellEnabled = backgroundShellEnabled;
+        this.backgroundExecEnabled = false;
         this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
     }
 
@@ -97,6 +99,14 @@ public class AgentConfig {
 
     public void setBackgroundShellEnabled(boolean backgroundShellEnabled) {
         this.backgroundShellEnabled = backgroundShellEnabled;
+    }
+
+    public boolean isBackgroundExecEnabled() {
+        return backgroundExecEnabled;
+    }
+
+    public void setBackgroundExecEnabled(boolean backgroundExecEnabled) {
+        this.backgroundExecEnabled = backgroundExecEnabled;
     }
 
     public List<String> getCustomAllowlist() {
