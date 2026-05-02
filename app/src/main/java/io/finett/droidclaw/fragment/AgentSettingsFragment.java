@@ -33,6 +33,7 @@ public class AgentSettingsFragment extends Fragment {
     private SwitchMaterial switchRequireApproval;
     private TextInputEditText inputShellTimeout;
     private SwitchMaterial switchBackgroundShellAccess;
+    private SwitchMaterial switchBackgroundExec;
     private TextInputEditText inputCustomAllowlist;
     private Button buttonSave;
 
@@ -72,6 +73,7 @@ public class AgentSettingsFragment extends Fragment {
         switchRequireApproval = view.findViewById(R.id.switch_require_approval);
         inputShellTimeout = view.findViewById(R.id.input_shell_timeout);
         switchBackgroundShellAccess = view.findViewById(R.id.switch_background_shell_access);
+        switchBackgroundExec = view.findViewById(R.id.switch_background_exec);
         inputCustomAllowlist = view.findViewById(R.id.input_custom_allowlist);
         buttonSave = view.findViewById(R.id.button_save);
     }
@@ -141,6 +143,7 @@ public class AgentSettingsFragment extends Fragment {
             switchRequireApproval.setChecked(agentConfig.isRequireApproval());
             inputShellTimeout.setText(String.valueOf(agentConfig.getShellTimeout()));
             switchBackgroundShellAccess.setChecked(agentConfig.isBackgroundShellEnabled());
+            switchBackgroundExec.setChecked(agentConfig.isBackgroundExecEnabled());
 
             StringBuilder allowlistText = new StringBuilder();
             for (String path : agentConfig.getCustomAllowlist()) {
@@ -223,6 +226,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setRequireApproval(switchRequireApproval.isChecked());
         agentConfig.setShellTimeout(shellTimeout);
         agentConfig.setBackgroundShellEnabled(switchBackgroundShellAccess.isChecked());
+        agentConfig.setBackgroundExecEnabled(switchBackgroundExec.isChecked());
         agentConfig.setCustomAllowlist(customAllowlist);
 
 

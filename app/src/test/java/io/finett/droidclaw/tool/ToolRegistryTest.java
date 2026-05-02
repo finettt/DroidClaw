@@ -45,15 +45,16 @@ public class ToolRegistryTest {
         int toolCount = toolRegistry.getToolCount();
         // Without SettingsManager: sandboxMode="strict", shellEnabled=true but strict blocks
         // shell/python and also mutating file tools (write/edit/delete).
-        // Read-only file tools (4) + automation/notification tools (10) = 14.
-        assertEquals("Should have exactly 14 tools in strict mode without settings", 14, toolCount);
+        // Read-only file tools (4) + automation/notification tools (10)
+        // + background process tools (2) = 16.
+        assertEquals("Should have exactly 16 tools in strict mode without settings", 16, toolCount);
     }
 
     @Test
     public void testGetAllTools() {
         List<Tool> tools = toolRegistry.getAllTools();
         assertNotNull("Tools list should not be null", tools);
-        assertEquals("Should return all registered tools", 14, tools.size());
+        assertEquals("Should return all registered tools", 16, tools.size());
     }
 
     @Test
@@ -142,7 +143,7 @@ public class ToolRegistryTest {
     public void testGetToolDefinitions() {
         JsonArray definitions = toolRegistry.getToolDefinitions();
         assertNotNull("Tool definitions should not be null", definitions);
-        assertEquals("Should have definitions for all tools in strict mode", 14, definitions.size());
+        assertEquals("Should have definitions for all tools in strict mode", 16, definitions.size());
         
         JsonObject firstDef = definitions.get(0).getAsJsonObject();
         assertTrue("Should have 'type' field", firstDef.has("type"));
@@ -264,6 +265,6 @@ public class ToolRegistryTest {
         t1.join();
         t2.join();
 
-        assertEquals("Tool count should remain consistent", 14, toolRegistry.getToolCount());
+        assertEquals("Tool count should remain consistent", 16, toolRegistry.getToolCount());
     }
 }

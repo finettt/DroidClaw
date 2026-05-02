@@ -35,6 +35,8 @@ import io.finett.droidclaw.tool.impl.ResumeTaskTool;
 import io.finett.droidclaw.tool.impl.DeleteTaskTool;
 import io.finett.droidclaw.tool.impl.ViewTaskHistoryTool;
 import io.finett.droidclaw.tool.impl.TaskStatsTool;
+import io.finett.droidclaw.tool.impl.KillBackgroundProcessTool;
+import io.finett.droidclaw.tool.impl.ListBackgroundProcessesTool;
 import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.util.SettingsManager;
@@ -117,6 +119,9 @@ public class ToolRegistry {
         registerTool(new SetupHeartbeatTool(context));
 
         registerTool(new SubmitNotificationTool(context));
+
+        registerTool(new KillBackgroundProcessTool(context));
+        registerTool(new ListBackgroundProcessesTool(context));
     }
 
     /**
@@ -180,14 +185,58 @@ public class ToolRegistry {
     public JsonArray getToolDefinitions() {
         JsonArray definitions = new JsonArray();
         boolean shellEnabled = isShellAccessEnabled();
+        boolean bgExecEnabled = settingsManager != null
+                && settingsManager.getAgentConfig().isBackgroundExecEnabled();
 
         for (Tool tool : tools.values()) {
             if (requiresShellAccess(tool.getName()) && !shellEnabled) {
                 continue;
             }
-            definitions.add(tool.getDefinition().toJson());
+            JsonObject toolJson = tool.getDefinition().toJson();
+
+            // Inject "background" boolean property into every tool's schema
+            // so the LLM can request async execution when backgroundExecEnabled is on
+            if (bgExecEnabled) {
+                injectBackgroundParam(toolJson);
+            }
+
+            definitions.add(toolJson);
         }
         return definitions;
+    }
+
+    /**
+     * Inject an optional "background" boolean parameter into a tool definition's JSON schema.
+     * This allows the LLM to pass {@code "background": true} in strict/structured output mode
+     * where additionalProperties is false.
+     */
+    private void injectBackgroundParam(JsonObject toolJson) {
+        try {
+            JsonObject function = toolJson.getAsJsonObject("function");
+            if (function == null) return;
+
+            JsonObject parameters = function.getAsJsonObject("parameters");
+            if (parameters == null) return;
+
+            JsonObject properties = parameters.getAsJsonObject("properties");
+            if (properties == null) return;
+
+            // Skip tools that already manage background processes
+            String name = function.has("name") ? function.get("name").getAsString() : "";
+            if ("kill_background_process".equals(name)
+                    || "list_background_processes".equals(name)) {
+                return;
+            }
+
+            JsonObject bgProp = new JsonObject();
+            bgProp.addProperty("type", "boolean");
+            bgProp.addProperty("description",
+                    "Set to true to run this tool asynchronously in the background. "
+                    + "Returns a process_id immediately. Default: false.");
+            properties.add("background", bgProp);
+        } catch (Exception e) {
+            // Schema injection is best-effort — do not break tool registration
+        }
     }
 
     public ToolResult executeTool(String toolName, JsonObject arguments) {
@@ -217,6 +266,10 @@ public class ToolRegistry {
 
     public File getWorkspaceRoot() {
         return workspaceManager.getWorkspaceRoot();
+    }
+
+    public Context getContext() {
+        return context;
     }
 
     /**

@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.FileAttachment;
+import io.finett.droidclaw.service.BackgroundProcessManager;
 import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolRegistry;
@@ -303,6 +304,20 @@ public class AgentLoop {
         Log.d(TAG, "Processing tool: " + toolName + " with args: " + arguments.toString());
         callback.onToolCall(toolName, arguments.toString());
 
+        boolean wantsBackground = arguments.has("background")
+                && !arguments.get("background").isJsonNull()
+                && arguments.get("background").getAsBoolean();
+        boolean bgExecEnabled = settingsManager != null
+                && settingsManager.getAgentConfig().isBackgroundExecEnabled();
+
+        if (wantsBackground && bgExecEnabled) {
+            JsonObject cleanedArgs = arguments.deepCopy();
+            cleanedArgs.remove("background");
+
+            dispatchBackgroundTool(toolCall, cleanedArgs, toolCalls, index, conversationHistory, callback);
+            return;
+        }
+
         // Check if this tool requires approval
         Tool tool = toolRegistry.getTool(toolName);
         boolean needsApproval = requireApproval && tool != null && tool.requiresApproval();
@@ -346,6 +361,56 @@ public class AgentLoop {
             // Execute without approval
             executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback);
         }
+    }
+
+    /**
+     * Dispatch a tool call to run asynchronously, bypassing the approval flow.
+     * The user has already opted in via the background_exec agent setting, so re-prompting
+     * for approval would defeat the purpose of fire-and-forget execution.
+     */
+    private void dispatchBackgroundTool(LlmApiService.ToolCall toolCall, JsonObject cleanedArgs,
+                                        List<LlmApiService.ToolCall> toolCalls, int index,
+                                        List<ChatMessage> conversationHistory, AgentCallback callback) {
+        String toolName = toolCall.getName();
+
+        android.content.Context context = null;
+        try {
+            context = toolRegistry.getContext();
+        } catch (Exception e) {
+            Log.w(TAG, "Could not get context for background dispatch, falling back to sync execution");
+            executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback);
+            return;
+        }
+
+        final android.content.Context finalContext = context;
+
+        String processId = BackgroundProcessManager.getInstance(finalContext).submit(
+                toolName,
+                cleanedArgs.toString(),
+                () -> toolRegistry.executeTool(toolName, cleanedArgs)
+        );
+
+        Log.d(TAG, "Tool " + toolName + " dispatched to background: process_id=" + processId);
+        callback.onToolCall(toolName, cleanedArgs.toString());
+
+        JsonObject bgResult = new JsonObject();
+        bgResult.addProperty("process_id", processId);
+        bgResult.addProperty("status", "running");
+        bgResult.addProperty("message",
+                "Tool '" + toolName + "' is running in background. "
+                + "Use list_background_processes to check status or kill_background_process to cancel.");
+
+        String resultContent = bgResult.toString();
+        callback.onToolResult(toolName, resultContent);
+
+        ChatMessage toolResultMessage = ChatMessage.createToolResultMessage(
+                toolCall.getId(),
+                toolName,
+                resultContent
+        );
+        conversationHistory.add(toolResultMessage);
+
+        processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
     }
 
     private void executeToolAndContinue(LlmApiService.ToolCall toolCall, List<LlmApiService.ToolCall> toolCalls,

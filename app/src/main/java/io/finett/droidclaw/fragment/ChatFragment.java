@@ -527,8 +527,11 @@ public class ChatFragment extends Fragment {
             public void onToolCall(String toolName, String arguments) {
                 Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
 
-
-                String statusMessage = getToolStatusMessage(toolName, arguments);
+                boolean isBackground = arguments.contains("\"background\":true")
+                        || arguments.contains("\"background\": true");
+                String statusMessage = isBackground
+                        ? "Dispatching " + formatToolName(toolName) + " to background..."
+                        : getToolStatusMessage(toolName, arguments);
                 String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
                 updateStatus(statusMessage, iterationInfo);
             }
@@ -668,6 +671,10 @@ public class ChatFragment extends Fragment {
                 return "Deleting file...";
             case "file_info":
                 return "Getting file info...";
+            case "kill_background_process":
+                return "Killing background process...";
+            case "list_background_processes":
+                return "Listing background processes...";
             default:
                 return "Executing: " + formatToolName(toolName);
         }

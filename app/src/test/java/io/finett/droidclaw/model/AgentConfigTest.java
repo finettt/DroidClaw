@@ -56,6 +56,7 @@ public class AgentConfigTest {
         assertTrue(defaults.isRequireApproval());
         assertEquals(30, defaults.getShellTimeout());
         assertFalse(defaults.isBackgroundShellEnabled());
+        assertFalse(defaults.isBackgroundExecEnabled());
         assertTrue(defaults.getCustomAllowlist().isEmpty());
     }
 
@@ -299,6 +300,20 @@ public class AgentConfigTest {
         assertTrue(config.isBackgroundShellEnabled());
         config.setBackgroundShellEnabled(false);
         assertFalse(config.isBackgroundShellEnabled());
+    }
+
+    @Test
+    public void setBackgroundExecEnabled_updatesValue() {
+        config.setBackgroundExecEnabled(true);
+        assertTrue(config.isBackgroundExecEnabled());
+        config.setBackgroundExecEnabled(false);
+        assertFalse(config.isBackgroundExecEnabled());
+    }
+
+    @Test
+    public void defaultConstructor_backgroundExecEnabled_isFalse() {
+        AgentConfig c = new AgentConfig();
+        assertFalse(c.isBackgroundExecEnabled());
     }
 
     @Test
