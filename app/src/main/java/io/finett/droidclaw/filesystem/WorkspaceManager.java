@@ -14,6 +14,7 @@ public class WorkspaceManager {
     private static final String[] BUILTIN_SKILLS = {
         "skill_creator",
         "web_search",
+        "web_fetch",
         "code_analysis",
         "data_processing",
         "task_automation",
@@ -113,13 +114,22 @@ public class WorkspaceManager {
             throw new IOException("Failed to create skill directory: " + skillName);
         }
 
-        String skillMdPath = "skills/" + skillName + "/SKILL.md";
-        try (InputStream inputStream = context.getAssets().open(skillMdPath)) {
-            File skillMdFile = new File(skillDir, "SKILL.md");
-            copyInputStreamToFile(inputStream, skillMdFile);
-            Log.d(TAG, "Copied SKILL.md for: " + skillName);
-        } catch (IOException e) {
-            Log.w(TAG, "Failed to copy SKILL.md for skill: " + skillName, e);
+        String skillAssetPath = "skills/" + skillName;
+        String[] files = context.getAssets().list(skillAssetPath);
+        if (files == null || files.length == 0) {
+            Log.w(TAG, "No files found for skill: " + skillName);
+            return;
+        }
+
+        for (String fileName : files) {
+            String assetFilePath = skillAssetPath + "/" + fileName;
+            try (InputStream inputStream = context.getAssets().open(assetFilePath)) {
+                File outFile = new File(skillDir, fileName);
+                copyInputStreamToFile(inputStream, outFile);
+                Log.d(TAG, "Copied " + fileName + " for: " + skillName);
+            } catch (IOException e) {
+                Log.w(TAG, "Failed to copy " + fileName + " for skill: " + skillName, e);
+            }
         }
     }
 
