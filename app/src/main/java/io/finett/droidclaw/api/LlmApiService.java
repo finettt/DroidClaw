@@ -11,8 +11,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import io.finett.droidclaw.model.ChatMessage;
@@ -469,6 +472,12 @@ public class LlmApiService {
 
         for (ChatMessage chatMessage : conversationHistory) {
             messages.add(chatMessage.toApiMessage());
+            if (chatMessage.getType() == ChatMessage.TYPE_USER) {
+                JsonObject timeMessage = new JsonObject();
+                timeMessage.addProperty("role", "system");
+                timeMessage.addProperty("content", formatCurrentTime());
+                messages.add(timeMessage);
+            }
         }
 
         requestBody.add("messages", messages);
@@ -537,6 +546,17 @@ public class LlmApiService {
             JsonObject anthropicMsg = chatMessage.toAnthropicApiMessage();
             if (anthropicMsg != null) {
                 messages.add(anthropicMsg);
+            }
+            if (chatMessage.getType() == ChatMessage.TYPE_USER) {
+                JsonObject timeMsg = new JsonObject();
+                timeMsg.addProperty("role", "user");
+                JsonArray timeContent = new JsonArray();
+                JsonObject timeBlock = new JsonObject();
+                timeBlock.addProperty("type", "text");
+                timeBlock.addProperty("text", "[System: " + formatCurrentTime() + "]");
+                timeContent.add(timeBlock);
+                timeMsg.add("content", timeContent);
+                messages.add(timeMsg);
             }
         }
 
@@ -892,5 +912,14 @@ public class LlmApiService {
             Log.w(TAG, "Could not parse API error body", e);
         }
         return "API error: " + httpCode + " - " + responseBody;
+    }
+
+    private String formatCurrentTime() {
+        Date now = new Date();
+        SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
+        String isoTime = isoFormat.format(now);
+        SimpleDateFormat readableFormat = new SimpleDateFormat("EEEE, MMMM d, yyyy 'at' h:mm a z", Locale.US);
+        String readableTime = readableFormat.format(now);
+        return "Current time: " + isoTime + " (" + readableTime + ")";
     }
 }
