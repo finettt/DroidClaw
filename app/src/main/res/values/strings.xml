@@ -289,4 +289,30 @@
 
     <!-- SearXNG Search Tool -->
     <string name="searxng_url_hint">e.g. SEARXNG_URL = https://searx.example.com</string>
+
+    <!-- Chat Search -->
+    <string name="search">Search</string>
+    <string name="search_hint">Search messages…</string>
+    <string name="search_prev">Previous result</string>
+    <string name="search_next">Next result</string>
+    <string name="search_result_count">%1$d of %2$d</string>
+    <string name="no_search_results">No results found</string>
+
+    <!-- Chat Export / Import -->
+    <string name="export_chat">Export Chat</string>
+    <string name="import_chat">Import Chat</string>
+    <string name="export_as_markdown">Export as Markdown (.md)</string>
+    <string name="export_as_json">Export as JSON (.json)</string>
+    <string name="export_as_pdf">Export as PDF (.pdf)</string>
+    <string name="import_from_json">Import from JSON</string>
+    <string name="import_from_markdown">Import from Markdown</string>
+    <string name="import_append">Append to current chat</string>
+    <string name="import_replace">Replace current chat (new session)</string>
+    <string name="export_success">Chat exported successfully</string>
+    <string name="export_error">Export failed: %1$s</string>
+    <string name="import_success">Imported %1$d messages</string>
+    <string name="import_error">Import failed: %1$s</string>
+    <string name="import_warnings">%1$d warning(s) during import</string>
+    <string name="import_choose_action">Choose import action</string>
+    <string name="export_choose_format">Choose export format</string>
 </resources>

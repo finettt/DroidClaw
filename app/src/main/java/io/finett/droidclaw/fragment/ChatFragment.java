@@ -1,12 +1,19 @@
 package io.finett.droidclaw.fragment;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
@@ -28,6 +35,8 @@ import com.google.android.material.chip.Chip;
 import com.google.gson.JsonObject;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,18 +51,23 @@ import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.filesystem.FileUploadManager;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.service.ChatContinuationService;
 import io.finett.droidclaw.tool.ToolRegistry;
+import io.finett.droidclaw.util.ChatExportManager;
+import io.finett.droidclaw.util.ChatImportManager;
+import io.finett.droidclaw.util.ChatSearchManager;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class ChatFragment extends Fragment {
     private static final String TAG = "ChatFragment";
     public static final String ARG_SESSION_ID = "session_id";
 
+    // Chat UI
     private RecyclerView recyclerView;
     private EditText messageInput;
     private ImageButton sendButton;
@@ -64,6 +78,16 @@ public class ChatFragment extends Fragment {
     private ProgressBar progressBar;
     private TextView statusText;
     private TextView statusSubText;
+
+    // Search bar views (from included layout)
+    private View searchBar;
+    private EditText searchInput;
+    private TextView searchResultCount;
+    private ImageButton searchPrevButton;
+    private ImageButton searchNextButton;
+    private ImageButton searchCloseButton;
+
+    // Core components
     private ChatAdapter chatAdapter;
     private LlmApiService apiService;
     private SettingsManager settingsManager;
@@ -78,13 +102,31 @@ public class ChatFragment extends Fragment {
     private String currentSessionId;
     private TaskResult pendingTaskResult;
 
+    // Search state
+    private ChatSearchManager chatSearchManager;
+    private List<ChatSearchManager.SearchResult> searchResults = new ArrayList<>();
+    private int currentSearchIndex = -1;
+
+    // Export / import managers
+    private ChatExportManager chatExportManager;
+    private ChatImportManager chatImportManager;
+
+    // Pending attachments
     private List<FileAttachment> pendingAttachments = new ArrayList<>();
 
+    // Activity result launchers
     private ActivityResultLauncher<String> filePickerLauncher;
+    private ActivityResultLauncher<String> importPickerLauncher;
+
+    // Export launchers (SAF)
+    private ActivityResultLauncher<String> exportMarkdownLauncher;
+    private ActivityResultLauncher<String> exportJsonLauncher;
+    private ActivityResultLauncher<String> exportPdfLauncher;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
 
         settingsManager = new SettingsManager(requireContext());
         chatRepository = new ChatRepository(requireContext());
@@ -97,7 +139,6 @@ public class ChatFragment extends Fragment {
             apiService = new LlmApiService(settingsManager);
         }
 
-
         Bundle taskArgs = getArguments();
         if (taskArgs != null) {
             pendingTaskResult = (TaskResult) taskArgs.getSerializable(ZenResultFragment.ARG_TASK_RESULT);
@@ -105,7 +146,6 @@ public class ChatFragment extends Fragment {
                 Log.d(TAG, "Received task result for continuation: " + pendingTaskResult.getId());
             }
         }
-
 
         workspaceManager = new WorkspaceManager(requireContext());
         try {
@@ -115,9 +155,7 @@ public class ChatFragment extends Fragment {
             Log.e(TAG, "Failed to initialize workspace", e);
         }
 
-
         fileUploadManager = new FileUploadManager(requireContext(), workspaceManager);
-
 
         filePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.GetContent(),
@@ -128,25 +166,51 @@ public class ChatFragment extends Fragment {
             }
         );
 
+        // Import file picker – accepts text/* files
+        importPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(),
+            uri -> {
+                if (uri != null) {
+                    handleImportFile(uri);
+                }
+            }
+        );
+
+        // Export launchers using SAF CREATE_DOCUMENT
+        exportMarkdownLauncher = registerForActivityResult(
+            new ActivityResultContracts.CreateDocument("text/markdown"),
+            uri -> {
+                if (uri != null) runExport(uri, "md");
+            }
+        );
+        exportJsonLauncher = registerForActivityResult(
+            new ActivityResultContracts.CreateDocument("application/json"),
+            uri -> {
+                if (uri != null) runExport(uri, "json");
+            }
+        );
+        exportPdfLauncher = registerForActivityResult(
+            new ActivityResultContracts.CreateDocument("application/pdf"),
+            uri -> {
+                if (uri != null) runExport(uri, "pdf");
+            }
+        );
+
         identityManager = new IdentityManager(requireContext(), workspaceManager);
-
-
         memoryRepository = new MemoryRepository(workspaceManager);
-
 
         int contextWindow = getModelContextWindow();
         ConversationSummarizer summarizer = new ConversationSummarizer(apiService, memoryRepository, contextWindow);
         MemoryContextBuilder memoryContext = new MemoryContextBuilder(memoryRepository);
 
-
         toolRegistry = new ToolRegistry(requireContext(), settingsManager);
-
-
         agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);
-
 
         loadIdentityContext();
 
+        chatSearchManager = new ChatSearchManager();
+        chatExportManager = new ChatExportManager(requireContext());
+        chatImportManager = new ChatImportManager();
 
         Bundle args = getArguments();
         if (args != null) {
@@ -167,13 +231,13 @@ public class ChatFragment extends Fragment {
             Log.d(TAG, "Loaded identity context: " + identityMessages.size() + " message(s)");
         } catch (Exception e) {
             Log.w(TAG, "Failed to load identity context, continuing without it", e);
-
         }
     }
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_chat, container, false);
     }
 
@@ -184,19 +248,28 @@ public class ChatFragment extends Fragment {
         initViews(view);
         setupRecyclerView();
         setupClickListeners();
+        setupSearchBar();
     }
 
     private void initViews(View view) {
-        recyclerView = view.findViewById(R.id.recyclerView);
-        messageInput = view.findViewById(R.id.messageInput);
-        sendButton = view.findViewById(R.id.sendButton);
-        attachButton = view.findViewById(R.id.attachButton);
-        statusContainer = view.findViewById(R.id.statusContainer);
+        recyclerView           = view.findViewById(R.id.recyclerView);
+        messageInput           = view.findViewById(R.id.messageInput);
+        sendButton             = view.findViewById(R.id.sendButton);
+        attachButton           = view.findViewById(R.id.attachButton);
+        statusContainer        = view.findViewById(R.id.statusContainer);
         attachmentBarContainer = view.findViewById(R.id.attachmentBarContainer);
-        attachmentBar = view.findViewById(R.id.attachmentBar);
-        progressBar = view.findViewById(R.id.progressBar);
-        statusText = view.findViewById(R.id.statusText);
-        statusSubText = view.findViewById(R.id.statusSubText);
+        attachmentBar          = view.findViewById(R.id.attachmentBar);
+        progressBar            = view.findViewById(R.id.progressBar);
+        statusText             = view.findViewById(R.id.statusText);
+        statusSubText          = view.findViewById(R.id.statusSubText);
+
+        // Search bar (included layout)
+        searchBar         = view.findViewById(R.id.searchBar);
+        searchInput       = searchBar.findViewById(R.id.searchInput);
+        searchResultCount = searchBar.findViewById(R.id.searchResultCount);
+        searchPrevButton  = searchBar.findViewById(R.id.searchPrevButton);
+        searchNextButton  = searchBar.findViewById(R.id.searchNextButton);
+        searchCloseButton = searchBar.findViewById(R.id.searchCloseButton);
     }
 
     private void setupRecyclerView() {
@@ -207,9 +280,304 @@ public class ChatFragment extends Fragment {
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(chatAdapter);
 
-
         loadChatHistory();
     }
+
+    private void setupSearchBar() {
+        searchInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                performSearch(s.toString());
+            }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+
+        searchPrevButton.setOnClickListener(v -> navigateSearch(false));
+        searchNextButton.setOnClickListener(v -> navigateSearch(true));
+        searchCloseButton.setOnClickListener(v -> hideSearchBar());
+    }
+
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.menu_chat, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_search) {
+            toggleSearchBar();
+            return true;
+        } else if (id == R.id.action_export) {
+            showExportDialog();
+            return true;
+        } else if (id == R.id.action_import) {
+            showImportDialog();
+            return true;
+        } else if (id == R.id.action_chats) {
+            if (requireActivity() instanceof MainActivity) {
+                ((MainActivity) requireActivity()).openDrawer();
+            }
+            return true;
+        } else if (id == R.id.action_files) {
+            Navigation.findNavController(requireView()).navigate(R.id.fileBrowserFragment);
+            return true;
+        } else if (id == R.id.action_settings) {
+            Navigation.findNavController(requireView()).navigate(R.id.settingsFragment);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
+    private void toggleSearchBar() {
+        if (searchBar.getVisibility() == View.VISIBLE) {
+            hideSearchBar();
+        } else {
+            showSearchBar();
+        }
+    }
+
+    private void showSearchBar() {
+        searchBar.setVisibility(View.VISIBLE);
+        searchBar.startAnimation(AnimationUtils.loadAnimation(requireContext(), android.R.anim.slide_in_left));
+        searchInput.requestFocus();
+        searchInput.setText("");
+    }
+
+    private void hideSearchBar() {
+        searchBar.setVisibility(View.GONE);
+        searchInput.setText("");
+        searchResults.clear();
+        currentSearchIndex = -1;
+        chatAdapter.setSearchQuery(null);
+        updateSearchResultCount();
+    }
+
+    private void performSearch(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            searchResults.clear();
+            currentSearchIndex = -1;
+            chatAdapter.setSearchQuery(null);
+            updateSearchResultCount();
+            return;
+        }
+
+        chatAdapter.setSearchQuery(query);
+        searchResults = chatSearchManager.search(chatAdapter.getMessages(), query);
+
+        if (!searchResults.isEmpty()) {
+            currentSearchIndex = 0;
+            scrollToSearchResult(searchResults.get(0).position);
+        } else {
+            currentSearchIndex = -1;
+        }
+        updateSearchResultCount();
+    }
+
+    private void navigateSearch(boolean forward) {
+        if (searchResults.isEmpty()) return;
+
+        if (forward) {
+            currentSearchIndex = (currentSearchIndex + 1) % searchResults.size();
+        } else {
+            currentSearchIndex = (currentSearchIndex - 1 + searchResults.size()) % searchResults.size();
+        }
+        scrollToSearchResult(searchResults.get(currentSearchIndex).position);
+        updateSearchResultCount();
+    }
+
+    private void scrollToSearchResult(int position) {
+        recyclerView.scrollToPosition(position);
+    }
+
+    private void updateSearchResultCount() {
+        if (searchResults.isEmpty()) {
+            if (searchInput.getText().length() > 0) {
+                searchResultCount.setText(getString(R.string.no_search_results));
+                searchResultCount.setVisibility(View.VISIBLE);
+            } else {
+                searchResultCount.setVisibility(View.GONE);
+            }
+            searchPrevButton.setVisibility(View.GONE);
+            searchNextButton.setVisibility(View.GONE);
+        } else {
+            searchResultCount.setText(getString(R.string.search_result_count,
+                    currentSearchIndex + 1, searchResults.size()));
+            searchResultCount.setVisibility(View.VISIBLE);
+            searchPrevButton.setVisibility(View.VISIBLE);
+            searchNextButton.setVisibility(View.VISIBLE);
+        }
+    }
+
+
+    private void showExportDialog() {
+        String[] options = {
+            getString(R.string.export_as_markdown),
+            getString(R.string.export_as_json),
+            getString(R.string.export_as_pdf)
+        };
+
+        new AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.export_choose_format))
+            .setItems(options, (dialog, which) -> {
+                ChatSession session = getCurrentSession();
+                switch (which) {
+                    case 0:
+                        exportMarkdownLauncher.launch(
+                                chatExportManager.buildExportFileName(session, "md"));
+                        break;
+                    case 1:
+                        exportJsonLauncher.launch(
+                                chatExportManager.buildExportFileName(session, "json"));
+                        break;
+                    case 2:
+                        exportPdfLauncher.launch(
+                                chatExportManager.buildExportFileName(session, "pdf"));
+                        break;
+                }
+            })
+            .show();
+    }
+
+    private void runExport(Uri uri, String format) {
+        List<ChatMessage> messages = chatAdapter.getMessages();
+        ChatSession session = getCurrentSession();
+
+        new Thread(() -> {
+            try {
+                try (OutputStream out = requireContext().getContentResolver().openOutputStream(uri)) {
+                    if (out == null) throw new IOException("Cannot open output stream");
+                    switch (format) {
+                        case "md":
+                            chatExportManager.exportToMarkdown(session, messages, out);
+                            break;
+                        case "json":
+                            chatExportManager.exportToJson(session, messages, out);
+                            break;
+                        case "pdf":
+                            chatExportManager.exportToPdf(session, messages, out);
+                            break;
+                    }
+                }
+                requireActivity().runOnUiThread(() ->
+                    Toast.makeText(requireContext(),
+                            getString(R.string.export_success), Toast.LENGTH_SHORT).show());
+            } catch (Exception e) {
+                Log.e(TAG, "Export failed", e);
+                requireActivity().runOnUiThread(() ->
+                    Toast.makeText(requireContext(),
+                            getString(R.string.export_error, e.getMessage()),
+                            Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+
+    private void showImportDialog() {
+        String[] options = {
+            getString(R.string.import_from_json),
+            getString(R.string.import_from_markdown)
+        };
+
+        new AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.import_chat))
+            .setItems(options, (dialog, which) -> {
+                // Store the chosen format for later use in the callback
+                // We use a tag on the view as a simple storage mechanism
+                searchBar.setTag(which == 0 ? "json" : "md");
+                importPickerLauncher.launch("*/*");
+            })
+            .show();
+    }
+
+    private void handleImportFile(Uri uri) {
+        String format = searchBar.getTag() instanceof String ? (String) searchBar.getTag() : "json";
+
+        new Thread(() -> {
+            try {
+                ChatImportManager.ImportResult result;
+                try (InputStream in = requireContext().getContentResolver().openInputStream(uri)) {
+                    if (in == null) throw new IOException("Cannot open input stream");
+                    if ("md".equals(format)) {
+                        result = chatImportManager.importFromMarkdown(in);
+                    } else {
+                        result = chatImportManager.importFromJson(in);
+                    }
+                }
+
+                final ChatImportManager.ImportResult finalResult = result;
+                requireActivity().runOnUiThread(() -> showImportActionDialog(finalResult));
+
+            } catch (Exception e) {
+                Log.e(TAG, "Import failed", e);
+                requireActivity().runOnUiThread(() ->
+                    Toast.makeText(requireContext(),
+                            getString(R.string.import_error, e.getMessage()),
+                            Toast.LENGTH_LONG).show());
+            }
+        }).start();
+    }
+
+    private void showImportActionDialog(ChatImportManager.ImportResult result) {
+        if (result.messages.isEmpty()) {
+            Toast.makeText(requireContext(),
+                    getString(R.string.import_error, "No messages found in file"),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String[] options = {
+            getString(R.string.import_append),
+            getString(R.string.import_replace)
+        };
+
+        new AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.import_choose_action))
+            .setMessage(getString(R.string.import_success, result.messages.size())
+                    + (result.warnings.isEmpty() ? ""
+                    : "\n" + getString(R.string.import_warnings, result.warnings.size())))
+            .setItems(options, (dialog, which) -> {
+                if (which == 0) {
+                    // Append to current chat
+                    for (ChatMessage message : result.messages) {
+                        chatAdapter.addMessage(message);
+                    }
+                    saveMessages();
+                    scrollToBottom();
+                } else {
+                    // Replace – start a new session with the imported messages
+                    if (requireActivity() instanceof MainActivity) {
+                        String newSessionId = ((MainActivity) requireActivity())
+                                .createNewSession(result.sessionTitle != null
+                                        ? result.sessionTitle : "Imported Chat");
+                        currentSessionId = newSessionId;
+                        chatAdapter.setMessages(result.messages);
+                        saveMessages();
+                        updateToolbarTitle();
+                        scrollToBottom();
+                    }
+                }
+                Toast.makeText(requireContext(),
+                        getString(R.string.import_success, result.messages.size()),
+                        Toast.LENGTH_SHORT).show();
+            })
+            .show();
+    }
+
+
+    @Nullable
+    private ChatSession getCurrentSession() {
+        if (currentSessionId == null) return null;
+        List<ChatSession> sessions = chatRepository.loadSessions();
+        for (ChatSession s : sessions) {
+            if (currentSessionId.equals(s.getId())) return s;
+        }
+        return null;
+    }
+
 
     private void loadChatHistory() {
         if (currentSessionId == null || currentSessionId.isEmpty()) {
@@ -220,22 +588,20 @@ public class ChatFragment extends Fragment {
         List<ChatMessage> savedMessages = chatRepository.loadMessages(currentSessionId);
         if (!savedMessages.isEmpty()) {
             chatAdapter.setMessages(savedMessages);
-            Log.d(TAG, "loadChatHistory: Loaded " + savedMessages.size() + " messages for session: " + currentSessionId);
+            Log.d(TAG, "loadChatHistory: Loaded " + savedMessages.size()
+                    + " messages for session: " + currentSessionId);
             scrollToBottom();
-
-
             updateToolbarTitle();
         } else {
             Log.d(TAG, "loadChatHistory: No saved messages for session: " + currentSessionId);
 
-
             if (pendingTaskResult != null) {
                 Log.d(TAG, "loadChatHistory: Adding task result context messages");
                 addTaskResultContext(pendingTaskResult);
-                pendingTaskResult = null; // Clear after use
+                pendingTaskResult = null;
             }
 
-            // No saved messages - this is a new chat (likely "New Chat")
+            // No saved messages – new chat
             updateToolbarTitle();
         }
     }
@@ -257,12 +623,10 @@ public class ChatFragment extends Fragment {
     private void addTaskResultContext(TaskResult taskResult) {
         List<ChatMessage> messages = new ArrayList<>();
 
-        // Add context card
         ChatMessage contextCard = continuationService.createContextMessage(taskResult);
         messages.add(contextCard);
         chatAdapter.addMessage(contextCard);
 
-        // Add agent prompt
         ChatMessage agentPrompt = new ChatMessage(
             String.format("I've added the %s results above. What would you like to clarify or explore?",
                          TaskResult.typeToString(taskResult.getType()).toLowerCase()),
@@ -270,7 +634,6 @@ public class ChatFragment extends Fragment {
         );
         messages.add(agentPrompt);
         chatAdapter.addMessage(agentPrompt);
-
 
         saveMessages();
         scrollToBottom();
@@ -283,7 +646,6 @@ public class ChatFragment extends Fragment {
             Log.w(TAG, "saveMessages: No session ID, cannot save messages");
             return;
         }
-
         chatRepository.saveMessages(currentSessionId, chatAdapter.getMessages());
     }
 
@@ -291,7 +653,6 @@ public class ChatFragment extends Fragment {
         if (!(requireActivity() instanceof MainActivity)) {
             return;
         }
-
         ((MainActivity) requireActivity()).updateSessionMetadata(
                 currentSessionId,
                 firstUserMessage,
@@ -301,7 +662,6 @@ public class ChatFragment extends Fragment {
 
     /**
      * Generate an LLM-based title if the session still has a default title.
-     * Called after the first assistant response.
      */
     private void generateTitleIfNeeded(List<ChatMessage> updatedHistory) {
         if (!(requireActivity() instanceof MainActivity)) {
@@ -311,7 +671,6 @@ public class ChatFragment extends Fragment {
         MainActivity activity = (MainActivity) requireActivity();
         String currentTitle = activity.getCurrentSessionTitle();
 
-        // Only generate if still using a default title
         boolean isDefaultTitle = currentTitle == null
                 || currentTitle.trim().isEmpty()
                 || getString(R.string.new_chat).equals(currentTitle);
@@ -329,16 +688,13 @@ public class ChatFragment extends Fragment {
                     @Override
                     public void onTitleGenerated(String title) {
                         if (isAdded() && getContext() != null) {
-
                             activity.updateSessionTitle(currentSessionId, title);
-
                             updateToolbarTitle();
                         }
                     }
 
                     @Override
                     public void onError(String error) {
-
                         Log.w(TAG, "Title generation error: " + error);
                     }
                 });
@@ -357,11 +713,10 @@ public class ChatFragment extends Fragment {
         return null;
     }
 
+
     private void setupClickListeners() {
         sendButton.setOnClickListener(v -> sendMessage());
-
         attachButton.setOnClickListener(v -> launchFilePicker());
-
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
             return true;
@@ -376,7 +731,7 @@ public class ChatFragment extends Fragment {
     }
 
     /**
-     * Handle the selected file from the picker. Uploads it to the workspace uploads directory.
+     * Handle the selected file from the picker.
      */
     private void uploadSelectedFile(Uri uri) {
         if (fileUploadManager == null) {
@@ -400,7 +755,8 @@ public class ChatFragment extends Fragment {
                     Toast.makeText(requireContext(),
                         "Attached: " + result.getOriginalName(),
                         Toast.LENGTH_SHORT).show();
-                    Log.d(TAG, "File attached: " + result.getOriginalName() + " -> " + result.getFilename());
+                    Log.d(TAG, "File attached: " + result.getOriginalName()
+                            + " -> " + result.getFilename());
                 });
             } catch (IOException e) {
                 Log.e(TAG, "Failed to upload file", e);
@@ -480,6 +836,7 @@ public class ChatFragment extends Fragment {
         return name;
     }
 
+
     private void sendMessage() {
         String messageText = messageInput.getText().toString().trim();
         if (messageText.isEmpty()) {
@@ -487,12 +844,11 @@ public class ChatFragment extends Fragment {
         }
 
         if (!settingsManager.isConfigured()) {
-            Toast.makeText(requireContext(), "Please configure API settings first", Toast.LENGTH_LONG).show();
-            Navigation.findNavController(requireView())
-                    .navigate(R.id.settingsFragment);
+            Toast.makeText(requireContext(), "Please configure API settings first",
+                    Toast.LENGTH_LONG).show();
+            Navigation.findNavController(requireView()).navigate(R.id.settingsFragment);
             return;
         }
-
 
         List<FileAttachment> attachments = consumePendingAttachments();
 
@@ -505,15 +861,13 @@ public class ChatFragment extends Fragment {
         chatAdapter.addMessage(userMessage);
         scrollToBottom();
 
-
         saveMessages();
         updateSessionMetadata(messageText);
-        Log.d(TAG, "sendMessage: Added and saved user message. Total: " + chatAdapter.getItemCount());
+        Log.d(TAG, "sendMessage: Added and saved user message. Total: "
+                + chatAdapter.getItemCount());
 
         messageInput.setText("");
-
         setLoading(true);
-
 
         List<ChatMessage> conversationHistory = new ArrayList<>(chatAdapter.getMessages());
 
@@ -538,9 +892,8 @@ public class ChatFragment extends Fragment {
 
             @Override
             public void onToolResult(String toolName, String result) {
-                Log.d(TAG, "Tool result: " + toolName + " -> " + result.substring(0, Math.min(100, result.length())));
-
-
+                Log.d(TAG, "Tool result: " + toolName + " -> "
+                        + result.substring(0, Math.min(100, result.length())));
                 String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
                 updateStatus("✓ " + formatToolName(toolName) + " completed", iterationInfo);
             }
@@ -549,19 +902,15 @@ public class ChatFragment extends Fragment {
             public void onComplete(String finalResponse, List<ChatMessage> updatedHistory) {
                 setLoading(false);
 
-
                 chatAdapter.setMessages(updatedHistory);
                 scrollToBottom();
 
-
                 saveMessages();
                 updateSessionMetadata(null);
-                Log.d(TAG, "onComplete: Agent completed. Total messages: " + chatAdapter.getItemCount());
-
+                Log.d(TAG, "onComplete: Agent completed. Total messages: "
+                        + chatAdapter.getItemCount());
 
                 generateTitleIfNeeded(updatedHistory);
-
-
                 updateToolbarTitle();
             }
 
@@ -576,12 +925,11 @@ public class ChatFragment extends Fragment {
             }
 
             @Override
-            public void onApprovalRequired(String toolName, String description, JsonObject arguments,
+            public void onApprovalRequired(String toolName, String description,
+                                           JsonObject arguments,
                                            AgentLoop.ApprovalCallback approvalCallback) {
-
-                requireActivity().runOnUiThread(() -> {
-                    showApprovalDialog(toolName, description, approvalCallback);
-                });
+                requireActivity().runOnUiThread(() ->
+                    showApprovalDialog(toolName, description, approvalCallback));
             }
         });
     }
@@ -589,7 +937,8 @@ public class ChatFragment extends Fragment {
     /**
      * Show a dialog asking user to approve or deny a tool execution.
      */
-    private void showApprovalDialog(String toolName, String description, AgentLoop.ApprovalCallback approvalCallback) {
+    private void showApprovalDialog(String toolName, String description,
+                                    AgentLoop.ApprovalCallback approvalCallback) {
         new AlertDialog.Builder(requireContext())
             .setTitle("Approve Tool Execution?")
             .setMessage("Tool: " + formatToolName(toolName) + "\n\n" + description)
@@ -640,7 +989,6 @@ public class ChatFragment extends Fragment {
      * Get a user-friendly status message for tool execution.
      */
     private String getToolStatusMessage(String toolName, String arguments) {
-
         if (toolName.equals("list_files") && arguments.contains(".agent/skills")) {
             return "Discovering available skills...";
         } else if (toolName.equals("read_file") && arguments.contains(".agent/skills")) {
@@ -649,34 +997,20 @@ public class ChatFragment extends Fragment {
             return "Reading skill instructions...";
         }
 
-        // Tool-specific messages
         switch (toolName) {
-            case "execute_shell":
-                return "Running shell command...";
-            case "execute_python":
-                return "Executing Python script...";
-            case "pip_install":
-                return "Installing Python package...";
-            case "read_file":
-                return "Reading file...";
-            case "write_file":
-                return "Writing file...";
-            case "edit_file":
-                return "Editing file...";
-            case "list_files":
-                return "Listing directory...";
-            case "search_files":
-                return "Searching files...";
-            case "delete_file":
-                return "Deleting file...";
-            case "file_info":
-                return "Getting file info...";
-            case "kill_background_process":
-                return "Killing background process...";
-            case "list_background_processes":
-                return "Listing background processes...";
-            default:
-                return "Executing: " + formatToolName(toolName);
+            case "execute_shell":     return "Running shell command...";
+            case "execute_python":    return "Executing Python script...";
+            case "pip_install":       return "Installing Python package...";
+            case "read_file":         return "Reading file...";
+            case "write_file":        return "Writing file...";
+            case "edit_file":         return "Editing file...";
+            case "list_files":        return "Listing directory...";
+            case "search_files":      return "Searching files...";
+            case "delete_file":       return "Deleting file...";
+            case "file_info":         return "Getting file info...";
+            case "kill_background_process":  return "Killing background process...";
+            case "list_background_processes": return "Listing background processes...";
+            default:                  return "Executing: " + formatToolName(toolName);
         }
     }
 
@@ -696,10 +1030,6 @@ public class ChatFragment extends Fragment {
         return formatted.toString();
     }
 
-    /**
-     * Get the context window size from the currently selected model.
-     * Falls back to default if model is not configured.
-     */
     private int getModelContextWindow() {
         Object[] selected = settingsManager.getSelectedProviderAndModel();
         if (selected != null && selected[1] instanceof io.finett.droidclaw.model.Model) {
@@ -708,8 +1038,6 @@ public class ChatFragment extends Fragment {
             Log.d(TAG, "Using model context window: " + contextWindow);
             return contextWindow;
         }
-
-        // Fallback to default
         Log.w(TAG, "Model not configured, using default context window: 4096");
         return 4096;
     }
@@ -726,7 +1054,8 @@ public class ChatFragment extends Fragment {
         // Propagate the refreshed service to the agent loop components
         int contextWindow = getModelContextWindow();
         io.finett.droidclaw.agent.ConversationSummarizer summarizer =
-                new io.finett.droidclaw.agent.ConversationSummarizer(apiService, memoryRepository, contextWindow);
+                new io.finett.droidclaw.agent.ConversationSummarizer(
+                        apiService, memoryRepository, contextWindow);
         io.finett.droidclaw.agent.MemoryContextBuilder memoryContext =
                 new io.finett.droidclaw.agent.MemoryContextBuilder(memoryRepository);
         agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);

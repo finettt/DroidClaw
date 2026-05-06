@@ -2,7 +2,11 @@ package io.finett.droidclaw.adapter;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.BackgroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,6 +42,11 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     private static final int VIEW_TYPE_ATTACHMENT = 6;
 
     private final List<ChatMessage> messages = new ArrayList<>();
+
+    // Highlight color for search matches
+    private static final int HIGHLIGHT_COLOR = Color.argb(160, 255, 235, 59);
+
+    private String searchQuery = null;
 
     @Override
     public int getItemViewType(int position) {
@@ -89,12 +98,40 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     @Override
     public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
         ChatMessage message = messages.get(position);
-        holder.bind(message);
+        holder.bind(message, this);
     }
 
     @Override
     public int getItemCount() {
         return messages.size();
+    }
+
+    public void setSearchQuery(String query) {
+        this.searchQuery = (query != null && !query.isEmpty()) ? query : null;
+        notifyDataSetChanged();
+    }
+
+    public String getSearchQuery() {
+        return searchQuery;
+    }
+
+    SpannableString highlight(String text) {
+        if (text == null) return new SpannableString("");
+        SpannableString spannable = new SpannableString(text);
+        if (searchQuery == null || searchQuery.isEmpty()) {
+            return spannable;
+        }
+        Pattern pattern = Pattern.compile(Pattern.quote(searchQuery),
+                Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+        Matcher matcher = pattern.matcher(text);
+        while (matcher.find()) {
+            spannable.setSpan(
+                    new BackgroundColorSpan(HIGHLIGHT_COLOR),
+                    matcher.start(),
+                    matcher.end(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return spannable;
     }
 
     public void addMessage(ChatMessage message) {
@@ -130,7 +167,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             super(itemView);
         }
 
-        abstract void bind(ChatMessage message);
+        abstract void bind(ChatMessage message, ChatAdapter adapter);
     }
 
     static class UserMessageViewHolder extends MessageViewHolder {
@@ -146,9 +183,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
 
         @Override
-        void bind(ChatMessage message) {
+        void bind(ChatMessage message, ChatAdapter adapter) {
             String content = message.getContent();
-            if (content != null && MarkdownRenderer.containsMarkdown(content)) {
+            if (adapter.searchQuery != null && content != null
+                    && !MarkdownRenderer.containsMarkdown(content)) {
+                messageText.setText(adapter.highlight(content));
+            } else if (content != null && MarkdownRenderer.containsMarkdown(content)) {
                 MarkdownRenderer.render(context, messageText, content);
             } else {
                 messageText.setText(content);
@@ -231,9 +271,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
 
         @Override
-        void bind(ChatMessage message) {
+        void bind(ChatMessage message, ChatAdapter adapter) {
             String content = message.getContent();
-            if (content != null) {
+            if (adapter.searchQuery != null && content != null
+                    && !MarkdownRenderer.containsMarkdown(content)) {
+                messageText.setText(adapter.highlight(content));
+            } else if (content != null) {
                 MarkdownRenderer.render(context, messageText, content);
             } else {
                 messageText.setText("");
@@ -254,7 +297,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
 
         @Override
-        void bind(ChatMessage message) {
+        void bind(ChatMessage message, ChatAdapter adapter) {
             if (message.getToolCalls() != null && !message.getToolCalls().isEmpty()) {
                 LlmApiService.ToolCall firstToolCall = message.getToolCalls().get(0);
                 String toolName = firstToolCall.getName();
@@ -272,7 +315,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                     argsBuilder.append(formatArguments(toolCall.getArguments().toString()))
                             .append("\n");
                 }
-                toolCallArgs.setText(argsBuilder.toString().trim());
+                String argsText = argsBuilder.toString().trim();
+                toolCallArgs.setText(adapter.searchQuery != null
+                        ? adapter.highlight(argsText) : argsText);
             }
         }
 
@@ -339,7 +384,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
 
         @Override
-        void bind(ChatMessage message) {
+        void bind(ChatMessage message, ChatAdapter adapter) {
             String content = message.getContent();
             String toolName = message.getToolName();
             Context context = itemView.getContext();
@@ -356,7 +401,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             toolResultIcon.setImageResource(isError ? R.drawable.ic_status_error : R.drawable.ic_status_success);
 
             if (content != null) {
-                if (MarkdownRenderer.containsMarkdown(content)) {
+                if (adapter.searchQuery != null && !MarkdownRenderer.containsMarkdown(content)) {
+                    toolResultContent.setText(adapter.highlight(content));
+                } else if (MarkdownRenderer.containsMarkdown(content)) {
                     MarkdownRenderer.render(context, toolResultContent, content);
                 } else {
                     toolResultContent.setText(content);
@@ -545,7 +592,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
 
         @Override
-        void bind(ChatMessage message) {
+        void bind(ChatMessage message, ChatAdapter adapter) {
             Context context = itemView.getContext();
 
             String contextType = message.getContextType();
@@ -562,7 +609,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
             String content = message.getContent();
             if (content != null) {
-                if (MarkdownRenderer.containsMarkdown(content)) {
+                if (adapter.searchQuery != null && !MarkdownRenderer.containsMarkdown(content)) {
+                    contextCardContent.setText(adapter.highlight(content));
+                } else if (MarkdownRenderer.containsMarkdown(content)) {
                     MarkdownRenderer.render(context, contextCardContent, content);
                 } else {
                     contextCardContent.setText(content);
@@ -645,7 +694,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
 
         @Override
-        void bind(ChatMessage message) {
+        void bind(ChatMessage message, ChatAdapter adapter) {
             String rawDisplayName = message.getDisplayName();
             final String mimeType = message.getFileMimeType();
             final String filePath = message.getFilePath();

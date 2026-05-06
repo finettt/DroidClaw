@@ -531,6 +531,32 @@ public class MainActivity extends AppCompatActivity {
         return apiService;
     }
 
+    public String createNewSession(String title) {
+        ChatSession newSession = new ChatSession(
+                java.util.UUID.randomUUID().toString(),
+                title != null && !title.isEmpty() ? title : getString(R.string.new_chat),
+                System.currentTimeMillis()
+        );
+        chatSessions.add(0, newSession);
+        chatRepository.saveSessions(chatSessions);
+        chatSessionAdapter.submitList(new ArrayList<>(chatSessions));
+
+        currentSessionId = newSession.getId();
+        if (navController != null) {
+            Bundle args = new Bundle();
+            args.putString(ChatFragment.ARG_SESSION_ID, currentSessionId);
+            navController.navigate(R.id.chatFragment, args);
+        }
+        Log.d(TAG, "createNewSession: " + newSession.getId() + " title=" + newSession.getTitle());
+        return newSession.getId();
+    }
+
+    public void openDrawer() {
+        if (drawerLayout != null) {
+            drawerLayout.openDrawer(GravityCompat.START);
+        }
+    }
+
     @Override
     public boolean onSupportNavigateUp() {
         if (navController != null) {
