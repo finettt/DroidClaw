@@ -316,17 +316,6 @@ public class ChatFragment extends Fragment {
         } else if (id == R.id.action_import) {
             showImportDialog();
             return true;
-        } else if (id == R.id.action_chats) {
-            if (requireActivity() instanceof MainActivity) {
-                ((MainActivity) requireActivity()).openDrawer();
-            }
-            return true;
-        } else if (id == R.id.action_files) {
-            Navigation.findNavController(requireView()).navigate(R.id.fileBrowserFragment);
-            return true;
-        } else if (id == R.id.action_settings) {
-            Navigation.findNavController(requireView()).navigate(R.id.settingsFragment);
-            return true;
         }
         return super.onOptionsItemSelected(item);
     }
