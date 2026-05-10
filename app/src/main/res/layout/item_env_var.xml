@@ -53,7 +53,7 @@
             android:layout_marginStart="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/env_var_edit"
-            android:src="@android:drawable/ic_menu_edit"
+            app:srcCompat="@drawable/ic_action_edit"
             app:tint="?attr/colorPrimary" />
 
         <!-- Delete button -->
@@ -64,8 +64,8 @@
             android:layout_marginStart="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/delete"
-            android:src="@android:drawable/ic_menu_delete"
-            app:tint="@android:color/holo_red_dark" />
+            app:srcCompat="@drawable/ic_action_delete"
+            app:tint="?attr/colorError" />
 
     </LinearLayout>
 
