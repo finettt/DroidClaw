@@ -39,6 +39,7 @@ import io.finett.droidclaw.tool.impl.KillBackgroundProcessTool;
 import io.finett.droidclaw.tool.impl.ListBackgroundProcessesTool;
 import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
+import io.finett.droidclaw.tool.impl.SearxngSearchTool;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class ToolRegistry {
@@ -122,6 +123,11 @@ public class ToolRegistry {
 
         registerTool(new KillBackgroundProcessTool(context));
         registerTool(new ListBackgroundProcessesTool(context));
+
+        // Web search via SearXNG — reads SEARXNG_URL from env vars
+        if (settingsManager != null) {
+            registerTool(new SearxngSearchTool(settingsManager));
+        }
     }
 
     /**
