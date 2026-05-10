@@ -35,6 +35,9 @@ public class AgentSettingsFragment extends Fragment {
     private SwitchMaterial switchBackgroundShellAccess;
     private SwitchMaterial switchBackgroundExec;
     private TextInputEditText inputCustomAllowlist;
+    private TextInputEditText inputLlmConnectTimeout;
+    private TextInputEditText inputLlmReadTimeout;
+    private TextInputEditText inputLlmWriteTimeout;
     private Button buttonSave;
 
     private SettingsManager settingsManager;
@@ -75,6 +78,9 @@ public class AgentSettingsFragment extends Fragment {
         switchBackgroundShellAccess = view.findViewById(R.id.switch_background_shell_access);
         switchBackgroundExec = view.findViewById(R.id.switch_background_exec);
         inputCustomAllowlist = view.findViewById(R.id.input_custom_allowlist);
+        inputLlmConnectTimeout = view.findViewById(R.id.input_llm_connect_timeout);
+        inputLlmReadTimeout = view.findViewById(R.id.input_llm_read_timeout);
+        inputLlmWriteTimeout = view.findViewById(R.id.input_llm_write_timeout);
         buttonSave = view.findViewById(R.id.button_save);
     }
 
@@ -152,6 +158,12 @@ public class AgentSettingsFragment extends Fragment {
             }
             inputCustomAllowlist.setText(allowlistText.toString());
         }
+
+        if (agentConfig != null) {
+            inputLlmConnectTimeout.setText(String.valueOf(agentConfig.getLlmConnectTimeout()));
+            inputLlmReadTimeout.setText(String.valueOf(agentConfig.getLlmReadTimeout()));
+            inputLlmWriteTimeout.setText(String.valueOf(agentConfig.getLlmWriteTimeout()));
+        }
     }
 
     private void setupListeners() {
@@ -219,6 +231,19 @@ public class AgentSettingsFragment extends Fragment {
             }
         }
 
+        // Validate network timeouts
+        String llmConnectTimeoutStr = inputLlmConnectTimeout.getText().toString().trim();
+        String llmReadTimeoutStr = inputLlmReadTimeout.getText().toString().trim();
+        String llmWriteTimeoutStr = inputLlmWriteTimeout.getText().toString().trim();
+
+        if (!validateTimeout(inputLlmConnectTimeout, llmConnectTimeoutStr)) return;
+        if (!validateTimeout(inputLlmReadTimeout, llmReadTimeoutStr)) return;
+        if (!validateTimeout(inputLlmWriteTimeout, llmWriteTimeoutStr)) return;
+
+        int llmConnectTimeout = Integer.parseInt(llmConnectTimeoutStr);
+        int llmReadTimeout = Integer.parseInt(llmReadTimeoutStr);
+        int llmWriteTimeout = Integer.parseInt(llmWriteTimeoutStr);
+
         agentConfig.setDefaultModel(selectedModel);
         agentConfig.setShellAccess(switchShellAccess.isChecked());
         agentConfig.setSandboxMode(sandboxMode);
@@ -228,11 +253,27 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setBackgroundShellEnabled(switchBackgroundShellAccess.isChecked());
         agentConfig.setBackgroundExecEnabled(switchBackgroundExec.isChecked());
         agentConfig.setCustomAllowlist(customAllowlist);
-
+        agentConfig.setLlmConnectTimeout(llmConnectTimeout);
+        agentConfig.setLlmReadTimeout(llmReadTimeout);
+        agentConfig.setLlmWriteTimeout(llmWriteTimeout);
 
         settingsManager.setAgentConfig(agentConfig);
 
         Toast.makeText(requireContext(), R.string.save_settings, Toast.LENGTH_SHORT).show();
         Navigation.findNavController(requireView()).navigateUp();
+    }
+
+    private boolean validateTimeout(TextInputEditText input, String value) {
+        try {
+            int seconds = Integer.parseInt(value);
+            if (seconds < 1 || seconds > 600) {
+                input.setError("Timeout must be between 1 and 600 seconds");
+                return false;
+            }
+            return true;
+        } catch (NumberFormatException e) {
+            input.setError(getString(R.string.validation_invalid_number));
+            return false;
+        }
     }
 }

@@ -13,9 +13,15 @@ public class AgentConfig {
     private boolean backgroundShellEnabled; // allow shell/python in background workers
     private boolean backgroundExecEnabled; // allow agent to dispatch any tool with background=true
     private List<String> customAllowlist; // extra executable paths for relaxed mode
+    private int llmConnectTimeout;   // seconds
+    private int llmReadTimeout;      // seconds
+    private int llmWriteTimeout;     // seconds
 
     public AgentConfig() {
         this.customAllowlist = new ArrayList<>();
+        this.llmConnectTimeout = 30;
+        this.llmReadTimeout = 120;
+        this.llmWriteTimeout = 30;
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
@@ -30,6 +36,9 @@ public class AgentConfig {
         this.backgroundShellEnabled = backgroundShellEnabled;
         this.backgroundExecEnabled = false;
         this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
+        this.llmConnectTimeout = 30;
+        this.llmReadTimeout = 120;
+        this.llmWriteTimeout = 30;
     }
 
     public static AgentConfig getDefaults() {
@@ -91,6 +100,30 @@ public class AgentConfig {
 
     public void setShellTimeout(int shellTimeout) {
         this.shellTimeout = shellTimeout;
+    }
+
+    public int getLlmConnectTimeout() {
+        return llmConnectTimeout;
+    }
+
+    public void setLlmConnectTimeout(int llmConnectTimeout) {
+        this.llmConnectTimeout = llmConnectTimeout;
+    }
+
+    public int getLlmReadTimeout() {
+        return llmReadTimeout;
+    }
+
+    public void setLlmReadTimeout(int llmReadTimeout) {
+        this.llmReadTimeout = llmReadTimeout;
+    }
+
+    public int getLlmWriteTimeout() {
+        return llmWriteTimeout;
+    }
+
+    public void setLlmWriteTimeout(int llmWriteTimeout) {
+        this.llmWriteTimeout = llmWriteTimeout;
     }
 
     public boolean isBackgroundShellEnabled() {

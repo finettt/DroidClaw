@@ -180,10 +180,16 @@ public class LlmApiService {
         this.settingsManager = settingsManager;
         this.gson = new Gson();
         this.mainHandler = new Handler(Looper.getMainLooper());
+
+        io.finett.droidclaw.model.AgentConfig config = settingsManager.getAgentConfig();
+        long connectTimeout = config != null ? config.getLlmConnectTimeout() : 30;
+        long readTimeout = config != null ? config.getLlmReadTimeout() : 120;
+        long writeTimeout = config != null ? config.getLlmWriteTimeout() : 30;
+
         this.client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(120, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
+                .connectTimeout(connectTimeout, TimeUnit.SECONDS)
+                .readTimeout(readTimeout, TimeUnit.SECONDS)
+                .writeTimeout(writeTimeout, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(true)
                 .build();
     }
