@@ -40,16 +40,36 @@ public class SearxngSearchTool implements Tool {
     private final OkHttpClient httpClient;
 
     public SearxngSearchTool(SettingsManager settingsManager) {
-        this(settingsManager, new OkHttpClient.Builder()
-                .connectTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .readTimeout(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .build());
+        this.settingsManager = settingsManager;
+        long timeout = parseSearxngTimeout(settingsManager, DEFAULT_TIMEOUT_SECONDS);
+        this.httpClient = new OkHttpClient.Builder()
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .build();
     }
 
     /** Package-private constructor for tests that need to inject a mock OkHttpClient. */
     SearxngSearchTool(SettingsManager settingsManager, OkHttpClient httpClient) {
         this.settingsManager = settingsManager;
         this.httpClient = httpClient;
+    }
+
+    private static long parseSearxngTimeout(SettingsManager sm, long defaultSeconds) {
+        String value = sm.getEnvVar("SEARXNG_TIMEOUT");
+        if (value == null || value.trim().isEmpty()) {
+            return defaultSeconds;
+        }
+        try {
+            long seconds = Long.parseLong(value.trim());
+            if (seconds <= 0) {
+                Log.w(TAG, "SEARXNG_TIMEOUT is not positive, using default " + defaultSeconds + "s");
+                return defaultSeconds;
+            }
+            return seconds;
+        } catch (NumberFormatException e) {
+            Log.w(TAG, "Invalid SEARXNG_TIMEOUT value '" + value + "', using default " + defaultSeconds + "s");
+            return defaultSeconds;
+        }
     }
 
     @Override

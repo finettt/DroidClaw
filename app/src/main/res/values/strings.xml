@@ -92,6 +92,15 @@
     <string name="background_exec_description">Allow the agent to run any tool asynchronously with background=true</string>
     <string name="custom_allowlist">Custom Command Allowlist</string>
     <string name="custom_allowlist_description">Extra executable paths allowed in Relaxed mode (one per line)</string>
+    <string name="network_timeouts">Network Timeouts</string>
+    <string name="llm_connect_timeout">LLM Connect Timeout (seconds)</string>
+    <string name="llm_connect_timeout_description">Connection timeout for LLM API</string>
+    <string name="llm_read_timeout">LLM Read Timeout (seconds)</string>
+    <string name="llm_read_timeout_description">Response read timeout for LLM API</string>
+    <string name="llm_write_timeout">LLM Write Timeout (seconds)</string>
+    <string name="llm_write_timeout_description">Request write timeout for LLM API</string>
+    <string name="searxng_timeout">SearXNG Timeout (seconds)</string>
+    <string name="searxng_timeout_description">Search request timeout for SearXNG</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Welcome to DroidClaw</string>
