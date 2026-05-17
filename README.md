@@ -16,7 +16,7 @@
 	</p>
 </div>
 
-**DroidClaw** is a personal AI assistant that runs on your phone **without root**, as a native Android/Java app. You don't need to download enormous Node.js builds. ~40MB is all you need (even with an embedded Python interpreter).
+**DroidClaw** is a personal AI assistant that runs on your phone **without root**, as a native Android/Java app. You don't need to download enormous Node.js builds. ~48MB is all you need (even with an embedded Python interpreter).
 
 DroidClaw is designed to be more than just an assistant; it is designed to be a work partner.
 
@@ -33,6 +33,26 @@ You can download the latest stable version from the [releases page](https://gith
 # Setup (TL;DR)
 
 Go through the onboarding screen, and you are ready to go! If you want to set up things in more detail, see [settings docs](docs/user/settings.md).
+
+# Demo
+
+<table align="center">
+<tr align="center">
+<th><p align="center">Chat</p></th>
+<th><p align="center">Python Execution</p></th>
+<th><p align="center">File Operations</p></th>
+</tr>
+<tr>
+<td align="center"><p align="center"><img src="assets/gifs/doc_2026-05-17_09-37-06.gif" width="240"></video></p></td>
+<td align="center"><p align="center"><img src="assets/gifs/doc_2026-05-17_09-37-11.gif" width="240"></video></p></td>
+<td align="center"><p align="center"><img src="assets/gifs/doc_2026-05-17_10-27-16.gif" width="240"></video></p></td>
+</tr>
+<tr>
+<td align="center">Ask questions, get answers</td>
+<td align="center">Run scripts on-device</td>
+<td align="center">Create and manage files</td>
+</tr>
+</table>
 
 # Highlights
 
