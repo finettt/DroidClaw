@@ -17,7 +17,7 @@
 </div>
 
 
-**DroidClaw** — это персональный ИИ-ассистент, который работает на вашем телефоне **без root-прав** в виде нативного приложения Android/Java. Вам не нужно скачивать огромные сборки Node.js. ~40 МБ — это всё, что вам нужно (даже со встроенным интерпретатором Python).
+**DroidClaw** — это персональный ИИ-ассистент, который работает на вашем телефоне **без root-прав** в виде нативного приложения Android/Java. Вам не нужно скачивать огромные сборки Node.js. ~48 МБ — это всё, что вам нужно (даже со встроенным интерпретатором Python).
 
 DroidClaw задуман не просто как ассистент, а как полноценный рабочий партнер.
 
@@ -34,6 +34,26 @@ DroidClaw задуман не просто как ассистент, а как 
 # Настройка (TL;DR)
 
 Пройдите экран приветствия, и вы готовы к работе! Если вы хотите настроить всё более детально, см. [документацию настроек](docs/user/settings.md).
+
+# Демонстрация
+
+<table align="center">
+<tr align="center">
+<th><p align="center">Чат</p></th>
+<th><p align="center">Выполнение Python</p></th>
+<th><p align="center">Операции с файлами</p></th>
+</tr>
+<tr>
+<td align="center"><p align="center"><video src="assets/gifs/doc_2026-05-17_09-37-06.mp4" autoplay loop muted playsinline width="240"></video></p></td>
+<td align="center"><p align="center"><video src="assets/gifs/doc_2026-05-17_09-37-11.mp4" autoplay loop muted playsinline width="240"></video></p></td>
+<td align="center"><p align="center"><video src="assets/gifs/doc_2026-05-17_10-27-16.mp4" autoplay loop muted playsinline width="240"></video></p></td>
+</tr>
+<tr>
+<td align="center">Задавайте вопросы и получайте ответы</td>
+<td align="center">Запускайте скрипты прямо на устройстве</td>
+<td align="center">Создавайте файлы и работайте с ними</td>
+</tr>
+</table>
 
 # Особенности
 
