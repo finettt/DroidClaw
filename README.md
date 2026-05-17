@@ -43,9 +43,9 @@ Go through the onboarding screen, and you are ready to go! If you want to set up
 <th><p align="center">File Operations</p></th>
 </tr>
 <tr>
-<td align="center"><p align="center"><video src="assets/gifs/doc_2026-05-17_09-37-06.gif" autoplay loop muted playsinline width="240"></video></p></td>
-<td align="center"><p align="center"><video src="assets/gifs/doc_2026-05-17_09-37-11.gif" autoplay loop muted playsinline width="240"></video></p></td>
-<td align="center"><p align="center"><video src="assets/gifs/doc_2026-05-17_10-27-16.gif" autoplay loop muted playsinline width="240"></video></p></td>
+<td align="center"><p align="center"><img src="assets/gifs/doc_2026-05-17_09-37-06.gif" width="240"></video></p></td>
+<td align="center"><p align="center"><img src="assets/gifs/doc_2026-05-17_09-37-11.gif" width="240"></video></p></td>
+<td align="center"><p align="center"><img src="assets/gifs/doc_2026-05-17_10-27-16.gif" width="240"></video></p></td>
 </tr>
 <tr>
 <td align="center">Ask questions, get answers</td>
