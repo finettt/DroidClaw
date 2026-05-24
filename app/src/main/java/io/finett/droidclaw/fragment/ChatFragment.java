@@ -192,6 +192,17 @@ public class ChatFragment extends Fragment {
                 agentExecutionService.registerUICallback(currentSessionId, agentUiCallback);
                 if (agentExecutionService.isSessionActive(currentSessionId)) {
                     setLoading(true);
+                } else {
+                    // Session completed or errored while UI was detached — the service
+                    // already persisted the final messages.  Reload from repository and
+                    // clear the stale loading spinner so the user sees the response.
+                    setLoading(false);
+                    List<ChatMessage> savedMessages = chatRepository.loadMessages(currentSessionId);
+                    if (!savedMessages.isEmpty()) {
+                        chatAdapter.setMessages(savedMessages);
+                        scrollToBottom();
+                    }
+                    updateToolbarTitle();
                 }
             }
 
