@@ -1,9 +1,14 @@
 package io.finett.droidclaw.fragment;
 
 import android.app.AlertDialog;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -44,9 +49,6 @@ import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.adapter.ChatAdapter;
 import io.finett.droidclaw.agent.AgentLoop;
-import io.finett.droidclaw.agent.ConversationSummarizer;
-import io.finett.droidclaw.agent.IdentityManager;
-import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.filesystem.FileUploadManager;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
@@ -55,9 +57,8 @@ import io.finett.droidclaw.model.ChatSession;
 import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
-import io.finett.droidclaw.repository.MemoryRepository;
+import io.finett.droidclaw.service.AgentExecutionService;
 import io.finett.droidclaw.service.ChatContinuationService;
-import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.ChatExportManager;
 import io.finett.droidclaw.util.ChatImportManager;
 import io.finett.droidclaw.util.ChatSearchManager;
@@ -92,15 +93,129 @@ public class ChatFragment extends Fragment {
     private LlmApiService apiService;
     private SettingsManager settingsManager;
     private ChatRepository chatRepository;
-    private MemoryRepository memoryRepository;
-    private ToolRegistry toolRegistry;
-    private AgentLoop agentLoop;
-    private IdentityManager identityManager;
     private WorkspaceManager workspaceManager;
     private FileUploadManager fileUploadManager;
     private ChatContinuationService continuationService;
     private String currentSessionId;
     private TaskResult pendingTaskResult;
+    private AgentExecutionService agentExecutionService;
+    private boolean serviceBound;
+    private boolean serviceBinding;
+    private List<ChatMessage> pendingServiceConversationHistory;
+    private int pendingServiceContextWindow;
+
+    private final AgentExecutionService.UICallback agentUiCallback = new AgentExecutionService.UICallback() {
+        @Override
+        public void onProgress(String status) {
+            if (!isAdded()) {
+                return;
+            }
+            updateStatus(status, null);
+        }
+
+        @Override
+        public void onToolCall(String toolName, String arguments) {
+            if (!isAdded()) {
+                return;
+            }
+            Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
+
+            boolean isBackground = arguments.contains("\"background\":true")
+                    || arguments.contains("\"background\": true");
+            String statusMessage = isBackground
+                    ? "Dispatching " + formatToolName(toolName) + " to background..."
+                    : getToolStatusMessage(toolName, arguments);
+            updateStatus(statusMessage, null);
+        }
+
+        @Override
+        public void onToolResult(String toolName, String result) {
+            if (!isAdded()) {
+                return;
+            }
+            Log.d(TAG, "Tool result: " + toolName + " -> "
+                    + result.substring(0, Math.min(100, result.length())));
+            updateStatus("✓ " + formatToolName(toolName) + " completed", null);
+        }
+
+        @Override
+        public void onComplete(String finalResponse, List<ChatMessage> updatedHistory) {
+            if (!isAdded() || getContext() == null) {
+                return;
+            }
+
+            setLoading(false);
+            chatAdapter.setMessages(updatedHistory);
+            scrollToBottom();
+
+            saveMessages();
+            updateSessionMetadata(null);
+            Log.d(TAG, "onComplete: Agent completed. Total messages: "
+                    + chatAdapter.getItemCount());
+
+            generateTitleIfNeeded(updatedHistory);
+            updateToolbarTitle();
+        }
+
+        @Override
+        public void onError(String error) {
+            if (!isAdded() || getContext() == null) {
+                Log.w(TAG, "onError: Fragment not attached, ignoring error: " + error);
+                return;
+            }
+            setLoading(false);
+            Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onApprovalRequired(String toolName, String description,
+                                       JsonObject arguments,
+                                       AgentLoop.ApprovalCallback approvalCallback) {
+            if (!isAdded() || getContext() == null) {
+                approvalCallback.onDenied();
+                return;
+            }
+            requireActivity().runOnUiThread(() ->
+                    showApprovalDialog(toolName, description, approvalCallback));
+        }
+    };
+
+    private final ServiceConnection agentServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            AgentExecutionService.LocalBinder binder = (AgentExecutionService.LocalBinder) service;
+            agentExecutionService = binder.getService();
+            serviceBound = true;
+            serviceBinding = false;
+
+            if (currentSessionId != null) {
+                agentExecutionService.registerUICallback(currentSessionId, agentUiCallback);
+                if (agentExecutionService.isSessionActive(currentSessionId)) {
+                    setLoading(true);
+                } else {
+                    // Session completed or errored while UI was detached — the service
+                    // already persisted the final messages.  Reload from repository and
+                    // clear the stale loading spinner so the user sees the response.
+                    setLoading(false);
+                    List<ChatMessage> savedMessages = chatRepository.loadMessages(currentSessionId);
+                    if (!savedMessages.isEmpty()) {
+                        chatAdapter.setMessages(savedMessages);
+                        scrollToBottom();
+                    }
+                    updateToolbarTitle();
+                }
+            }
+
+            runPendingAgentRequest();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+            serviceBinding = false;
+            agentExecutionService = null;
+        }
+    };
 
     // Search state
     private ChatSearchManager chatSearchManager;
@@ -196,18 +311,6 @@ public class ChatFragment extends Fragment {
             }
         );
 
-        identityManager = new IdentityManager(requireContext(), workspaceManager);
-        memoryRepository = new MemoryRepository(workspaceManager);
-
-        int contextWindow = getModelContextWindow();
-        ConversationSummarizer summarizer = new ConversationSummarizer(apiService, memoryRepository, contextWindow);
-        MemoryContextBuilder memoryContext = new MemoryContextBuilder(memoryRepository);
-
-        toolRegistry = new ToolRegistry(requireContext(), settingsManager);
-        agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);
-
-        loadIdentityContext();
-
         chatSearchManager = new ChatSearchManager();
         chatExportManager = new ChatExportManager(requireContext());
         chatImportManager = new ChatImportManager();
@@ -221,17 +324,61 @@ public class ChatFragment extends Fragment {
         }
     }
 
-    /**
-     * Loads identity context (soul.md and user.md) and sets it in the agent loop.
-     */
-    private void loadIdentityContext() {
-        try {
-            List<ChatMessage> identityMessages = identityManager.getIdentityMessages();
-            agentLoop.setIdentityContext(identityMessages);
-            Log.d(TAG, "Loaded identity context: " + identityMessages.size() + " message(s)");
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to load identity context, continuing without it", e);
+    private void bindAgentExecutionService() {
+        if (!isAdded() || serviceBound || serviceBinding) {
+            return;
         }
+
+        Intent intent = new Intent(requireContext(), AgentExecutionService.class);
+        serviceBinding = true;
+        boolean bound = requireContext().bindService(
+                intent,
+                agentServiceConnection,
+                Context.BIND_AUTO_CREATE
+        );
+        if (!bound) {
+            serviceBinding = false;
+            Log.w(TAG, "Failed to bind AgentExecutionService");
+        }
+    }
+
+    private void startAgentExecutionServiceIfNeeded() {
+        if (!isAdded()) {
+            return;
+        }
+
+        Intent intent = new Intent(requireContext(), AgentExecutionService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            requireContext().startForegroundService(intent);
+        } else {
+            requireContext().startService(intent);
+        }
+    }
+
+    private void dispatchAgentRequest(List<ChatMessage> conversationHistory) {
+        pendingServiceConversationHistory = new ArrayList<>(conversationHistory);
+        pendingServiceContextWindow = getModelContextWindow();
+
+        startAgentExecutionServiceIfNeeded();
+
+        if (serviceBound && agentExecutionService != null) {
+            runPendingAgentRequest();
+        } else {
+            bindAgentExecutionService();
+        }
+    }
+
+    private void runPendingAgentRequest() {
+        if (!serviceBound || agentExecutionService == null || currentSessionId == null
+                || pendingServiceConversationHistory == null) {
+            return;
+        }
+
+        List<ChatMessage> history = pendingServiceConversationHistory;
+        int contextWindow = pendingServiceContextWindow;
+        pendingServiceConversationHistory = null;
+
+        agentExecutionService.startAgentLoop(currentSessionId, history, contextWindow);
     }
 
     @Nullable
@@ -860,67 +1007,7 @@ public class ChatFragment extends Fragment {
 
         List<ChatMessage> conversationHistory = new ArrayList<>(chatAdapter.getMessages());
 
-        agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
-            @Override
-            public void onProgress(String status) {
-                updateStatus(status, null);
-            }
-
-            @Override
-            public void onToolCall(String toolName, String arguments) {
-                Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
-
-                boolean isBackground = arguments.contains("\"background\":true")
-                        || arguments.contains("\"background\": true");
-                String statusMessage = isBackground
-                        ? "Dispatching " + formatToolName(toolName) + " to background..."
-                        : getToolStatusMessage(toolName, arguments);
-                String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
-                updateStatus(statusMessage, iterationInfo);
-            }
-
-            @Override
-            public void onToolResult(String toolName, String result) {
-                Log.d(TAG, "Tool result: " + toolName + " -> "
-                        + result.substring(0, Math.min(100, result.length())));
-                String iterationInfo = "Step " + agentLoop.getIterationCount() + "/20";
-                updateStatus("✓ " + formatToolName(toolName) + " completed", iterationInfo);
-            }
-
-            @Override
-            public void onComplete(String finalResponse, List<ChatMessage> updatedHistory) {
-                setLoading(false);
-
-                chatAdapter.setMessages(updatedHistory);
-                scrollToBottom();
-
-                saveMessages();
-                updateSessionMetadata(null);
-                Log.d(TAG, "onComplete: Agent completed. Total messages: "
-                        + chatAdapter.getItemCount());
-
-                generateTitleIfNeeded(updatedHistory);
-                updateToolbarTitle();
-            }
-
-            @Override
-            public void onError(String error) {
-                if (!isAdded() || getContext() == null) {
-                    Log.w(TAG, "onError: Fragment not attached, ignoring error: " + error);
-                    return;
-                }
-                setLoading(false);
-                Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
-            }
-
-            @Override
-            public void onApprovalRequired(String toolName, String description,
-                                           JsonObject arguments,
-                                           AgentLoop.ApprovalCallback approvalCallback) {
-                requireActivity().runOnUiThread(() ->
-                    showApprovalDialog(toolName, description, approvalCallback));
-            }
-        });
+        dispatchAgentRequest(conversationHistory);
     }
 
     /**
@@ -1032,6 +1119,25 @@ public class ChatFragment extends Fragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        bindAgentExecutionService();
+    }
+
+    @Override
+    public void onStop() {
+        if (serviceBound && agentExecutionService != null) {
+            if (currentSessionId != null) {
+                agentExecutionService.unregisterUICallback(currentSessionId);
+            }
+            requireContext().unbindService(agentServiceConnection);
+            serviceBound = false;
+            agentExecutionService = null;
+        }
+        super.onStop();
+    }
+
+    @Override
     public void onResume() {
         super.onResume();
         // Reload settings in case the user changed provider/model in the Settings screen
@@ -1040,24 +1146,11 @@ public class ChatFragment extends Fragment {
         if (requireActivity() instanceof MainActivity) {
             apiService = ((MainActivity) requireActivity()).getApiService();
         }
-        // Propagate the refreshed service to the agent loop components
-        int contextWindow = getModelContextWindow();
-        io.finett.droidclaw.agent.ConversationSummarizer summarizer =
-                new io.finett.droidclaw.agent.ConversationSummarizer(
-                        apiService, memoryRepository, contextWindow);
-        io.finett.droidclaw.agent.MemoryContextBuilder memoryContext =
-                new io.finett.droidclaw.agent.MemoryContextBuilder(memoryRepository);
-        agentLoop = new AgentLoop(apiService, toolRegistry, settingsManager, summarizer, memoryContext);
-        loadIdentityContext();
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Do NOT cancel requests here — the API service is Activity-scoped
-        // and requests should survive chat switches. Only shut down tools.
-        if (toolRegistry != null) {
-            toolRegistry.shutdown();
-        }
+        // Requests now live in AgentExecutionService and continue after the UI is destroyed.
     }
 }
