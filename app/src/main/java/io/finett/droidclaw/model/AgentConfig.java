@@ -13,6 +13,8 @@ public class AgentConfig {
     private boolean backgroundShellEnabled; // allow shell/python in background workers
     private boolean backgroundExecEnabled; // allow agent to dispatch any tool with background=true
     private List<String> customAllowlist; // extra executable paths for relaxed mode
+    private boolean screenControlEnabled;  // allow agent to read UI and control screen via accessibility
+    private boolean screenControlTrustMode; // skip per-action approval for screen control tools
     private int llmConnectTimeout;   // seconds
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
@@ -22,6 +24,8 @@ public class AgentConfig {
         this.llmConnectTimeout = 30;
         this.llmReadTimeout = 120;
         this.llmWriteTimeout = 30;
+        this.screenControlEnabled = false;
+        this.screenControlTrustMode = false;
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
@@ -39,6 +43,8 @@ public class AgentConfig {
         this.llmConnectTimeout = 30;
         this.llmReadTimeout = 120;
         this.llmWriteTimeout = 30;
+        this.screenControlEnabled = false;
+        this.screenControlTrustMode = false;
     }
 
     public static AgentConfig getDefaults() {
@@ -148,6 +154,22 @@ public class AgentConfig {
 
     public void setCustomAllowlist(List<String> customAllowlist) {
         this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
+    }
+
+    public boolean isScreenControlEnabled() {
+        return screenControlEnabled;
+    }
+
+    public void setScreenControlEnabled(boolean screenControlEnabled) {
+        this.screenControlEnabled = screenControlEnabled;
+    }
+
+    public boolean isScreenControlTrustMode() {
+        return screenControlTrustMode;
+    }
+
+    public void setScreenControlTrustMode(boolean screenControlTrustMode) {
+        this.screenControlTrustMode = screenControlTrustMode;
     }
 
     public String getDefaultProviderId() {

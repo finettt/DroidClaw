@@ -228,6 +228,8 @@ public class SettingsManager {
         config.setShellTimeout(json.optInt("shellTimeout", 30));
         config.setBackgroundShellEnabled(json.optBoolean("backgroundShellEnabled", false));
         config.setBackgroundExecEnabled(json.optBoolean("backgroundExecEnabled", false));
+        config.setScreenControlEnabled(json.optBoolean("screenControlEnabled", false));
+        config.setScreenControlTrustMode(json.optBoolean("screenControlTrustMode", false));
 
         List<String> customAllowlist = new ArrayList<>();
         if (json.has("customAllowlist")) {
@@ -317,6 +319,8 @@ public class SettingsManager {
         json.put("shellTimeout", config.getShellTimeout());
         json.put("backgroundShellEnabled", config.isBackgroundShellEnabled());
         json.put("backgroundExecEnabled", config.isBackgroundExecEnabled());
+        json.put("screenControlEnabled", config.isScreenControlEnabled());
+        json.put("screenControlTrustMode", config.isScreenControlTrustMode());
 
         JSONArray allowlistArr = new JSONArray();
         for (String path : config.getCustomAllowlist()) {

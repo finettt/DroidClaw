@@ -92,6 +92,15 @@
     <string name="background_exec_description">Allow the agent to run any tool asynchronously with background=true</string>
     <string name="custom_allowlist">Custom Command Allowlist</string>
     <string name="custom_allowlist_description">Extra executable paths allowed in Relaxed mode (one per line)</string>
+    <string name="screen_control">Screen Control</string>
+    <string name="screen_control_description">Allow the agent to read the visible UI and control the phone via Accessibility</string>
+    <string name="screen_control_trust_mode">Screen Control Trust Mode</string>
+    <string name="screen_control_trust_mode_description">Auto-approve screen taps, swipes, typing, and navigation actions</string>
+    <string name="screen_control_accessibility_granted">Accessibility access granted</string>
+    <string name="screen_control_accessibility_not_granted">Accessibility access not granted</string>
+    <string name="screen_control_open_accessibility_settings">Open Accessibility Settings</string>
+    <string name="accessibility_service_label">DroidClaw Accessibility</string>
+    <string name="accessibility_service_description">Lets DroidClaw read the visible UI and control the phone screen for agent tasks</string>
     <string name="network_timeouts">Network Timeouts</string>
     <string name="llm_connect_timeout">LLM Connect Timeout (seconds)</string>
     <string name="llm_connect_timeout_description">Connection timeout for LLM API</string>

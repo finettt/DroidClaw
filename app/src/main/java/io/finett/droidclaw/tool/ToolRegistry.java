@@ -35,8 +35,14 @@ import io.finett.droidclaw.tool.impl.ResumeTaskTool;
 import io.finett.droidclaw.tool.impl.DeleteTaskTool;
 import io.finett.droidclaw.tool.impl.ViewTaskHistoryTool;
 import io.finett.droidclaw.tool.impl.TaskStatsTool;
+import io.finett.droidclaw.accessibility.AccessibilityBridge;
 import io.finett.droidclaw.tool.impl.KillBackgroundProcessTool;
 import io.finett.droidclaw.tool.impl.ListBackgroundProcessesTool;
+import io.finett.droidclaw.tool.impl.ScreenGetUiTreeTool;
+import io.finett.droidclaw.tool.impl.ScreenPerformActionTool;
+import io.finett.droidclaw.tool.impl.ScreenSwipeTool;
+import io.finett.droidclaw.tool.impl.ScreenTapTool;
+import io.finett.droidclaw.tool.impl.ScreenTypeTextTool;
 import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.tool.impl.SearxngSearchTool;
@@ -123,6 +129,19 @@ public class ToolRegistry {
 
         registerTool(new KillBackgroundProcessTool(context));
         registerTool(new ListBackgroundProcessesTool(context));
+
+        // Screen control via Android Accessibility — only when both enabled in settings
+        // AND the accessibility service is currently connected
+        if (settingsManager != null
+                && settingsManager.getAgentConfig().isScreenControlEnabled()
+                && AccessibilityBridge.isConnected()) {
+            boolean trustMode = settingsManager.getAgentConfig().isScreenControlTrustMode();
+            registerTool(new ScreenGetUiTreeTool());
+            registerTool(new ScreenTapTool(trustMode));
+            registerTool(new ScreenSwipeTool(trustMode));
+            registerTool(new ScreenTypeTextTool(trustMode));
+            registerTool(new ScreenPerformActionTool(trustMode));
+        }
 
         // Web search via SearXNG — reads SEARXNG_URL from env vars
         if (settingsManager != null) {
