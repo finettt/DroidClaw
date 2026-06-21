@@ -1,12 +1,15 @@
 package io.finett.droidclaw.fragment;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -14,6 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -21,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.finett.droidclaw.R;
+import io.finett.droidclaw.accessibility.AccessibilityBridge;
 import io.finett.droidclaw.model.AgentConfig;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -38,6 +43,13 @@ public class AgentSettingsFragment extends Fragment {
     private TextInputEditText inputLlmConnectTimeout;
     private TextInputEditText inputLlmReadTimeout;
     private TextInputEditText inputLlmWriteTimeout;
+
+    // Screen control views
+    private SwitchMaterial switchScreenControl;
+    private SwitchMaterial switchScreenControlTrustMode;
+    private TextView textAccessibilityStatus;
+    private MaterialButton buttonOpenAccessibilitySettings;
+
     private Button buttonSave;
 
     private SettingsManager settingsManager;
@@ -54,7 +66,8 @@ public class AgentSettingsFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_agent_settings, container, false);
     }
 
@@ -66,6 +79,14 @@ public class AgentSettingsFragment extends Fragment {
         setupDropdowns();
         loadAgentSettings();
         setupListeners();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Refresh accessibility status every time the fragment resumes (user may have
+        // just come back from the system Accessibility Settings screen)
+        updateAccessibilityStatus();
     }
 
     private void initViews(View view) {
@@ -81,11 +102,16 @@ public class AgentSettingsFragment extends Fragment {
         inputLlmConnectTimeout = view.findViewById(R.id.input_llm_connect_timeout);
         inputLlmReadTimeout = view.findViewById(R.id.input_llm_read_timeout);
         inputLlmWriteTimeout = view.findViewById(R.id.input_llm_write_timeout);
+
+        switchScreenControl = view.findViewById(R.id.switch_screen_control);
+        switchScreenControlTrustMode = view.findViewById(R.id.switch_screen_control_trust_mode);
+        textAccessibilityStatus = view.findViewById(R.id.text_accessibility_status);
+        buttonOpenAccessibilitySettings = view.findViewById(R.id.button_open_accessibility_settings);
+
         buttonSave = view.findViewById(R.id.button_save);
     }
 
     private void setupDropdowns() {
-
         if (availableModels.isEmpty()) {
             String[] noModels = {getString(R.string.agent_default_model_hint)};
             ArrayAdapter<String> modelAdapter = new ArrayAdapter<>(
@@ -108,7 +134,6 @@ public class AgentSettingsFragment extends Fragment {
             dropdownDefaultModel.setAdapter(modelAdapter);
         }
 
-
         String[] sandboxModes = {
                 getString(R.string.sandbox_strict),
                 getString(R.string.sandbox_relaxed),
@@ -124,7 +149,6 @@ public class AgentSettingsFragment extends Fragment {
 
     private void loadAgentSettings() {
         if (agentConfig != null) {
-
             String defaultModel = agentConfig.getDefaultModel();
             if (defaultModel != null && !defaultModel.isEmpty() && !availableModels.isEmpty()) {
                 String displayName = settingsManager.getModelDisplayName(defaultModel);
@@ -132,7 +156,6 @@ public class AgentSettingsFragment extends Fragment {
             } else if (!availableModels.isEmpty()) {
                 dropdownDefaultModel.setText(getString(R.string.agent_default_model_hint), false);
             }
-
 
             switchShellAccess.setChecked(agentConfig.isShellAccess());
 
@@ -157,23 +180,62 @@ public class AgentSettingsFragment extends Fragment {
                 allowlistText.append(path);
             }
             inputCustomAllowlist.setText(allowlistText.toString());
-        }
 
-        if (agentConfig != null) {
             inputLlmConnectTimeout.setText(String.valueOf(agentConfig.getLlmConnectTimeout()));
             inputLlmReadTimeout.setText(String.valueOf(agentConfig.getLlmReadTimeout()));
             inputLlmWriteTimeout.setText(String.valueOf(agentConfig.getLlmWriteTimeout()));
+
+            // Screen control
+            switchScreenControl.setChecked(agentConfig.isScreenControlEnabled());
+            switchScreenControlTrustMode.setChecked(agentConfig.isScreenControlTrustMode());
+        }
+
+        updateAccessibilityStatus();
+    }
+
+    /**
+     * Update the accessibility permission status text and "Open Settings" button visibility
+     * based on whether the accessibility service is currently connected.
+     */
+    private void updateAccessibilityStatus() {
+        if (textAccessibilityStatus == null) return;
+        boolean connected = AccessibilityBridge.isConnected();
+        if (connected) {
+            textAccessibilityStatus.setText(R.string.screen_control_accessibility_granted);
+            textAccessibilityStatus.setTextColor(
+                    requireContext().getColor(android.R.color.holo_green_dark));
+        } else {
+            textAccessibilityStatus.setText(R.string.screen_control_accessibility_not_granted);
+            textAccessibilityStatus.setTextColor(
+                    requireContext().getColor(android.R.color.darker_gray));
         }
     }
 
     private void setupListeners() {
         buttonSave.setOnClickListener(v -> saveAgentSettings());
+
+        // When user enables screen control and permission is not granted, open system settings
+        switchScreenControl.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked && !AccessibilityBridge.isConnected()) {
+                openAccessibilitySettings();
+            }
+        });
+
+        buttonOpenAccessibilitySettings.setOnClickListener(v -> openAccessibilitySettings());
+    }
+
+    private void openAccessibilitySettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        } catch (Exception e) {
+            Toast.makeText(requireContext(),
+                    "Could not open Accessibility Settings", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void saveAgentSettings() {
         String maxIterationsStr = inputMaxIterations.getText().toString().trim();
         String shellTimeoutStr = inputShellTimeout.getText().toString().trim();
-
 
         int maxIterations;
         try {
@@ -199,7 +261,6 @@ public class AgentSettingsFragment extends Fragment {
             return;
         }
 
-
         String selectedModelDisplay = dropdownDefaultModel.getText().toString();
         String selectedModel = "";
         if (!availableModels.isEmpty()) {
@@ -210,7 +271,6 @@ public class AgentSettingsFragment extends Fragment {
                 }
             }
         }
-
 
         String sandboxMode = "strict";
         String selectedSandbox = dropdownSandboxMode.getText().toString();
@@ -256,6 +316,8 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setLlmConnectTimeout(llmConnectTimeout);
         agentConfig.setLlmReadTimeout(llmReadTimeout);
         agentConfig.setLlmWriteTimeout(llmWriteTimeout);
+        agentConfig.setScreenControlEnabled(switchScreenControl.isChecked());
+        agentConfig.setScreenControlTrustMode(switchScreenControlTrustMode.isChecked());
 
         settingsManager.setAgentConfig(agentConfig);
 
