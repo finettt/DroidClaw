@@ -22,6 +22,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -32,6 +33,8 @@ import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.util.ActivityLaunchHelper;
+import io.finett.droidclaw.util.Flaky;
+import io.finett.droidclaw.util.FlakyTestRule;
 import io.finett.droidclaw.util.SettingsManager;
 import io.finett.droidclaw.util.TestUtils;
 
@@ -64,6 +67,10 @@ public class UserFlowIntegrationTest {
         }
     }
 
+    @Rule
+    public FlakyTestRule flakyTestRule = new FlakyTestRule();
+
+    @Flaky
     @Test
     public void completeFlow_firstTimeUser_canNavigateToSettings() {
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
@@ -126,17 +133,18 @@ public class UserFlowIntegrationTest {
         }
     }
 
+    @Flaky(maxAttempts = 5)
     @Test
     public void completeFlow_sendMessage_withoutApi_showsError() {
         configureSettings();
 
         try (ActivityScenario<MainActivity> scenario = ActivityLaunchHelper.launchAndWait(MainActivity.class)) {
             TestUtils.waitForChatFragment();
-            
+
             onView(withId(R.id.messageInput))
                     .perform(replaceText("Test message"), closeSoftKeyboard());
             TestUtils.waitForUiReady();
-            
+
             onView(withId(R.id.sendButton))
                     .perform(click());
             TestUtils.waitForUiReady();

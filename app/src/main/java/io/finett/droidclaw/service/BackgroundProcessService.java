@@ -45,6 +45,12 @@ public class BackgroundProcessService extends Service {
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         createNotificationChannel();
         acquireWakeLock();
+        // startForeground() must be called within 5 seconds on Android 15+.
+        // Doing it here in onCreate() is the earliest possible point and gives
+        // us the full window before onStartCommand() runs.
+        // buildNotification(0) is a placeholder — onStartCommand() immediately
+        // overwrites it with the actual running count via notificationManager.notify().
+        startForeground(NOTIFICATION_ID, buildNotification(0));
         Log.d(TAG, "BackgroundProcessService created");
     }
 
@@ -62,7 +68,8 @@ public class BackgroundProcessService extends Service {
                 ? intent.getIntExtra(EXTRA_RUNNING_COUNT, 0)
                 : 0;
 
-        startForeground(NOTIFICATION_ID, buildNotification(runningCount));
+        // Update the notification with the actual running count now that we have it.
+        notificationManager.notify(NOTIFICATION_ID, buildNotification(runningCount));
 
         if (intent != null && ACTION_UPDATE_NOTIFICATION.equals(intent.getAction())) {
             // Just a notification refresh — no new work to start
@@ -105,16 +112,19 @@ public class BackgroundProcessService extends Service {
     /**
      * Push an updated notification to reflect the current running count.
      * Safe to call even when the service is not running (it will start it).
+     *
+     * <p>Uses {@link Context#startService} (not startForegroundService) because
+     * this intent is typically sent while the service is already running.
+     * If the service was killed, {@code startService} will re-create it on API
+     * 26+ (allowed because the host process is in the foreground when the agent
+     * is running). Once created, {@link #onCreate()} calls {@link #startForeground}
+     * to satisfy the foreground-service contract before processing this intent.</p>
      */
     public static void updateNotification(Context context, int runningCount) {
         Intent intent = new Intent(context, BackgroundProcessService.class);
         intent.setAction(ACTION_UPDATE_NOTIFICATION);
         intent.putExtra(EXTRA_RUNNING_COUNT, runningCount);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
-        }
+        context.startService(intent);
     }
 
     /**
@@ -124,11 +134,9 @@ public class BackgroundProcessService extends Service {
     public static void stopIfIdle(Context context) {
         Intent intent = new Intent(context, BackgroundProcessService.class);
         intent.setAction(ACTION_STOP);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
-        }
+        // Use startService (not startForegroundService) because this intent
+        // immediately stops the service — no need for foreground guarantees.
+        context.startService(intent);
     }
 
     // ==================== Notification ====================

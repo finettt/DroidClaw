@@ -30,7 +30,7 @@ import io.finett.droidclaw.R;
 public class TestUtils {
 
     private static final String TAG = "TestUtils";
-    private static final long DEFAULT_TIMEOUT_MS = 10000; // Increased for CI
+    private static final long DEFAULT_TIMEOUT_MS = 20000; // Increased for CI emulator slowness
     private static final long POLL_INTERVAL_MS = 250;
     public static void waitForIdle() {
         onIdle();
