@@ -1,12 +1,10 @@
 package io.finett.droidclaw.fragment;
 
-import android.Manifest;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -33,7 +31,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -319,15 +316,8 @@ public class ChatFragment extends Fragment {
 
         notificationPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(),
-            granted -> {
-                // Retry the pending agent request now that the user has decided.
-                // If granted, notifications will work; if denied, the agent loop
-                // still runs but no notifications will be posted.
-                if (pendingServiceConversationHistory != null) {
-                    startAgentExecutionServiceIfNeeded();
-                    bindAgentExecutionService();
-                }
-            }
+            granted -> Log.d(TAG, "POST_NOTIFICATIONS permission: "
+                    + (granted ? "granted" : "denied"))
         );
 
         chatSearchManager = new ChatSearchManager();
@@ -377,18 +367,6 @@ public class ChatFragment extends Fragment {
     private void dispatchAgentRequest(List<ChatMessage> conversationHistory) {
         pendingServiceConversationHistory = new ArrayList<>(conversationHistory);
         pendingServiceContextWindow = getModelContextWindow();
-
-        // On Android 13+ we need POST_NOTIFICATIONS for the foreground service
-        // notification (and the completion notification). Request it if not granted.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(),
-                    Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
-                // The launcher callback retries starting the service after the user responds.
-                return;
-            }
-        }
 
         startAgentExecutionServiceIfNeeded();
 

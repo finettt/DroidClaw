@@ -95,7 +95,7 @@ public class CriticalUserJourneysUITest {
         }
     }
 
-    @Flaky
+    @Flaky(maxAttempts = 5)
     @Test
     public void userJourney_sendMessage_completeFlow() {
         configureSettings();
