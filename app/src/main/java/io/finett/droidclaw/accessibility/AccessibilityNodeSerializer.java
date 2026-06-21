@@ -1,6 +1,7 @@
 package io.finett.droidclaw.accessibility;
 
 import android.graphics.Rect;
+import android.os.Build;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.google.gson.JsonArray;
@@ -75,10 +76,12 @@ public final class AccessibilityNodeSerializer {
             obj.addProperty("contentDescription", cd.toString());
         }
 
-        // Hint text (input fields)
-        CharSequence hint = node.getHintText();
-        if (hint != null && hint.length() > 0) {
-            obj.addProperty("hint", hint.toString());
+        // Hint text (input fields) — API 26+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence hint = node.getHintText();
+            if (hint != null && hint.length() > 0) {
+                obj.addProperty("hint", hint.toString());
+            }
         }
 
         // Interactability
