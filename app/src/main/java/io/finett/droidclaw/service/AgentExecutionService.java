@@ -52,6 +52,10 @@ public class AgentExecutionService extends Service {
     static final String CHANNEL_ID = "droidclaw_agent_exec";
     private static final int NOTIFICATION_ID = 8802;
 
+    /** Channel and ID for agent-completion notifications (non-foreground). */
+    private static final String CHANNEL_ID_DONE = "droidclaw_agent_done";
+    private static final int NOTIFICATION_ID_DONE = 8803;
+
     // ==================== Session state ====================
 
     /** Per-session state kept for the lifetime of the loop. */
@@ -134,6 +138,7 @@ public class AgentExecutionService extends Service {
         super.onCreate();
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         createNotificationChannel();
+        createDoneNotificationChannel();
         Log.d(TAG, "AgentExecutionService created");
     }
 
@@ -333,8 +338,10 @@ public class AgentExecutionService extends Service {
                         UICallback cb = uiCallbacks.remove(session.sessionId);
                         if (cb != null) {
                             cb.onComplete(finalResponse, history);
+                        } else {
+                            // App is not in the foreground — post a completion notification.
+                            showCompletionNotification(session.sessionId, finalResponse);
                         }
-                        // Session delivered — remove it.
                         sessions.remove(session.sessionId);
                         checkIdleAndStop();
                     });
@@ -349,6 +356,9 @@ public class AgentExecutionService extends Service {
                         UICallback cb = uiCallbacks.remove(session.sessionId);
                         if (cb != null) {
                             cb.onError(error);
+                        } else {
+                            // App is not in the foreground — post an error notification.
+                            showErrorNotification(session.sessionId, error);
                         }
                         sessions.remove(session.sessionId);
                         checkIdleAndStop();
@@ -480,6 +490,120 @@ public class AgentExecutionService extends Service {
             channel.setShowBadge(false);
             notificationManager.createNotificationChannel(channel);
         }
+    }
+
+    /**
+     * Channel for agent-done notifications. Uses DEFAULT importance so the
+     * user actually hears/sees when the agent finishes while the app is away.
+     */
+    private void createDoneNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID_DONE,
+                    "DroidClaw Agent Status",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            channel.setDescription("Posted when the agent completes a task while the app is closed");
+            channel.setShowBadge(true);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    // ==================== Completion / error notifications ====================
+
+    /**
+     * Show a non-foreground notification when the agent completes and the UI is detached.
+     */
+    private void showCompletionNotification(String sessionId, String responseText) {
+        // Replace the old foreground notification and then show the done notification.
+        stopForeground(false);
+        notificationManager.notify(NOTIFICATION_ID_DONE,
+                buildCompletionNotification(sessionId, responseText));
+    }
+
+    /**
+     * Show a non-foreground notification when the agent errors and the UI is detached.
+     */
+    private void showErrorNotification(String sessionId, String error) {
+        stopForeground(false);
+        notificationManager.notify(NOTIFICATION_ID_DONE,
+                buildErrorNotification(sessionId, error));
+    }
+
+    /**
+     * Build a notification that the agent has completed its work.
+     * The response preview is truncated to ~200 chars for the notification.
+     */
+    private Notification buildCompletionNotification(String sessionId, String responseText) {
+        Intent openIntent = new Intent(this, MainActivity.class);
+        openIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        openIntent.putExtra("session_id", sessionId);
+        int piFlags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                : PendingIntent.FLAG_UPDATE_CURRENT;
+        PendingIntent openPending = PendingIntent.getActivity(this, 1, openIntent, piFlags);
+
+        // Strip markdown-ish formatting for notification readability.
+        String preview = stripMarkdown(responseText);
+        if (preview.length() > 200) {
+            preview = preview.substring(0, 200) + "…";
+        }
+
+        return new NotificationCompat.Builder(this, CHANNEL_ID_DONE)
+                .setSmallIcon(android.R.drawable.ic_popup_sync)
+                .setContentTitle("DroidClaw — agent completed")
+                .setContentText(preview)
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(preview))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .setOngoing(false)
+                .setContentIntent(openPending)
+                .setShowWhen(true)
+                .build();
+    }
+
+    /**
+     * Build a notification that the agent encountered an error.
+     */
+    private Notification buildErrorNotification(String sessionId, String error) {
+        Intent openIntent = new Intent(this, MainActivity.class);
+        openIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        openIntent.putExtra("session_id", sessionId);
+        int piFlags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+                : PendingIntent.FLAG_UPDATE_CURRENT;
+        PendingIntent openPending = PendingIntent.getActivity(this, 2, openIntent, piFlags);
+
+        return new NotificationCompat.Builder(this, CHANNEL_ID_DONE)
+                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setContentTitle("DroidClaw — agent error")
+                .setContentText(error)
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(error))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setOngoing(false)
+                .setContentIntent(openPending)
+                .setShowWhen(true)
+                .build();
+    }
+
+    /**
+     * Remove common markdown markers so the notification text is readable.
+     */
+    private static String stripMarkdown(String text) {
+        if (text == null) return "";
+        return text
+                .replaceAll("(?m)^#{1,6}\\s+", "")     // headings
+                .replaceAll("\\*\\*(.+?)\\*\\*", "$1") // bold
+                .replaceAll("\\*(.+?)\\*", "$1")        // italic
+                .replaceAll("`{1,3}[^`]*`{1,3}", "")    // inline code / code blocks
+                .replaceAll("\\[([^]]+)]\\([^)]+\\)", "$1") // links
+                .replaceAll("(?m)^[-*+]\\s+", "")       // list markers
+                .replaceAll("(?m)^>\\s+", "")            // blockquotes
+                .replaceAll("\\n{3,}", "\n\n")           // collapse excessive newlines
+                .trim();
     }
 
     // ==================== WakeLock ====================
