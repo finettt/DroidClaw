@@ -43,16 +43,18 @@ public class IdentityManager {
     public IdentityContext loadIdentity() throws IOException {
         String soulContent = readIdentityFile(WorkspaceManager.getSoulFilePath());
         String userContent = readIdentityFile(WorkspaceManager.getUserFilePath());
+        String relationshipsContent = readIdentityFile(WorkspaceManager.getRelationshipsFilePath());
 
-        return new IdentityContext(soulContent, userContent);
+        return new IdentityContext(soulContent, userContent, relationshipsContent);
     }
 
     public boolean identityFilesExist() {
         File workspaceRoot = workspaceManager.getWorkspaceRoot();
         File soulFile = new File(workspaceRoot, WorkspaceManager.getSoulFilePath());
         File userFile = new File(workspaceRoot, WorkspaceManager.getUserFilePath());
+        File relationshipsFile = new File(workspaceRoot, WorkspaceManager.getRelationshipsFilePath());
 
-        return soulFile.exists() && userFile.exists();
+        return soulFile.exists() && userFile.exists() && relationshipsFile.exists();
     }
 
     public void clearCache() {
@@ -96,16 +98,28 @@ public class IdentityManager {
             messages.add(userMessage);
         }
 
+        // Add relationships.md as third system message if not empty
+        if (identity.relationshipsContent != null && !identity.relationshipsContent.trim().isEmpty()) {
+            ChatMessage relationshipsMessage = new ChatMessage(identity.relationshipsContent, ChatMessage.TYPE_SYSTEM);
+            messages.add(relationshipsMessage);
+        }
+
         return messages;
     }
 
     public static class IdentityContext {
         private final String soulContent;
         private final String userContent;
+        private final String relationshipsContent;
 
         public IdentityContext(String soulContent, String userContent) {
+            this(soulContent, userContent, null);
+        }
+
+        public IdentityContext(String soulContent, String userContent, String relationshipsContent) {
             this.soulContent = soulContent;
             this.userContent = userContent;
+            this.relationshipsContent = relationshipsContent;
         }
 
         public String getSoulContent() {
@@ -116,6 +130,10 @@ public class IdentityManager {
             return userContent;
         }
 
+        public String getRelationshipsContent() {
+            return relationshipsContent;
+        }
+
         public boolean hasSoul() {
             return soulContent != null && !soulContent.trim().isEmpty();
         }
@@ -124,8 +142,12 @@ public class IdentityManager {
             return userContent != null && !userContent.trim().isEmpty();
         }
 
+        public boolean hasRelationships() {
+            return relationshipsContent != null && !relationshipsContent.trim().isEmpty();
+        }
+
         public boolean isEmpty() {
-            return !hasSoul() && !hasUser();
+            return !hasSoul() && !hasUser() && !hasRelationships();
         }
     }
 }

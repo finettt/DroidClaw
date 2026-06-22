@@ -46,6 +46,12 @@ import io.finett.droidclaw.tool.impl.ScreenTypeTextTool;
 import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.tool.impl.SearxngSearchTool;
+import io.finett.droidclaw.tool.impl.PeerSendMessageTool;
+import io.finett.droidclaw.tool.impl.PeerListConnectionsTool;
+import io.finett.droidclaw.tool.impl.PeerSendFileTool;
+import io.finett.droidclaw.tool.impl.PeerReceiveFileControlTool;
+import io.finett.droidclaw.tool.impl.PeerDiscoverTool;
+import io.finett.droidclaw.tool.impl.PeerConnectTool;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class ToolRegistry {
@@ -146,6 +152,17 @@ public class ToolRegistry {
         // Web search via SearXNG — reads SEARXNG_URL from env vars
         if (settingsManager != null) {
             registerTool(new SearxngSearchTool(settingsManager));
+        }
+
+        // Agent-to-agent connectivity tools — only when enabled in settings
+        if (settingsManager != null
+                && settingsManager.getAgentConfig().isAgentAccessibilityEnabled()) {
+            registerTool(new PeerSendMessageTool());
+            registerTool(new PeerListConnectionsTool());
+            registerTool(new PeerSendFileTool(vfs, getWorkspaceRoot()));
+            registerTool(new PeerReceiveFileControlTool());
+            registerTool(new PeerDiscoverTool(context));
+            registerTool(new PeerConnectTool(context));
         }
     }
 

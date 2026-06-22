@@ -8,6 +8,21 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Legacy Bluetooth (API &lt; 31) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <!-- Runtime Bluetooth (API 31+) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- Location required for BT discovery on API &lt;= 30 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <!-- WiFi multicast for network peer discovery -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- Foreground service type for connected device -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
     <application
         android:name=".DroidClawApplication"
         android:allowBackup="false"
@@ -39,6 +54,11 @@
         <service
             android:name=".service.AgentExecutionService"
             android:foregroundServiceType="dataSync"
+            android:exported="false" />
+
+        <service
+            android:name=".service.AgentConnectivityService"
+            android:foregroundServiceType="connectedDevice"
             android:exported="false" />
 
         <service

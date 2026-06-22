@@ -15,6 +15,11 @@ public class AgentConfig {
     private List<String> customAllowlist; // extra executable paths for relaxed mode
     private boolean screenControlEnabled;  // allow agent to read UI and control screen via accessibility
     private boolean screenControlTrustMode; // skip per-action approval for screen control tools
+    private boolean agentAccessibilityEnabled; // allow incoming connections from other agents
+    private boolean agentAutoConnect; // allow agent to initiate outbound connections
+    private boolean agentDiscoverable; // visible during peer discovery
+    private String discoveryTransport; // "bluetooth", "network", or "auto"
+    private int networkPort; // TCP port for network transport
     private int llmConnectTimeout;   // seconds
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
@@ -26,6 +31,11 @@ public class AgentConfig {
         this.llmWriteTimeout = 30;
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
+        this.agentAccessibilityEnabled = true;
+        this.agentAutoConnect = true;
+        this.agentDiscoverable = false;
+        this.discoveryTransport = "auto";
+        this.networkPort = 9876;
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
@@ -45,6 +55,11 @@ public class AgentConfig {
         this.llmWriteTimeout = 30;
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
+        this.agentAccessibilityEnabled = true;
+        this.agentAutoConnect = true;
+        this.agentDiscoverable = false;
+        this.discoveryTransport = "auto";
+        this.networkPort = 9876;
     }
 
     public static AgentConfig getDefaults() {
@@ -170,6 +185,46 @@ public class AgentConfig {
 
     public void setScreenControlTrustMode(boolean screenControlTrustMode) {
         this.screenControlTrustMode = screenControlTrustMode;
+    }
+
+    public boolean isAgentAccessibilityEnabled() {
+        return agentAccessibilityEnabled;
+    }
+
+    public void setAgentAccessibilityEnabled(boolean agentAccessibilityEnabled) {
+        this.agentAccessibilityEnabled = agentAccessibilityEnabled;
+    }
+
+    public boolean isAgentAutoConnect() {
+        return agentAutoConnect;
+    }
+
+    public void setAgentAutoConnect(boolean agentAutoConnect) {
+        this.agentAutoConnect = agentAutoConnect;
+    }
+
+    public boolean isAgentDiscoverable() {
+        return agentDiscoverable;
+    }
+
+    public void setAgentDiscoverable(boolean agentDiscoverable) {
+        this.agentDiscoverable = agentDiscoverable;
+    }
+
+    public String getDiscoveryTransport() {
+        return discoveryTransport;
+    }
+
+    public void setDiscoveryTransport(String discoveryTransport) {
+        this.discoveryTransport = discoveryTransport;
+    }
+
+    public int getNetworkPort() {
+        return networkPort;
+    }
+
+    public void setNetworkPort(int networkPort) {
+        this.networkPort = networkPort;
     }
 
     public String getDefaultProviderId() {

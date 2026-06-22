@@ -230,6 +230,11 @@ public class SettingsManager {
         config.setBackgroundExecEnabled(json.optBoolean("backgroundExecEnabled", false));
         config.setScreenControlEnabled(json.optBoolean("screenControlEnabled", false));
         config.setScreenControlTrustMode(json.optBoolean("screenControlTrustMode", false));
+        config.setAgentAccessibilityEnabled(json.optBoolean("agentAccessibilityEnabled", true));
+        config.setAgentAutoConnect(json.optBoolean("agentAutoConnect", true));
+        config.setAgentDiscoverable(json.optBoolean("agentDiscoverable", false));
+        config.setDiscoveryTransport(json.optString("discoveryTransport", "auto"));
+        config.setNetworkPort(json.optInt("networkPort", 9876));
 
         List<String> customAllowlist = new ArrayList<>();
         if (json.has("customAllowlist")) {
@@ -321,6 +326,11 @@ public class SettingsManager {
         json.put("backgroundExecEnabled", config.isBackgroundExecEnabled());
         json.put("screenControlEnabled", config.isScreenControlEnabled());
         json.put("screenControlTrustMode", config.isScreenControlTrustMode());
+        json.put("agentAccessibilityEnabled", config.isAgentAccessibilityEnabled());
+        json.put("agentAutoConnect", config.isAgentAutoConnect());
+        json.put("agentDiscoverable", config.isAgentDiscoverable());
+        json.put("discoveryTransport", config.getDiscoveryTransport());
+        json.put("networkPort", config.getNetworkPort());
 
         JSONArray allowlistArr = new JSONArray();
         for (String path : config.getCustomAllowlist()) {
@@ -466,6 +476,15 @@ public class SettingsManager {
 
     public int getShellTimeoutSeconds() {
         return agentConfig.getShellTimeout();
+    }
+
+    public boolean isAgentAccessibilityEnabled() {
+        return agentConfig.isAgentAccessibilityEnabled();
+    }
+
+    public void setAgentAccessibilityEnabled(boolean enabled) {
+        agentConfig.setAgentAccessibilityEnabled(enabled);
+        saveToJson();
     }
 
     // ==================== Onboarding ====================

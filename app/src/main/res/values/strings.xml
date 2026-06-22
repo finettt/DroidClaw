@@ -111,6 +111,21 @@
     <string name="searxng_timeout">SearXNG Timeout (seconds)</string>
     <string name="searxng_timeout_description">Search request timeout for SearXNG</string>
 
+    <!-- Agent Connectivity -->
+    <string name="agent_connectivity_section_title">Agent Connectivity</string>
+    <string name="agent_accessibility">Accept Connections</string>
+    <string name="agent_accessibility_description">Allow other DroidClaw agents to connect to this device</string>
+    <string name="agent_auto_connect">Auto-Connect</string>
+    <string name="agent_auto_connect_description">Allow the agent to initiate connections with nearby agents</string>
+    <string name="agent_discoverable">Discoverable</string>
+    <string name="agent_discoverable_description">Make this device visible during peer discovery</string>
+    <string name="discovery_transport">Discovery Transport</string>
+    <string name="discovery_transport_auto">Auto</string>
+    <string name="discovery_transport_bluetooth">Bluetooth</string>
+    <string name="discovery_transport_network">WiFi</string>
+    <string name="network_port">Network Port</string>
+    <string name="network_port_description">TCP port (1024-65535, default: 9876)</string>
+
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Welcome to DroidClaw</string>
     <string name="onboarding_welcome_subtitle">Your AI-powered coding assistant</string>

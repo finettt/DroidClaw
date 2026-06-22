@@ -4,6 +4,7 @@ public class SessionType {
     public static final int NORMAL = 0;
     public static final int HIDDEN_HEARTBEAT = 1;
     public static final int HIDDEN_CRON = 2;
+    public static final int TYPE_PEER_AGENT = 5;
 
     private SessionType() {
     }
@@ -16,6 +17,8 @@ public class SessionType {
                 return "HIDDEN_HEARTBEAT";
             case HIDDEN_CRON:
                 return "HIDDEN_CRON";
+            case TYPE_PEER_AGENT:
+                return "TYPE_PEER_AGENT";
             default:
                 return "UNKNOWN(" + type + ")";
         }

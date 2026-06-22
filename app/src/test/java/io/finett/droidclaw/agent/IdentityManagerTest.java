@@ -153,8 +153,8 @@ public class IdentityManagerTest {
             assertEquals("Cached messages should have same content",
                     firstCall.get(i).getContent(), secondCall.get(i).getContent());
         }
-        // Workspace root is queried twice on first call (once per file), zero on second (cache hit)
-        verify(mockWorkspaceManager, times(2)).getWorkspaceRoot();
+        // Workspace root is queried three times on first call (once per file), zero on second (cache hit)
+        verify(mockWorkspaceManager, times(3)).getWorkspaceRoot();
     }
 
     @Test
@@ -266,9 +266,10 @@ public class IdentityManagerTest {
     }
 
     @Test
-    public void identityFilesExist_withBothFiles_returnsTrue() throws IOException {
+    public void identityFilesExist_withAllFiles_returnsTrue() throws IOException {
         writeIdentityFile(".agent/soul.md", "Soul");
         writeIdentityFile(".agent/user.md", "User");
+        writeIdentityFile(".agent/relationships.md", "Relationships");
 
         assertTrue("Identity files should exist", identityManager.identityFilesExist());
     }
@@ -301,6 +302,7 @@ public class IdentityManagerTest {
     public void identityFilesExist_afterFileDeletion_returnsFalse() throws IOException {
         writeIdentityFile(".agent/soul.md", "Soul");
         writeIdentityFile(".agent/user.md", "User");
+        writeIdentityFile(".agent/relationships.md", "Relationships");
 
         assertTrue("Files should exist initially", identityManager.identityFilesExist());
 

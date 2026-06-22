@@ -50,6 +50,13 @@ public class AgentSettingsFragment extends Fragment {
     private TextView textAccessibilityStatus;
     private MaterialButton buttonOpenAccessibilitySettings;
 
+    // Agent connectivity views
+    private SwitchMaterial switchAgentAccessibility;
+    private SwitchMaterial switchAutoConnect;
+    private SwitchMaterial switchAgentDiscoverable;
+    private AutoCompleteTextView dropdownDiscoveryTransport;
+    private TextInputEditText inputNetworkPort;
+
     private Button buttonSave;
 
     private SettingsManager settingsManager;
@@ -108,6 +115,12 @@ public class AgentSettingsFragment extends Fragment {
         textAccessibilityStatus = view.findViewById(R.id.text_accessibility_status);
         buttonOpenAccessibilitySettings = view.findViewById(R.id.button_open_accessibility_settings);
 
+        switchAgentAccessibility = view.findViewById(R.id.switch_agent_accessibility);
+        switchAutoConnect = view.findViewById(R.id.switch_auto_connect);
+        switchAgentDiscoverable = view.findViewById(R.id.switch_agent_discoverable);
+        dropdownDiscoveryTransport = view.findViewById(R.id.dropdown_discovery_transport);
+        inputNetworkPort = view.findViewById(R.id.input_network_port);
+
         buttonSave = view.findViewById(R.id.button_save);
     }
 
@@ -145,6 +158,18 @@ public class AgentSettingsFragment extends Fragment {
                 sandboxModes
         );
         dropdownSandboxMode.setAdapter(sandboxAdapter);
+
+        String[] discoveryTransports = {
+                getString(R.string.discovery_transport_auto),
+                getString(R.string.discovery_transport_bluetooth),
+                getString(R.string.discovery_transport_network)
+        };
+        ArrayAdapter<String> transportAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                discoveryTransports
+        );
+        dropdownDiscoveryTransport.setAdapter(transportAdapter);
     }
 
     private void loadAgentSettings() {
@@ -188,6 +213,22 @@ public class AgentSettingsFragment extends Fragment {
             // Screen control
             switchScreenControl.setChecked(agentConfig.isScreenControlEnabled());
             switchScreenControlTrustMode.setChecked(agentConfig.isScreenControlTrustMode());
+
+            // Agent connectivity
+            switchAgentAccessibility.setChecked(agentConfig.isAgentAccessibilityEnabled());
+            switchAutoConnect.setChecked(agentConfig.isAgentAutoConnect());
+            switchAgentDiscoverable.setChecked(agentConfig.isAgentDiscoverable());
+
+            String transport = agentConfig.getDiscoveryTransport();
+            if ("bluetooth".equals(transport)) {
+                dropdownDiscoveryTransport.setText(getString(R.string.discovery_transport_bluetooth), false);
+            } else if ("network".equals(transport)) {
+                dropdownDiscoveryTransport.setText(getString(R.string.discovery_transport_network), false);
+            } else {
+                dropdownDiscoveryTransport.setText(getString(R.string.discovery_transport_auto), false);
+            }
+
+            inputNetworkPort.setText(String.valueOf(agentConfig.getNetworkPort()));
         }
 
         updateAccessibilityStatus();
@@ -261,6 +302,19 @@ public class AgentSettingsFragment extends Fragment {
             return;
         }
 
+        String networkPortStr = inputNetworkPort.getText().toString().trim();
+        int networkPort;
+        try {
+            networkPort = Integer.parseInt(networkPortStr);
+            if (networkPort < 1024 || networkPort > 65535) {
+                inputNetworkPort.setError("Port must be between 1024 and 65535");
+                return;
+            }
+        } catch (NumberFormatException e) {
+            inputNetworkPort.setError(getString(R.string.validation_invalid_number));
+            return;
+        }
+
         String selectedModelDisplay = dropdownDefaultModel.getText().toString();
         String selectedModel = "";
         if (!availableModels.isEmpty()) {
@@ -318,6 +372,21 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setLlmWriteTimeout(llmWriteTimeout);
         agentConfig.setScreenControlEnabled(switchScreenControl.isChecked());
         agentConfig.setScreenControlTrustMode(switchScreenControlTrustMode.isChecked());
+
+        agentConfig.setAgentAccessibilityEnabled(switchAgentAccessibility.isChecked());
+        agentConfig.setAgentAutoConnect(switchAutoConnect.isChecked());
+        agentConfig.setAgentDiscoverable(switchAgentDiscoverable.isChecked());
+
+        String selectedTransport = dropdownDiscoveryTransport.getText().toString();
+        if (selectedTransport.equals(getString(R.string.discovery_transport_bluetooth))) {
+            agentConfig.setDiscoveryTransport("bluetooth");
+        } else if (selectedTransport.equals(getString(R.string.discovery_transport_network))) {
+            agentConfig.setDiscoveryTransport("network");
+        } else {
+            agentConfig.setDiscoveryTransport("auto");
+        }
+
+        agentConfig.setNetworkPort(networkPort);
 
         settingsManager.setAgentConfig(agentConfig);
 
