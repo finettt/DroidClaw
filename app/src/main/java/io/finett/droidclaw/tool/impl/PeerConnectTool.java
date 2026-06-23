@@ -4,6 +4,9 @@ import android.content.Context;
 
 import com.google.gson.JsonObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.finett.droidclaw.connectivity.AgentConnection;
 import io.finett.droidclaw.connectivity.ConnectionManager;
 import io.finett.droidclaw.connectivity.DiscoveryManager;
@@ -12,6 +15,7 @@ import io.finett.droidclaw.connectivity.Transport;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
+import io.finett.droidclaw.util.SettingsManager;
 
 /**
  * Connects to a discovered peer agent.
@@ -129,12 +133,15 @@ public class PeerConnectTool implements Tool {
         DiscoveryManager dm = DiscoveryManager.getInstance(context);
 
         // Ensure transports are initialized and running
+        if (dm.getActiveTransports().isEmpty()) {
+            // Auto-initialize from settings when no transports configured yet
+            initTransportsFromSettings(dm);
+        }
+        if (dm.getActiveTransports().isEmpty()) {
+            return ToolResult.error("No transports configured. "
+                    + "Enable agent-to-agent communication in settings first.");
+        }
         if (!dm.isRunning()) {
-            if (dm.getActiveTransports().isEmpty()) {
-                return ToolResult.error("No transports configured. "
-                        + "Enable agent-to-agent communication in settings first.");
-            }
-            // Transports are configured but not running — start them
             dm.startAll();
         }
 
@@ -167,6 +174,9 @@ public class PeerConnectTool implements Tool {
     /**
      * Maps a URL scheme or short name to a canonical transport type.
      */
+    /**
+     * Maps a URL scheme or short name to a canonical transport type.
+     */
     private String normalizeTransportType(String raw) {
         if (raw == null) return Transport.TYPE_BLUETOOTH;
         String lower = raw.toLowerCase().trim();
@@ -178,5 +188,37 @@ public class PeerConnectTool implements Tool {
             return Transport.TYPE_TCP;
         }
         return lower;
+    }
+
+    /**
+     * Auto-initialize the DiscoveryManager with transports from settings
+     * when no transports are configured yet. This allows the connect tool
+     * to work without requiring AgentConnectivityService to be started first.
+     */
+    private void initTransportsFromSettings(DiscoveryManager dm) {
+        try {
+            SettingsManager settingsManager = new SettingsManager(context);
+            String transportSetting = settingsManager.getAgentConfig().getDiscoveryTransport();
+            int networkPort = settingsManager.getAgentConfig().getNetworkPort();
+
+            List<Transport> transports = new ArrayList<>();
+
+            if ("network".equals(transportSetting) || "auto".equals(transportSetting)) {
+                transports.add(new io.finett.droidclaw.connectivity.NetworkTransport());
+            }
+            if ("bluetooth".equals(transportSetting) || "auto".equals(transportSetting)) {
+                try {
+                    transports.add(new io.finett.droidclaw.connectivity.BluetoothTransport());
+                } catch (Exception ignored) {
+                    // Bluetooth not available on this device (e.g. emulator)
+                }
+            }
+
+            if (!transports.isEmpty()) {
+                dm.initialize(transports);
+            }
+        } catch (Exception e) {
+            android.util.Log.w("PeerConnectTool", "Failed to init transports from settings", e);
+        }
     }
 }

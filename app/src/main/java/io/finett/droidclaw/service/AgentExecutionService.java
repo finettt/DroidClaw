@@ -371,10 +371,23 @@ public class AgentExecutionService extends Service {
                                                AgentLoop.ApprovalCallback approvalCallback) {
                     UICallback cb = uiCallbacks.get(session.sessionId);
                     if (cb != null) {
-                        // UI is attached — delegate directly.
+                        // UI is attached — show dialog on main thread but run the
+                        // actual tool execution on a background thread so the main
+                        // thread isn't blocked by long-running tools like connect.
                         mainHandler.post(() ->
                                 cb.onApprovalRequired(toolName, description, arguments,
-                                        approvalCallback));
+                                        new AgentLoop.ApprovalCallback() {
+                                            @Override
+                                            public void onApproved() {
+                                                new Thread(() -> approvalCallback.onApproved(),
+                                                        "approval-exec-" + toolName).start();
+                                            }
+
+                                            @Override
+                                            public void onDenied() {
+                                                approvalCallback.onDenied();
+                                            }
+                                        }));
                     } else {
                         // UI is detached — park the worker thread and show notification.
                         session.state = AgentSession.State.PAUSED_APPROVAL;

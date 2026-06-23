@@ -157,12 +157,61 @@ public class ToolRegistry {
         // Agent-to-agent connectivity tools — only when enabled in settings
         if (settingsManager != null
                 && settingsManager.getAgentConfig().isAgentAccessibilityEnabled()) {
+            // Ensure DiscoveryManager has transports initialized and server running
+            // so this device can accept incoming peer connections.
+            ensureConnectivityRunning();
+
             registerTool(new PeerSendMessageTool());
             registerTool(new PeerListConnectionsTool());
             registerTool(new PeerSendFileTool(vfs, getWorkspaceRoot()));
             registerTool(new PeerReceiveFileControlTool());
             registerTool(new PeerDiscoverTool(context));
             registerTool(new PeerConnectTool(context));
+        }
+    }
+
+    /**
+     * Ensure the DiscoveryManager has transports initialized and its server
+     * accept loop is running, so this device can receive incoming peer
+     * connections without requiring a manual tool call first.
+     */
+    private void ensureConnectivityRunning() {
+        try {
+            io.finett.droidclaw.connectivity.DiscoveryManager dm =
+                    io.finett.droidclaw.connectivity.DiscoveryManager.getInstance(context);
+
+            // If transports are already initialized, ensure the server is running
+            if (!dm.getActiveTransports().isEmpty()) {
+                if (!dm.isRunning()) {
+                    dm.startAll();
+                }
+                return;
+            }
+
+            // Auto-initialize transports from settings
+            String transportSetting = settingsManager.getAgentConfig().getDiscoveryTransport();
+            int networkPort = settingsManager.getAgentConfig().getNetworkPort();
+
+            java.util.List<io.finett.droidclaw.connectivity.Transport> transports =
+                    new java.util.ArrayList<>();
+
+            if ("network".equals(transportSetting) || "auto".equals(transportSetting)) {
+                transports.add(new io.finett.droidclaw.connectivity.NetworkTransport());
+            }
+            if ("bluetooth".equals(transportSetting) || "auto".equals(transportSetting)) {
+                try {
+                    transports.add(new io.finett.droidclaw.connectivity.BluetoothTransport());
+                } catch (Exception ignored) {
+                    // Bluetooth not available on this device
+                }
+            }
+
+            if (!transports.isEmpty()) {
+                dm.initialize(transports);
+                dm.startAll();
+            }
+        } catch (Exception e) {
+            android.util.Log.w("ToolRegistry", "Failed to init connectivity", e);
         }
     }
 
