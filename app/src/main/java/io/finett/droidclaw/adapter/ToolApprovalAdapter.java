@@ -31,11 +31,38 @@ public class ToolApprovalAdapter extends ArrayAdapter<ToolApprovalAdapter.ToolAp
         public final String toolName;
         public final String toolDescription;
         public ToolApprovalMode mode;
+        // Tracks the TextWatcher attached to the dropdown so it can be removed on view recycling.
+        private TextWatcher watcher;
 
         public ToolApprovalEntry(String toolName, String toolDescription, ToolApprovalMode mode) {
             this.toolName = toolName;
             this.toolDescription = toolDescription;
             this.mode = mode;
+        }
+
+        private TextWatcher getOrCreateWatcher(AutoCompleteTextView dropdown, ToolApprovalAdapter adapter) {
+            if (watcher == null) {
+                watcher = new TextWatcher() {
+                    @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                    @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                    @Override
+                    public void afterTextChanged(Editable s) {
+                        String selected = s.toString();
+                        ToolApprovalMode newMode = ToolApprovalMode.DEFAULT;
+                        for (int i = 0; i < MODE_LABELS.length; i++) {
+                            if (MODE_LABELS[i].equals(selected)) {
+                                newMode = ToolApprovalMode.values()[i];
+                                break;
+                            }
+                        }
+                        mode = newMode;
+                        adapter.persistOverride(toolName, newMode);
+                    }
+                };
+            }
+            dropdown.removeTextChangedListener(watcher);
+            dropdown.addTextChangedListener(watcher);
+            return watcher;
         }
     }
 
@@ -93,24 +120,8 @@ public class ToolApprovalAdapter extends ArrayAdapter<ToolApprovalAdapter.ToolAp
         String label = getLabelForMode(entry.mode);
         dropdown.setText(label, false);
 
-        // Attach text watcher to persist selection changes
-        dropdown.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override
-            public void afterTextChanged(Editable s) {
-                String selected = s.toString();
-                ToolApprovalMode newMode = ToolApprovalMode.DEFAULT;
-                for (int i = 0; i < MODE_LABELS.length; i++) {
-                    if (MODE_LABELS[i].equals(selected)) {
-                        newMode = ToolApprovalMode.values()[i];
-                        break;
-                    }
-                }
-                entry.mode = newMode;
-                persistOverride(entry.toolName, newMode);
-            }
-        });
+        // Attach (or re-attach on recycled views) the per-entry text watcher.
+        entry.getOrCreateWatcher(dropdown, this);
 
         return convertView;
     }
@@ -132,7 +143,6 @@ public class ToolApprovalAdapter extends ArrayAdapter<ToolApprovalAdapter.ToolAp
         } else {
             overrides.put(toolName, mode.name());
         }
-        settingsManager.getAgentConfig().setToolApprovalOverrides(overrides);
         settingsManager.setAgentConfig(settingsManager.getAgentConfig());
     }
 }

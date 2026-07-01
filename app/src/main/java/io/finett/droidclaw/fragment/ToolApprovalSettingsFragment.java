@@ -30,11 +30,13 @@ public class ToolApprovalSettingsFragment extends Fragment {
     private ListView listView;
     private ToolApprovalAdapter adapter;
     private SettingsManager settingsManager;
+    private ToolRegistry toolRegistry;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         settingsManager = new SettingsManager(requireContext());
+        toolRegistry = new ToolRegistry(requireContext(), settingsManager);
     }
 
     @Nullable
@@ -62,21 +64,11 @@ public class ToolApprovalSettingsFragment extends Fragment {
         Map<String, String> overrides = settingsManager.getAgentConfig()
                 .getToolApprovalOverrides();
 
-        // Build a lightweight registry just to enumerate tool names/descriptions.
-        // We avoid constructing the full AgentLoop-owned registry to keep settings
-        // navigation cheap. ToolRegistry can be created standalone with just context.
-        ToolRegistry registry = null;
-        try {
-            registry = new ToolRegistry(requireContext(), settingsManager);
-        } catch (Exception e) {
-            android.util.Log.w("ToolApprovalSettings", "Could not build tool list", e);
-        }
-
-        if (registry == null) {
+        if (toolRegistry == null) {
             return entries;
         }
 
-        for (Tool tool : registry.getAllTools()) {
+        for (Tool tool : toolRegistry.getAllTools()) {
             ToolApprovalMode mode = ToolApprovalMode.DEFAULT;
 
             String toolName = tool.getName();

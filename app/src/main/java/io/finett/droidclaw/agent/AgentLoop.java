@@ -44,7 +44,8 @@ public class AgentLoop {
 
     /**
      * Look up the per-tool approval override for a given tool name.
-     * Returns {@link ToolApprovalMode#DEFAULT} if no override is set.
+     * Returns {@link ToolApprovalMode#DEFAULT} if no override is set or if
+     * reading the overrides fails (logged at warn level).
      */
     private ToolApprovalMode getPerToolApprovalMode(String toolName) {
         try {
@@ -59,6 +60,7 @@ public class AgentLoop {
                 return ToolApprovalMode.DEFAULT;
             }
         } catch (Exception e) {
+            Log.w(TAG, "Error reading tool approval override for " + toolName, e);
             return ToolApprovalMode.DEFAULT;
         }
     }
@@ -343,22 +345,8 @@ public class AgentLoop {
         // Check if this tool requires approval
         Tool tool = toolRegistry.getTool(toolName);
         ToolApprovalMode mode = getPerToolApprovalMode(toolName);
-        boolean needsApproval;
 
-        switch (mode) {
-            case ALWAYS_APPROVE:
-                needsApproval = false;
-                break;
-            case ALWAYS_REJECT:
-                needsApproval = false;
-                break;
-            case DEFAULT:
-            default:
-                needsApproval = requireApproval && tool != null && tool.requiresApproval();
-                break;
-        }
-
-        // Auto-reject: skip prompt, return block result immediately
+        // ALWAYS_REJECT: block immediately, no prompt
         if (mode == ToolApprovalMode.ALWAYS_REJECT) {
             String resultContent = "Tool execution blocked by per-tool setting";
             Log.d(TAG, "Tool " + toolName + " blocked (ALWAYS_REJECT)");
@@ -375,6 +363,11 @@ public class AgentLoop {
             processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
             return;
         }
+
+        // Determine whether we need user approval
+        boolean needsApproval = (mode == ToolApprovalMode.ALWAYS_APPROVE)
+                ? false
+                : requireApproval && tool != null && tool.requiresApproval();
 
         if (needsApproval) {
             // Build a normalised ExecPlan for exec-type tools (shell, etc.).
