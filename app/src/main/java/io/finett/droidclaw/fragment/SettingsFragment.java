@@ -28,6 +28,7 @@ public class SettingsFragment extends Fragment {
     private static final String ITEM_ENV_VARS = "env_vars";
     private static final String ITEM_HEARTBEAT = "heartbeat";
     private static final String ITEM_CRON_JOBS = "cron_jobs";
+    private static final String ITEM_TOOL_APPROVAL = "tool_approval";
     private static final String ITEM_SKILLS = "skills";
     private static final String ITEM_INFO = "info";
     private static final String ITEM_RESET_ONBOARDING = "reset_onboarding";
@@ -120,6 +121,14 @@ public class SettingsFragment extends Fragment {
 
 
         items.add(new SettingsAdapter.SettingsItem(
+                ITEM_TOOL_APPROVAL,
+                R.drawable.ic_settings_agent,
+                getString(R.string.settings_tool_approval),
+                getString(R.string.settings_tool_approval_subtitle),
+                true
+        ));
+
+        items.add(new SettingsAdapter.SettingsItem(
                 ITEM_SKILLS,
                 R.drawable.ic_tool_generic,
                 getString(R.string.settings_skills),
@@ -169,6 +178,10 @@ public class SettingsFragment extends Fragment {
             case ITEM_CRON_JOBS:
                 Navigation.findNavController(requireView())
                         .navigate(R.id.action_settingsFragment_to_cronJobListFragment);
+                break;
+            case ITEM_TOOL_APPROVAL:
+                Navigation.findNavController(requireView())
+                        .navigate(R.id.action_settingsFragment_to_toolApprovalSettingsFragment);
                 break;
             case ITEM_SKILLS:
                 Navigation.findNavController(requireView())

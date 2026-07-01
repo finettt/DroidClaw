@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.FileAttachment;
+import io.finett.droidclaw.model.ToolApprovalMode;
 import io.finett.droidclaw.service.BackgroundProcessManager;
 import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.tool.Tool;
@@ -40,6 +41,29 @@ public class AgentLoop {
     private boolean requireApproval;
     private List<ChatMessage> identityMessages;
     private JsonObject responseSchema;
+
+    /**
+     * Look up the per-tool approval override for a given tool name.
+     * Returns {@link ToolApprovalMode#DEFAULT} if no override is set or if
+     * reading the overrides fails (logged at warn level).
+     */
+    private ToolApprovalMode getPerToolApprovalMode(String toolName) {
+        try {
+            java.util.Map<String, String> overrides = settingsManager.getAgentConfig()
+                    .getToolApprovalOverrides();
+            if (overrides == null) return ToolApprovalMode.DEFAULT;
+            String value = overrides.get(toolName);
+            if (value == null) return ToolApprovalMode.DEFAULT;
+            try {
+                return ToolApprovalMode.valueOf(value);
+            } catch (IllegalArgumentException ignored) {
+                return ToolApprovalMode.DEFAULT;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Error reading tool approval override for " + toolName, e);
+            return ToolApprovalMode.DEFAULT;
+        }
+    }
 
     // Token tracking - "Last Usage" algorithm
     // Current context tokens (from last API response - this is the ACTUAL context size)
@@ -320,7 +344,30 @@ public class AgentLoop {
 
         // Check if this tool requires approval
         Tool tool = toolRegistry.getTool(toolName);
-        boolean needsApproval = requireApproval && tool != null && tool.requiresApproval();
+        ToolApprovalMode mode = getPerToolApprovalMode(toolName);
+
+        // ALWAYS_REJECT: block immediately, no prompt
+        if (mode == ToolApprovalMode.ALWAYS_REJECT) {
+            String resultContent = "Tool execution blocked by per-tool setting";
+            Log.d(TAG, "Tool " + toolName + " blocked (ALWAYS_REJECT)");
+            callback.onToolResult(toolName, resultContent);
+
+            ChatMessage toolResultMessage = ChatMessage.createToolResultMessage(
+                    toolCall.getId(),
+                    toolName,
+                    resultContent
+            );
+            conversationHistory.add(toolResultMessage);
+
+            // Process next tool call
+            processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
+            return;
+        }
+
+        // Determine whether we need user approval
+        boolean needsApproval = (mode == ToolApprovalMode.ALWAYS_APPROVE)
+                ? false
+                : requireApproval && tool != null && tool.requiresApproval();
 
         if (needsApproval) {
             // Build a normalised ExecPlan for exec-type tools (shell, etc.).
