@@ -30,6 +30,12 @@
     <string name="settings_agent_subtitle">Configure agent behavior</string>
     <string name="settings_heartbeat">Background Monitoring</string>
     <string name="settings_heartbeat_subtitle">Configure heartbeat health checks</string>
+    <string name="settings_tool_approval">Tool Approval</string>
+    <string name="settings_tool_approval_subtitle">Configure per-tool auto-approve and block rules</string>
+    <string name="tool_approval_settings_title">Tool Approval</string>
+    <string name="tool_approval_settings_description">Set per-tool approval behavior. "Follow global" uses the Require Approval toggle in Agent settings.</string>
+    <string name="tool_approval_global_fallback">⚙ Global "Require Approval" toggle still applies to tools set to "Follow global setting".</string>
+    <string name="tool_approval_mode">Approval mode</string>
     <string name="settings_cron_jobs_subtitle">Manage scheduled automated tasks</string>
     <string name="settings_reset_onboarding">Reset Onboarding</string>
     <string name="settings_reset_onboarding_subtitle">Start fresh setup</string>

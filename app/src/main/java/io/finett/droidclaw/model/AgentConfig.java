@@ -1,7 +1,9 @@
 package io.finett.droidclaw.model;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AgentConfig {
     private String defaultModel; // Format: "provider-id/model-id"
@@ -18,6 +20,7 @@ public class AgentConfig {
     private int llmConnectTimeout;   // seconds
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
+    private Map<String, String> toolApprovalOverrides = new HashMap<>(); // toolName -> ToolApprovalMode.name()
 
     public AgentConfig() {
         this.customAllowlist = new ArrayList<>();
@@ -26,6 +29,7 @@ public class AgentConfig {
         this.llmWriteTimeout = 30;
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
+        this.toolApprovalOverrides = new HashMap<>();
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
@@ -170,6 +174,16 @@ public class AgentConfig {
 
     public void setScreenControlTrustMode(boolean screenControlTrustMode) {
         this.screenControlTrustMode = screenControlTrustMode;
+    }
+
+    public Map<String, String> getToolApprovalOverrides() {
+        return toolApprovalOverrides;
+    }
+
+    public void setToolApprovalOverrides(Map<String, String> toolApprovalOverrides) {
+        this.toolApprovalOverrides = toolApprovalOverrides != null
+                ? new HashMap<>(toolApprovalOverrides)
+                : new HashMap<>();
     }
 
     public String getDefaultProviderId() {

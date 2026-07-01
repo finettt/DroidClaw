@@ -85,6 +85,13 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_settingsFragment_to_toolApprovalSettingsFragment"
+            app:destination="@id/toolApprovalSettingsFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -255,6 +262,11 @@
         android:id="@+id/cronJobListFragment"
         android:name="io.finett.droidclaw.fragment.CronJobListFragment"
         android:label="@string/cron_jobs" />
+
+    <fragment
+        android:id="@+id/toolApprovalSettingsFragment"
+        android:name="io.finett.droidclaw.fragment.ToolApprovalSettingsFragment"
+        android:label="@string/tool_approval_settings_title" />
 
     <fragment
         android:id="@+id/cronJobDetailFragment"

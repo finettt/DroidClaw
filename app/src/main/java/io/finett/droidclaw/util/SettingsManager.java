@@ -231,6 +231,17 @@ public class SettingsManager {
         config.setScreenControlEnabled(json.optBoolean("screenControlEnabled", false));
         config.setScreenControlTrustMode(json.optBoolean("screenControlTrustMode", false));
 
+        Map<String, String> toolApprovalOverrides = new HashMap<>();
+        if (json.has("toolApprovalOverrides")) {
+            JSONObject obj = json.getJSONObject("toolApprovalOverrides");
+            Iterator<String> keys = obj.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                toolApprovalOverrides.put(key, obj.getString(key));
+            }
+        }
+        config.setToolApprovalOverrides(toolApprovalOverrides);
+
         List<String> customAllowlist = new ArrayList<>();
         if (json.has("customAllowlist")) {
             JSONArray arr = json.getJSONArray("customAllowlist");
@@ -321,6 +332,12 @@ public class SettingsManager {
         json.put("backgroundExecEnabled", config.isBackgroundExecEnabled());
         json.put("screenControlEnabled", config.isScreenControlEnabled());
         json.put("screenControlTrustMode", config.isScreenControlTrustMode());
+
+        JSONObject overridesJson = new JSONObject();
+        for (Map.Entry<String, String> entry : config.getToolApprovalOverrides().entrySet()) {
+            overridesJson.put(entry.getKey(), entry.getValue());
+        }
+        json.put("toolApprovalOverrides", overridesJson);
 
         JSONArray allowlistArr = new JSONArray();
         for (String path : config.getCustomAllowlist()) {
