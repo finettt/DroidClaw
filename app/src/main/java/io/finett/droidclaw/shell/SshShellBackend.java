@@ -263,7 +263,7 @@ public class SshShellBackend implements ShellBackend {
 
             Log.i(TAG, "Connected to " + config.getHost() + ":" + config.getPort());
 
-        } catch (JSchException e) {
+        } catch (Exception e) {
             throw new SecurityException("Failed to connect to SSH server: " + e.getMessage(), e);
         }
 
