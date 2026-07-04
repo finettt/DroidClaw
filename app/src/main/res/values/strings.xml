@@ -339,4 +339,36 @@
     <string name="import_warnings">%1$d warning(s) during import</string>
     <string name="import_choose_action">Choose import action</string>
     <string name="export_choose_format">Choose export format</string>
+
+    <!-- Terminal Backend Settings -->
+    <string name="terminal_backend">Terminal Backend</string>
+    <string name="terminal_backend_description">Choose where shell commands execute</string>
+    <string name="terminal_backend_local">Local Device</string>
+    <string name="terminal_backend_ssh">SSH Server</string>
+    <string name="ssh_connection">SSH Connection</string>
+    <string name="ssh_host">Host</string>
+    <string name="ssh_host_hint">e.g. server.example.com or 192.168.1.100</string>
+    <string name="ssh_port">Port</string>
+    <string name="ssh_port_hint">22</string>
+    <string name="ssh_username">Username</string>
+    <string name="ssh_username_hint">Enter username</string>
+    <string name="ssh_auth_type">Authentication</string>
+    <string name="ssh_auth_password">Password</string>
+    <string name="ssh_auth_key">Private Key</string>
+    <string name="ssh_password">Password</string>
+    <string name="ssh_password_hint">Enter SSH password</string>
+    <string name="ssh_private_key">Private Key Path</string>
+    <string name="ssh_private_key_hint">/path/to/id_rsa</string>
+    <string name="ssh_verify_host">Verify Host Key</string>
+    <string name="ssh_verify_host_description">Enable host key verification (recommended for production)</string>
+    <string name="ssh_test_connection">Test Connection</string>
+    <string name="ssh_connection_success">SSH connection successful</string>
+    <string name="ssh_connection_failed">SSH connection failed: %1$s</string>
+    <string name="ssh_connection_failed_no_detail">SSH connection failed</string>
+    <string name="ssh_config_required">Please configure SSH connection settings</string>
+    <string name="ssh_host_required">Host is required</string>
+    <string name="ssh_user_required">Username is required</string>
+    <string name="ssh_verify_host_warning_title">Disable host key verification?</string>
+    <string name="ssh_verify_host_warning_message">Turning off host key verification allows potential man-in-the-middle attacks. Only disable this for trusted networks.</string>
+    <string name="ssh_verify_host_warning_dont_ask_again">Don\'t show again</string>
 </resources>

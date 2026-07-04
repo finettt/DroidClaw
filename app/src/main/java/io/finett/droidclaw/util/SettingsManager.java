@@ -230,6 +230,14 @@ public class SettingsManager {
         config.setBackgroundExecEnabled(json.optBoolean("backgroundExecEnabled", false));
         config.setScreenControlEnabled(json.optBoolean("screenControlEnabled", false));
         config.setScreenControlTrustMode(json.optBoolean("screenControlTrustMode", false));
+        config.setShellBackend(json.optString("shellBackend", "local"));
+        config.setSshHost(json.optString("sshHost", ""));
+        config.setSshPort(json.optInt("sshPort", 22));
+        config.setSshUser(json.optString("sshUser", ""));
+        config.setSshAuthType(json.optString("sshAuthType", "password"));
+        config.setSshPassword(json.optString("sshPassword", ""));
+        config.setSshPrivateKeyPath(json.optString("sshPrivateKeyPath", ""));
+        config.setSshVerifyHostKey(json.optBoolean("sshVerifyHostKey", true));
 
         Map<String, String> toolApprovalOverrides = new HashMap<>();
         if (json.has("toolApprovalOverrides")) {
@@ -332,6 +340,14 @@ public class SettingsManager {
         json.put("backgroundExecEnabled", config.isBackgroundExecEnabled());
         json.put("screenControlEnabled", config.isScreenControlEnabled());
         json.put("screenControlTrustMode", config.isScreenControlTrustMode());
+        json.put("shellBackend", config.getShellBackend());
+        json.put("sshHost", config.getSshHost());
+        json.put("sshPort", config.getSshPort());
+        json.put("sshUser", config.getSshUser());
+        json.put("sshAuthType", config.getSshAuthType());
+        json.put("sshPassword", config.getSshPassword());
+        json.put("sshPrivateKeyPath", config.getSshPrivateKeyPath());
+        json.put("sshVerifyHostKey", config.isSshVerifyHostKey());
 
         JSONObject overridesJson = new JSONObject();
         for (Map.Entry<String, String> entry : config.getToolApprovalOverrides().entrySet()) {

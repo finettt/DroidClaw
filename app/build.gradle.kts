@@ -128,6 +128,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.gson)
     implementation(libs.security.crypto)
+
+    // SSH backend for remote shell execution (mwiede fork with modern crypto + Terrapin fix)
+    implementation("com.github.mwiede:jsch:0.2.18")
     
     // WorkManager for background task execution
     implementation("androidx.work:work-runtime-ktx:2.9.0")
