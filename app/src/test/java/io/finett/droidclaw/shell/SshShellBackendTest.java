@@ -67,7 +67,7 @@ public class SshShellBackendTest {
         doNothing().when(mockChannel).disconnect();
 
         // Create a factory that returns the mocked JSch
-        mockJschFactory = mockJsch -> mockJsch;
+        mockJschFactory = () -> mockJsch;
     }
 
     private SshShellBackend createBackend() {
