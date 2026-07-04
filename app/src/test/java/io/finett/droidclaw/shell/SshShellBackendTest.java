@@ -44,11 +44,18 @@ public class SshShellBackendTest {
     private SshShellBackend.JSchFactory mockJschFactory;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        // Stub JSch factory to return mocked JSch
+        // Create a mock JSch factory that returns the mock JSch instance
+        SshShellBackend.JSchFactory mockFactory = mock(SshShellBackend.JSchFactory.class);
+        when(mockFactory.create()).thenReturn(mockJsch);
+        mockJschFactory = mockFactory;
+
+        // Stub JSch methods
         when(mockJsch.getSession(anyString(), anyString(), anyInt())).thenReturn(mockSession);
+
+        // Stub Session methods
         when(mockSession.isConnected()).thenReturn(true);
         doNothing().when(mockSession).connect(anyInt());
         doNothing().when(mockSession).setServerAliveInterval(anyInt());
@@ -65,9 +72,6 @@ public class SshShellBackendTest {
         when(mockChannel.isClosed()).thenReturn(true); // immediately closed
         when(mockChannel.getExitStatus()).thenReturn(0);
         doNothing().when(mockChannel).disconnect();
-
-        // Create a factory that returns the mocked JSch
-        mockJschFactory = () -> mockJsch;
     }
 
     private SshShellBackend createBackend() {
