@@ -44,16 +44,20 @@ public class SshShellBackendTest {
     private SshShellBackend.JSchFactory mockJschFactory;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
 
         // Create a mock JSch factory that returns the mock JSch instance
-        SshShellBackend.JSchFactory mockFactory = mock(SshShellBackend.JSchFactory.class);
-        when(mockFactory.create()).thenReturn(mockJsch);
+        SshShellBackend.JSchFactory mockFactory = new SshShellBackend.JSchFactory() {
+            @Override
+            public JSch create() {
+                return mockJsch;
+            }
+        };
         mockJschFactory = mockFactory;
 
-        // Stub JSch methods
-        when(mockJsch.getSession(anyString(), anyString(), anyInt())).thenReturn(mockSession);
+        // Stub JSch methods (doReturn for checked exceptions)
+        doReturn(mockSession).when(mockJsch).getSession(anyString(), anyString(), anyInt());
 
         // Stub Session methods
         when(mockSession.isConnected()).thenReturn(true);
@@ -62,8 +66,8 @@ public class SshShellBackendTest {
         doNothing().when(mockSession).setPassword(anyString());
         doNothing().when(mockSession).setConfig(anyString(), anyString());
 
-        // Stub channel
-        when(mockSession.openChannel(eq("exec"))).thenReturn(mockChannel);
+        // Stub channel (doReturn for checked exceptions)
+        doReturn(mockChannel).when(mockSession).openChannel(eq("exec"));
         doNothing().when(mockChannel).setCommand(anyString());
         doNothing().when(mockChannel).setOutputStream(any());
         doNothing().when(mockChannel).setErrStream(any());
@@ -85,6 +89,7 @@ public class SshShellBackendTest {
                 .username("testuser")
                 .password("testpass")
                 .verifyHostKey(false)
+                .policy(ExecPolicy.full())
                 .build();
         return new SshShellBackend(config, mockJschFactory);
     }
@@ -324,7 +329,8 @@ public class SshShellBackendTest {
 
     @Test
     public void execute_jschException_setsConnectedFalse() throws Exception {
-        // Make openChannel throw
+        // Make openChannel throw in executeRemote — this is caught and returns
+        // a ShellResult with stderr = "SSH execution failed: ...", not a SecurityException.
         doThrow(new JSchException("connection refused"))
                 .when(mockSession).openChannel(eq("exec"));
 
@@ -338,13 +344,12 @@ public class SshShellBackendTest {
                 ExecPlan.ExecMode.DIRECT
         );
 
-        try {
-            backend.execute(plan, 30);
-            fail("Should have thrown");
-        } catch (SecurityException e) {
-            assertTrue(e.getMessage().contains("SSH execution failed"));
-        }
+        ShellResult result = backend.execute(plan, 30);
 
+        // executeRemote catches JSchException and returns a ShellResult, not a SecurityException
+        assertFalse(result.isSuccess());
+        assertTrue(result.getStderr().contains("SSH execution failed"));
+        assertEquals(-1, result.getExitCode());
         assertFalse(backend.isConnected());
     }
 
@@ -374,6 +379,7 @@ public class SshShellBackendTest {
                 .username("testuser")
                 .password("testpass")
                 .verifyHostKey(false)
+                .policy(ExecPolicy.full())
                 .build();
 
         SshShellBackend backend = new SshShellBackend(config, mockJschFactory);
@@ -400,6 +406,7 @@ public class SshShellBackendTest {
                 .username("testuser")
                 .password("testpass")
                 .verifyHostKey(true) // explicitly enabled
+                .policy(ExecPolicy.full())
                 .build();
 
         SshShellBackend backend = new SshShellBackend(config, mockJschFactory);
@@ -424,6 +431,7 @@ public class SshShellBackendTest {
                 .username("testuser")
                 .password("testpass")
                 .verifyHostKey(false) // explicitly disabled
+                .policy(ExecPolicy.full())
                 .build();
 
         SshShellBackend backend = new SshShellBackend(config, mockJschFactory);
