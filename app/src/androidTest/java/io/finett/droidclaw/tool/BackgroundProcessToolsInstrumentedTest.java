@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 import io.finett.droidclaw.service.BackgroundProcess;
 import io.finett.droidclaw.service.BackgroundProcessManager;
+import io.finett.droidclaw.service.BackgroundProcessService;
 import io.finett.droidclaw.tool.impl.KillBackgroundProcessTool;
 import io.finett.droidclaw.tool.impl.ListBackgroundProcessesTool;
 
@@ -86,6 +87,9 @@ public class BackgroundProcessToolsInstrumentedTest {
         String content = result.getContent();
         assertNotNull(content);
         assertTrue(content.contains("\"killed\":false"));
+
+        // Cleanup: stop the foreground service if it's still running
+        BackgroundProcessService.stopIfIdle(context);
     }
 
     @Test
@@ -101,6 +105,21 @@ public class BackgroundProcessToolsInstrumentedTest {
 
         startLatch.await(3, TimeUnit.SECONDS);
 
+        // Ensure the process is actually running before attempting to kill it.
+        // On a busy device the task may have already transitioned out of running,
+        // so we poll until we are confident the process is still active.
+        BackgroundProcess process = manager.get(processId);
+        assertNotNull("Background process was created", process);
+
+        for (int i = 0; i < 100; i++) {
+            process = manager.get(processId);
+            assertNotNull("Background process exists", process);
+            if (process.isRunning()) break;
+            Thread.sleep(200);
+        }
+
+        assertTrue("Process should be in running state before kill (status=" + process.getStatus() + ")", process.isRunning());
+
         JsonObject args = new JsonObject();
         args.addProperty("process_id", processId);
         ToolResult result = killTool.execute(args);
@@ -109,6 +128,9 @@ public class BackgroundProcessToolsInstrumentedTest {
         String content = result.getContent();
         assertNotNull(content);
         assertTrue(content.contains("\"killed\":true"));
+
+        // Cleanup: stop the foreground service if it's still running
+        BackgroundProcessService.stopIfIdle(context);
     }
 
     @Test
@@ -158,6 +180,7 @@ public class BackgroundProcessToolsInstrumentedTest {
 
         // Cleanup
         manager.kill(processId);
+        BackgroundProcessService.stopIfIdle(context);
     }
 
     @Test
@@ -185,6 +208,7 @@ public class BackgroundProcessToolsInstrumentedTest {
 
         // Cleanup
         manager.kill(runningId);
+        BackgroundProcessService.stopIfIdle(context);
     }
 
     @Test

@@ -38,7 +38,9 @@ public class ShellConfig {
         "/system/bin",
         "/system/xbin",
         "/usr/bin",
-        "/bin"
+        "/bin",
+        // NixOS: user-installed packages live here (e.g. /run/current-system/sw/bin/ls)
+        "/run/current-system/sw/bin"
     ));
 
     private final int timeoutSeconds;

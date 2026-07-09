@@ -114,7 +114,6 @@ public class MainActivityTest {
         }
     }
 
-    @Flaky
     @Test
     public void newChatButton_closesDrawer() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -124,8 +123,6 @@ public class MainActivityTest {
             });
 
             waitForDrawerState(scenario, true);
-
-            TestUtils.waitFor(100);
 
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
@@ -139,7 +136,6 @@ public class MainActivityTest {
         }
     }
 
-    @Flaky
     @Test
     public void settingsButton_closesDrawer() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -149,8 +145,6 @@ public class MainActivityTest {
             });
 
             waitForDrawerState(scenario, true);
-
-            TestUtils.waitFor(100);
 
             scenario.onActivity(activity -> {
                 DrawerLayout drawerLayout = activity.findViewById(R.id.drawer_layout);
@@ -571,7 +565,6 @@ public class MainActivityTest {
         }
     }
 
-    @Flaky
     @Test
     public void navigationController_nullCheck_doesNotCrash() {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
@@ -654,6 +647,8 @@ public class MainActivityTest {
             });
 
             scenario.recreate();
+
+            TestUtils.waitFor(500);
 
             scenario.onActivity(activity -> {
                 RecyclerView recyclerView = activity.findViewById(R.id.recycler_chat_sessions);

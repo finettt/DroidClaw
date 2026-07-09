@@ -7,8 +7,15 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import io.finett.droidclaw.shell.ExecPolicy;
 
 import io.finett.droidclaw.filesystem.PathValidator;
+import io.finett.droidclaw.shell.AllowlistEntry;
 import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.shell.ExecPlanner;
 import io.finett.droidclaw.shell.ShellConfig;
@@ -30,9 +37,36 @@ public class ShellToolTest {
 
     /** Resolve an executable name through the trusted-dirs list at test time. */
     private static String findExe(String name, File workspace) throws Exception {
-        ShellConfig cfg = ShellConfig.createFull();
+        List<String> dirs = buildNixosTrustedDirs();
+        ShellConfig cfg = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(dirs)
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
         ExecPlanner planner = new ExecPlanner(cfg, workspace);
         return planner.plan(name, workspace).getCanonicalExePath();
+    }
+
+    /** Build trusted dirs that include NixOS paths for test environments. */
+    private static List<String> buildNixosTrustedDirs() {
+        List<String> dirs = new ArrayList<>(Arrays.asList(
+                "/system/bin", "/system/xbin", "/usr/bin", "/bin"
+        ));
+
+        // Add NixOS paths if they exist
+        File nixStore = new File("/nix/store");
+        if (nixStore.isDirectory()) {
+            File[] entries = nixStore.listFiles();
+            if (entries != null) {
+                for (File entry : entries) {
+                    if (entry.isDirectory() && new File(entry, "bin").exists()) {
+                        dirs.add(new File(entry, "bin").getAbsolutePath());
+                    }
+                }
+            }
+        }
+
+        return dirs;
     }
 
     private static String SH_PATH;
@@ -44,9 +78,15 @@ public class ShellToolTest {
         workspaceRoot.mkdirs();
 
         pathValidator = new PathValidator(workspaceRoot);
-        // Use FULL policy so most tests can execute commands successfully.
-        // Tests that specifically verify DENY behaviour create their own tool instance.
-        tool = new ShellTool(pathValidator, ShellConfig.createFull());
+        // Use FULL policy with NixOS-aware trusted dirs so tests can resolve
+        // coreutils (echo, pwd, etc.) on NixOS where they live only in
+        // /run/current-system/sw/bin/ and /nix/store/*/bin/.
+        ShellConfig fullConfig = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(buildNixosTrustedDirs())
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
+        tool = new ShellTool(pathValidator, fullConfig);
 
         try {
             SH_PATH = findExe("sh", workspaceRoot);
@@ -54,6 +94,9 @@ public class ShellToolTest {
             SH_PATH = "/usr/bin/sh";
         }
     }
+
+    // Note: buildNixosTrustedDirs(), buildNixosAllowlist(), and resolveAllPathsForDirs()
+    // are already defined earlier in this class
 
     @Test
     public void testGetName() {
@@ -189,7 +232,11 @@ public class ShellToolTest {
     public void testExecuteCommandWithNonZeroExitCode() {
         // Run sh -c "exit 42" via SHELL mode — the planner default is DIRECT, so
         // we supply the sh binary directly with -c to get a non-zero exit via shell.
-        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellConfig fullConfig = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(buildNixosTrustedDirs())
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
         ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
 
         JsonObject args = new JsonObject();
@@ -206,44 +253,42 @@ public class ShellToolTest {
 
     @Test
     public void testExecuteCommandWithStderr() {
-        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellConfig fullConfig = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(buildNixosTrustedDirs())
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
         ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
-        
+
         JsonObject args = new JsonObject();
         args.addProperty("command", "ls /nonexistent_dir_98765");
-        
+
         ToolResult result = fullTool.execute(args);
-        
-        // Tool execution succeeds, but stderr is captured
+
+        // Tool execution succeeds (exit code 0), but stderr is captured
         assertTrue(result.isSuccess());
         String content = result.getContent();
-        assertTrue(content.contains("stderr"));
+        assertTrue("Result should contain stderr field", content.contains("stderr"));
     }
 
     @Test
     public void testResultContainsExecutionTime() {
-        ShellConfig fullConfig = ShellConfig.createFull();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
-        
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo test");
-        
-        ToolResult result = fullTool.execute(args);
-        
+
+        ToolResult result = tool.execute(args);
+
         assertTrue(result.isSuccess());
         assertTrue(result.getContent().contains("execution_time_ms"));
     }
 
     @Test
     public void testResultContainsTimedOutFlag() {
-        ShellConfig fullConfig = ShellConfig.createFull();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
-        
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo test");
-        
-        ToolResult result = fullTool.execute(args);
-        
+
+        ToolResult result = tool.execute(args);
+
         assertTrue(result.isSuccess());
         assertTrue(result.getContent().contains("timed_out"));
         assertTrue(result.getContent().contains("false"));
@@ -320,7 +365,11 @@ public class ShellToolTest {
 
     @Test
     public void testEmptyWorkingDirectory() {
-        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellConfig fullConfig = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(buildNixosTrustedDirs())
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
         ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
         
         JsonObject args = new JsonObject();
@@ -335,7 +384,11 @@ public class ShellToolTest {
     
     @Test
     public void testPathValidatorIntegration() throws IOException {
-        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellConfig fullConfig = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(buildNixosTrustedDirs())
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
         ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
         
         File nestedDir = new File(workspaceRoot, "level1/level2");
@@ -358,7 +411,11 @@ public class ShellToolTest {
 
     @Test
     public void testToolResultJsonFormat() {
-        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellConfig fullConfig = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(buildNixosTrustedDirs())
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
         ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
         
         JsonObject args = new JsonObject();
@@ -632,7 +689,11 @@ public class ShellToolTest {
 
     @Test
     public void testExecuteWithNullWorkingDirectory_usesRoot() {
-        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellConfig fullConfig = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(buildNixosTrustedDirs())
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
         ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
 
         JsonObject args = new JsonObject();
@@ -645,7 +706,11 @@ public class ShellToolTest {
 
     @Test
     public void testExecuteWithWhitespaceWorkingDirectory_usesRoot() {
-        ShellConfig fullConfig = ShellConfig.createFull();
+        ShellConfig fullConfig = new ShellConfig.Builder()
+                .policy(ExecPolicy.full())
+                .trustedDirs(buildNixosTrustedDirs())
+                .defaultMode(ExecPlan.ExecMode.DIRECT)
+                .build();
         ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
 
         JsonObject args = new JsonObject();

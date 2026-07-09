@@ -21,6 +21,14 @@ public class AgentConfig {
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
     private Map<String, String> toolApprovalOverrides = new HashMap<>(); // toolName -> ToolApprovalMode.name()
+    private String shellBackend;     // "local" or "ssh"
+    private String sshHost;
+    private int sshPort;
+    private String sshUser;
+    private String sshAuthType;      // "password" or "key"
+    private String sshPassword;
+    private String sshPrivateKeyPath;
+    private boolean sshVerifyHostKey;
 
     public AgentConfig() {
         this.customAllowlist = new ArrayList<>();
@@ -30,6 +38,9 @@ public class AgentConfig {
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
         this.toolApprovalOverrides = new HashMap<>();
+        this.shellBackend = "local";
+        this.sshPort = 22;
+        this.sshVerifyHostKey = true;
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
@@ -49,6 +60,8 @@ public class AgentConfig {
         this.llmWriteTimeout = 30;
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
+        this.sshPort = 22;
+        this.sshVerifyHostKey = true;
     }
 
     public static AgentConfig getDefaults() {
@@ -184,6 +197,70 @@ public class AgentConfig {
         this.toolApprovalOverrides = toolApprovalOverrides != null
                 ? new HashMap<>(toolApprovalOverrides)
                 : new HashMap<>();
+    }
+
+    public String getShellBackend() {
+        return shellBackend;
+    }
+
+    public void setShellBackend(String shellBackend) {
+        this.shellBackend = shellBackend != null ? shellBackend : "local";
+    }
+
+    public String getSshHost() {
+        return sshHost;
+    }
+
+    public void setSshHost(String sshHost) {
+        this.sshHost = sshHost;
+    }
+
+    public int getSshPort() {
+        return sshPort;
+    }
+
+    public void setSshPort(int sshPort) {
+        this.sshPort = sshPort;
+    }
+
+    public String getSshUser() {
+        return sshUser;
+    }
+
+    public void setSshUser(String sshUser) {
+        this.sshUser = sshUser;
+    }
+
+    public String getSshAuthType() {
+        return sshAuthType;
+    }
+
+    public void setSshAuthType(String sshAuthType) {
+        this.sshAuthType = sshAuthType;
+    }
+
+    public String getSshPassword() {
+        return sshPassword;
+    }
+
+    public void setSshPassword(String sshPassword) {
+        this.sshPassword = sshPassword;
+    }
+
+    public String getSshPrivateKeyPath() {
+        return sshPrivateKeyPath;
+    }
+
+    public void setSshPrivateKeyPath(String sshPrivateKeyPath) {
+        this.sshPrivateKeyPath = sshPrivateKeyPath;
+    }
+
+    public boolean isSshVerifyHostKey() {
+        return sshVerifyHostKey;
+    }
+
+    public void setSshVerifyHostKey(boolean sshVerifyHostKey) {
+        this.sshVerifyHostKey = sshVerifyHostKey;
     }
 
     public String getDefaultProviderId() {

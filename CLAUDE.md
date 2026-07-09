@@ -2,6 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Nix System Requirement
+
+**When working on a Nix-based Linux system (NixOS, Nix Darwin), always use the Nix development shell.**
+
+The project requires JDK 21 (via Nix) for compilation. The system's default JDK may be a different version and will cause build failures (e.g., Kotlin compiler rejects unsupported Java versions).
+
+```bash
+nix develop          # Enter development shell with JDK 21, Gradle, Python 3.11
+./gradlew assembleDebug    # Build debug APK (alias: build)
+./gradlew testDebugUnitTest    # Run unit tests (alias: test)
+./gradlew lintDebug    # Run linting (alias: lint)
+./gradlew installDebug # Install to connected device (alias: install)
+./gradlew clean        # Clean build artifacts (alias: clean)
+```
+
+**Always wrap Gradle commands inside `nix develop --command`** when running them manually from the terminal:
+
+```bash
+nix develop --command ./gradlew testDebugUnitTest
+```
+
+Or use the shell alias `test-unit-app` (provided by the Nix shell profile).
+
 ## Build and Test Commands
 
 DroidClaw is an Android application using Gradle with Nix for reproducible builds.
