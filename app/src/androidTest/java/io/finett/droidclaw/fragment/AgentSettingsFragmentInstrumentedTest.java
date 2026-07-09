@@ -114,13 +114,14 @@ public class AgentSettingsFragmentInstrumentedTest {
                 View sshGroup = view.findViewById(R.id.group_ssh_connection);
                 assertEquals(View.GONE, sshGroup.getVisibility());
 
-                // Switch to SSH backend
+                // Switch to SSH backend: setText sets the text, then manually trigger
+                // the visibility update (setText alone doesn't fire setOnItemClickListener)
                 android.widget.AutoCompleteTextView backendDropdown =
                         view.findViewById(R.id.dropdown_terminal_backend);
                 backendDropdown.setText(getString(R.string.terminal_backend_ssh), false);
-
-                // Force dropdown to register selection
-                backendDropdown.performClick();
+                // Trigger the visibility update that would normally fire from setOnItemClickListener
+                fragment.updateSshFieldsVisibility();
+                fragment.updateSshAuthFieldsVisibility();
 
                 // SSH group should now be visible
                 assertTrue("SSH connection group should be visible after switching to SSH backend",
@@ -140,6 +141,9 @@ public class AgentSettingsFragmentInstrumentedTest {
                 android.widget.AutoCompleteTextView backendDropdown =
                         view.findViewById(R.id.dropdown_terminal_backend);
                 backendDropdown.setText(getString(R.string.terminal_backend_ssh), false);
+                // setText alone doesn't fire setOnItemClickListener, so trigger visibility updates
+                fragment.updateSshFieldsVisibility();
+                fragment.updateSshAuthFieldsVisibility();
 
                 View sshGroup = view.findViewById(R.id.group_ssh_connection);
                 assertTrue("SSH group should be visible when SSH is selected",
@@ -147,6 +151,8 @@ public class AgentSettingsFragmentInstrumentedTest {
 
                 // Switch back to local
                 backendDropdown.setText(getString(R.string.terminal_backend_local), false);
+                fragment.updateSshFieldsVisibility();
+                fragment.updateSshAuthFieldsVisibility();
 
                 // SSH group should be hidden again
                 assertEquals("SSH connection group should be hidden when local is selected",
@@ -171,6 +177,10 @@ public class AgentSettingsFragmentInstrumentedTest {
                 android.widget.AutoCompleteTextView authDropdown =
                         view.findViewById(R.id.dropdown_ssh_auth_type);
                 authDropdown.setText(getString(R.string.ssh_auth_password), false);
+
+                // setText alone doesn't fire setOnItemClickListener, so trigger visibility updates
+                fragment.updateSshFieldsVisibility();
+                fragment.updateSshAuthFieldsVisibility();
 
                 TextInputEditText passwordInput = view.findViewById(R.id.input_ssh_password);
                 TextInputEditText keyInput = view.findViewById(R.id.input_ssh_private_key);
@@ -204,6 +214,10 @@ public class AgentSettingsFragmentInstrumentedTest {
                 android.widget.AutoCompleteTextView authDropdown =
                         view.findViewById(R.id.dropdown_ssh_auth_type);
                 authDropdown.setText(getString(R.string.ssh_auth_key), false);
+
+                // setText alone doesn't fire setOnItemClickListener, so trigger visibility updates
+                fragment.updateSshFieldsVisibility();
+                fragment.updateSshAuthFieldsVisibility();
 
                 TextInputEditText passwordInput = view.findViewById(R.id.input_ssh_password);
                 TextInputEditText keyInput = view.findViewById(R.id.input_ssh_private_key);
@@ -358,9 +372,7 @@ public class AgentSettingsFragmentInstrumentedTest {
 
     @Test
     public void defaultValues_loadedCorrectly() {
-        // Clear all settings first
-        new SettingsManager(getApplicationContext()).clear();
-
+        // Settings were already cleared in @Before setUp
         try (FragmentScenario<AgentSettingsFragment> scenario =
                      FragmentScenario.launchInContainer(AgentSettingsFragment.class, null, R.style.Theme_DroidClaw)) {
             scenario.onFragment(fragment -> {

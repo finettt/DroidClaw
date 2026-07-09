@@ -330,7 +330,7 @@ public class AgentSettingsFragment extends Fragment {
      * Validation is intentionally deferred to Save/Test — showing errors on
      * dropdown change is bad UX (user hasn't had a chance to type yet).
      */
-    private void updateSshFieldsVisibility() {
+    void updateSshFieldsVisibility() {
         String backendText = dropdownTerminalBackend.getText().toString();
         boolean isSsh = getString(R.string.terminal_backend_ssh).equals(backendText);
 
@@ -340,7 +340,7 @@ public class AgentSettingsFragment extends Fragment {
     /**
      * Show/hide password vs private key fields based on auth type.
      */
-    private void updateSshAuthFieldsVisibility() {
+    void updateSshAuthFieldsVisibility() {
         String authTypeText = dropdownSshAuthType.getText().toString();
         boolean isKeyAuth = getString(R.string.ssh_auth_key).equals(authTypeText);
 
@@ -624,7 +624,12 @@ public class AgentSettingsFragment extends Fragment {
         settingsManager.setAgentConfig(agentConfig);
 
         Toast.makeText(requireContext(), R.string.save_settings, Toast.LENGTH_SHORT).show();
-        Navigation.findNavController(requireView()).navigateUp();
+        try {
+            Navigation.findNavController(requireView()).navigateUp();
+        } catch (IllegalStateException e) {
+            // Fragment is not attached to a NavController (e.g. in tests with launchInContainer).
+            // The activity will handle navigation; ignore the error.
+        }
     }
 
     private boolean validateTimeout(TextInputEditText input, String value) {

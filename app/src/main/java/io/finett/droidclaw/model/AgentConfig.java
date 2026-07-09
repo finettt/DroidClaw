@@ -60,6 +60,8 @@ public class AgentConfig {
         this.llmWriteTimeout = 30;
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
+        this.sshPort = 22;
+        this.sshVerifyHostKey = true;
     }
 
     public static AgentConfig getDefaults() {
