@@ -46,6 +46,8 @@ import io.finett.droidclaw.tool.impl.ScreenTypeTextTool;
 import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.tool.impl.SearxngSearchTool;
+import io.finett.droidclaw.tool.impl.ListAppsTool;
+import io.finett.droidclaw.tool.impl.OpenAppTool;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class ToolRegistry {
@@ -147,6 +149,10 @@ public class ToolRegistry {
         if (settingsManager != null) {
             registerTool(new SearxngSearchTool(settingsManager));
         }
+
+        // Android app management — always available
+        registerTool(new ListAppsTool(context));
+        registerTool(new OpenAppTool(context));
     }
 
     /**
