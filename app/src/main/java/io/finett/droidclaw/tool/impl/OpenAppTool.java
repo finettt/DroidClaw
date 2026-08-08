@@ -58,6 +58,7 @@ public class OpenAppTool implements Tool {
     @Override
     public String getApprovalDescription(JsonObject arguments) {
         String packageName = arguments != null && arguments.has("package_name")
+                && !arguments.get("package_name").isJsonNull()
                 ? arguments.get("package_name").getAsString()
                 : "";
         return "Open app: " + packageName;
