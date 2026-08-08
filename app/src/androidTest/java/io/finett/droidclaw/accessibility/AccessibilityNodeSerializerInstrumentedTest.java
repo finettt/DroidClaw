@@ -23,8 +23,8 @@ import com.google.gson.JsonObject;
  *   <li>Node with text and resource ID</li>
  *   <li>Interactability flags serialization</li>
  *   <li>Screen bounds serialization</li>
- *   <li>Depth capping — children not serialized beyond maxDepth</li>
- *   <li>Child node recursion</li>
+ *   <li>Class name shortening</li>
+ *   <li>Null fields omission</li>
  * </ul>
  */
 @RunWith(AndroidJUnit4.class)
@@ -222,90 +222,12 @@ public class AccessibilityNodeSerializerInstrumentedTest {
         root.recycle();
     }
 
-    // ==================== Depth capping ====================
-
-    @Test
-    public void serialize_depthZero_noChildren() {
-        AccessibilityNodeInfo root = AccessibilityNodeInfo.obtain();
-        root.setPackageName("com.example.app");
-        root.setClassName("android.widget.FrameLayout");
-
-        AccessibilityNodeInfo child = AccessibilityNodeInfo.obtain();
-        child.setPackageName("com.example.app");
-        child.setClassName("android.widget.TextView");
-        child.setText("Hello");
-        root.addChild(child);
-
-        JsonObject result = AccessibilityNodeSerializer.serialize(root, 0);
-
-        JsonArray nodes = result.getAsJsonArray("nodes");
-        // Only root should be serialized (depth 0 means root is serialized but not its children)
-        JsonObject rootNode = nodes.get(0).getAsJsonObject();
-        // With depth=0, children should NOT be serialized
-        assertFalse("Depth 0 should not include children", rootNode.has("children"));
-
-        child.recycle();
-        root.recycle();
-    }
-
-    @Test
-    public void serialize_depthOne_includesChildren() {
-        AccessibilityNodeInfo root = AccessibilityNodeInfo.obtain();
-        root.setPackageName("com.example.app");
-        root.setClassName("android.widget.FrameLayout");
-
-        AccessibilityNodeInfo child = AccessibilityNodeInfo.obtain();
-        child.setPackageName("com.example.app");
-        child.setClassName("android.widget.TextView");
-        child.setText("Hello");
-        root.addChild(child);
-
-        JsonObject result = AccessibilityNodeSerializer.serialize(root, 1);
-
-        JsonArray nodes = result.getAsJsonArray("nodes");
-        assertEquals(1, nodes.size()); // Only root is at depth 0
-        JsonObject rootNode = nodes.get(0).getAsJsonObject();
-        // With depth=1, children SHOULD be serialized
-        assertTrue("Depth 1 should include children", rootNode.has("children"));
-        JsonArray children = rootNode.getAsJsonArray("children");
-        assertEquals(1, children.size());
-        assertEquals("Hello", children.get(0).getAsJsonObject().get("text").getAsString());
-
-        child.recycle();
-        root.recycle();
-    }
-
-    @Test
-    public void serialize_depthTwo_includesGrandchildren() {
-        AccessibilityNodeInfo root = AccessibilityNodeInfo.obtain();
-        root.setPackageName("com.example.app");
-        root.setClassName("android.widget.FrameLayout");
-
-        AccessibilityNodeInfo child = AccessibilityNodeInfo.obtain();
-        child.setPackageName("com.example.app");
-        child.setClassName("android.widget.LinearLayout");
-        root.addChild(child);
-
-        AccessibilityNodeInfo grandchild = AccessibilityNodeInfo.obtain();
-        grandchild.setPackageName("com.example.app");
-        grandchild.setClassName("android.widget.TextView");
-        grandchild.setText("Hello");
-        child.addChild(grandchild);
-
-        JsonObject result = AccessibilityNodeSerializer.serialize(root, 2);
-
-        JsonArray nodes = result.getAsJsonArray("nodes");
-        JsonObject rootNode = nodes.get(0).getAsJsonObject();
-        assertTrue(rootNode.has("children"));
-        JsonArray children = rootNode.getAsJsonArray("children");
-        assertEquals(1, children.size());
-        JsonObject childNode = children.get(0).getAsJsonObject();
-        assertTrue("Child should have grandchildren", childNode.has("children"));
-
-        grandchild.recycle();
-        child.recycle();
-        root.recycle();
-    }
+    // ==================== Depth capping (unit tests cover these scenarios) ====================
+    // Depth capping tests are covered by AccessibilityCommandTest and
+    // AccessibilityBridgeTest unit tests, which can construct mock node trees.
+    // Instrumented tests cannot build parent-child AccessibilityNodeInfo trees
+    // because AccessibilityNodeInfo.addChild() requires a View, not an
+    // AccessibilityNodeInfo.
 
     // ==================== Class name shortening ====================
 
