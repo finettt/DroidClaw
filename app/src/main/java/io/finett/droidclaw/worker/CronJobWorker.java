@@ -79,9 +79,11 @@ public class CronJobWorker extends BaseTaskWorker {
                 job.setLastRunTimestamp(System.currentTimeMillis());
 
                 if (job.canRetry()) {
-                    Log.d(TAG, "Scheduling retry for job: " + jobId + " (attempt " + job.getRetryCount() + ")");
+                    int attempt = job.getRetryCount(); // already incremented by recordFailure()
+                    long delayMinutes = CronJobScheduler.computeRetryBackoffMinutes(attempt);
                     CronJobScheduler scheduler = new CronJobScheduler(appContext);
-                    scheduler.executeJobNow(jobId);
+                    scheduler.executeJobWithDelay(jobId, delayMinutes, java.util.concurrent.TimeUnit.MINUTES);
+                    Log.d(TAG, "Scheduling retry for job: " + jobId + " (attempt " + attempt + ", delay " + delayMinutes + "m)");
                 } else {
                     Log.w(TAG, "Job exceeded max retries: " + jobId);
                 }

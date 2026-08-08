@@ -19,7 +19,7 @@ public class SubmitNotificationTool implements Tool {
     private final Context context;
 
     // Last submitted notification, read by workers after agent loop completes
-    private static volatile JsonObject lastNotification;
+    private volatile JsonObject lastNotification;
 
     public SubmitNotificationTool(Context context) {
         this.context = context.getApplicationContext();
@@ -78,7 +78,7 @@ public class SubmitNotificationTool implements Tool {
             notification.addProperty("title", title);
             notification.addProperty("summary", summary);
             notification.addProperty("status", status);
-            lastNotification = notification;
+            this.lastNotification = notification;
 
             Log.d(TAG, "Notification submitted: " + title);
 
@@ -95,12 +95,12 @@ public class SubmitNotificationTool implements Tool {
         }
     }
 
-    public static JsonObject getLastNotification() {
+    public JsonObject getLastNotification() {
         return lastNotification;
     }
 
     /** Should be called after the notification is consumed to prevent stale data. */
-    public static void clearLastNotification() {
+    public void clearLastNotification() {
         lastNotification = null;
     }
 }

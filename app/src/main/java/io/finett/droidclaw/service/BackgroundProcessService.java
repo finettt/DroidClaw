@@ -1,5 +1,6 @@
 package io.finett.droidclaw.service;
 
+import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -113,18 +114,40 @@ public class BackgroundProcessService extends Service {
      * Push an updated notification to reflect the current running count.
      * Safe to call even when the service is not running (it will start it).
      *
-     * <p>Uses {@link Context#startService} (not startForegroundService) because
-     * this intent is typically sent while the service is already running.
-     * If the service was killed, {@code startService} will re-create it on API
-     * 26+ (allowed because the host process is in the foreground when the agent
-     * is running). Once created, {@link #onCreate()} calls {@link #startForeground}
-     * to satisfy the foreground-service contract before processing this intent.</p>
+     * <p>Uses {@link Context#startForegroundService} when the service is not running
+     * to avoid {@link android.app.PendingIntent.CanceledException} on API 26+ when
+     * the app is backgrounded and the service is dead (exactly when cron/heartbeat
+     * tasks update the count).</p>
      */
     public static void updateNotification(Context context, int runningCount) {
         Intent intent = new Intent(context, BackgroundProcessService.class);
         intent.setAction(ACTION_UPDATE_NOTIFICATION);
         intent.putExtra(EXTRA_RUNNING_COUNT, runningCount);
-        context.startService(intent);
+        if (isServiceRunning(context)) {
+            context.startService(intent);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent);
+        } else {
+            context.startService(intent);
+        }
+    }
+
+    private static boolean isServiceRunning(Context context) {
+        @SuppressWarnings("deprecation")
+        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (am == null) return false;
+        try {
+            java.util.List<ActivityManager.RunningServiceInfo> services = am.getRunningServices(Integer.MAX_VALUE);
+            if (services == null) return false;
+            for (ActivityManager.RunningServiceInfo info : services) {
+                if (info.service.getClassName().equals(BackgroundProcessService.class.getName())) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -132,6 +155,12 @@ public class BackgroundProcessService extends Service {
      * Called by {@link BackgroundProcessManager} after each process finishes.
      */
     public static void stopIfIdle(Context context) {
+        if (!isServiceRunning(context)) {
+            // Service is dead — sending ACTION_STOP to a dead service would start it
+            // just to stop it, with the same crash risk as updateNotification.
+            Log.d(TAG, "Service not running — skipping stopIfIdle");
+            return;
+        }
         Intent intent = new Intent(context, BackgroundProcessService.class);
         intent.setAction(ACTION_STOP);
         // Use startService (not startForegroundService) because this intent

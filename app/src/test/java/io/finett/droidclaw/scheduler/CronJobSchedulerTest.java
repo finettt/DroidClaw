@@ -250,4 +250,31 @@ public class CronJobSchedulerTest {
     public void formatTime_noon() {
         assertEquals("12:00 PM", CronJobScheduler.formatTime("12:00"));
     }
+
+    // --- computeRetryBackoffMinutes ---
+
+    @Test
+    public void computeRetryBackoffMinutes_zero() {
+        assertEquals(1L, CronJobScheduler.computeRetryBackoffMinutes(0));
+    }
+
+    @Test
+    public void computeRetryBackoffMinutes_one() {
+        assertEquals(2L, CronJobScheduler.computeRetryBackoffMinutes(1));
+    }
+
+    @Test
+    public void computeRetryBackoffMinutes_two() {
+        assertEquals(4L, CronJobScheduler.computeRetryBackoffMinutes(2));
+    }
+
+    @Test
+    public void computeRetryBackoffMinutes_three() {
+        assertEquals(8L, CronJobScheduler.computeRetryBackoffMinutes(3));
+    }
+
+    @Test
+    public void computeRetryBackoffMinutes_capped() {
+        assertEquals(TimeUnit.DAYS.toMinutes(1), CronJobScheduler.computeRetryBackoffMinutes(100));
+    }
 }
