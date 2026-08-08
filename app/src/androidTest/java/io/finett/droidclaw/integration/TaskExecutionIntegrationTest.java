@@ -42,13 +42,13 @@ import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.HeartbeatConfigRepository;
 import io.finett.droidclaw.repository.TaskRepository;
-import io.finett.droidclaw.service.TaskScheduler;
+import io.finett.droidclaw.scheduler.CronJobScheduler;
 
 @RunWith(AndroidJUnit4.class)
 public class TaskExecutionIntegrationTest {
 
     private Context context;
-    private TaskScheduler taskScheduler;
+    private CronJobScheduler scheduler;
     private TaskRepository taskRepository;
     private ChatRepository chatRepository;
     private HeartbeatConfigRepository heartbeatConfigRepo;
@@ -61,7 +61,7 @@ public class TaskExecutionIntegrationTest {
         
         WorkManagerTestInitHelper.initializeTestWorkManager(context);
         
-        taskScheduler = new TaskScheduler(context);
+        scheduler = new CronJobScheduler(context);
         taskRepository = new TaskRepository(context);
         chatRepository = new ChatRepository(context);
         heartbeatConfigRepo = new HeartbeatConfigRepository(context);
@@ -115,7 +115,7 @@ public class TaskExecutionIntegrationTest {
 
         createHeartbeatFile("# Heartbeat Check\n\nReview system health.\nInclude HEARTBEAT_OK if healthy.");
 
-        taskScheduler.scheduleHeartbeat(config);
+        scheduler.scheduleHeartbeat(config);
 
         Thread.sleep(100);
 
@@ -141,7 +141,7 @@ public class TaskExecutionIntegrationTest {
     public void heartbeat_cancelAndReschedule_worksCorrectly() throws Exception {
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 0L);
 
-        taskScheduler.scheduleHeartbeat(config);
+        scheduler.scheduleHeartbeat(config);
         Thread.sleep(100);
 
         List<WorkInfo> workInfos1 = workManager
@@ -152,7 +152,7 @@ public class TaskExecutionIntegrationTest {
                 workInfos1.get(0).getState() == WorkInfo.State.ENQUEUED ||
                 workInfos1.get(0).getState() == WorkInfo.State.RUNNING);
 
-        taskScheduler.cancelHeartbeat();
+        scheduler.cancelHeartbeat();
         Thread.sleep(100);
 
         List<WorkInfo> workInfos2 = workManager
@@ -163,7 +163,7 @@ public class TaskExecutionIntegrationTest {
         assertTrue("Should be cancelled", isCancelled);
 
         // Reschedule
-        taskScheduler.scheduleHeartbeat(config);
+        scheduler.scheduleHeartbeat(config);
         Thread.sleep(100);
 
         List<WorkInfo> workInfos3 = workManager
@@ -182,7 +182,7 @@ public class TaskExecutionIntegrationTest {
         }
 
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 0L);
-        taskScheduler.scheduleHeartbeat(config);
+        scheduler.scheduleHeartbeat(config);
 
         Thread.sleep(100);
 
@@ -202,13 +202,13 @@ public class TaskExecutionIntegrationTest {
         taskRepository.saveCronJob(job);
 
         // 2. Schedule cron job
-        taskScheduler.scheduleCronJob(job);
+        scheduler.scheduleJob(job);
 
         Thread.sleep(100);
 
         // 3. Verify work is scheduled
         List<WorkInfo> workInfos = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-integration-1")
+                .getWorkInfosForUniqueWork("cron_job_cron-integration-1")
                 .get(5, TimeUnit.SECONDS);
         assertFalse("Cron job should be scheduled", workInfos.isEmpty());
 
@@ -241,16 +241,16 @@ public class TaskExecutionIntegrationTest {
     public void cronJob_cancelAndDelete_removesAllData() throws Exception {
         CronJob job = new CronJob("cron-delete", "Delete Me", "Prompt", "3600000");
         taskRepository.saveCronJob(job);
-        taskScheduler.scheduleCronJob(job);
+        scheduler.scheduleJob(job);
 
         Thread.sleep(100);
 
-        taskScheduler.cancelCronJob("cron-delete");
+        scheduler.cancelJob("cron-delete");
 
         Thread.sleep(100);
 
         List<WorkInfo> workInfos = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-delete")
+                .getWorkInfosForUniqueWork("cron_job_cron-delete")
                 .get(5, TimeUnit.SECONDS);
         boolean isCancelled = workInfos.isEmpty() || 
                 workInfos.get(0).getState() == WorkInfo.State.CANCELLED;
@@ -273,42 +273,42 @@ public class TaskExecutionIntegrationTest {
         taskRepository.saveCronJob(job2);
         taskRepository.saveCronJob(job3);
 
-        taskScheduler.scheduleCronJob(job1);
-        taskScheduler.scheduleCronJob(job2);
-        taskScheduler.scheduleCronJob(job3);
+        scheduler.scheduleJob(job1);
+        scheduler.scheduleJob(job2);
+        scheduler.scheduleJob(job3);
 
         Thread.sleep(100);
 
         List<WorkInfo> workInfos1 = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-multi-1")
+                .getWorkInfosForUniqueWork("cron_job_cron-multi-1")
                 .get(5, TimeUnit.SECONDS);
         List<WorkInfo> workInfos2 = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-multi-2")
+                .getWorkInfosForUniqueWork("cron_job_cron-multi-2")
                 .get(5, TimeUnit.SECONDS);
         List<WorkInfo> workInfos3 = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-multi-3")
+                .getWorkInfosForUniqueWork("cron_job_cron-multi-3")
                 .get(5, TimeUnit.SECONDS);
 
         assertFalse("Job 1 should be scheduled", workInfos1.isEmpty());
         assertFalse("Job 2 should be scheduled", workInfos2.isEmpty());
         assertFalse("Job 3 should be scheduled", workInfos3.isEmpty());
 
-        taskScheduler.cancelCronJob("cron-multi-2");
+        scheduler.cancelJob("cron-multi-2");
 
         Thread.sleep(100);
 
         List<WorkInfo> workInfos2After = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-multi-2")
+                .getWorkInfosForUniqueWork("cron_job_cron-multi-2")
                 .get(5, TimeUnit.SECONDS);
         boolean isCancelled = workInfos2After.isEmpty() || 
                 workInfos2After.get(0).getState() == WorkInfo.State.CANCELLED;
         assertTrue("Job 2 should be cancelled", isCancelled);
 
         List<WorkInfo> workInfos1After = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-multi-1")
+                .getWorkInfosForUniqueWork("cron_job_cron-multi-1")
                 .get(5, TimeUnit.SECONDS);
         List<WorkInfo> workInfos3After = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-multi-3")
+                .getWorkInfosForUniqueWork("cron_job_cron-multi-3")
                 .get(5, TimeUnit.SECONDS);
         boolean isStillScheduled1 = !workInfos1After.isEmpty() && 
                 (workInfos1After.get(0).getState() == WorkInfo.State.ENQUEUED ||
@@ -400,7 +400,7 @@ public class TaskExecutionIntegrationTest {
     @Test
     public void heartbeatWorker_receivesCorrectInputData() throws Exception {
         HeartbeatConfig config = new HeartbeatConfig(true, 30 * 60 * 1000L, 0L);
-        taskScheduler.scheduleHeartbeat(config);
+        scheduler.scheduleHeartbeat(config);
 
         Thread.sleep(100);
 
@@ -418,12 +418,12 @@ public class TaskExecutionIntegrationTest {
     public void cronJobWorker_receivesJobDataInInput() throws Exception {
         CronJob job = new CronJob("cron-input-data", "Input Data Test", "Test prompt", "3600000");
         taskRepository.saveCronJob(job);
-        taskScheduler.scheduleCronJob(job);
+        scheduler.scheduleJob(job);
 
         Thread.sleep(100);
 
         List<WorkInfo> workInfos = workManager
-                .getWorkInfosForUniqueWork("cron_task_cron-input-data")
+                .getWorkInfosForUniqueWork("cron_job_cron-input-data")
                 .get(5, TimeUnit.SECONDS);
 
         assertFalse("Work should be scheduled", workInfos.isEmpty());

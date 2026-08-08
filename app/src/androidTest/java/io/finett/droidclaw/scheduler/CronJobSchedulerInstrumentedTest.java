@@ -158,17 +158,17 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void parseScheduleToInterval_cronWeeklySunday_returnsOneDay() {
+    public void parseScheduleToInterval_cronWeeklySunday_returnsOneWeek() {
         long interval = CronJobScheduler.parseScheduleToInterval("0 0 * * 0");
 
-        assertEquals(TimeUnit.DAYS.toMillis(1), interval);
+        assertEquals(TimeUnit.DAYS.toMillis(7), interval);
     }
 
     @Test
-    public void parseScheduleToInterval_cronWeeklyMonday_returnsOneDay() {
+    public void parseScheduleToInterval_cronWeeklyMonday_returnsOneWeek() {
         long interval = CronJobScheduler.parseScheduleToInterval("0 0 * * 1");
 
-        assertEquals(TimeUnit.DAYS.toMillis(1), interval);
+        assertEquals(TimeUnit.DAYS.toMillis(7), interval);
     }
 
     @Test
@@ -622,10 +622,10 @@ public class CronJobSchedulerInstrumentedTest {
     }
 
     @Test
-    public void parseScheduleToInterval_cronExpressionEveryThirtyMinutes_returnsThreeHours() {
+    public void parseScheduleToInterval_cronExpressionEveryThirtyHours_returnsThirtyHours() {
         long interval = CronJobScheduler.parseScheduleToInterval("0 */30 * * *");
 
-        assertEquals(TimeUnit.HOURS.toMillis(3), interval);
+        assertEquals(TimeUnit.HOURS.toMillis(30), interval);
     }
 
     @Test

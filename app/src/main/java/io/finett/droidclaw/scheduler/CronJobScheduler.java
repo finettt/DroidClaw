@@ -16,7 +16,9 @@ import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import io.finett.droidclaw.model.CronJob;
+import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.worker.CronJobWorker;
+import io.finett.droidclaw.worker.HeartbeatWorker;
 
 public class CronJobScheduler {
 
@@ -114,6 +116,71 @@ public class CronJobScheduler {
         Log.d(TAG, "All cron jobs cancelled");
     }
 
+    // ==================== Heartbeat ====================
+
+    private static final String HEARTBEAT_WORK_NAME = "heartbeat_task";
+
+    public void scheduleHeartbeat(HeartbeatConfig config) {
+        if (!config.isEnabled()) {
+            return;
+        }
+
+        long intervalMillis = Math.max(config.getIntervalMillis(), 15 * 60 * 1000L);
+        long intervalMinutes = intervalMillis / (60 * 1000L);
+
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
+                .setRequiresCharging(false)
+                .build();
+
+        Data inputData = new Data.Builder()
+                .putBoolean("enabled", config.isEnabled())
+                .build();
+
+        PeriodicWorkRequest heartbeatWork = new PeriodicWorkRequest.Builder(
+                HeartbeatWorker.class,
+                intervalMinutes,
+                TimeUnit.MINUTES
+        )
+                .setConstraints(constraints)
+                .setInputData(inputData)
+                .build();
+
+        workManager.enqueueUniquePeriodicWork(
+                HEARTBEAT_WORK_NAME,
+                ExistingPeriodicWorkPolicy.REPLACE,
+                heartbeatWork
+        );
+
+        Log.d(TAG, "Heartbeat scheduled with interval: " + intervalMillis + "ms");
+    }
+
+    public void cancelHeartbeat() {
+        workManager.cancelUniqueWork(HEARTBEAT_WORK_NAME);
+        Log.d(TAG, "Heartbeat cancelled");
+    }
+
+    public void runHeartbeatNow() {
+        String workName = "heartbeat_now_" + System.currentTimeMillis();
+
+        Data inputData = new Data.Builder()
+                .putBoolean("enabled", true)
+                .build();
+
+        OneTimeWorkRequest oneTimeWork = new OneTimeWorkRequest.Builder(HeartbeatWorker.class)
+                .setInputData(inputData)
+                .build();
+
+        workManager.enqueueUniqueWork(
+                workName,
+                ExistingWorkPolicy.APPEND,
+                oneTimeWork
+        );
+
+        Log.d(TAG, "Heartbeat queued for immediate execution");
+    }
+
     public static long parseScheduleToInterval(String schedule) {
         if (schedule == null || schedule.trim().isEmpty()) {
             return TimeUnit.HOURS.toMillis(1);
@@ -177,7 +244,11 @@ public class CronJobScheduler {
         if (cronExpression.startsWith("0 */")) {
             // Every N hours: "0 */2 * * *"
             try {
-                String hoursStr = cronExpression.substring(4, 5);
+                String hoursStr = cronExpression.substring(4);
+                int spaceIdx = hoursStr.indexOf(' ');
+                if (spaceIdx > 0) {
+                    hoursStr = hoursStr.substring(0, spaceIdx);
+                }
                 int hours = Integer.parseInt(hoursStr);
                 return TimeUnit.HOURS.toMillis(hours);
             } catch (Exception e) {
@@ -185,14 +256,14 @@ public class CronJobScheduler {
             }
         }
 
-        if (cronExpression.startsWith("0 0 *")) {
-            // Daily at midnight
-            return TimeUnit.DAYS.toMillis(1);
-        }
-
         if (cronExpression.startsWith("0 0 * * 0") || cronExpression.startsWith("0 0 * * 1")) {
             // Weekly (Sunday or Monday)
             return TimeUnit.DAYS.toMillis(7);
+        }
+
+        if (cronExpression.startsWith("0 0 *")) {
+            // Daily at midnight
+            return TimeUnit.DAYS.toMillis(1);
         }
 
         Log.w(TAG, "Unsupported cron expression, using 1 hour default: " + cronExpression);
