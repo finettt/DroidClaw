@@ -253,7 +253,7 @@ public abstract class BaseTaskWorker extends Worker {
                 executionRecord.setTokensUsed(estimateTokens(response));
 
                 result = createSuccessResult(taskId, taskType, endTime, response, history);
-                extractAndCacheNotificationContent(result, response, history);
+                extractAndCacheNotificationContent(result, response, history, toolRegistry);
 
                 if (history != null && !history.isEmpty()) {
                     chatRepository.saveMessages(session.getId(), history);
@@ -466,8 +466,12 @@ public abstract class BaseTaskWorker extends Worker {
      * @param response The agent's response text
      * @param history Full conversation history including tool calls
      */
-    private void extractAndCacheNotificationContent(TaskResult result, String response, List<ChatMessage> history) {
-        JsonObject notification = SubmitNotificationTool.getLastNotification();
+    private void extractAndCacheNotificationContent(TaskResult result, String response, List<ChatMessage> history,
+                                                    ToolRegistry toolRegistry) {
+        SubmitNotificationTool notificationTool = toolRegistry != null
+                ? (SubmitNotificationTool) toolRegistry.getTool("submit_notification")
+                : null;
+        JsonObject notification = notificationTool != null ? notificationTool.getLastNotification() : null;
         if (notification != null && notification.has("title") && notification.has("summary")) {
             result.putMetadata("notification_title", notification.get("title").getAsString());
             result.putMetadata("notification_summary", notification.get("summary").getAsString());
@@ -480,7 +484,7 @@ public abstract class BaseTaskWorker extends Worker {
 
             Log.d(TAG, "Extracted notification from submit_notification tool: " + notification.get("title").getAsString());
 
-            SubmitNotificationTool.clearLastNotification();
+            notificationTool.clearLastNotification();
             return;
         }
 

@@ -111,6 +111,39 @@ public class CronJobScheduler {
         Log.d(TAG, "Job queued for immediate execution: " + jobId);
     }
 
+    public void executeJobWithDelay(String jobId, long delay, java.util.concurrent.TimeUnit unit) {
+        String workName = "cron_job_retry_" + jobId;
+
+        Data inputData = new Data.Builder()
+                .putString("job_id", jobId)
+                .build();
+
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
+                .build();
+
+        OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(CronJobWorker.class)
+                .setInitialDelay(delay, unit)
+                .setInputData(inputData)
+                .setConstraints(constraints)
+                .addTag(workName)
+                .addTag("cron_job_retry")
+                .build();
+
+        workManager.enqueueUniqueWork(
+                workName,
+                ExistingWorkPolicy.REPLACE,
+                workRequest);
+
+        Log.d(TAG, "Job queued for delayed retry in " + delay + " " + unit.name().toLowerCase() + ": " + jobId);
+    }
+
+    public static long computeRetryBackoffMinutes(int attempt) {
+        int clamped = Math.min(Math.max(attempt, 0), 11);
+        return Math.min(1L << clamped, java.util.concurrent.TimeUnit.DAYS.toMinutes(1));
+    }
+
     public void cancelAllJobs() {
         workManager.cancelAllWorkByTag("cron_job");
         Log.d(TAG, "All cron jobs cancelled");
