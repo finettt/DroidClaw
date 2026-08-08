@@ -227,45 +227,39 @@ public class LocalShellBackendTest {
 
     @Test
     public void execute_commandWithNonZeroExitCode() throws Exception {
-        // Use a real allowed command (ls) that succeeds — exit code 0.
-        // For a non-zero exit code, we'd need to use a shell builtin or interpreter,
-        // which requires the command to be in the allowlist. Since that's complex
-        // to set up portably, we test the exit code path with a custom ExecPlan.
-        // On most Linux systems, /bin/true and /bin/false exist and are in /bin/
-        // which is a trusted dir. Create a plan directly with a forged /bin/false path.
-        ShellConfig shellConfig = ShellConfig.createAllowlistDefault();
-        LocalShellBackend localBackend = new LocalShellBackend(shellConfig);
-
-        // /bin/false is a standard Linux command that always returns exit code 1
-        // We'll add it to the allowlist and use ExecPlanner to resolve the path
-        File falseBin = new File("/bin/false");
-        if (!falseBin.exists()) {
-            // Try /usr/bin/false
-            falseBin = new File("/usr/bin/false");
+        // /bin/false is a standard Linux command that always returns exit code 1.
+        // We add it to the allowlist and use ExecPlanner to resolve the canonical path.
+        // ExecPlanner.resolveExe() resolves to the actual path on the system
+        // (e.g. /bin/false on Ubuntu, /run/current-system/sw/bin/false on NixOS).
+        // We must use the resolved path for the allowlist entry.
+        ShellConfig shellConfigWithFalse = ShellConfig.createAllowlistDefault();
+        // Resolve the actual path the ExecPlanner will find for "false"
+        String resolvedFalsePath = null;
+        for (String trustedDir : ShellConfig.createDefault().getTrustedDirs()) {
+            File candidate = new File(trustedDir, "false");
+            if (candidate.exists() && candidate.canExecute()) {
+                resolvedFalsePath = candidate.getAbsolutePath();
+                break;
+            }
         }
-        if (!falseBin.exists()) {
-            // Try /run/current-system/sw/bin/false (NixOS)
-            falseBin = new File("/run/current-system/sw/bin/false");
-        }
-        if (!falseBin.exists()) {
+        if (resolvedFalsePath == null) {
             // No suitable binary found — skip this test
             return;
         }
-        String falsePath = falseBin.getAbsolutePath();
 
-        // Build allowlist with the real false path
-        ShellConfig shellConfigWithFalse = ShellConfig.createAllowlistDefault(Arrays.asList(
-                new AllowlistEntry.Builder(falsePath).build()
+        // Build allowlist with the exact path that ExecPlanner will resolve
+        ShellConfig shellConfig = ShellConfig.createAllowlistDefault(Arrays.asList(
+                new AllowlistEntry.Builder(resolvedFalsePath).build()
         ));
-        LocalShellBackend localBackend2 = new LocalShellBackend(shellConfigWithFalse);
+        LocalShellBackend localBackend = new LocalShellBackend(shellConfig);
 
-        // Use ExecPlanner with the relative name "false" so it resolves to the real path
-        ExecPlan plan = new ExecPlanner(shellConfigWithFalse, workspaceDir)
+        // Use ExecPlanner with the relative name "false" so it resolves to the same path
+        ExecPlan plan = new ExecPlanner(shellConfig, workspaceDir)
                 .planFromTokens(Arrays.asList("false"), workspaceDir, ExecPlan.ExecMode.DIRECT);
 
-        ShellResult result = localBackend2.execute(plan, 10);
+        ShellResult result = localBackend.execute(plan, 10);
 
-        // false should not succeed
+        // false should not succeed (exit code 1)
         assertFalse(result.isSuccess());
         assertEquals(1, result.getExitCode());
     }
