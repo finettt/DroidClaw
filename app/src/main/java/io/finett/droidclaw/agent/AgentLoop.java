@@ -604,8 +604,6 @@ public class AgentLoop {
             ChatMessage assistantMessage = new ChatMessage(content, ChatMessage.TYPE_ASSISTANT);
             conversationHistory.add(assistantMessage);
 
-            detectAndAddFileReferences(content, conversationHistory);
-
             callback.onComplete(content, conversationHistory);
         }
     }
@@ -629,12 +627,6 @@ public class AgentLoop {
 
     public void reset() {
         iterationCount = 0;
-        resetCurrentContext();
-        totalTokens = 0;
-        totalPromptTokens = 0;
-        totalCompletionTokens = 0;
-        totalToolCalls = 0;
-        Log.d(TAG, "Agent loop fully reset (all counters cleared)");
     }
 
     public int getCurrentContextTokens() {

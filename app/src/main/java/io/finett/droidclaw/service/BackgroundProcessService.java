@@ -13,8 +13,6 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
-import java.util.List;
-
 import io.finett.droidclaw.R;
 
 /**
@@ -115,45 +113,18 @@ public class BackgroundProcessService extends Service {
      * Push an updated notification to reflect the current running count.
      * Safe to call even when the service is not running (it will start it).
      *
-     * <p>Uses {@link Context#startForegroundService} when the service is not
-     * already running, because {@code startService} on API 26+ will fail with
-     * {@code ForegroundServiceStartNotAllowedException} when the service was
-     * killed and needs to be re-created. Once created, {@link #onCreate()}
-     * calls {@link #startForeground} to satisfy the foreground-service
-     * contract before processing this intent.</p>
+     * <p>Uses {@link Context#startService} (not startForegroundService) because
+     * this intent is typically sent while the service is already running.
+     * If the service was killed, {@code startService} will re-create it on API
+     * 26+ (allowed because the host process is in the foreground when the agent
+     * is running). Once created, {@link #onCreate()} calls {@link #startForeground}
+     * to satisfy the foreground-service contract before processing this intent.</p>
      */
     public static void updateNotification(Context context, int runningCount) {
         Intent intent = new Intent(context, BackgroundProcessService.class);
         intent.setAction(ACTION_UPDATE_NOTIFICATION);
         intent.putExtra(EXTRA_RUNNING_COUNT, runningCount);
-
-        // If the service is not running, use startForegroundService() so the OS
-        // knows we intend to call startForeground() on creation.
-        // If the service is already running, startService() is sufficient.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            boolean isRunning = isServiceRunning(context, BackgroundProcessService.class);
-            if (isRunning) {
-                context.startService(intent);
-            } else {
-                context.startForegroundService(intent);
-            }
-        } else {
-            context.startService(intent);
-        }
-    }
-
-    private static boolean isServiceRunning(Context context, Class<?> serviceClass) {
-        android.app.ActivityManager am = (android.app.ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        if (am == null) return false;
-        List<android.app.ActivityManager.RunningServiceInfo> services = am.getRunningServices(Integer.MAX_VALUE);
-        if (services == null) return false;
-        String className = serviceClass.getName();
-        for (android.app.ActivityManager.RunningServiceInfo info : services) {
-            if (className.equals(info.service.getClassName())) {
-                return true;
-            }
-        }
-        return false;
+        context.startService(intent);
     }
 
     /**

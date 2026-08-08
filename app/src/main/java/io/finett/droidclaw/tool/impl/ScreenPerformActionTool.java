@@ -1,7 +1,6 @@
 package io.finett.droidclaw.tool.impl;
 
 import android.accessibilityservice.AccessibilityService;
-import android.os.Build;
 
 import com.google.gson.JsonObject;
 
@@ -107,9 +106,6 @@ public class ScreenPerformActionTool implements Tool {
                 globalActionId = AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS;
                 break;
             case "lock_screen":
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-                    return ToolResult.error("lock_screen is not supported on devices below Android 9 (API 28)");
-                }
                 globalActionId = AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN;
                 break;
             default:
