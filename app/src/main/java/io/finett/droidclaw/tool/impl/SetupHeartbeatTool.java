@@ -11,7 +11,7 @@ import java.io.IOException;
 
 import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.repository.HeartbeatConfigRepository;
-import io.finett.droidclaw.service.TaskScheduler;
+import io.finett.droidclaw.scheduler.CronJobScheduler;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolDefinition.ParametersBuilder;
@@ -26,7 +26,7 @@ public class SetupHeartbeatTool implements Tool {
     private final ToolDefinition definition;
     private final Context context;
     private HeartbeatConfigRepository configRepository;
-    private TaskScheduler taskScheduler;
+    private CronJobScheduler scheduler;
     private WorkspaceManager workspaceManager;
 
     public SetupHeartbeatTool(Context context) {
@@ -41,11 +41,11 @@ public class SetupHeartbeatTool implements Tool {
         return configRepository;
     }
 
-    private TaskScheduler getTaskScheduler() {
-        if (taskScheduler == null) {
-            taskScheduler = new TaskScheduler(context);
+    private CronJobScheduler getScheduler() {
+        if (scheduler == null) {
+            scheduler = new CronJobScheduler(context);
         }
-        return taskScheduler;
+        return scheduler;
     }
 
     private WorkspaceManager getWorkspaceManager() {
@@ -118,9 +118,9 @@ public class SetupHeartbeatTool implements Tool {
             }
 
             if (enabled) {
-                getTaskScheduler().scheduleHeartbeat(config);
+                getScheduler().scheduleHeartbeat(config);
             } else {
-                getTaskScheduler().cancelHeartbeat();
+                getScheduler().cancelHeartbeat();
             }
 
             Log.d(TAG, "Heartbeat configured - enabled: " + enabled + ", interval: " + interval);

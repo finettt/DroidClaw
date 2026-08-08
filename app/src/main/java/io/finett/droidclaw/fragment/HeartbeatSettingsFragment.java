@@ -27,7 +27,7 @@ import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.HeartbeatConfigRepository;
 import io.finett.droidclaw.repository.TaskRepository;
-import io.finett.droidclaw.service.TaskScheduler;
+import io.finett.droidclaw.scheduler.CronJobScheduler;
 import io.finett.droidclaw.util.NotificationPermissionHelper;
 
 public class HeartbeatSettingsFragment extends Fragment {
@@ -50,7 +50,7 @@ public class HeartbeatSettingsFragment extends Fragment {
 
     private HeartbeatConfigRepository configRepository;
     private TaskRepository taskRepository;
-    private TaskScheduler taskScheduler;
+    private CronJobScheduler scheduler;
     private NotificationPermissionHelper permissionHelper;
     private HeartbeatConfig config;
 
@@ -66,7 +66,7 @@ public class HeartbeatSettingsFragment extends Fragment {
         super.onCreate(savedInstanceState);
         configRepository = new HeartbeatConfigRepository(requireContext());
         taskRepository = new TaskRepository(requireContext());
-        taskScheduler = new TaskScheduler(requireContext());
+        scheduler = new CronJobScheduler(requireContext());
         permissionHelper = new NotificationPermissionHelper(requireContext());
         config = configRepository.getConfig();
     }
@@ -227,7 +227,7 @@ public class HeartbeatSettingsFragment extends Fragment {
             } else {
                 config.setEnabled(false);
                 configRepository.updateConfig(config);
-                taskScheduler.cancelHeartbeat();
+                scheduler.cancelHeartbeat();
                 Toast.makeText(requireContext(), "Heartbeat disabled", Toast.LENGTH_SHORT).show();
             }
         });
@@ -241,13 +241,13 @@ public class HeartbeatSettingsFragment extends Fragment {
 
             // Reschedule with new interval if enabled
             if (config.isEnabled()) {
-                taskScheduler.scheduleHeartbeat(config);
+                scheduler.scheduleHeartbeat(config);
             }
         });
 
         // Run now button
         buttonRunNow.setOnClickListener(v -> {
-            taskScheduler.runTaskNow("heartbeat", "heartbeat");
+            scheduler.runHeartbeatNow();
             Toast.makeText(requireContext(), "Heartbeat task queued", Toast.LENGTH_SHORT).show();
         });
 
@@ -267,7 +267,7 @@ public class HeartbeatSettingsFragment extends Fragment {
     private void enableHeartbeat() {
         config.setEnabled(true);
         configRepository.updateConfig(config);
-        taskScheduler.scheduleHeartbeat(config);
+        scheduler.scheduleHeartbeat(config);
         Toast.makeText(requireContext(), "Heartbeat enabled", Toast.LENGTH_SHORT).show();
     }
 }
