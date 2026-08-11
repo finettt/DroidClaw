@@ -85,11 +85,18 @@ jobs:
       - name: Update version in build.gradle.kts
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Calculate versionCode from date components
+          # Calculate versionCode from date components.
+          # 10# forces base-10 so zero-padded values (e.g. "08") are NOT parsed as
+          # octal. Octal parsing is invalid for 08/09 and previously left versionCode
+          # empty, producing a broken `versionCode =` line and a Kotlin compile error.
           YEAR=$(date -u +"%Y")
           MONTH=$(date -u +"%m")
           DAY=$(date -u +"%d")
-          VERSION_CODE=$((YEAR * 10000 + MONTH * 100 + DAY))
+          VERSION_CODE=$((10#$YEAR * 10000 + 10#$MONTH * 100 + 10#$DAY))
+          if [ -z "$VERSION_CODE" ]; then
+            echo "ERROR: failed to compute versionCode" >&2
+            exit 1
+          fi
           
           # Update versionName and versionCode in app/build.gradle.kts
           sed -i "s/versionName = \".*\"/versionName = \"${VERSION}\"/" app/build.gradle.kts
