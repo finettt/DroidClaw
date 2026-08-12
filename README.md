@@ -58,6 +58,8 @@ Go through the onboarding screen, and you are ready to go! If you want to set up
 
 - **Bundled Python 3.11:** The agent can execute any scripts to help you.
 - **Sandboxed environment:** The agent works in its own filesystem and can't touch your data.
+- **Shell, on-device or remote:** The agent runs shell commands locally in its sandbox, or on a remote host over the SSH backend.
+- **Device control:** The agent can list and open apps and operate the screen — tap, swipe, type, and read the UI tree. See [agent tools](docs/features/agent-tools.md).
 - **Onboarding:** Users can configure the app for its first run with just a couple of questions.
 
 # Docs
