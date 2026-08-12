@@ -74,6 +74,13 @@ public class CronJobWorker extends BaseTaskWorker {
             if (result.isSuccess()) {
                 job.recordSuccess(duration);
                 job.setLastRunTimestamp(System.currentTimeMillis());
+
+                // Time-of-day jobs (daily@HH:MM / weekly@day@HH:MM) are one-shot:
+                // chain the next occurrence so the schedule keeps running.
+                if (CronJobScheduler.isTimeOfDaySchedule(job.getSchedule())) {
+                    new CronJobScheduler(appContext).scheduleJob(job);
+                    Log.d(TAG, "Chained next occurrence for time-of-day job: " + jobId);
+                }
             } else {
                 job.recordFailure(result.getContent());
                 job.setLastRunTimestamp(System.currentTimeMillis());
