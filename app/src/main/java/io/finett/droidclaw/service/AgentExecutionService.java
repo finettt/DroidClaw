@@ -591,8 +591,9 @@ public class AgentExecutionService extends Service {
 
     /**
      * Remove common markdown markers so the notification text is readable.
+     * Package-private for unit testing.
      */
-    private static String stripMarkdown(String text) {
+    static String stripMarkdown(String text) {
         if (text == null) return "";
         return text
                 .replaceAll("(?m)^#{1,6}\\s+", "")     // headings

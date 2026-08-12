@@ -222,4 +222,87 @@ public class WorkspaceManagerTest {
 
         assertTrue(workspaceManager.getWorkspaceRoot().exists());
     }
+
+    // ==================== temp cleanup: nested trees ====================
+
+    @Test
+    public void testClearTempDirectory_withNestedSubdirectories() throws Exception {
+        workspaceManager.initialize();
+
+        File tempDir = workspaceManager.getTempDirectory();
+        File nested = new File(tempDir, "level1/level2");
+        assertTrue(nested.mkdirs());
+        new File(tempDir, "top.txt").createNewFile();
+        new File(nested, "deep.txt").createNewFile();
+
+        assertTrue(workspaceManager.clearTempDirectory());
+
+        assertTrue(tempDir.exists());
+        assertEquals(0, tempDir.listFiles().length);
+    }
+
+    @Test
+    public void testClearTempDirectory_mixedFilesAndDirs() throws Exception {
+        workspaceManager.initialize();
+
+        File tempDir = workspaceManager.getTempDirectory();
+        new File(tempDir, "a.txt").createNewFile();
+        File subDir = new File(tempDir, "subdir");
+        assertTrue(subDir.mkdir());
+        new File(subDir, "b.txt").createNewFile();
+
+        assertTrue(workspaceManager.clearTempDirectory());
+        assertTrue(tempDir.exists());
+        assertFalse(new File(tempDir, "a.txt").exists());
+        assertFalse(subDir.exists());
+    }
+
+    // ==================== stats: formatting boundaries ====================
+
+    @Test
+    public void testWorkspaceStats_kilobyteRange() throws Exception {
+        workspaceManager.initialize();
+
+        File testFile = new File(workspaceManager.getHomeDirectory(), "kb.bin");
+        java.io.FileWriter writer = new java.io.FileWriter(testFile);
+        char[] chunk = new char[1024];
+        java.util.Arrays.fill(chunk, 'x');
+        writer.write(chunk, 0, 1024);
+        writer.write(chunk, 0, 1024); // 2 KB total
+        writer.close();
+
+        WorkspaceManager.WorkspaceStats stats = workspaceManager.getStats();
+        assertTrue(stats.getTotalSize() >= 2048);
+        assertTrue("expected KB formatting, got: " + stats.getFormattedSize(),
+                stats.getFormattedSize().endsWith("KB"));
+    }
+
+    @Test
+    public void testWorkspaceStats_emptyWorkspace_bytesFormatting() throws Exception {
+        workspaceManager.initialize();
+
+        WorkspaceManager.WorkspaceStats stats = workspaceManager.getStats();
+        assertEquals(0, stats.getTotalSize());
+        assertEquals("0 B", stats.getFormattedSize());
+    }
+
+    // ==================== static path getters ====================
+
+    @Test
+    public void testStaticPathGetters() {
+        assertEquals(".agent/soul.md", WorkspaceManager.getSoulFilePath());
+        assertEquals(".agent/user.md", WorkspaceManager.getUserFilePath());
+        assertEquals(".agent/HEARTBEAT.md", WorkspaceManager.getHeartbeatFilePath());
+    }
+
+    @Test
+    public void testGetHeartbeatFile_underAgentDir() throws Exception {
+        workspaceManager.initialize();
+
+        File heartbeat = workspaceManager.getHeartbeatFile();
+        assertNotNull(heartbeat);
+        assertTrue(heartbeat.getPath().endsWith(".agent/HEARTBEAT.md"));
+        assertTrue(heartbeat.getCanonicalPath().startsWith(
+                workspaceManager.getWorkspaceRoot().getCanonicalPath()));
+    }
 }

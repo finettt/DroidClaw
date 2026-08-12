@@ -277,4 +277,126 @@ public class CronJobSchedulerTest {
     public void computeRetryBackoffMinutes_capped() {
         assertEquals(TimeUnit.DAYS.toMinutes(1), CronJobScheduler.computeRetryBackoffMinutes(100));
     }
+
+    // --- computeRetryBackoffMinutes: edge cases ---
+
+    @Test
+    public void computeRetryBackoffMinutes_negative_clampsToOne() {
+        assertEquals(1L, CronJobScheduler.computeRetryBackoffMinutes(-5));
+    }
+
+    @Test
+    public void computeRetryBackoffMinutes_ten() {
+        assertEquals(1024L, CronJobScheduler.computeRetryBackoffMinutes(10));
+    }
+
+    @Test
+    public void computeRetryBackoffMinutes_eleven_cappedAtOneDay() {
+        // 2^11 = 2048 minutes exceeds the 1-day cap (1440 minutes).
+        assertEquals(TimeUnit.DAYS.toMinutes(1), CronJobScheduler.computeRetryBackoffMinutes(11));
+    }
+
+    // --- parseScheduleToInterval: malformed and edge inputs ---
+
+    @Test
+    public void parseScheduleToInterval_whitespaceOnly() {
+        assertEquals(TimeUnit.HOURS.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("   "));
+    }
+
+    @Test
+    public void parseScheduleToInterval_surroundingWhitespace_trimmed() {
+        assertEquals(TimeUnit.DAYS.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("  daily  "));
+    }
+
+    @Test
+    public void parseScheduleToInterval_every_invalid_number() {
+        assertEquals(TimeUnit.HOURS.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("every_abc_minutes"));
+    }
+
+    @Test
+    public void parseScheduleToInterval_every_unknown_unit() {
+        assertEquals(TimeUnit.HOURS.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("every_5_furlongs"));
+    }
+
+    @Test
+    public void parseScheduleToInterval_every_missing_value() {
+        assertEquals(TimeUnit.HOURS.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("every_5"));
+    }
+
+    @Test
+    public void parseScheduleToInterval_every_singular_minute() {
+        assertEquals(TimeUnit.MINUTES.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("every_1_minute"));
+    }
+
+    @Test
+    public void parseScheduleToInterval_every_singular_hour() {
+        assertEquals(TimeUnit.HOURS.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("every_1_hour"));
+    }
+
+    @Test
+    public void parseScheduleToInterval_caseInsensitive() {
+        assertEquals(TimeUnit.DAYS.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("DAILY"));
+    }
+
+    // --- formatScheduleForDisplay: more variants ---
+
+    @Test
+    public void formatScheduleForDisplay_null() {
+        assertEquals("Unknown", CronJobScheduler.formatScheduleForDisplay(null));
+    }
+
+    @Test
+    public void formatScheduleForDisplay_blank() {
+        assertEquals("Unknown", CronJobScheduler.formatScheduleForDisplay("   "));
+    }
+
+    @Test
+    public void formatScheduleForDisplay_daily() {
+        assertEquals("Daily", CronJobScheduler.formatScheduleForDisplay("daily"));
+    }
+
+    @Test
+    public void formatScheduleForDisplay_weekly() {
+        assertEquals("Weekly", CronJobScheduler.formatScheduleForDisplay("weekly"));
+    }
+
+    @Test
+    public void formatScheduleForDisplay_dailyAt() {
+        assertEquals("Daily at 8:00 AM",
+                CronJobScheduler.formatScheduleForDisplay("daily@08:00"));
+    }
+
+    @Test
+    public void formatScheduleForDisplay_weeklyAt_full() {
+        assertEquals("Monday at 8:00 AM",
+                CronJobScheduler.formatScheduleForDisplay("weekly@monday@08:00"));
+    }
+
+    @Test
+    public void formatScheduleForDisplay_weeklyAt_malformed() {
+        assertEquals("Weekly",
+                CronJobScheduler.formatScheduleForDisplay("weekly@onlyonepart"));
+    }
+
+    // --- formatTime: malformed input ---
+
+    @Test
+    public void formatTime_invalid_returnsInput() {
+        assertEquals("garbage", CronJobScheduler.formatTime("garbage"));
+    }
+
+    // --- getWorkName ---
+
+    @Test
+    public void getWorkName_hasCronPrefix() {
+        assertEquals("cron_job_abc123", CronJobScheduler.getWorkName("abc123"));
+    }
 }
