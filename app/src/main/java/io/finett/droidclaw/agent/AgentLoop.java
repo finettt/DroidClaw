@@ -39,6 +39,7 @@ public class AgentLoop {
     private int iterationCount;
     private int maxIterations;
     private boolean requireApproval;
+    private boolean streamResponses;
     private List<ChatMessage> identityMessages;
     private JsonObject responseSchema;
 
@@ -93,6 +94,13 @@ public class AgentLoop {
          * @param approvalCallback Callback to indicate approval or denial
          */
         void onApprovalRequired(String toolName, String description, JsonObject arguments, ApprovalCallback approvalCallback);
+
+        /**
+         * Called with incremental text deltas while a streaming (SSE) response is
+         * arriving, before {@link #onComplete}. Optional — the default is a no-op
+         * for callbacks that only care about the final result.
+         */
+        default void onStreamDelta(String delta) {}
     }
 
     public interface ApprovalCallback {
@@ -116,10 +124,20 @@ public class AgentLoop {
         if (settingsManager != null) {
             this.maxIterations = settingsManager.getMaxAgentIterations();
             this.requireApproval = settingsManager.isRequireApproval();
+            io.finett.droidclaw.model.AgentConfig cfg = settingsManager.getAgentConfig();
+            this.streamResponses = cfg != null && cfg.isStreamResponses();
         } else {
             this.maxIterations = DEFAULT_MAX_ITERATIONS;
             this.requireApproval = true;
+            // No settings manager (unit tests / programmatic use): keep the
+            // legacy non-streaming path.
+            this.streamResponses = false;
         }
+    }
+
+    /** Whether streaming (SSE) responses are enabled for the standard chat path. */
+    public boolean isStreamingEnabled() {
+        return streamResponses;
     }
 
     public void setIdentityContext(List<ChatMessage> identityMessages) {
@@ -227,18 +245,7 @@ public class AgentLoop {
                 new LlmApiService.StructuredResponseCallback() {
             @Override
             public void onSuccess(LlmApiService.StructuredResponse response) {
-                if (response.getUsage() != null && response.getUsage().isAvailable()) {
-                    currentContextTokens = response.getUsage().getTotalTokens();
-                    currentPromptTokens = response.getUsage().getPromptTokens();
-                    currentCompletionTokens = response.getUsage().getCompletionTokens();
-
-                    totalTokens += response.getUsage().getTotalTokens();
-                    totalPromptTokens += response.getUsage().getPromptTokens();
-                    totalCompletionTokens += response.getUsage().getCompletionTokens();
-
-                    Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
-                          ", Session total: " + totalTokens);
-                }
+                trackTokenUsage(response.getUsage());
 
                 if (response.isRefusal()) {
                     Log.w(TAG, "Model refused to respond: " + response.getRefusal());
@@ -261,22 +268,32 @@ public class AgentLoop {
      */
     private void sendStandardMessage(List<ChatMessage> conversationHistory, JsonArray tools,
                                      List<ChatMessage> contextMessages, AgentCallback callback) {
+        if (streamResponses) {
+            apiService.sendMessageWithToolsStreaming(conversationHistory, tools, contextMessages,
+                    new LlmApiService.StreamingChatCallback() {
+                @Override
+                public void onDelta(String textChunk) {
+                    callback.onStreamDelta(textChunk);
+                }
+
+                @Override
+                public void onSuccess(LlmApiService.LlmResponse response) {
+                    trackTokenUsage(response.getUsage());
+                    handleLlmResponse(response, conversationHistory, callback);
+                }
+
+                @Override
+                public void onError(String error) {
+                    callback.onError(error);
+                }
+            });
+            return;
+        }
+
         apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, new LlmApiService.ChatCallbackWithTools() {
             @Override
             public void onSuccess(LlmApiService.LlmResponse response) {
-                if (response.getUsage() != null && response.getUsage().isAvailable()) {
-                    currentContextTokens = response.getUsage().getTotalTokens();
-                    currentPromptTokens = response.getUsage().getPromptTokens();
-                    currentCompletionTokens = response.getUsage().getCompletionTokens();
-
-                    totalTokens += response.getUsage().getTotalTokens();
-                    totalPromptTokens += response.getUsage().getPromptTokens();
-                    totalCompletionTokens += response.getUsage().getCompletionTokens();
-
-                    Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
-                          ", Session total: " + totalTokens);
-                }
-
+                trackTokenUsage(response.getUsage());
                 handleLlmResponse(response, conversationHistory, callback);
             }
 
@@ -285,6 +302,25 @@ public class AgentLoop {
                 callback.onError(error);
             }
         });
+    }
+
+    /**
+     * Update the "Last Usage" token tracking fields from an API response usage
+     * block (no-op when the provider did not report usage).
+     */
+    private void trackTokenUsage(io.finett.droidclaw.api.TokenUsage usage) {
+        if (usage == null || !usage.isAvailable()) return;
+
+        currentContextTokens = usage.getTotalTokens();
+        currentPromptTokens = usage.getPromptTokens();
+        currentCompletionTokens = usage.getCompletionTokens();
+
+        totalTokens += usage.getTotalTokens();
+        totalPromptTokens += usage.getPromptTokens();
+        totalCompletionTokens += usage.getCompletionTokens();
+
+        Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
+              ", Session total: " + totalTokens);
     }
 
     private void handleLlmResponse(LlmApiService.LlmResponse response, List<ChatMessage> conversationHistory, AgentCallback callback) {

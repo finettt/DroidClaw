@@ -230,6 +230,7 @@ public class SettingsManager {
         config.setBackgroundExecEnabled(json.optBoolean("backgroundExecEnabled", false));
         config.setScreenControlEnabled(json.optBoolean("screenControlEnabled", false));
         config.setScreenControlTrustMode(json.optBoolean("screenControlTrustMode", false));
+        config.setStreamResponses(json.optBoolean("streamResponses", true));
         config.setShellBackend(json.optString("shellBackend", "local"));
         config.setSshHost(json.optString("sshHost", ""));
         config.setSshPort(json.optInt("sshPort", 22));
@@ -340,6 +341,7 @@ public class SettingsManager {
         json.put("backgroundExecEnabled", config.isBackgroundExecEnabled());
         json.put("screenControlEnabled", config.isScreenControlEnabled());
         json.put("screenControlTrustMode", config.isScreenControlTrustMode());
+        json.put("streamResponses", config.isStreamResponses());
         json.put("shellBackend", config.getShellBackend());
         json.put("sshHost", config.getSshHost());
         json.put("sshPort", config.getSshPort());

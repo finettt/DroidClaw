@@ -17,6 +17,7 @@ public class AgentConfig {
     private List<String> customAllowlist; // extra executable paths for relaxed mode
     private boolean screenControlEnabled;  // allow agent to read UI and control screen via accessibility
     private boolean screenControlTrustMode; // skip per-action approval for screen control tools
+    private boolean streamResponses;        // stream LLM text via SSE as it is generated
     private int llmConnectTimeout;   // seconds
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
@@ -32,6 +33,7 @@ public class AgentConfig {
 
     public AgentConfig() {
         this.customAllowlist = new ArrayList<>();
+        this.streamResponses = true;
         this.llmConnectTimeout = 30;
         this.llmReadTimeout = 120;
         this.llmWriteTimeout = 30;
@@ -54,6 +56,7 @@ public class AgentConfig {
         this.shellTimeout = shellTimeout;
         this.backgroundShellEnabled = backgroundShellEnabled;
         this.backgroundExecEnabled = false;
+        this.streamResponses = true;
         this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
         this.llmConnectTimeout = 30;
         this.llmReadTimeout = 120;
@@ -187,6 +190,14 @@ public class AgentConfig {
 
     public void setScreenControlTrustMode(boolean screenControlTrustMode) {
         this.screenControlTrustMode = screenControlTrustMode;
+    }
+
+    public boolean isStreamResponses() {
+        return streamResponses;
+    }
+
+    public void setStreamResponses(boolean streamResponses) {
+        this.streamResponses = streamResponses;
     }
 
     public Map<String, String> getToolApprovalOverrides() {

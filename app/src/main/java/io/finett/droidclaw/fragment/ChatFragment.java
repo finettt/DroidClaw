@@ -104,6 +104,24 @@ public class ChatFragment extends Fragment {
     private List<ChatMessage> pendingServiceConversationHistory;
     private int pendingServiceContextWindow;
 
+    // ==================== SSE streaming live-render state ====================
+
+    /** Interval between streaming UI refreshes; deltas accumulate in between. */
+    private static final long STREAM_FLUSH_INTERVAL_MS = 80;
+
+    /** Accumulated text of the currently streaming assistant bubble. */
+    private final StringBuilder streamingBuffer = new StringBuilder();
+
+    /** True while a temporary streaming bubble is present in the adapter. */
+    private boolean streamingBubbleActive = false;
+
+    /** Adapter position of the temporary streaming bubble. */
+    private int streamingBubblePosition = -1;
+
+    /** Throttled flush runnable (posted to the RecyclerView). */
+    private final Runnable streamFlushRunnable = this::flushStreamingBubble;
+    private boolean streamFlushScheduled = false;
+
     private final AgentExecutionService.UICallback agentUiCallback = new AgentExecutionService.UICallback() {
         @Override
         public void onProgress(String status) {
@@ -114,10 +132,32 @@ public class ChatFragment extends Fragment {
         }
 
         @Override
+        public void onStreamDelta(String delta) {
+            if (!isAdded() || delta == null || delta.isEmpty()) {
+                return;
+            }
+            if (!streamingBubbleActive) {
+                // New streamed assistant segment — add a temporary bubble that is
+                // replaced by the canonical history in onComplete().
+                ChatMessage streamingMessage = new ChatMessage("", ChatMessage.TYPE_ASSISTANT);
+                chatAdapter.addMessage(streamingMessage);
+                streamingBubblePosition = chatAdapter.getItemCount() - 1;
+                streamingBuffer.setLength(0);
+                streamingBubbleActive = true;
+                scrollToBottom();
+            }
+            streamingBuffer.append(delta);
+            scheduleStreamFlush();
+        }
+
+        @Override
         public void onToolCall(String toolName, String arguments) {
             if (!isAdded()) {
                 return;
             }
+            // The current streamed text segment is finished; the next text delta
+            // belongs to a new assistant message and starts a fresh bubble.
+            streamingBubbleActive = false;
             Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
 
             boolean isBackground = arguments.contains("\"background\":true")
@@ -144,6 +184,7 @@ public class ChatFragment extends Fragment {
                 return;
             }
 
+            resetStreamingState();
             setLoading(false);
             chatAdapter.setMessages(updatedHistory);
             scrollToBottom();
@@ -162,6 +203,12 @@ public class ChatFragment extends Fragment {
             if (!isAdded() || getContext() == null) {
                 Log.w(TAG, "onError: Fragment not attached, ignoring error: " + error);
                 return;
+            }
+            // Drop the partial streaming bubble — its text never made it into history.
+            boolean hadPartialBubble = streamingBubbleActive;
+            resetStreamingState();
+            if (hadPartialBubble) {
+                chatAdapter.removeLastMessage();
             }
             setLoading(false);
             Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
@@ -1068,6 +1115,44 @@ public class ChatFragment extends Fragment {
         if (chatAdapter.getItemCount() > 0) {
             recyclerView.scrollToPosition(chatAdapter.getItemCount() - 1);
         }
+    }
+
+    // ==================== SSE streaming live-render helpers ====================
+
+    /**
+     * Throttled flush of accumulated stream deltas into the temporary bubble.
+     * Re-rendering markdown on every token is wasteful, so deltas are batched
+     * and applied at most once per {@link #STREAM_FLUSH_INTERVAL_MS}.
+     */
+    private void scheduleStreamFlush() {
+        if (streamFlushScheduled || recyclerView == null) {
+            return;
+        }
+        streamFlushScheduled = true;
+        recyclerView.postDelayed(streamFlushRunnable, STREAM_FLUSH_INTERVAL_MS);
+    }
+
+    private void flushStreamingBubble() {
+        streamFlushScheduled = false;
+        if (!streamingBubbleActive || !isAdded()) {
+            return;
+        }
+        chatAdapter.updateStreamingMessage(streamingBubblePosition, streamingBuffer.toString());
+        scrollToBottom();
+    }
+
+    /**
+     * Clear all streaming state and cancel any pending flush. Called when the
+     * agent completes or errors; the final history render replaces the bubble.
+     */
+    private void resetStreamingState() {
+        streamingBubbleActive = false;
+        streamingBubblePosition = -1;
+        streamingBuffer.setLength(0);
+        if (recyclerView != null) {
+            recyclerView.removeCallbacks(streamFlushRunnable);
+        }
+        streamFlushScheduled = false;
     }
 
     /**

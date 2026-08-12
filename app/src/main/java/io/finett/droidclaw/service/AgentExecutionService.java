@@ -109,6 +109,12 @@ public class AgentExecutionService extends Service {
         void onError(String error);
         void onApprovalRequired(String toolName, String description, JsonObject arguments,
                                 AgentLoop.ApprovalCallback approvalCallback);
+
+        /**
+         * Incremental text delta while a streaming (SSE) response is arriving.
+         * Optional — no-op by default for UIs that only render the final result.
+         */
+        default void onStreamDelta(String delta) {}
     }
 
     // ==================== Binder ====================
@@ -305,6 +311,14 @@ public class AgentExecutionService extends Service {
                     mainHandler.post(() -> {
                         UICallback cb = uiCallbacks.get(session.sessionId);
                         if (cb != null) cb.onProgress(status);
+                    });
+                }
+
+                @Override
+                public void onStreamDelta(String delta) {
+                    mainHandler.post(() -> {
+                        UICallback cb = uiCallbacks.get(session.sessionId);
+                        if (cb != null) cb.onStreamDelta(delta);
                     });
                 }
 

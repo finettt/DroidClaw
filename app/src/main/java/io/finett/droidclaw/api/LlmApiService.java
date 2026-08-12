@@ -29,6 +29,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okio.BufferedSource;
 
 /**
  * Unified LLM API service supporting both OpenAI Chat Completions and Anthropic Messages APIs.
@@ -173,6 +174,20 @@ public class LlmApiService {
 
     public interface StructuredResponseCallback {
         void onSuccess(StructuredResponse response);
+        void onError(String error);
+    }
+
+    /**
+     * Callback for streaming (SSE) responses: incremental text deltas for live
+     * rendering, plus the final assembled response with tool calls and usage.
+     */
+    public interface StreamingChatCallback {
+        /** Incremental text delta (called on the main thread). */
+        void onDelta(String textChunk);
+
+        /** Final assembled response, same shape as the non-streaming path. */
+        void onSuccess(LlmResponse response);
+
         void onError(String error);
     }
 
@@ -423,6 +438,131 @@ public class LlmApiService {
                     Log.e(TAG, "Parse error", e);
                     mainHandler.post(() -> callback.onError("Parse error: " + e.getMessage()));
                 }
+            }
+        });
+    }
+
+    /**
+     * Streaming variant of {@link #sendMessageWithTools(List, JsonArray, List, ChatCallbackWithTools)}.
+     *
+     * <p>Sends the request with {@code stream: true} and parses the Server-Sent-Events
+     * response incrementally: text deltas are delivered to
+     * {@link StreamingChatCallback#onDelta(String)} as they arrive, and the final
+     * assembled response (text + tool calls + token usage) is delivered to
+     * {@link StreamingChatCallback#onSuccess(LlmResponse)} with the same shape as the
+     * non-streaming path.</p>
+     *
+     * <p>For OpenAI-compatible endpoints, {@code stream_options.include_usage} is
+     * requested so token usage arrives in the final chunk; servers that ignore the
+     * field simply produce a response without usage.</p>
+     */
+    public void sendMessageWithToolsStreaming(List<ChatMessage> conversationHistory, JsonArray tools,
+                                              List<ChatMessage> identityMessages,
+                                              StreamingChatCallback callback) {
+        if (!settingsManager.isConfigured()) {
+            Log.w(TAG, "sendMessageWithToolsStreaming: isConfigured() returned false");
+            mainHandler.post(() -> callback.onError("API key not configured. Please set it in Settings."));
+            return;
+        }
+
+        String apiType = settingsManager.getApiType();
+        String apiUrl = settingsManager.getApiUrl();
+        Log.d(TAG, "sendMessageWithToolsStreaming: apiType=" + apiType + ", apiUrl=" + apiUrl
+                + ", model=" + settingsManager.getModelName());
+
+        if (apiUrl == null || apiUrl.isEmpty()) {
+            mainHandler.post(() -> callback.onError("No API URL configured for selected model. Please check Settings."));
+            return;
+        }
+
+        String jsonBody;
+        Request.Builder requestBuilder;
+
+        if (API_ANTHROPIC.equals(apiType)) {
+            JsonObject body = buildAnthropicRequestBody(conversationHistory, tools, identityMessages);
+            body.addProperty("stream", true);
+            jsonBody = gson.toJson(body);
+            requestBuilder = buildAnthropicRequestBuilder(jsonBody);
+        } else {
+            JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages);
+            body.addProperty("stream", true);
+            JsonObject streamOptions = new JsonObject();
+            streamOptions.addProperty("include_usage", true);
+            body.add("stream_options", streamOptions);
+            jsonBody = gson.toJson(body);
+            requestBuilder = buildOpenAiRequestBuilder(jsonBody);
+        }
+
+        requestBuilder.addHeader("Accept", "text/event-stream");
+        Request request = requestBuilder.build();
+        Log.d(TAG, "sendMessageWithToolsStreaming: HTTP " + request.method() + " " + request.url());
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                if (call.isCanceled()) {
+                    Log.d(TAG, "Streaming request canceled");
+                    return;
+                }
+                Log.e(TAG, "Network error", e);
+                mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    String errMsg = parseApiError(responseBody, response.code(), apiType);
+                    Log.e(TAG, "API error: " + response.code() + " - " + responseBody);
+                    mainHandler.post(() -> callback.onError(errMsg));
+                    return;
+                }
+                if (response.body() == null) {
+                    mainHandler.post(() -> callback.onError("Empty response body"));
+                    return;
+                }
+
+                final SseStreamAccumulator accumulator = new SseStreamAccumulator(apiType,
+                        new SseStreamAccumulator.Listener() {
+                            @Override
+                            public void onTextDelta(String text) {
+                                mainHandler.post(() -> callback.onDelta(text));
+                            }
+                        });
+
+                try {
+                    BufferedSource source = response.body().source();
+                    String line;
+                    while ((line = source.readUtf8Line()) != null) {
+                        if (call.isCanceled()) {
+                            Log.d(TAG, "Stream canceled mid-read");
+                            return;
+                        }
+                        accumulator.feedLine(line);
+                        if (accumulator.hasError()) break;
+                    }
+                } catch (IOException e) {
+                    if (call.isCanceled()) {
+                        Log.d(TAG, "Stream canceled (read aborted)");
+                        return;
+                    }
+                    Log.e(TAG, "Stream read error", e);
+                    mainHandler.post(() -> callback.onError("Stream read error: " + e.getMessage()));
+                    return;
+                } finally {
+                    response.close();
+                }
+                accumulator.finish();
+
+                if (accumulator.hasError()) {
+                    final String err = accumulator.getError();
+                    Log.e(TAG, "Stream error: " + err);
+                    mainHandler.post(() -> callback.onError(err));
+                    return;
+                }
+
+                final LlmResponse llmResponse = accumulator.buildResponse();
+                mainHandler.post(() -> callback.onSuccess(llmResponse));
             }
         });
     }
