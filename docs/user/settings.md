@@ -42,7 +42,43 @@ The app includes a bundled Python 3.11 interpreter.
 - **Pip Packages**: View or install additional Python libraries for the agent to use in scripts.
 - **Scripts Directory**: Manage the Python scripts the agent has access to.
 
+## Shell
+
+The agent can run shell commands through the `execute_shell` tool. See [Agent Tools](../features/agent-tools.md) for details.
+
+- **Shell Access**: Master toggle for the shell tool. Off by default.
+- **Backend**:
+    - `local` — commands run on your phone, inside the app's sandbox.
+    - `ssh` — commands run on a remote host you configure.
+- **Timeout**: How long a command may run before it is killed (default: 30 seconds).
+
+### SSH Backend
+
+When the backend is set to `ssh`, configure the remote connection:
+
+- **Host** and **Port** (default 22), **User**
+- **Authentication**: password or a private key file
+- **Host key verification**: enabled by default. Disable it only if you know exactly why.
+
+## Tool Approvals
+
+- **Require Approval**: When enabled (default), the agent asks for your confirmation before running tools that can change state.
+- **Per-tool overrides**: Each tool can be set to:
+    - `Default` — follows the global toggle
+    - `Always Approve` — runs without prompting
+    - `Always Reject` — the tool is blocked entirely
+
+## Screen Control
+
+- **Screen Control**: Enables the screen tools (tap, swipe, type text, read the UI tree). Requires the Android accessibility service to be enabled. Off by default.
+- **Trust Mode**: Skip per-action approval prompts for screen interactions.
+
+## Cron Tasks & Heartbeat
+
+- **Cron jobs**: Schedule prompts to run on a schedule (e.g. `every_2_hours`, `daily`). Failed runs are retried with exponential backoff (1, 2, 4, … minutes, capped at one day); the job is paused after repeated failures.
+- **Heartbeat**: Periodic proactive check-ins driven by your `HEARTBEAT.md` instructions.
+
 ## Privacy & Security
 
 - **Local Storage**: All API keys and conversation histories are stored locally on your device.
-- **Network Access**: DroidClaw only communicates with the LLM providers you configure.
+- **Network Access**: DroidClaw communicates with the LLM providers you configure — and with your SSH host, if you enable the remote shell backend.
