@@ -138,6 +138,21 @@ public class SettingsManagerTest {
     }
 
     @Test
+    public void calendarEnabled_defaultIsFalse() {
+        assertFalse(settingsManager.getAgentConfig().isCalendarEnabled());
+    }
+
+    @Test
+    public void calendarEnabled_persistsAcrossInstances() {
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setCalendarEnabled(true);
+        settingsManager.setAgentConfig(config);
+
+        SettingsManager newInstance = new SettingsManager(context);
+        assertTrue(newInstance.getAgentConfig().isCalendarEnabled());
+    }
+
+    @Test
     public void setDefaultModel_storesValue() {
         Provider provider = createTestProvider("test-provider", "Test Provider",
                 "https://api.test.com", "test-api-key");

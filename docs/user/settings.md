@@ -73,6 +73,10 @@ When the backend is set to `ssh`, configure the remote connection:
 - **Screen Control**: Enables the screen tools (tap, swipe, type text, read the UI tree). Requires the Android accessibility service to be enabled. Off by default.
 - **Trust Mode**: Skip per-action approval prompts for screen interactions.
 
+## Calendar Access
+
+- **Calendar access**: Enables the calendar tools (`calendar_list_calendars`, `calendar_list_events`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event`). Requires the Android `READ_CALENDAR` / `WRITE_CALENDAR` permissions, requested when you flip the switch. Off by default. See [Calendar Tools](../features/calendar.md).
+
 ## Cron Tasks & Heartbeat
 
 - **Cron jobs**: Schedule prompts to run on a schedule (e.g. `every_2_hours`, `daily`). Failed runs are retried with exponential backoff (1, 2, 4, … minutes, capped at one day); the job is paused after repeated failures.

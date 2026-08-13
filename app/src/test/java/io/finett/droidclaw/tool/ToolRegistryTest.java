@@ -3,6 +3,8 @@ package io.finett.droidclaw.tool;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import android.Manifest;
+import android.app.Application;
 import android.content.Context;
 
 import com.google.gson.JsonArray;
@@ -15,11 +17,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
 
 import java.io.File;
 import java.util.List;
 
 import io.finett.droidclaw.filesystem.VirtualFileSystem;
+import io.finett.droidclaw.model.AgentConfig;
+import io.finett.droidclaw.util.SettingsManager;
 
 @RunWith(RobolectricTestRunner.class)
 public class ToolRegistryTest {
@@ -270,5 +275,57 @@ public class ToolRegistryTest {
         t2.join();
 
         assertEquals("Tool count should remain consistent", 18, toolRegistry.getToolCount());
+    }
+
+    // ==================== Calendar tool gating ====================
+
+    @Test
+    public void testCalendarTools_notRegisteredWithoutSettings() {
+        assertFalse("Calendar tools should not be registered without settings",
+                toolRegistry.hasToolWithName("calendar_list_events"));
+    }
+
+    @Test
+    public void testCalendarTools_notRegisteredWhenDisabled() {
+        SettingsManager settingsManager = new SettingsManager(context);
+        // calendarEnabled defaults to false
+        ToolRegistry registry = new ToolRegistry(context, settingsManager);
+        assertFalse(registry.hasToolWithName("calendar_list_events"));
+        assertFalse(registry.hasToolWithName("calendar_create_event"));
+    }
+
+    @Test
+    public void testCalendarTools_registeredWhenEnabledAndPermitted() {
+        Shadows.shadowOf((Application) context).grantPermissions(
+                Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR);
+        SettingsManager settingsManager = new SettingsManager(context);
+        // Baseline with calendar disabled (settings present, permission granted).
+        int baseCount = new ToolRegistry(context, settingsManager).getToolCount();
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setCalendarEnabled(true);
+        settingsManager.setAgentConfig(config);
+
+        ToolRegistry registry = new ToolRegistry(context, settingsManager);
+
+        assertTrue(registry.hasToolWithName("calendar_list_calendars"));
+        assertTrue(registry.hasToolWithName("calendar_list_events"));
+        assertTrue(registry.hasToolWithName("calendar_create_event"));
+        assertTrue(registry.hasToolWithName("calendar_update_event"));
+        assertTrue(registry.hasToolWithName("calendar_delete_event"));
+        assertEquals(baseCount + 5, registry.getToolCount());
+    }
+
+    @Test
+    public void testCalendarTools_notRegisteredWithoutPermission() {
+        // Robolectric denies dangerous permissions by default, mirroring a
+        // fresh install where the user has not granted calendar access.
+        SettingsManager settingsManager = new SettingsManager(context);
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setCalendarEnabled(true);
+        settingsManager.setAgentConfig(config);
+
+        ToolRegistry registry = new ToolRegistry(context, settingsManager);
+
+        assertFalse(registry.hasToolWithName("calendar_list_events"));
     }
 }

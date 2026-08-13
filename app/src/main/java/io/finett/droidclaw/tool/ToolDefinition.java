@@ -102,6 +102,21 @@ public class ToolDefinition {
             return this;
         }
 
+        public ParametersBuilder addIntegerArray(String name, String description, boolean required) {
+            JsonObject prop = new JsonObject();
+            prop.addProperty("type", "array");
+            JsonObject items = new JsonObject();
+            items.addProperty("type", "integer");
+            prop.add("items", items);
+            prop.addProperty("description", description);
+            properties.add(name, prop);
+
+            if (required) {
+                addRequired(name);
+            }
+            return this;
+        }
+
         private void addRequired(String name) {
             if (!schema.has("required")) {
                 schema.add("required", new com.google.gson.JsonArray());
