@@ -116,6 +116,7 @@ The agent uses an iterative tool-calling loop (`AgentLoop.java`):
 - `read_file`, `write_file`, `edit_file`, `list_files`, `delete_file`, `search_files`, `file_info` - Virtual filesystem
 - `execute_shell` - Shell commands (requires shell access)
 - `execute_python` / `pip_install` - Python execution (requires shell access)
+- `calendar_list_calendars`, `calendar_list_events`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event` - Device calendar via `CalendarContract` (requires `calendarEnabled` + READ/WRITE_CALENDAR permissions; write tools require approval)
 
 ### Skills System
 

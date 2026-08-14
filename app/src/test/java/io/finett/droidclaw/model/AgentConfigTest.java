@@ -15,6 +15,13 @@ public class AgentConfigTest {
     }
 
     @Test
+    public void calendarEnabled_defaultIsFalse_andSettable() {
+        assertFalse(config.isCalendarEnabled());
+        config.setCalendarEnabled(true);
+        assertTrue(config.isCalendarEnabled());
+    }
+
+    @Test
     public void defaultConstructor_createsInstance() {
         AgentConfig c = new AgentConfig();
         assertNotNull(c);

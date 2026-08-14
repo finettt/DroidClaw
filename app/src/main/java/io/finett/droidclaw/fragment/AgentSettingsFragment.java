@@ -29,6 +29,7 @@ import io.finett.droidclaw.accessibility.AccessibilityBridge;
 import io.finett.droidclaw.model.AgentConfig;
 import io.finett.droidclaw.shell.SshConfig;
 import io.finett.droidclaw.shell.SshShellBackend;
+import io.finett.droidclaw.util.CalendarPermissionHelper;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class AgentSettingsFragment extends Fragment {
@@ -63,6 +64,10 @@ public class AgentSettingsFragment extends Fragment {
     private SwitchMaterial switchScreenControlTrustMode;
     private TextView textAccessibilityStatus;
     private MaterialButton buttonOpenAccessibilitySettings;
+
+    // Calendar access views
+    private SwitchMaterial switchCalendarAccess;
+    private CalendarPermissionHelper calendarPermissionHelper;
 
     private Button buttonSave;
 
@@ -103,6 +108,26 @@ public class AgentSettingsFragment extends Fragment {
         updateAccessibilityStatus();
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        calendarPermissionHelper.handlePermissionResult(requestCode, permissions, grantResults,
+                new CalendarPermissionHelper.PermissionCallback() {
+                    @Override
+                    public void onPermissionGranted() {
+                        // Switch stays on; tools become available on the next agent run.
+                    }
+
+                    @Override
+                    public void onPermissionDenied() {
+                        switchCalendarAccess.setChecked(false);
+                        Toast.makeText(requireContext(), R.string.calendar_permission_denied,
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
     private void initViews(View view) {
         dropdownDefaultModel = view.findViewById(R.id.dropdown_default_model);
         switchShellAccess = view.findViewById(R.id.switch_shell_access);
@@ -133,6 +158,9 @@ public class AgentSettingsFragment extends Fragment {
         switchScreenControlTrustMode = view.findViewById(R.id.switch_screen_control_trust_mode);
         textAccessibilityStatus = view.findViewById(R.id.text_accessibility_status);
         buttonOpenAccessibilitySettings = view.findViewById(R.id.button_open_accessibility_settings);
+
+        switchCalendarAccess = view.findViewById(R.id.switch_calendar_access);
+        calendarPermissionHelper = new CalendarPermissionHelper(requireContext());
 
         buttonSave = view.findViewById(R.id.button_save);
     }
@@ -239,6 +267,9 @@ public class AgentSettingsFragment extends Fragment {
             switchScreenControl.setChecked(agentConfig.isScreenControlEnabled());
             switchScreenControlTrustMode.setChecked(agentConfig.isScreenControlTrustMode());
 
+            // Calendar access
+            switchCalendarAccess.setChecked(agentConfig.isCalendarEnabled());
+
             // Terminal backend
             String backend = agentConfig.getShellBackend();
             if ("ssh".equals(backend)) {
@@ -299,6 +330,15 @@ public class AgentSettingsFragment extends Fragment {
         });
 
         buttonOpenAccessibilitySettings.setOnClickListener(v -> openAccessibilitySettings());
+
+        // When the user enables calendar access, request the runtime permissions.
+        // isPressed() guards against programmatic setChecked() during loadSettings().
+        switchCalendarAccess.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked && buttonView.isPressed()
+                    && !CalendarPermissionHelper.hasCalendarPermission(requireContext())) {
+                calendarPermissionHelper.requestCalendarPermissions(requireActivity());
+            }
+        });
 
         // Terminal backend change listener
         dropdownTerminalBackend.setOnItemClickListener((parent, view, position, id) -> {
@@ -590,6 +630,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setLlmWriteTimeout(llmWriteTimeout);
         agentConfig.setScreenControlEnabled(switchScreenControl.isChecked());
         agentConfig.setScreenControlTrustMode(switchScreenControlTrustMode.isChecked());
+        agentConfig.setCalendarEnabled(switchCalendarAccess.isChecked());
 
         // Terminal backend
         String backendText = dropdownTerminalBackend.getText().toString();

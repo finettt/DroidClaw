@@ -17,6 +17,7 @@ public class AgentConfig {
     private List<String> customAllowlist; // extra executable paths for relaxed mode
     private boolean screenControlEnabled;  // allow agent to read UI and control screen via accessibility
     private boolean screenControlTrustMode; // skip per-action approval for screen control tools
+    private boolean calendarEnabled; // allow agent to read and manage device calendar events
     private int llmConnectTimeout;   // seconds
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
@@ -37,6 +38,7 @@ public class AgentConfig {
         this.llmWriteTimeout = 30;
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
+        this.calendarEnabled = false;
         this.toolApprovalOverrides = new HashMap<>();
         this.shellBackend = "local";
         this.sshPort = 22;
@@ -60,6 +62,7 @@ public class AgentConfig {
         this.llmWriteTimeout = 30;
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
+        this.calendarEnabled = false;
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
     }
@@ -187,6 +190,14 @@ public class AgentConfig {
 
     public void setScreenControlTrustMode(boolean screenControlTrustMode) {
         this.screenControlTrustMode = screenControlTrustMode;
+    }
+
+    public boolean isCalendarEnabled() {
+        return calendarEnabled;
+    }
+
+    public void setCalendarEnabled(boolean calendarEnabled) {
+        this.calendarEnabled = calendarEnabled;
     }
 
     public Map<String, String> getToolApprovalOverrides() {

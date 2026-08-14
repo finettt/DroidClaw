@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.finett.droidclaw.calendar.CalendarRepository;
 import io.finett.droidclaw.filesystem.VirtualFileSystem;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.python.PythonConfig;
@@ -48,6 +49,12 @@ import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.tool.impl.SearxngSearchTool;
 import io.finett.droidclaw.tool.impl.ListAppsTool;
 import io.finett.droidclaw.tool.impl.OpenAppTool;
+import io.finett.droidclaw.tool.impl.CalendarListCalendarsTool;
+import io.finett.droidclaw.tool.impl.CalendarListEventsTool;
+import io.finett.droidclaw.tool.impl.CalendarCreateEventTool;
+import io.finett.droidclaw.tool.impl.CalendarUpdateEventTool;
+import io.finett.droidclaw.tool.impl.CalendarDeleteEventTool;
+import io.finett.droidclaw.util.CalendarPermissionHelper;
 import io.finett.droidclaw.util.SettingsManager;
 
 public class ToolRegistry {
@@ -153,6 +160,18 @@ public class ToolRegistry {
         // Android app management — always available
         registerTool(new ListAppsTool(context));
         registerTool(new OpenAppTool(context));
+
+        // Calendar tools — only when enabled in settings AND calendar permissions granted
+        if (settingsManager != null
+                && settingsManager.getAgentConfig().isCalendarEnabled()
+                && CalendarPermissionHelper.hasCalendarPermission(context)) {
+            CalendarRepository calendarRepository = new CalendarRepository(context);
+            registerTool(new CalendarListCalendarsTool(calendarRepository));
+            registerTool(new CalendarListEventsTool(calendarRepository));
+            registerTool(new CalendarCreateEventTool(calendarRepository));
+            registerTool(new CalendarUpdateEventTool(calendarRepository));
+            registerTool(new CalendarDeleteEventTool(calendarRepository));
+        }
     }
 
     /**

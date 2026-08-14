@@ -105,6 +105,9 @@
     <string name="screen_control_accessibility_granted">Accessibility access granted</string>
     <string name="screen_control_accessibility_not_granted">Accessibility access not granted</string>
     <string name="screen_control_open_accessibility_settings">Open Accessibility Settings</string>
+    <string name="calendar_access">Calendar Access</string>
+    <string name="calendar_access_description">Allow the agent to read and manage your device calendar events (Google and other synced calendars)</string>
+    <string name="calendar_permission_denied">Calendar permission denied — Calendar Access stays off. Grant it in system settings to enable it.</string>
     <string name="accessibility_service_label">DroidClaw Accessibility</string>
     <string name="accessibility_service_description">Lets DroidClaw read the visible UI and control the phone screen for agent tasks</string>
     <string name="network_timeouts">Network Timeouts</string>
