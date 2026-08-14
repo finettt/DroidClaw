@@ -455,6 +455,10 @@ public class ChatFragment extends Fragment {
         int contextWindow = pendingServiceContextWindow;
         pendingServiceConversationHistory = null;
 
+        // The service drops the UI callback when a run reaches a terminal state,
+        // so re-register before every dispatch — otherwise responses for the
+        // second and later messages in the same screen session never reach the UI.
+        agentExecutionService.registerUICallback(currentSessionId, agentUiCallback);
         agentExecutionService.startAgentLoop(currentSessionId, history, contextWindow);
     }
 
