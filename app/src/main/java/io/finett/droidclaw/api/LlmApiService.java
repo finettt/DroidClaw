@@ -325,6 +325,10 @@ public class LlmApiService {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                if (call.isCanceled()) {
+                    Log.d(TAG, "Request canceled");
+                    return;
+                }
                 Log.e(TAG, "Network error", e);
                 mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
             }
@@ -408,6 +412,10 @@ public class LlmApiService {
         client.newCall(requestBuilder.build()).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                if (call.isCanceled()) {
+                    Log.d(TAG, "Request canceled");
+                    return;
+                }
                 Log.e(TAG, "Network error", e);
                 mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
             }

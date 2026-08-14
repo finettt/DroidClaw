@@ -72,6 +72,10 @@ public class ChatFragment extends Fragment {
     private RecyclerView recyclerView;
     private EditText messageInput;
     private ImageButton sendButton;
+    /** True while an agent request is in flight; the send button doubles as stop. */
+    private boolean loading = false;
+    /** Currently visible tool-approval dialog, if any. */
+    private AlertDialog approvalDialog;
     private ImageButton attachButton;
     private View statusContainer;
     private HorizontalScrollView attachmentBarContainer;
@@ -210,8 +214,25 @@ public class ChatFragment extends Fragment {
             if (hadPartialBubble) {
                 chatAdapter.removeLastMessage();
             }
+            dismissApprovalDialog();
             setLoading(false);
             Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onCancelled(List<ChatMessage> history) {
+            if (!isAdded() || getContext() == null) {
+                return;
+            }
+            // The service already persisted `history` (including any partial streamed
+            // text); just re-render it in place of the temporary streaming bubble.
+            resetStreamingState();
+            dismissApprovalDialog();
+            setLoading(false);
+            chatAdapter.setMessages(history);
+            scrollToBottom();
+            updateToolbarTitle();
+            Toast.makeText(requireContext(), R.string.response_stopped, Toast.LENGTH_SHORT).show();
         }
 
         @Override
@@ -907,7 +928,13 @@ public class ChatFragment extends Fragment {
 
 
     private void setupClickListeners() {
-        sendButton.setOnClickListener(v -> sendMessage());
+        sendButton.setOnClickListener(v -> {
+            if (loading) {
+                stopResponse();
+            } else {
+                sendMessage();
+            }
+        });
         attachButton.setOnClickListener(v -> launchFilePicker());
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
@@ -1030,6 +1057,9 @@ public class ChatFragment extends Fragment {
 
 
     private void sendMessage() {
+        if (loading) {
+            return;
+        }
         String messageText = messageInput.getText().toString().trim();
         if (messageText.isEmpty()) {
             return;
@@ -1071,27 +1101,70 @@ public class ChatFragment extends Fragment {
      */
     private void showApprovalDialog(String toolName, String description,
                                     AgentLoop.ApprovalCallback approvalCallback) {
-        new AlertDialog.Builder(requireContext())
+        approvalDialog = new AlertDialog.Builder(requireContext())
             .setTitle("Approve Tool Execution?")
             .setMessage("Tool: " + formatToolName(toolName) + "\n\n" + description)
             .setPositiveButton("Approve", (dialog, which) -> {
                 Log.d(TAG, "User approved tool: " + toolName);
+                approvalDialog = null;
                 approvalCallback.onApproved();
             })
             .setNegativeButton("Deny", (dialog, which) -> {
                 Log.d(TAG, "User denied tool: " + toolName);
+                approvalDialog = null;
                 approvalCallback.onDenied();
             })
             .setCancelable(false)
             .show();
     }
 
+    /** Dismiss the tool-approval dialog if it is still showing (e.g. on stop). */
+    private void dismissApprovalDialog() {
+        if (approvalDialog != null && approvalDialog.isShowing()) {
+            approvalDialog.dismiss();
+        }
+        approvalDialog = null;
+    }
+
     private void setLoading(boolean loading) {
+        this.loading = loading;
         if (statusContainer != null) {
             statusContainer.setVisibility(loading ? View.VISIBLE : View.GONE);
         }
-        sendButton.setEnabled(!loading);
+        updateSendButton();
         messageInput.setEnabled(!loading);
+    }
+
+    /**
+     * While idle the button sends; while a request is in flight it morphs into a
+     * stop button so the user can abort the response. It stays enabled in both
+     * states.
+     */
+    private void updateSendButton() {
+        if (sendButton == null) {
+            return;
+        }
+        sendButton.setImageResource(loading ? R.drawable.ic_stop : R.drawable.ic_send);
+        sendButton.setContentDescription(
+                getString(loading ? R.string.stop_response : R.string.send));
+        sendButton.setEnabled(true);
+    }
+
+    /**
+     * Stop the in-flight response: cancels the agent loop and aborts any HTTP
+     * requests. The final UI reset happens in {@code agentUiCallback.onCancelled()};
+     * the partial streamed text is preserved by the agent loop.
+     */
+    private void stopResponse() {
+        Log.d(TAG, "stopResponse: user requested cancellation");
+        if (serviceBound && agentExecutionService != null && currentSessionId != null
+                && agentExecutionService.isSessionActive(currentSessionId)) {
+            agentExecutionService.cancelAgentLoop(currentSessionId);
+        } else {
+            // No active service/session — reset the UI directly.
+            resetStreamingState();
+            setLoading(false);
+        }
     }
 
     private void updateStatus(String status, String subStatus) {

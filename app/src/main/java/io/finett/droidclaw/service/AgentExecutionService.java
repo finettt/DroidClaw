@@ -69,6 +69,12 @@ public class AgentExecutionService extends Service {
         /** Queued approval request waiting for the user to return. */
         volatile PendingApproval pendingApproval;
 
+        /** The running loop; set just before {@link AgentLoop#start} so it can be cancelled. */
+        volatile AgentLoop agentLoop;
+
+        /** Set when cancellation is requested before the loop has started. */
+        volatile boolean cancelRequested;
+
         /** Worker thread parks here when approval is needed and UI is detached. */
         final SynchronousQueue<Boolean> approvalQueue = new SynchronousQueue<>();
 
@@ -115,6 +121,13 @@ public class AgentExecutionService extends Service {
          * Optional — no-op by default for UIs that only render the final result.
          */
         default void onStreamDelta(String delta) {}
+
+        /**
+         * The run was cancelled by the user. {@code history} is the final
+         * conversation including any partially streamed response text.
+         * Optional — no-op by default.
+         */
+        default void onCancelled(List<ChatMessage> history) {}
     }
 
     // ==================== Binder ====================
@@ -276,6 +289,60 @@ public class AgentExecutionService extends Service {
                 && session.state != AgentSession.State.ERROR;
     }
 
+    /**
+     * Cancel the agent loop for the given session. In-flight HTTP requests are
+     * aborted, any partially streamed response text is persisted, and the UI
+     * callback (if attached) receives {@link UICallback#onCancelled(List)}.
+     */
+    public void cancelAgentLoop(String sessionId) {
+        AgentSession session = sessions.get(sessionId);
+        if (session == null) {
+            Log.d(TAG, "cancelAgentLoop: no active session for " + sessionId);
+            return;
+        }
+        Log.i(TAG, "Cancelling agent loop for session: " + sessionId);
+        session.cancelRequested = true;
+
+        // Wake a thread parked waiting for approval so the loop can observe
+        // the cancellation instead of blocking on the dialog outcome.
+        if (session.state == AgentSession.State.PAUSED_APPROVAL) {
+            session.pendingApproval = null;
+            session.approvalQueue.offer(false);
+        }
+
+        AgentLoop loop = session.agentLoop;
+        if (loop != null) {
+            loop.cancel();
+        }
+    }
+
+    /**
+     * Persist the (possibly partial) conversation and notify the UI that the run
+     * was cancelled. Idempotent: ignored if the session already reached a
+     * terminal state.
+     */
+    private void deliverCancelled(AgentSession session, List<ChatMessage> history) {
+        if (session.state == AgentSession.State.COMPLETED
+                || session.state == AgentSession.State.ERROR) {
+            return;
+        }
+        session.state = AgentSession.State.COMPLETED;
+        session.finalHistory = history;
+
+        // Persist messages regardless of UI state.
+        ChatRepository chatRepository = new ChatRepository(getApplicationContext());
+        chatRepository.saveMessages(session.sessionId, history);
+
+        mainHandler.post(() -> {
+            UICallback cb = uiCallbacks.remove(session.sessionId);
+            if (cb != null) {
+                cb.onCancelled(history);
+            }
+            sessions.remove(session.sessionId);
+            checkIdleAndStop();
+        });
+    }
+
     // ==================== Worker thread ====================
 
     private void runAgentLoop(AgentSession session, List<ChatMessage> conversationHistory,
@@ -297,6 +364,19 @@ public class AgentExecutionService extends Service {
 
             AgentLoop agentLoop = new AgentLoop(
                     apiService, toolRegistry, settingsManager, summarizer, memoryContext);
+            session.agentLoop = agentLoop;
+
+            // Cancellation was requested before the loop even started (user tapped
+            // stop within milliseconds of sending). Deliver it without running.
+            if (session.cancelRequested) {
+                Log.d(TAG, "Session cancelled before loop start: " + session.sessionId);
+                deliverCancelled(session, conversationHistory);
+                try {
+                    toolRegistry.shutdown();
+                } catch (Exception ignored) {
+                }
+                return;
+            }
 
             try {
                 List<ChatMessage> identityMessages = identityManager.getIdentityMessages();
@@ -414,6 +494,11 @@ public class AgentExecutionService extends Service {
                             approvalCallback.onDenied();
                         }
                     }
+                }
+
+                @Override
+                public void onCancelled(List<ChatMessage> history) {
+                    deliverCancelled(session, history);
                 }
             });
 
