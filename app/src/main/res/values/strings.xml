@@ -2,6 +2,8 @@
     <string name="app_name">DroidClaw</string>
     <string name="type_message">Type a message…</string>
     <string name="send">Send</string>
+    <string name="stop_response">Stop response</string>
+    <string name="response_stopped">Response stopped</string>
     <string name="attach_file">Attach file</string>
     <string name="menu">Menu</string>
     <string name="new_chat">New Chat</string>
@@ -90,6 +92,8 @@
     <string name="max_iterations_description">Maximum tool execution cycles</string>
     <string name="require_approval">Require Approval</string>
     <string name="require_approval_description">Confirm before executing tools</string>
+    <string name="stream_responses">Stream Responses</string>
+    <string name="stream_responses_description">Show text live as it is generated (SSE)</string>
     <string name="shell_timeout">Shell Timeout (seconds)</string>
     <string name="shell_timeout_description">Command execution limit</string>
     <string name="background_shell_access">Shell in Background Tasks</string>

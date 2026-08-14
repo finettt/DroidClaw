@@ -147,6 +147,31 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
     }
 
+    /**
+     * Update the content of the message at a specific position — used for SSE
+     * streaming live-rendering of the temporary assistant bubble. No-op when the
+     * position is out of range (e.g. the list was replaced concurrently).
+     */
+    public void updateStreamingMessage(int position, String content) {
+        if (position < 0 || position >= messages.size()) {
+            return;
+        }
+        messages.get(position).setContent(content);
+        notifyItemChanged(position);
+    }
+
+    /**
+     * Remove the last message — used to discard a partial streaming bubble when
+     * the agent errors before producing a final response.
+     */
+    public void removeLastMessage() {
+        if (!messages.isEmpty()) {
+            int lastIndex = messages.size() - 1;
+            messages.remove(lastIndex);
+            notifyItemRemoved(lastIndex);
+        }
+    }
+
     public void clearMessages() {
         messages.clear();
         notifyDataSetChanged();

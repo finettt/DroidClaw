@@ -197,8 +197,15 @@ public class ChatFragmentTest {
                 }
 
                 assertNotNull(statusContainer);
-                assertFalse("Send button should be disabled or re-enabled",
-                        sendButton.isEnabled() && statusContainer.getVisibility() == android.view.View.VISIBLE);
+                // The button stays enabled while loading — it morphs into a stop
+                // button so the user can cancel the response.
+                assertTrue("Send button should stay enabled (acts as stop while loading)",
+                        sendButton.isEnabled());
+                if (statusContainer.getVisibility() == android.view.View.VISIBLE) {
+                    assertEquals("While loading the button should be a stop button",
+                            fragment.getString(R.string.stop_response),
+                            String.valueOf(sendButton.getContentDescription()));
+                }
             });
         }
     }

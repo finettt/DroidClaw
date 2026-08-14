@@ -72,6 +72,10 @@ public class ChatFragment extends Fragment {
     private RecyclerView recyclerView;
     private EditText messageInput;
     private ImageButton sendButton;
+    /** True while an agent request is in flight; the send button doubles as stop. */
+    private boolean loading = false;
+    /** Currently visible tool-approval dialog, if any. */
+    private AlertDialog approvalDialog;
     private ImageButton attachButton;
     private View statusContainer;
     private HorizontalScrollView attachmentBarContainer;
@@ -104,6 +108,24 @@ public class ChatFragment extends Fragment {
     private List<ChatMessage> pendingServiceConversationHistory;
     private int pendingServiceContextWindow;
 
+    // ==================== SSE streaming live-render state ====================
+
+    /** Interval between streaming UI refreshes; deltas accumulate in between. */
+    private static final long STREAM_FLUSH_INTERVAL_MS = 80;
+
+    /** Accumulated text of the currently streaming assistant bubble. */
+    private final StringBuilder streamingBuffer = new StringBuilder();
+
+    /** True while a temporary streaming bubble is present in the adapter. */
+    private boolean streamingBubbleActive = false;
+
+    /** Adapter position of the temporary streaming bubble. */
+    private int streamingBubblePosition = -1;
+
+    /** Throttled flush runnable (posted to the RecyclerView). */
+    private final Runnable streamFlushRunnable = this::flushStreamingBubble;
+    private boolean streamFlushScheduled = false;
+
     private final AgentExecutionService.UICallback agentUiCallback = new AgentExecutionService.UICallback() {
         @Override
         public void onProgress(String status) {
@@ -114,10 +136,32 @@ public class ChatFragment extends Fragment {
         }
 
         @Override
+        public void onStreamDelta(String delta) {
+            if (!isAdded() || delta == null || delta.isEmpty()) {
+                return;
+            }
+            if (!streamingBubbleActive) {
+                // New streamed assistant segment — add a temporary bubble that is
+                // replaced by the canonical history in onComplete().
+                ChatMessage streamingMessage = new ChatMessage("", ChatMessage.TYPE_ASSISTANT);
+                chatAdapter.addMessage(streamingMessage);
+                streamingBubblePosition = chatAdapter.getItemCount() - 1;
+                streamingBuffer.setLength(0);
+                streamingBubbleActive = true;
+                scrollToBottom();
+            }
+            streamingBuffer.append(delta);
+            scheduleStreamFlush();
+        }
+
+        @Override
         public void onToolCall(String toolName, String arguments) {
             if (!isAdded()) {
                 return;
             }
+            // The current streamed text segment is finished; the next text delta
+            // belongs to a new assistant message and starts a fresh bubble.
+            streamingBubbleActive = false;
             Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
 
             boolean isBackground = arguments.contains("\"background\":true")
@@ -144,6 +188,7 @@ public class ChatFragment extends Fragment {
                 return;
             }
 
+            resetStreamingState();
             setLoading(false);
             chatAdapter.setMessages(updatedHistory);
             scrollToBottom();
@@ -163,8 +208,31 @@ public class ChatFragment extends Fragment {
                 Log.w(TAG, "onError: Fragment not attached, ignoring error: " + error);
                 return;
             }
+            // Drop the partial streaming bubble — its text never made it into history.
+            boolean hadPartialBubble = streamingBubbleActive;
+            resetStreamingState();
+            if (hadPartialBubble) {
+                chatAdapter.removeLastMessage();
+            }
+            dismissApprovalDialog();
             setLoading(false);
             Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onCancelled(List<ChatMessage> history) {
+            if (!isAdded() || getContext() == null) {
+                return;
+            }
+            // The service already persisted `history` (including any partial streamed
+            // text); just re-render it in place of the temporary streaming bubble.
+            resetStreamingState();
+            dismissApprovalDialog();
+            setLoading(false);
+            chatAdapter.setMessages(history);
+            scrollToBottom();
+            updateToolbarTitle();
+            Toast.makeText(requireContext(), R.string.response_stopped, Toast.LENGTH_SHORT).show();
         }
 
         @Override
@@ -387,6 +455,10 @@ public class ChatFragment extends Fragment {
         int contextWindow = pendingServiceContextWindow;
         pendingServiceConversationHistory = null;
 
+        // The service drops the UI callback when a run reaches a terminal state,
+        // so re-register before every dispatch — otherwise responses for the
+        // second and later messages in the same screen session never reach the UI.
+        agentExecutionService.registerUICallback(currentSessionId, agentUiCallback);
         agentExecutionService.startAgentLoop(currentSessionId, history, contextWindow);
     }
 
@@ -860,7 +932,13 @@ public class ChatFragment extends Fragment {
 
 
     private void setupClickListeners() {
-        sendButton.setOnClickListener(v -> sendMessage());
+        sendButton.setOnClickListener(v -> {
+            if (loading) {
+                stopResponse();
+            } else {
+                sendMessage();
+            }
+        });
         attachButton.setOnClickListener(v -> launchFilePicker());
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
@@ -983,6 +1061,9 @@ public class ChatFragment extends Fragment {
 
 
     private void sendMessage() {
+        if (loading) {
+            return;
+        }
         String messageText = messageInput.getText().toString().trim();
         if (messageText.isEmpty()) {
             return;
@@ -1024,27 +1105,70 @@ public class ChatFragment extends Fragment {
      */
     private void showApprovalDialog(String toolName, String description,
                                     AgentLoop.ApprovalCallback approvalCallback) {
-        new AlertDialog.Builder(requireContext())
+        approvalDialog = new AlertDialog.Builder(requireContext())
             .setTitle("Approve Tool Execution?")
             .setMessage("Tool: " + formatToolName(toolName) + "\n\n" + description)
             .setPositiveButton("Approve", (dialog, which) -> {
                 Log.d(TAG, "User approved tool: " + toolName);
+                approvalDialog = null;
                 approvalCallback.onApproved();
             })
             .setNegativeButton("Deny", (dialog, which) -> {
                 Log.d(TAG, "User denied tool: " + toolName);
+                approvalDialog = null;
                 approvalCallback.onDenied();
             })
             .setCancelable(false)
             .show();
     }
 
+    /** Dismiss the tool-approval dialog if it is still showing (e.g. on stop). */
+    private void dismissApprovalDialog() {
+        if (approvalDialog != null && approvalDialog.isShowing()) {
+            approvalDialog.dismiss();
+        }
+        approvalDialog = null;
+    }
+
     private void setLoading(boolean loading) {
+        this.loading = loading;
         if (statusContainer != null) {
             statusContainer.setVisibility(loading ? View.VISIBLE : View.GONE);
         }
-        sendButton.setEnabled(!loading);
+        updateSendButton();
         messageInput.setEnabled(!loading);
+    }
+
+    /**
+     * While idle the button sends; while a request is in flight it morphs into a
+     * stop button so the user can abort the response. It stays enabled in both
+     * states.
+     */
+    private void updateSendButton() {
+        if (sendButton == null) {
+            return;
+        }
+        sendButton.setImageResource(loading ? R.drawable.ic_stop : R.drawable.ic_send);
+        sendButton.setContentDescription(
+                getString(loading ? R.string.stop_response : R.string.send));
+        sendButton.setEnabled(true);
+    }
+
+    /**
+     * Stop the in-flight response: cancels the agent loop and aborts any HTTP
+     * requests. The final UI reset happens in {@code agentUiCallback.onCancelled()};
+     * the partial streamed text is preserved by the agent loop.
+     */
+    private void stopResponse() {
+        Log.d(TAG, "stopResponse: user requested cancellation");
+        if (serviceBound && agentExecutionService != null && currentSessionId != null
+                && agentExecutionService.isSessionActive(currentSessionId)) {
+            agentExecutionService.cancelAgentLoop(currentSessionId);
+        } else {
+            // No active service/session — reset the UI directly.
+            resetStreamingState();
+            setLoading(false);
+        }
     }
 
     private void updateStatus(String status, String subStatus) {
@@ -1068,6 +1192,44 @@ public class ChatFragment extends Fragment {
         if (chatAdapter.getItemCount() > 0) {
             recyclerView.scrollToPosition(chatAdapter.getItemCount() - 1);
         }
+    }
+
+    // ==================== SSE streaming live-render helpers ====================
+
+    /**
+     * Throttled flush of accumulated stream deltas into the temporary bubble.
+     * Re-rendering markdown on every token is wasteful, so deltas are batched
+     * and applied at most once per {@link #STREAM_FLUSH_INTERVAL_MS}.
+     */
+    private void scheduleStreamFlush() {
+        if (streamFlushScheduled || recyclerView == null) {
+            return;
+        }
+        streamFlushScheduled = true;
+        recyclerView.postDelayed(streamFlushRunnable, STREAM_FLUSH_INTERVAL_MS);
+    }
+
+    private void flushStreamingBubble() {
+        streamFlushScheduled = false;
+        if (!streamingBubbleActive || !isAdded()) {
+            return;
+        }
+        chatAdapter.updateStreamingMessage(streamingBubblePosition, streamingBuffer.toString());
+        scrollToBottom();
+    }
+
+    /**
+     * Clear all streaming state and cancel any pending flush. Called when the
+     * agent completes or errors; the final history render replaces the bubble.
+     */
+    private void resetStreamingState() {
+        streamingBubbleActive = false;
+        streamingBubblePosition = -1;
+        streamingBuffer.setLength(0);
+        if (recyclerView != null) {
+            recyclerView.removeCallbacks(streamFlushRunnable);
+        }
+        streamFlushScheduled = false;
     }
 
     /**

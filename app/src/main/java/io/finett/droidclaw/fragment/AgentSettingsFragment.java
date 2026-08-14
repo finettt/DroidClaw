@@ -39,6 +39,7 @@ public class AgentSettingsFragment extends Fragment {
     private AutoCompleteTextView dropdownSandboxMode;
     private TextInputEditText inputMaxIterations;
     private SwitchMaterial switchRequireApproval;
+    private SwitchMaterial switchStreamResponses;
     private TextInputEditText inputShellTimeout;
     private SwitchMaterial switchBackgroundShellAccess;
     private SwitchMaterial switchBackgroundExec;
@@ -134,6 +135,7 @@ public class AgentSettingsFragment extends Fragment {
         dropdownSandboxMode = view.findViewById(R.id.dropdown_sandbox_mode);
         inputMaxIterations = view.findViewById(R.id.input_max_iterations);
         switchRequireApproval = view.findViewById(R.id.switch_require_approval);
+        switchStreamResponses = view.findViewById(R.id.switch_stream_responses);
         inputShellTimeout = view.findViewById(R.id.input_shell_timeout);
         switchBackgroundShellAccess = view.findViewById(R.id.switch_background_shell_access);
         switchBackgroundExec = view.findViewById(R.id.switch_background_exec);
@@ -248,6 +250,7 @@ public class AgentSettingsFragment extends Fragment {
 
             inputMaxIterations.setText(String.valueOf(agentConfig.getMaxIterations()));
             switchRequireApproval.setChecked(agentConfig.isRequireApproval());
+            switchStreamResponses.setChecked(agentConfig.isStreamResponses());
             inputShellTimeout.setText(String.valueOf(agentConfig.getShellTimeout()));
             switchBackgroundShellAccess.setChecked(agentConfig.isBackgroundShellEnabled());
             switchBackgroundExec.setChecked(agentConfig.isBackgroundExecEnabled());
@@ -621,6 +624,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setSandboxMode(sandboxMode);
         agentConfig.setMaxIterations(maxIterations);
         agentConfig.setRequireApproval(switchRequireApproval.isChecked());
+        agentConfig.setStreamResponses(switchStreamResponses.isChecked());
         agentConfig.setShellTimeout(shellTimeout);
         agentConfig.setBackgroundShellEnabled(switchBackgroundShellAccess.isChecked());
         agentConfig.setBackgroundExecEnabled(switchBackgroundExec.isChecked());

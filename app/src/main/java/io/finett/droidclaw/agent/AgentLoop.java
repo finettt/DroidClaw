@@ -1,5 +1,7 @@
 package io.finett.droidclaw.agent;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.google.gson.JsonArray;
@@ -8,6 +10,7 @@ import com.google.gson.JsonObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,8 +42,26 @@ public class AgentLoop {
     private int iterationCount;
     private int maxIterations;
     private boolean requireApproval;
+    private boolean streamResponses;
     private List<ChatMessage> identityMessages;
     private JsonObject responseSchema;
+
+    // ==================== Cancellation state ====================
+
+    /** Set when the user requests cancellation; stops the loop at the next checkpoint. */
+    private final AtomicBoolean cancelled = new AtomicBoolean(false);
+
+    /** Guarantees {@link #finalizeCancellation()} dispatches exactly once. */
+    private final AtomicBoolean cancelFinalized = new AtomicBoolean(false);
+
+    /** Text streamed so far in the current response segment (guarded by itself). */
+    private final StringBuilder streamedText = new StringBuilder();
+
+    /** History of the in-flight run, used by cancellation to preserve partial output. */
+    private volatile List<ChatMessage> activeHistory;
+
+    /** Callback of the in-flight run; nulled once the run reaches a terminal state. */
+    private volatile AgentCallback activeCallback;
 
     /**
      * Look up the per-tool approval override for a given tool name.
@@ -93,6 +114,20 @@ public class AgentLoop {
          * @param approvalCallback Callback to indicate approval or denial
          */
         void onApprovalRequired(String toolName, String description, JsonObject arguments, ApprovalCallback approvalCallback);
+
+        /**
+         * Called with incremental text deltas while a streaming (SSE) response is
+         * arriving, before {@link #onComplete}. Optional — the default is a no-op
+         * for callbacks that only care about the final result.
+         */
+        default void onStreamDelta(String delta) {}
+
+        /**
+         * Called when the run was cancelled by the user. The history contains any
+         * partially streamed assistant text preserved as a normal assistant message.
+         * Optional — the default is a no-op.
+         */
+        default void onCancelled(List<ChatMessage> conversationHistory) {}
     }
 
     public interface ApprovalCallback {
@@ -116,10 +151,20 @@ public class AgentLoop {
         if (settingsManager != null) {
             this.maxIterations = settingsManager.getMaxAgentIterations();
             this.requireApproval = settingsManager.isRequireApproval();
+            io.finett.droidclaw.model.AgentConfig cfg = settingsManager.getAgentConfig();
+            this.streamResponses = cfg != null && cfg.isStreamResponses();
         } else {
             this.maxIterations = DEFAULT_MAX_ITERATIONS;
             this.requireApproval = true;
+            // No settings manager (unit tests / programmatic use): keep the
+            // legacy non-streaming path.
+            this.streamResponses = false;
         }
+    }
+
+    /** Whether streaming (SSE) responses are enabled for the standard chat path. */
+    public boolean isStreamingEnabled() {
+        return streamResponses;
     }
 
     public void setIdentityContext(List<ChatMessage> identityMessages) {
@@ -134,21 +179,91 @@ public class AgentLoop {
 
     public void start(List<ChatMessage> conversationHistory, AgentCallback callback) {
         iterationCount = 0;
+        cancelled.set(false);
+        cancelFinalized.set(false);
+        synchronized (streamedText) {
+            streamedText.setLength(0);
+        }
 
         // Make a mutable copy of the conversation history
         List<ChatMessage> workingHistory = new ArrayList<>(conversationHistory);
+        this.activeHistory = workingHistory;
+        this.activeCallback = callback;
 
         callback.onProgress("Sending message to LLM...");
         executeIteration(workingHistory, callback);
+    }
+
+    /** Whether cancellation has been requested for the current run. */
+    public boolean isCancelled() {
+        return cancelled.get();
+    }
+
+    /**
+     * Cancel the running agent loop: aborts in-flight HTTP requests and stops the
+     * iteration cycle at the next checkpoint. Any text already streamed in the
+     * current response segment is preserved as a partial assistant message, and the
+     * callback receives {@link AgentCallback#onCancelled(List)}.
+     *
+     * <p>Safe to call from any thread. Finalization is posted to the main thread so
+     * that stream deltas already queued there are accumulated first.</p>
+     */
+    public void cancel() {
+        if (!cancelled.compareAndSet(false, true)) {
+            return;
+        }
+        Log.d(TAG, "Agent loop cancellation requested");
+        if (apiService != null) {
+            apiService.cancelAllRequests();
+        }
+        new Handler(Looper.getMainLooper()).post(this::finalizeCancellation);
+    }
+
+    /**
+     * Finalize a cancellation on the main thread: append any partially streamed
+     * assistant text to the conversation history and notify the callback exactly once.
+     */
+    private void finalizeCancellation() {
+        if (!cancelFinalized.compareAndSet(false, true)) {
+            return;
+        }
+        AgentCallback callback = activeCallback;
+        List<ChatMessage> history = activeHistory;
+        detachActiveRun();
+        if (callback == null || history == null) {
+            Log.d(TAG, "Cancellation finalized after run already ended");
+            return;
+        }
+
+        String partialText;
+        synchronized (streamedText) {
+            partialText = streamedText.toString().trim();
+            streamedText.setLength(0);
+        }
+        if (!partialText.isEmpty()) {
+            history.add(new ChatMessage(partialText, ChatMessage.TYPE_ASSISTANT));
+            Log.d(TAG, "Cancellation preserved partial response (" + partialText.length() + " chars)");
+        }
+        callback.onCancelled(history);
+    }
+
+    /** Clear the in-flight run references so late cancellation becomes a no-op. */
+    private void detachActiveRun() {
+        activeCallback = null;
+        activeHistory = null;
     }
 
     /**
      * Execute one iteration of the agent loop.
      */
     private void executeIteration(List<ChatMessage> conversationHistory, AgentCallback callback) {
+        if (cancelled.get()) {
+            return;
+        }
         iterationCount++;
 
         if (iterationCount > maxIterations) {
+            detachActiveRun();
             callback.onError("Maximum iterations (" + maxIterations + ") reached. The agent may be stuck in a loop.");
             return;
         }
@@ -195,6 +310,9 @@ public class AgentLoop {
      * Continue iteration with conversation (after optional summarization).
      */
     private void continueIteration(List<ChatMessage> conversationHistory, AgentCallback callback) {
+        if (cancelled.get()) {
+            return;
+        }
         List<ChatMessage> contextMessages = new ArrayList<>();
 
         if (identityMessages != null) {
@@ -227,18 +345,7 @@ public class AgentLoop {
                 new LlmApiService.StructuredResponseCallback() {
             @Override
             public void onSuccess(LlmApiService.StructuredResponse response) {
-                if (response.getUsage() != null && response.getUsage().isAvailable()) {
-                    currentContextTokens = response.getUsage().getTotalTokens();
-                    currentPromptTokens = response.getUsage().getPromptTokens();
-                    currentCompletionTokens = response.getUsage().getCompletionTokens();
-
-                    totalTokens += response.getUsage().getTotalTokens();
-                    totalPromptTokens += response.getUsage().getPromptTokens();
-                    totalCompletionTokens += response.getUsage().getCompletionTokens();
-
-                    Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
-                          ", Session total: " + totalTokens);
-                }
+                trackTokenUsage(response.getUsage());
 
                 if (response.isRefusal()) {
                     Log.w(TAG, "Model refused to respond: " + response.getRefusal());
@@ -251,6 +358,7 @@ public class AgentLoop {
 
             @Override
             public void onError(String error) {
+                detachActiveRun();
                 callback.onError(error);
             }
         });
@@ -261,33 +369,72 @@ public class AgentLoop {
      */
     private void sendStandardMessage(List<ChatMessage> conversationHistory, JsonArray tools,
                                      List<ChatMessage> contextMessages, AgentCallback callback) {
+        if (streamResponses) {
+            apiService.sendMessageWithToolsStreaming(conversationHistory, tools, contextMessages,
+                    new LlmApiService.StreamingChatCallback() {
+                @Override
+                public void onDelta(String textChunk) {
+                    if (textChunk != null && !cancelled.get()) {
+                        synchronized (streamedText) {
+                            streamedText.append(textChunk);
+                        }
+                    }
+                    callback.onStreamDelta(textChunk);
+                }
+
+                @Override
+                public void onSuccess(LlmApiService.LlmResponse response) {
+                    trackTokenUsage(response.getUsage());
+                    handleLlmResponse(response, conversationHistory, callback);
+                }
+
+                @Override
+                public void onError(String error) {
+                    detachActiveRun();
+                    callback.onError(error);
+                }
+            });
+            return;
+        }
+
         apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, new LlmApiService.ChatCallbackWithTools() {
             @Override
             public void onSuccess(LlmApiService.LlmResponse response) {
-                if (response.getUsage() != null && response.getUsage().isAvailable()) {
-                    currentContextTokens = response.getUsage().getTotalTokens();
-                    currentPromptTokens = response.getUsage().getPromptTokens();
-                    currentCompletionTokens = response.getUsage().getCompletionTokens();
-
-                    totalTokens += response.getUsage().getTotalTokens();
-                    totalPromptTokens += response.getUsage().getPromptTokens();
-                    totalCompletionTokens += response.getUsage().getCompletionTokens();
-
-                    Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
-                          ", Session total: " + totalTokens);
-                }
-
+                trackTokenUsage(response.getUsage());
                 handleLlmResponse(response, conversationHistory, callback);
             }
 
             @Override
             public void onError(String error) {
+                detachActiveRun();
                 callback.onError(error);
             }
         });
     }
 
+    /**
+     * Update the "Last Usage" token tracking fields from an API response usage
+     * block (no-op when the provider did not report usage).
+     */
+    private void trackTokenUsage(io.finett.droidclaw.api.TokenUsage usage) {
+        if (usage == null || !usage.isAvailable()) return;
+
+        currentContextTokens = usage.getTotalTokens();
+        currentPromptTokens = usage.getPromptTokens();
+        currentCompletionTokens = usage.getCompletionTokens();
+
+        totalTokens += usage.getTotalTokens();
+        totalPromptTokens += usage.getPromptTokens();
+        totalCompletionTokens += usage.getCompletionTokens();
+
+        Log.d(TAG, "Token usage - Current context: " + currentContextTokens +
+              ", Session total: " + totalTokens);
+    }
+
     private void handleLlmResponse(LlmApiService.LlmResponse response, List<ChatMessage> conversationHistory, AgentCallback callback) {
+        if (cancelled.get()) {
+            return;
+        }
         if (response.hasToolCalls()) {
             handleToolCalls(response, conversationHistory, callback);
         } else {
@@ -314,6 +461,9 @@ public class AgentLoop {
      */
     private void processToolCallsWithApproval(List<LlmApiService.ToolCall> toolCalls, int index,
                                                List<ChatMessage> conversationHistory, AgentCallback callback) {
+        if (cancelled.get()) {
+            return;
+        }
         if (index >= toolCalls.size()) {
             // All tool calls processed, continue the loop
             callback.onProgress("Sending tool results to LLM...");
@@ -382,12 +532,18 @@ public class AgentLoop {
             callback.onApprovalRequired(toolName, description, arguments, new ApprovalCallback() {
                 @Override
                 public void onApproved() {
+                    if (cancelled.get()) {
+                        return;
+                    }
                     // Execute the tool and continue
                     executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback);
                 }
 
                 @Override
                 public void onDenied() {
+                    if (cancelled.get()) {
+                        return;
+                    }
                     // Add denial result to history and continue
                     String resultContent = "Tool execution denied by user";
                     Log.d(TAG, "Tool " + toolName + " denied by user");
@@ -462,6 +618,9 @@ public class AgentLoop {
 
     private void executeToolAndContinue(LlmApiService.ToolCall toolCall, List<LlmApiService.ToolCall> toolCalls,
                                         int index, List<ChatMessage> conversationHistory, AgentCallback callback) {
+        if (cancelled.get()) {
+            return;
+        }
         String toolName = toolCall.getName();
 
         ToolResult result = toolRegistry.executeTool(toolName, toolCall.getArguments());
@@ -488,6 +647,7 @@ public class AgentLoop {
     }
 
     private void handleFinalResponse(LlmApiService.LlmResponse response, List<ChatMessage> conversationHistory, AgentCallback callback) {
+        detachActiveRun();
         String content = response.getContent();
 
         if (content == null || content.isEmpty()) {
@@ -588,11 +748,15 @@ public class AgentLoop {
     private void handleStructuredLlmResponse(LlmApiService.StructuredResponse response,
                                               List<ChatMessage> conversationHistory,
                                               AgentCallback callback) {
+        if (cancelled.get()) {
+            return;
+        }
         if (response.hasToolCalls()) {
             LlmApiService.LlmResponse llmResponse = new LlmApiService.LlmResponse(
                     response.getContent(), response.getToolCalls(), response.getUsage());
             handleToolCalls(llmResponse, conversationHistory, callback);
         } else {
+            detachActiveRun();
             String content = response.getContent();
 
             if (content == null || content.isEmpty()) {
@@ -613,6 +777,7 @@ public class AgentLoop {
     private void handleRefusal(LlmApiService.StructuredResponse response,
                                List<ChatMessage> conversationHistory,
                                AgentCallback callback) {
+        detachActiveRun();
         String refusalMessage = response.getRefusal() != null ? response.getRefusal() : "Model refused to respond";
 
         Log.w(TAG, "Handling refusal: " + refusalMessage);

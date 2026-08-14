@@ -25,6 +25,8 @@ Adjust how the agent interacts and processes tasks:
 
 - **Max Iterations**: Limits how many steps the agent can take in a single loop to prevent infinite loops or excessive API usage.
 - **Context Window**: Configure how much conversation history is sent to the model.
+- **Require Approval**: Ask for confirmation before executing tools that change state.
+- **Stream Responses**: When enabled (default), LLM text is streamed live over SSE as it is generated, instead of waiting for the full answer. Disable it if a provider does not support streaming.
 - **System Prompt**: Customize the "Soul" of your agent. This defines its personality and core instructions.
 
 ## Filesystem & Workspace

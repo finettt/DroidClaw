@@ -8,7 +8,9 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
 
@@ -35,8 +37,20 @@ public class BackgroundProcessService extends Service {
     static final String ACTION_STOP = "io.finett.droidclaw.BG_STOP";
     static final String EXTRA_RUNNING_COUNT = "running_count";
 
+    /**
+     * Grace period before an idle service actually tears itself down. Prevents a
+     * stop/start race: if new work is submitted right after the last process
+     * finished, the delayed stop is cancelled and the same service record keeps
+     * serving — avoiding a {@code startForegroundService()} that lands on a
+     * dying record, which Android 15 punishes with
+     * {@code ForegroundServiceDidNotStartInTimeException} (process death).
+     */
+    private static final long STOP_GRACE_MS = 3_000;
+
     private PowerManager.WakeLock wakeLock;
     private NotificationManager notificationManager;
+    private final Handler stopHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingStop;
 
     // ==================== Lifecycle ====================
 
@@ -57,20 +71,35 @@ public class BackgroundProcessService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        BackgroundProcessManager manager = BackgroundProcessManager.getInstance(this);
+
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            Log.d(TAG, "Stop action received — killing all processes and stopping service");
-            BackgroundProcessManager.getInstance(this).killAll();
-            stopForeground(true);
-            stopSelf();
+            int running = manager.runningCount();
+            if (running > 0) {
+                // Stale stop intent: new work was submitted after this intent was
+                // queued (stopIfIdle sends it when the count hits 0, but submit()
+                // can race ahead). Killing here would destroy the new process.
+                Log.d(TAG, "Stale stop intent ignored — " + running + " process(es) running");
+                return START_STICKY;
+            }
+            Log.d(TAG, "Stop action received — scheduling idle shutdown");
+            scheduleStop();
             return START_NOT_STICKY;
         }
+
+        // New work or a refresh arrived — cancel any pending idle shutdown.
+        cancelPendingStop();
 
         int runningCount = (intent != null)
                 ? intent.getIntExtra(EXTRA_RUNNING_COUNT, 0)
                 : 0;
 
-        // Update the notification with the actual running count now that we have it.
-        notificationManager.notify(NOTIFICATION_ID, buildNotification(runningCount));
+        // Re-assert foreground state: every startForegroundService() call
+        // (ensureRunning / updateNotification) must be paired with a
+        // startForeground() call, even when the service is already running —
+        // otherwise Android 12+ may kill the process with
+        // ForegroundServiceDidNotStartInTimeException.
+        startForeground(NOTIFICATION_ID, buildNotification(runningCount));
 
         if (intent != null && ACTION_UPDATE_NOTIFICATION.equals(intent.getAction())) {
             // Just a notification refresh — no new work to start
@@ -81,9 +110,39 @@ public class BackgroundProcessService extends Service {
         return START_STICKY;
     }
 
+    /**
+     * Schedule the actual teardown after {@link #STOP_GRACE_MS}. The runnable
+     * re-checks the running count, so work submitted during the grace window
+     * keeps the service alive even if no new intent cancels the stop.
+     */
+    private void scheduleStop() {
+        if (pendingStop != null) {
+            return; // already scheduled
+        }
+        pendingStop = () -> {
+            pendingStop = null;
+            if (BackgroundProcessManager.getInstance(this).runningCount() > 0) {
+                Log.d(TAG, "Pending stop expired but work is running — staying alive");
+                return;
+            }
+            Log.d(TAG, "Grace period elapsed — stopping service");
+            stopForeground(true);
+            stopSelf();
+        };
+        stopHandler.postDelayed(pendingStop, STOP_GRACE_MS);
+    }
+
+    private void cancelPendingStop() {
+        if (pendingStop != null) {
+            stopHandler.removeCallbacks(pendingStop);
+            pendingStop = null;
+        }
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
+        cancelPendingStop();
         // Safety net: kill any remaining processes if the OS tears down the service
         BackgroundProcessManager.getInstance(this).killAll();
         releaseWakeLock();

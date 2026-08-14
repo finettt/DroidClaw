@@ -138,6 +138,21 @@ public class SettingsManagerTest {
     }
 
     @Test
+    public void streamResponses_defaultIsTrue() {
+        assertTrue(settingsManager.getAgentConfig().isStreamResponses());
+    }
+
+    @Test
+    public void streamResponses_persistsAcrossInstances() {
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setStreamResponses(false);
+        settingsManager.setAgentConfig(config);
+
+        SettingsManager newInstance = new SettingsManager(context);
+        assertFalse(newInstance.getAgentConfig().isStreamResponses());
+    }
+
+    @Test
     public void calendarEnabled_defaultIsFalse() {
         assertFalse(settingsManager.getAgentConfig().isCalendarEnabled());
     }
