@@ -158,6 +158,7 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-contrib:3.6.1")
     androidTestImplementation(libs.test.core)
     androidTestImplementation(libs.test.runner)
+    androidTestImplementation("androidx.test:rules:1.6.1")
     androidTestImplementation(libs.navigation.testing)
     debugImplementation(libs.fragment.testing)
     androidTestImplementation(libs.fragment.testing)
