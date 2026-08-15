@@ -1,9 +1,12 @@
 package io.finett.droidclaw.scheduler;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -398,5 +401,162 @@ public class CronJobSchedulerTest {
     @Test
     public void getWorkName_hasCronPrefix() {
         assertEquals("cron_job_abc123", CronJobScheduler.getWorkName("abc123"));
+    }
+
+    // ==================== Time-of-day schedules: daily@HH:MM / weekly@day@HH:MM ====================
+
+    private static long todayAt(int hour, int minute) {
+        Calendar c = Calendar.getInstance();
+        c.set(Calendar.HOUR_OF_DAY, hour);
+        c.set(Calendar.MINUTE, minute);
+        c.set(Calendar.SECOND, 0);
+        c.set(Calendar.MILLISECOND, 0);
+        return c.getTimeInMillis();
+    }
+
+    // --- isTimeOfDaySchedule ---
+
+    @Test
+    public void isTimeOfDaySchedule_dailyAtTime_true() {
+        assertTrue(CronJobScheduler.isTimeOfDaySchedule("daily@08:00"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_singleDigitHour_true() {
+        assertTrue(CronJobScheduler.isTimeOfDaySchedule("daily@8:05"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_weeklyAtDayAndTime_true() {
+        assertTrue(CronJobScheduler.isTimeOfDaySchedule("weekly@monday@09:30"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_caseAndWhitespace_normalized() {
+        assertTrue(CronJobScheduler.isTimeOfDaySchedule("  DAILY@08:00  "));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_plainDaily_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("daily"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_hourOutOfRange_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("daily@25:00"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_minuteOutOfRange_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("daily@08:60"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_singleDigitMinute_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("daily@08:5"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_weeklyWithoutTime_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("weekly@monday"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_weeklyUnknownDay_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("weekly@funday@09:00"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_weeklyThreeLetterDay_true() {
+        assertTrue(CronJobScheduler.isTimeOfDaySchedule("weekly@mon@09:30"));
+        assertTrue(CronJobScheduler.isTimeOfDaySchedule("weekly@FRI@18:00"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_weeklyUnknownThreeLetterDay_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("weekly@xyz@09:00"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_interval_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("every_2_hours"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_null_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule(null));
+    }
+
+    // --- computeNextTimeOfDayRunMillis ---
+
+    @Test
+    public void nextRun_invalidSchedule_returnsMinusOne() {
+        assertEquals(-1L, CronJobScheduler.computeNextTimeOfDayRunMillis("daily", 0L));
+        assertEquals(-1L, CronJobScheduler.computeNextTimeOfDayRunMillis("every_2_hours", 0L));
+        assertEquals(-1L, CronJobScheduler.computeNextTimeOfDayRunMillis(null, 0L));
+    }
+
+    @Test
+    public void nextRun_daily_timeAheadToday_sameDay() {
+        long from = todayAt(5, 0);
+        long next = CronJobScheduler.computeNextTimeOfDayRunMillis("daily@23:30", from);
+        assertEquals(todayAt(23, 30), next);
+    }
+
+    @Test
+    public void nextRun_daily_timePassedToday_tomorrow() {
+        long from = todayAt(12, 0);
+        long next = CronJobScheduler.computeNextTimeOfDayRunMillis("daily@08:00", from);
+        Calendar expected = Calendar.getInstance();
+        expected.setTimeInMillis(todayAt(8, 0));
+        expected.add(Calendar.DAY_OF_YEAR, 1);
+        assertEquals(expected.getTimeInMillis(), next);
+    }
+
+    @Test
+    public void nextRun_daily_exactMatch_strictlyAfter() {
+        long from = todayAt(8, 0);
+        long next = CronJobScheduler.computeNextTimeOfDayRunMillis("daily@08:00", from);
+        assertTrue("exact-time match must roll to the next day", next > from);
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(next);
+        assertEquals(8, c.get(Calendar.HOUR_OF_DAY));
+        assertEquals(0, c.get(Calendar.MINUTE));
+        long diff = next - from;
+        assertTrue(diff > TimeUnit.HOURS.toMillis(23));
+        assertTrue(diff < TimeUnit.HOURS.toMillis(25));
+    }
+
+    @Test
+    public void nextRun_weekly_landsOnRequestedWeekday() {
+        long from = todayAt(12, 0);
+        long next = CronJobScheduler.computeNextTimeOfDayRunMillis("weekly@monday@09:00", from);
+        assertTrue(next > from);
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(next);
+        assertEquals(Calendar.MONDAY, c.get(Calendar.DAY_OF_WEEK));
+        assertEquals(9, c.get(Calendar.HOUR_OF_DAY));
+        assertEquals(0, c.get(Calendar.MINUTE));
+        assertTrue("next occurrence must be within a week (+1d slack)",
+                next - from < TimeUnit.DAYS.toMillis(8));
+    }
+
+    @Test
+    public void nextRun_weekly_threeLetterDay_landsOnRequestedWeekday() {
+        long from = todayAt(12, 0);
+        long next = CronJobScheduler.computeNextTimeOfDayRunMillis("weekly@mon@09:00", from);
+        assertTrue(next > from);
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(next);
+        assertEquals(Calendar.MONDAY, c.get(Calendar.DAY_OF_WEEK));
+        assertEquals(9, c.get(Calendar.HOUR_OF_DAY));
+        assertEquals(0, c.get(Calendar.MINUTE));
+    }
+
+    @Test
+    public void parseScheduleToInterval_dailyAtTime_periodicFallbackOneDay() {
+        // Only reached if one-time scheduling is unavailable; documents the fallback.
+        assertEquals(TimeUnit.DAYS.toMillis(1),
+                CronJobScheduler.parseScheduleToInterval("daily@08:00"));
     }
 }

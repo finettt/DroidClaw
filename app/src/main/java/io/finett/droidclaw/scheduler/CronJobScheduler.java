@@ -12,6 +12,7 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
+import java.util.Calendar;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
@@ -42,6 +43,14 @@ public class CronJobScheduler {
         if (!job.isEnabled() || job.isPaused()) {
             Log.d(TAG, "Job is disabled or paused, not scheduling: " + job.getId());
             cancelJob(job.getId());
+            return;
+        }
+
+        // daily@HH:MM / weekly@day@HH:MM run as a re-chaining one-time work,
+        // because periodic work cannot pin execution to a wall-clock time.
+        String normalized = job.getSchedule() == null
+                ? "" : job.getSchedule().trim().toLowerCase(Locale.ROOT);
+        if (isTimeOfDaySchedule(normalized) && scheduleTimeOfDayJob(job, normalized)) {
             return;
         }
 
@@ -76,6 +85,52 @@ public class CronJobScheduler {
                 workRequest);
 
         Log.d(TAG, "Job scheduled successfully: " + job.getId());
+    }
+
+    /**
+     * Enqueues the next occurrence of a time-of-day job as one-time work.
+     * The chain continues when {@link CronJobWorker} re-invokes
+     * {@link #scheduleJob(CronJob)} after a successful run.
+     *
+     * @return true if scheduled, false if the schedule could not be parsed
+     *         (caller falls back to periodic scheduling)
+     */
+    private boolean scheduleTimeOfDayJob(CronJob job, String normalizedSchedule) {
+        long now = System.currentTimeMillis();
+        long nextRun = computeNextTimeOfDayRunMillis(normalizedSchedule, now);
+        if (nextRun <= 0) {
+            Log.w(TAG, "Unparseable time-of-day schedule, using periodic fallback: "
+                    + job.getSchedule());
+            return false;
+        }
+
+        String workName = getWorkName(job.getId());
+        long delayMillis = Math.max(1L, nextRun - now);
+
+        Data inputData = new Data.Builder()
+                .putString("job_id", job.getId())
+                .build();
+
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
+                .setRequiresCharging(false)
+                .build();
+
+        OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(CronJobWorker.class)
+                .setInputData(inputData)
+                .setConstraints(constraints)
+                .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+                .addTag(workName)
+                .addTag("cron_job")
+                .build();
+
+        workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.REPLACE, workRequest);
+
+        Log.d(TAG, "Time-of-day job scheduled: " + job.getId()
+                + " (" + normalizedSchedule + ") next run in "
+                + TimeUnit.MILLISECONDS.toMinutes(delayMillis) + " min");
+        return true;
     }
 
     public void cancelJob(String jobId) {
@@ -301,6 +356,106 @@ public class CronJobScheduler {
 
         Log.w(TAG, "Unsupported cron expression, using 1 hour default: " + cronExpression);
         return TimeUnit.HOURS.toMillis(1);
+    }
+
+    /**
+     * True when the schedule pins execution to a wall-clock time:
+     * {@code daily@HH:MM} or {@code weekly@day@HH:MM}, where day is a full
+     * name ({@code monday}) or a three-letter code ({@code mon}).
+     */
+    public static boolean isTimeOfDaySchedule(String schedule) {
+        if (schedule == null) return false;
+        String s = schedule.trim().toLowerCase(Locale.ROOT);
+        if (s.startsWith("daily@")) {
+            return isValidTimeOfDay(s.substring("daily@".length()));
+        }
+        if (s.startsWith("weekly@")) {
+            String rest = s.substring("weekly@".length());
+            int at = rest.indexOf('@');
+            if (at <= 0 || at >= rest.length() - 1) return false;
+            return dayOfWeekFromName(rest.substring(0, at)) != -1
+                    && isValidTimeOfDay(rest.substring(at + 1));
+        }
+        return false;
+    }
+
+    private static boolean isValidTimeOfDay(String time) {
+        String[] parts = time.split(":");
+        if (parts.length != 2 || parts[1].length() != 2) return false;
+        try {
+            int hour = Integer.parseInt(parts[0]);
+            int minute = Integer.parseInt(parts[1]);
+            return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private static int dayOfWeekFromName(String day) {
+        switch (day) {
+            case "sunday":
+            case "sun": return Calendar.SUNDAY;
+            case "monday":
+            case "mon": return Calendar.MONDAY;
+            case "tuesday":
+            case "tue": return Calendar.TUESDAY;
+            case "wednesday":
+            case "wed": return Calendar.WEDNESDAY;
+            case "thursday":
+            case "thu": return Calendar.THURSDAY;
+            case "friday":
+            case "fri": return Calendar.FRIDAY;
+            case "saturday":
+            case "sat": return Calendar.SATURDAY;
+            default: return -1;
+        }
+    }
+
+    /**
+     * Next occurrence strictly after {@code fromMillis} for a time-of-day
+     * schedule, in epoch millis. Returns -1 if the schedule is not a valid
+     * time-of-day schedule.
+     *
+     * <p>{@code daily@HH:MM}: today at HH:MM if still ahead, else tomorrow.
+     * {@code weekly@day@HH:MM}: the next matching weekday at HH:MM.
+     */
+    public static long computeNextTimeOfDayRunMillis(String schedule, long fromMillis) {
+        if (!isTimeOfDaySchedule(schedule)) return -1;
+        String s = schedule.trim().toLowerCase(Locale.ROOT);
+
+        int hour;
+        int minute;
+        int targetDayOfWeek = -1; // -1 = daily
+
+        if (s.startsWith("daily@")) {
+            String[] hm = s.substring("daily@".length()).split(":");
+            hour = Integer.parseInt(hm[0]);
+            minute = Integer.parseInt(hm[1]);
+        } else {
+            String rest = s.substring("weekly@".length());
+            int at = rest.indexOf('@');
+            targetDayOfWeek = dayOfWeekFromName(rest.substring(0, at));
+            String[] hm = rest.substring(at + 1).split(":");
+            hour = Integer.parseInt(hm[0]);
+            minute = Integer.parseInt(hm[1]);
+        }
+
+        Calendar candidate = Calendar.getInstance();
+        candidate.setTimeInMillis(fromMillis);
+        candidate.set(Calendar.HOUR_OF_DAY, hour);
+        candidate.set(Calendar.MINUTE, minute);
+        candidate.set(Calendar.SECOND, 0);
+        candidate.set(Calendar.MILLISECOND, 0);
+
+        if (targetDayOfWeek != -1) {
+            candidate.set(Calendar.DAY_OF_WEEK, targetDayOfWeek);
+        }
+
+        if (candidate.getTimeInMillis() <= fromMillis) {
+            candidate.add(targetDayOfWeek != -1
+                    ? Calendar.WEEK_OF_YEAR : Calendar.DAY_OF_YEAR, 1);
+        }
+        return candidate.getTimeInMillis();
     }
 
     public static String formatInterval(long intervalMs) {
