@@ -467,6 +467,17 @@ public class CronJobSchedulerTest {
     }
 
     @Test
+    public void isTimeOfDaySchedule_weeklyThreeLetterDay_true() {
+        assertTrue(CronJobScheduler.isTimeOfDaySchedule("weekly@mon@09:30"));
+        assertTrue(CronJobScheduler.isTimeOfDaySchedule("weekly@FRI@18:00"));
+    }
+
+    @Test
+    public void isTimeOfDaySchedule_weeklyUnknownThreeLetterDay_false() {
+        assertFalse(CronJobScheduler.isTimeOfDaySchedule("weekly@xyz@09:00"));
+    }
+
+    @Test
     public void isTimeOfDaySchedule_interval_false() {
         assertFalse(CronJobScheduler.isTimeOfDaySchedule("every_2_hours"));
     }
@@ -528,6 +539,18 @@ public class CronJobSchedulerTest {
         assertEquals(0, c.get(Calendar.MINUTE));
         assertTrue("next occurrence must be within a week (+1d slack)",
                 next - from < TimeUnit.DAYS.toMillis(8));
+    }
+
+    @Test
+    public void nextRun_weekly_threeLetterDay_landsOnRequestedWeekday() {
+        long from = todayAt(12, 0);
+        long next = CronJobScheduler.computeNextTimeOfDayRunMillis("weekly@mon@09:00", from);
+        assertTrue(next > from);
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(next);
+        assertEquals(Calendar.MONDAY, c.get(Calendar.DAY_OF_WEEK));
+        assertEquals(9, c.get(Calendar.HOUR_OF_DAY));
+        assertEquals(0, c.get(Calendar.MINUTE));
     }
 
     @Test

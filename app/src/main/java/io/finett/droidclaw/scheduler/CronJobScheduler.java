@@ -360,7 +360,8 @@ public class CronJobScheduler {
 
     /**
      * True when the schedule pins execution to a wall-clock time:
-     * {@code daily@HH:MM} or {@code weekly@day@HH:MM}.
+     * {@code daily@HH:MM} or {@code weekly@day@HH:MM}, where day is a full
+     * name ({@code monday}) or a three-letter code ({@code mon}).
      */
     public static boolean isTimeOfDaySchedule(String schedule) {
         if (schedule == null) return false;
@@ -392,13 +393,20 @@ public class CronJobScheduler {
 
     private static int dayOfWeekFromName(String day) {
         switch (day) {
-            case "sunday": return Calendar.SUNDAY;
-            case "monday": return Calendar.MONDAY;
-            case "tuesday": return Calendar.TUESDAY;
-            case "wednesday": return Calendar.WEDNESDAY;
-            case "thursday": return Calendar.THURSDAY;
-            case "friday": return Calendar.FRIDAY;
-            case "saturday": return Calendar.SATURDAY;
+            case "sunday":
+            case "sun": return Calendar.SUNDAY;
+            case "monday":
+            case "mon": return Calendar.MONDAY;
+            case "tuesday":
+            case "tue": return Calendar.TUESDAY;
+            case "wednesday":
+            case "wed": return Calendar.WEDNESDAY;
+            case "thursday":
+            case "thu": return Calendar.THURSDAY;
+            case "friday":
+            case "fri": return Calendar.FRIDAY;
+            case "saturday":
+            case "sat": return Calendar.SATURDAY;
             default: return -1;
         }
     }

@@ -48,13 +48,13 @@ public class CreateTaskTool implements Tool {
         ParametersBuilder builder = new ParametersBuilder()
                 .addString("name", "Name for the scheduled task (e.g., 'Daily Email Summary')", true)
                 .addString("prompt", "The prompt/instructions for the AI to execute when the task runs", true)
-                .addString("schedule", "Schedule: 'hourly', 'daily', 'weekly', 'daily@HH:MM' (e.g., 'daily@08:00'), 'weekly@DAY@HH:MM' (e.g., 'weekly@MON@09:00'), 'every_N_unit' (e.g., 'every_6_hours'), or milliseconds", true);
+                .addString("schedule", "Schedule: 'hourly', 'daily', 'weekly', 'daily@HH:MM' (e.g., 'daily@08:00'), 'weekly@day@HH:MM' (e.g., 'weekly@monday@09:00'), 'every_N_unit' (e.g., 'every_6_hours'), or milliseconds", true);
 
         return new ToolDefinition(
                 NAME,
                 "Create a new scheduled background task that executes an AI prompt automatically. " +
                         "Use this when the user wants to set up automated task execution. " +
-                        "Schedule formats: 'hourly', 'daily', 'weekly', 'daily@08:00', 'weekly@MON@09:00', " +
+                        "Schedule formats: 'hourly', 'daily', 'weekly', 'daily@08:00', 'weekly@monday@09:00', " +
                         "'every_6_hours', or milliseconds (e.g., '3600000' for hourly).",
                 builder.build()
         );
@@ -103,7 +103,7 @@ public class CreateTaskTool implements Tool {
             if (!isValidSchedule(schedule)) {
                 return ToolResult.error(
                         "Invalid schedule format: '" + schedule + "'. Valid formats: 'hourly', 'daily', 'weekly', " +
-                                "'daily@HH:MM' (e.g., 'daily@08:00'), 'weekly@DAY@HH:MM' (e.g., 'weekly@MON@09:00'), " +
+                                "'daily@HH:MM' (e.g., 'daily@08:00'), 'weekly@day@HH:MM' (e.g., 'weekly@monday@09:00'), " +
                                 "'every_N_unit' (e.g., 'every_6_hours'), or milliseconds"
                 );
             }
@@ -138,7 +138,8 @@ public class CreateTaskTool implements Tool {
         }
     }
 
-    private boolean isValidSchedule(String schedule) {
+    // Package-private + static so the schedule grammar can be unit-tested directly.
+    static boolean isValidSchedule(String schedule) {
         if (schedule == null || schedule.isEmpty()) {
             return false;
         }
@@ -157,7 +158,8 @@ public class CreateTaskTool implements Tool {
             return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
         }
 
-        if (schedule.matches("weekly@(MON|TUE|WED|THU|FRI|SAT|SUN)@\\d{1,2}:\\d{2}")) {
+        if (schedule.matches(
+                "(?i)weekly@(MON|TUE|WED|THU|FRI|SAT|SUN|MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)@\\d{1,2}:\\d{2}")) {
             String[] parts = schedule.split("@");
             String[] timeParts = parts[2].split(":");
             int hour = Integer.parseInt(timeParts[0]);

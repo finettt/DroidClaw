@@ -58,6 +58,7 @@ public class CronJobWorker extends BaseTaskWorker {
             String prompt = job.getPrompt();
             if (prompt == null || prompt.trim().isEmpty()) {
                 Log.w(TAG, "Cron job has empty prompt: " + jobId);
+                chainNextTimeOfDayRun(job);
                 return Result.failure();
             }
 
@@ -74,13 +75,6 @@ public class CronJobWorker extends BaseTaskWorker {
             if (result.isSuccess()) {
                 job.recordSuccess(duration);
                 job.setLastRunTimestamp(System.currentTimeMillis());
-
-                // Time-of-day jobs (daily@HH:MM / weekly@day@HH:MM) are one-shot:
-                // chain the next occurrence so the schedule keeps running.
-                if (CronJobScheduler.isTimeOfDaySchedule(job.getSchedule())) {
-                    new CronJobScheduler(appContext).scheduleJob(job);
-                    Log.d(TAG, "Chained next occurrence for time-of-day job: " + jobId);
-                }
             } else {
                 job.recordFailure(result.getContent());
                 job.setLastRunTimestamp(System.currentTimeMillis());
@@ -103,6 +97,12 @@ public class CronJobWorker extends BaseTaskWorker {
             notificationManager.sendTaskNotification(result);
             Log.d(TAG, "Cron job completed: " + job.getName());
 
+            // Time-of-day jobs (daily@HH:MM / weekly@day@HH:MM) are one-shot:
+            // chain the next occurrence as the very last step so the schedule
+            // keeps running regardless of this run's outcome (a failed run must
+            // not kill the schedule, matching periodic-work behavior).
+            chainNextTimeOfDayRun(job);
+
             return Result.success();
 
         } catch (Exception e) {
@@ -116,12 +116,32 @@ public class CronJobWorker extends BaseTaskWorker {
                     job.recordFailure(e.getMessage());
                     job.setLastRunTimestamp(System.currentTimeMillis());
                     taskRepository.updateCronJob(job);
+                    chainNextTimeOfDayRun(job);
                 }
             } catch (Exception ex) {
                 Log.e(TAG, "Failed to update job error state", ex);
             }
 
             return Result.failure();
+        }
+    }
+
+    /**
+     * Chains the next occurrence of a time-of-day job (daily@HH:MM /
+     * weekly@day@HH:MM). These run as re-chaining one-time work, so the
+     * schedule survives only if the next occurrence is enqueued on every
+     * terminal path of {@link #doWork()} — success, failed execution,
+     * retry exhaustion, and unexpected exceptions alike.
+     *
+     * <p>Note: {@code scheduleJob} enqueues with {@code REPLACE} under the
+     * job's unique work name, which cancels this (already finished) run's
+     * work instance; that is intentional — records are persisted above,
+     * and exactly one pending occurrence remains in the chain.
+     */
+    private void chainNextTimeOfDayRun(CronJob job) {
+        if (job != null && CronJobScheduler.isTimeOfDaySchedule(job.getSchedule())) {
+            new CronJobScheduler(appContext).scheduleJob(job);
+            Log.d(TAG, "Chained next occurrence for time-of-day job: " + job.getId());
         }
     }
 
