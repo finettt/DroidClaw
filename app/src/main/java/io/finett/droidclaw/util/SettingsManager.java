@@ -232,6 +232,7 @@ public class SettingsManager {
         config.setScreenControlTrustMode(json.optBoolean("screenControlTrustMode", false));
         config.setStreamResponses(json.optBoolean("streamResponses", true));
         config.setCalendarEnabled(json.optBoolean("calendarEnabled", false));
+        config.setGuidelinesLearningEnabled(json.optBoolean("guidelinesLearningEnabled", true));
         config.setShellBackend(json.optString("shellBackend", "local"));
         config.setSshHost(json.optString("sshHost", ""));
         config.setSshPort(json.optInt("sshPort", 22));
@@ -344,6 +345,7 @@ public class SettingsManager {
         json.put("screenControlTrustMode", config.isScreenControlTrustMode());
         json.put("streamResponses", config.isStreamResponses());
         json.put("calendarEnabled", config.isCalendarEnabled());
+        json.put("guidelinesLearningEnabled", config.isGuidelinesLearningEnabled());
         json.put("shellBackend", config.getShellBackend());
         json.put("sshHost", config.getSshHost());
         json.put("sshPort", config.getSshPort());

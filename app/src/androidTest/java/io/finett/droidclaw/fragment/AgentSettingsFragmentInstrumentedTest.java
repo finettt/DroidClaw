@@ -64,6 +64,8 @@ public class AgentSettingsFragmentInstrumentedTest {
                         view.findViewById(R.id.switch_require_approval));
                 assertNotNull("Shell timeout input should exist",
                         view.findViewById(R.id.input_shell_timeout));
+                assertNotNull("Guidelines learning switch should exist",
+                        view.findViewById(R.id.switch_guidelines_learning));
 
                 // SSH fields
                 assertNotNull("Terminal backend dropdown should exist",
@@ -395,6 +397,23 @@ public class AgentSettingsFragmentInstrumentedTest {
                 // Check verify host is enabled by default
                 SwitchMaterial verifySwitch = view.findViewById(R.id.switch_ssh_verify_host);
                 assertTrue("Verify host key should be enabled by default", verifySwitch.isChecked());
+            });
+        }
+    }
+
+    @Test
+    public void defaultValues_guidelinesLearningEnabledByDefault() {
+        // Settings were already cleared in @Before setUp
+        try (FragmentScenario<AgentSettingsFragment> scenario =
+                     FragmentScenario.launchInContainer(AgentSettingsFragment.class, null, R.style.Theme_DroidClaw)) {
+            scenario.onFragment(fragment -> {
+                View view = fragment.requireView();
+
+                SwitchMaterial guidelinesSwitch =
+                        view.findViewById(R.id.switch_guidelines_learning);
+                assertNotNull("Guidelines learning switch should exist", guidelinesSwitch);
+                assertTrue("Guidelines learning should be enabled by default",
+                        guidelinesSwitch.isChecked());
             });
         }
     }
