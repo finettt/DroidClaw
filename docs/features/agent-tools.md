@@ -1,8 +1,8 @@
-# Agent Tools: App & Screen Control
+# Agent Tools: App, Screen, Calendar & Process Control
 
 DroidClaw's agent can operate your phone, not just answer questions. This page
-documents the app-control and screen-control tool families and the shell tool
-they are often combined with.
+documents the app-control, screen-control, calendar, and background-process
+tool families and the shell tool they are often combined with.
 
 > **Requirement:** the screen tools drive the UI through the Android
 > Accessibility service. Grant the accessibility permission during onboarding
@@ -47,7 +47,32 @@ Configure the backend in [Settings](../user/settings.md). Commands go through
 the exec planner and allowlist policy before they run, so destructive
 operations require approval.
 
+## Calendar tools
+
+The agent can read and manage your device calendar through CalendarContract.
+
+| Tool | What it does |
+|------|--------------|
+| `calendar_list_calendars` | Lists the calendar accounts on the device (id, name, owner, color). |
+| `calendar_list_events` | Queries events in a time range (title, time, location, attendees). |
+| `calendar_create_event` | Creates an event in a chosen calendar. |
+| `calendar_update_event` | Modifies an existing event. |
+| `calendar_delete_event` | Deletes an event. |
+
+> **Requirement:** enable Calendar in Agent Settings and grant the calendar
+> permission. The tools are only registered when both are satisfied.
+> Write operations go through the approval flow. Full details in
+> [Calendar integration](calendar.md).
+
+## Background process tools
+
+| Tool | What it does |
+|------|--------------|
+| `list_background_processes` | Shows processes DroidClaw manages in the background (tasks, heartbeats, cron runs). |
+| `kill_background_process` | Stops a managed background process by id. Always requires approval. |
+
 ## Related docs
 
+- [Calendar integration](calendar.md)
 - [Settings](../user/settings.md)
 - [First steps](../user/first-steps.md)
