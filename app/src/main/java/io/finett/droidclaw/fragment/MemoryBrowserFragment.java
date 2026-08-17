@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.List;
 
 import io.finett.droidclaw.R;
+import io.finett.droidclaw.agent.GuidelinesManager;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.repository.MemoryRepository;
 
@@ -36,8 +37,11 @@ public class MemoryBrowserFragment extends Fragment {
 
     private TextView longTermPreview;
     private Button editLongTermButton;
+    private TextView guidelinesPreview;
+    private Button editGuidelinesButton;
     private RecyclerView dailyNotesRecycler;
     private MemoryRepository memoryRepository;
+    private GuidelinesManager guidelinesManager;
     private DailyNotesAdapter adapter;
 
     @Override
@@ -52,6 +56,7 @@ public class MemoryBrowserFragment extends Fragment {
         }
 
         memoryRepository = new MemoryRepository(workspaceManager);
+        guidelinesManager = new GuidelinesManager(workspaceManager);
     }
 
     @Nullable
@@ -67,9 +72,12 @@ public class MemoryBrowserFragment extends Fragment {
 
         longTermPreview = view.findViewById(R.id.longTermPreview);
         editLongTermButton = view.findViewById(R.id.editLongTermButton);
+        guidelinesPreview = view.findViewById(R.id.guidelinesPreview);
+        editGuidelinesButton = view.findViewById(R.id.editGuidelinesButton);
         dailyNotesRecycler = view.findViewById(R.id.dailyNotesRecycler);
 
         setupLongTermMemory();
+        setupGuidelines();
         setupDailyNotes();
     }
 
@@ -95,6 +103,48 @@ public class MemoryBrowserFragment extends Fragment {
             Log.e(TAG, "Failed to load long-term memory", e);
             longTermPreview.setText("Error loading memory");
         }
+    }
+
+    private void setupGuidelines() {
+        loadGuidelinesPreview();
+        editGuidelinesButton.setOnClickListener(v -> showEditGuidelinesDialog());
+    }
+
+    private void loadGuidelinesPreview() {
+        String content = guidelinesManager.loadGuidelines();
+        if (content.trim().isEmpty()) {
+            guidelinesPreview.setText("No guidelines yet. They are learned automatically after chats.");
+        } else {
+            String preview = content.length() > 200
+                ? content.substring(0, 200) + "..."
+                : content;
+            guidelinesPreview.setText(preview);
+        }
+    }
+
+    private void showEditGuidelinesDialog() {
+        View dialogView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_edit_memory, null);
+        EditText editText = dialogView.findViewById(R.id.memoryEditText);
+        editText.setText(guidelinesManager.loadGuidelines());
+
+        new AlertDialog.Builder(requireContext())
+            .setTitle("Edit Guidelines (GUIDELINES.md)")
+            .setView(dialogView)
+            .setPositiveButton("Save", (dialog, which) -> {
+                String newContent = editText.getText().toString();
+                boolean saved = guidelinesManager.saveGuidelines(newContent);
+                if (saved) {
+                    loadGuidelinesPreview();
+                    Toast.makeText(requireContext(), "Guidelines saved", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(requireContext(),
+                        "Failed to save guidelines (empty or too large)",
+                        Toast.LENGTH_LONG).show();
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 
     private void setupDailyNotes() {

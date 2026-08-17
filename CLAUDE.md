@@ -158,6 +158,23 @@ DroidClaw maintains two identity documents that provide the agent with persisten
 - `IdentityManager` - Loads and formats identity documents
 - `WorkspaceManager` - Creates identity files from assets on initialization
 - `AgentLoop` - Accepts identity context and passes to API service
+
+### Self-Improvement (GUIDELINES.md)
+
+The agent improves its own workflows through a reflection loop:
+
+- **`.agent/GUIDELINES.md`** - Distilled operational guidelines (how to work:
+  preferred tool usage, output formats, recurring workflows, user corrections).
+  Created from `app/src/main/assets/identity/guidelines.md` on first run.
+- **Injection:** loaded fresh at every agent run (`AgentExecutionService`) and
+  injected as a system message by `AgentLoop.setGuidelinesContext()`.
+- **Learning:** after each completed chat, `AgentExecutionService` fires a
+  fire-and-forget structured LLM call (`GuidelinesReflector`) that analyzes the
+  transcript and, when a durable workflow improvement was found, rewrites
+  `GUIDELINES.md` (atomic write, single `.bak` backup, 8KB size cap).
+- **Control:** toggle in Agent Settings (`guidelinesLearningEnabled` in
+  `AgentConfig`, default on). View/edit in the Memory Browser.
+- `GuidelinesManager` - Loads/saves the guidelines file with size cap and backup
 - `LlmApiService` - Prepends identity as system messages in API requests
 
 ### Configuration

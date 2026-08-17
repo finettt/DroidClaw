@@ -35,6 +35,7 @@ public class WorkspaceManager {
 
     private static final String SOUL_FILE = ".agent/soul.md";
     private static final String USER_FILE = ".agent/user.md";
+    private static final String GUIDELINES_FILE = ".agent/GUIDELINES.md";
     private static final String HEARTBEAT_FILE = ".agent/HEARTBEAT.md";
 
     private final Context context;
@@ -146,6 +147,7 @@ public class WorkspaceManager {
     private void createIdentityFiles() throws IOException {
         createIdentityFile(SOUL_FILE, "identity/soul.md");
         createIdentityFile(USER_FILE, "identity/user.md");
+        createIdentityFile(GUIDELINES_FILE, "identity/guidelines.md");
         createHeartbeatTemplate();
     }
 
@@ -238,6 +240,17 @@ public class WorkspaceManager {
 
     public static String getUserFilePath() {
         return USER_FILE;
+    }
+
+    public static String getGuidelinesFilePath() {
+        return GUIDELINES_FILE;
+    }
+
+    public File getGuidelinesFile() {
+        if (workspaceRoot == null) {
+            return null;
+        }
+        return new File(workspaceRoot, GUIDELINES_FILE);
     }
 
     public static String getHeartbeatFilePath() {

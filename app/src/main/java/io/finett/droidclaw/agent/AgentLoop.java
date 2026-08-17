@@ -44,6 +44,7 @@ public class AgentLoop {
     private boolean requireApproval;
     private boolean streamResponses;
     private List<ChatMessage> identityMessages;
+    private String guidelinesContent;
     private JsonObject responseSchema;
 
     // ==================== Cancellation state ====================
@@ -170,6 +171,17 @@ public class AgentLoop {
     public void setIdentityContext(List<ChatMessage> identityMessages) {
         this.identityMessages = identityMessages;
         Log.d(TAG, "Identity context set: " + (identityMessages != null ? identityMessages.size() : 0) + " message(s)");
+    }
+
+    /**
+     * Set the operational guidelines ({@code .agent/GUIDELINES.md}) to inject as
+     * a system message into every iteration. Updated automatically after each
+     * finished conversation by {@link GuidelinesReflector}.
+     */
+    public void setGuidelinesContext(String guidelinesContent) {
+        this.guidelinesContent = guidelinesContent;
+        Log.d(TAG, "Guidelines context set: "
+                + (guidelinesContent != null ? guidelinesContent.length() : 0) + " chars");
     }
 
     public void setResponseSchema(JsonObject schema) {
@@ -325,6 +337,14 @@ public class AgentLoop {
                 contextMessages.add(new ChatMessage(memoryCtx, ChatMessage.TYPE_SYSTEM));
                 Log.d(TAG, "Added memory context: " + memoryCtx.length() + " chars");
             }
+        }
+
+        if (guidelinesContent != null && !guidelinesContent.trim().isEmpty()) {
+            String wrappedGuidelines = "--- OPERATIONAL GUIDELINES ---\n\n"
+                    + guidelinesContent.trim()
+                    + "\n\n--- END GUIDELINES ---\n";
+            contextMessages.add(new ChatMessage(wrappedGuidelines, ChatMessage.TYPE_SYSTEM));
+            Log.d(TAG, "Added guidelines context: " + wrappedGuidelines.length() + " chars");
         }
 
         JsonArray tools = toolRegistry.getToolDefinitions();

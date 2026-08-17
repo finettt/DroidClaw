@@ -27,6 +27,8 @@ import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.agent.AgentLoop;
 import io.finett.droidclaw.agent.ConversationSummarizer;
+import io.finett.droidclaw.agent.GuidelinesManager;
+import io.finett.droidclaw.agent.GuidelinesReflector;
 import io.finett.droidclaw.agent.IdentityManager;
 import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.api.LlmApiService;
@@ -343,6 +345,34 @@ public class AgentExecutionService extends Service {
         });
     }
 
+    /**
+     * Self-improvement hook: after the base LLM response completes, run a
+     * fire-and-forget structured analysis of the conversation and update
+     * {@code .agent/GUIDELINES.md} when a durable workflow improvement was
+     * found. Skipped when guidelines learning is disabled or the conversation
+     * is too short to carry useful signal. Never affects the user-visible flow.
+     */
+    private void maybeAnalyzeGuidelines(List<ChatMessage> history, GuidelinesManager guidelinesManager) {
+        try {
+            SettingsManager settingsManager = new SettingsManager(getApplicationContext());
+            io.finett.droidclaw.model.AgentConfig config = settingsManager.getAgentConfig();
+            if (config == null || !config.isGuidelinesLearningEnabled()) {
+                Log.d(TAG, "Guidelines learning disabled, skipping analysis");
+                return;
+            }
+            if (history == null || history.size() < 2) {
+                Log.d(TAG, "Conversation too short for guidelines analysis");
+                return;
+            }
+
+            LlmApiService analysisApi = new LlmApiService(settingsManager);
+            GuidelinesReflector reflector = new GuidelinesReflector(analysisApi, guidelinesManager);
+            reflector.analyze(history);
+        } catch (Exception e) {
+            Log.w(TAG, "Guidelines analysis skipped", e);
+        }
+    }
+
     // ==================== Worker thread ====================
 
     private void runAgentLoop(AgentSession session, List<ChatMessage> conversationHistory,
@@ -354,6 +384,7 @@ public class AgentExecutionService extends Service {
 
             WorkspaceManager workspaceManager = new WorkspaceManager(getApplicationContext());
             MemoryRepository memoryRepository = new MemoryRepository(workspaceManager);
+            GuidelinesManager guidelinesManager = new GuidelinesManager(workspaceManager);
 
             ConversationSummarizer summarizer = new ConversationSummarizer(
                     apiService, memoryRepository, modelContextWindow);
@@ -383,6 +414,15 @@ public class AgentExecutionService extends Service {
                 agentLoop.setIdentityContext(identityMessages);
             } catch (Exception e) {
                 Log.w(TAG, "Could not load identity context", e);
+            }
+
+            try {
+                String guidelines = guidelinesManager.loadGuidelines();
+                if (!guidelines.trim().isEmpty()) {
+                    agentLoop.setGuidelinesContext(guidelines);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Could not load guidelines context", e);
             }
 
             agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
@@ -427,6 +467,10 @@ public class AgentExecutionService extends Service {
                     // Persist messages regardless of UI state.
                     ChatRepository chatRepository = new ChatRepository(getApplicationContext());
                     chatRepository.saveMessages(session.sessionId, history);
+
+                    // Self-improvement: analyze the finished conversation and update
+                    // GUIDELINES.md when a durable workflow improvement was found.
+                    maybeAnalyzeGuidelines(history, guidelinesManager);
 
                     mainHandler.post(() -> {
                         UICallback cb = uiCallbacks.remove(session.sessionId);

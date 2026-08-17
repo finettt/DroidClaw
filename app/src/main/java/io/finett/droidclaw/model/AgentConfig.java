@@ -19,6 +19,7 @@ public class AgentConfig {
     private boolean screenControlTrustMode; // skip per-action approval for screen control tools
     private boolean streamResponses;        // stream LLM text via SSE as it is generated
     private boolean calendarEnabled; // allow agent to read and manage device calendar events
+    private boolean guidelinesLearningEnabled; // analyze each finished chat and update .agent/GUIDELINES.md
     private int llmConnectTimeout;   // seconds
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
@@ -41,6 +42,7 @@ public class AgentConfig {
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
+        this.guidelinesLearningEnabled = true;
         this.toolApprovalOverrides = new HashMap<>();
         this.shellBackend = "local";
         this.sshPort = 22;
@@ -66,6 +68,7 @@ public class AgentConfig {
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
+        this.guidelinesLearningEnabled = true;
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
     }
@@ -209,6 +212,14 @@ public class AgentConfig {
 
     public void setCalendarEnabled(boolean calendarEnabled) {
         this.calendarEnabled = calendarEnabled;
+    }
+
+    public boolean isGuidelinesLearningEnabled() {
+        return guidelinesLearningEnabled;
+    }
+
+    public void setGuidelinesLearningEnabled(boolean guidelinesLearningEnabled) {
+        this.guidelinesLearningEnabled = guidelinesLearningEnabled;
     }
 
     public Map<String, String> getToolApprovalOverrides() {
