@@ -380,4 +380,20 @@
     <string name="ssh_verify_host_warning_title">Disable host key verification?</string>
     <string name="ssh_verify_host_warning_message">Turning off host key verification allows potential man-in-the-middle attacks. Only disable this for trusted networks.</string>
     <string name="ssh_verify_host_warning_dont_ask_again">Don\'t show again</string>
+
+    <!-- Common actions -->
+    <string name="ok">OK</string>
+
+    <!-- Memory Browser -->
+    <string name="memory_browser_long_term_empty">No long-term memory yet. Tap Edit to add some.</string>
+    <string name="memory_browser_load_error">Error loading memory</string>
+    <string name="memory_browser_guidelines_empty">No guidelines yet. They are learned automatically after chats.</string>
+    <string name="memory_browser_edit_guidelines_title">Edit Guidelines (GUIDELINES.md)</string>
+    <string name="memory_browser_guidelines_saved">Guidelines saved</string>
+    <string name="memory_browser_guidelines_save_failed">Failed to save guidelines (empty or too large)</string>
+    <string name="memory_browser_edit_long_term_title">Edit Long-term Memory</string>
+    <string name="memory_browser_long_term_saved">Saved to long-term memory</string>
+    <string name="memory_browser_save_failed">Failed to save: %1$s</string>
+    <string name="memory_browser_note_read_error">Error reading file</string>
+    <string name="memory_browser_note_load_failed">Failed to read note: %1$s</string>
 </resources>

@@ -91,7 +91,7 @@ public class MemoryBrowserFragment extends Fragment {
         try {
             String content = memoryRepository.readLongTermMemory();
             if (content.isEmpty()) {
-                longTermPreview.setText("No long-term memory yet. Tap Edit to add some.");
+                longTermPreview.setText(R.string.memory_browser_long_term_empty);
             } else {
 
                 String preview = content.length() > 200
@@ -101,7 +101,7 @@ public class MemoryBrowserFragment extends Fragment {
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to load long-term memory", e);
-            longTermPreview.setText("Error loading memory");
+            longTermPreview.setText(R.string.memory_browser_load_error);
         }
     }
 
@@ -113,7 +113,7 @@ public class MemoryBrowserFragment extends Fragment {
     private void loadGuidelinesPreview() {
         String content = guidelinesManager.loadGuidelines();
         if (content.trim().isEmpty()) {
-            guidelinesPreview.setText("No guidelines yet. They are learned automatically after chats.");
+            guidelinesPreview.setText(R.string.memory_browser_guidelines_empty);
         } else {
             String preview = content.length() > 200
                 ? content.substring(0, 200) + "..."
@@ -129,21 +129,21 @@ public class MemoryBrowserFragment extends Fragment {
         editText.setText(guidelinesManager.loadGuidelines());
 
         new AlertDialog.Builder(requireContext())
-            .setTitle("Edit Guidelines (GUIDELINES.md)")
+            .setTitle(R.string.memory_browser_edit_guidelines_title)
             .setView(dialogView)
-            .setPositiveButton("Save", (dialog, which) -> {
+            .setPositiveButton(R.string.save, (dialog, which) -> {
                 String newContent = editText.getText().toString();
                 boolean saved = guidelinesManager.saveGuidelines(newContent);
                 if (saved) {
                     loadGuidelinesPreview();
-                    Toast.makeText(requireContext(), "Guidelines saved", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(),
+                        R.string.memory_browser_guidelines_saved, Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(requireContext(),
-                        "Failed to save guidelines (empty or too large)",
-                        Toast.LENGTH_LONG).show();
+                        R.string.memory_browser_guidelines_save_failed, Toast.LENGTH_LONG).show();
                 }
             })
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.cancel, null)
             .show();
     }
 
@@ -175,13 +175,13 @@ public class MemoryBrowserFragment extends Fragment {
         }
 
         new AlertDialog.Builder(requireContext())
-            .setTitle("Edit Long-term Memory")
+            .setTitle(R.string.memory_browser_edit_long_term_title)
             .setView(dialogView)
-            .setPositiveButton("Save", (dialog, which) -> {
+            .setPositiveButton(R.string.save, (dialog, which) -> {
                 String newContent = editText.getText().toString();
                 saveToLongTermMemory(newContent);
             })
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.cancel, null)
             .show();
     }
 
@@ -190,10 +190,12 @@ public class MemoryBrowserFragment extends Fragment {
             // For simplicity, we'll append. User can manually edit MEMORY.md file if needed.
             memoryRepository.appendToLongTermMemory(content);
             loadLongTermPreview();
-            Toast.makeText(requireContext(), "Saved to long-term memory", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(),
+                R.string.memory_browser_long_term_saved, Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
             Log.e(TAG, "Failed to save to long-term memory", e);
-            Toast.makeText(requireContext(), "Failed to save: " + e.getMessage(),
+            Toast.makeText(requireContext(),
+                getString(R.string.memory_browser_save_failed, e.getMessage()),
                 Toast.LENGTH_LONG).show();
         }
     }
@@ -231,7 +233,7 @@ public class MemoryBrowserFragment extends Fragment {
                     holder.subtitle.setText(firstLine);
                 }
             } catch (IOException e) {
-                holder.subtitle.setText("Error reading file");
+                holder.subtitle.setText(R.string.memory_browser_note_read_error);
             }
 
             holder.itemView.setOnClickListener(v -> showNoteDialog(note));
@@ -265,11 +267,12 @@ public class MemoryBrowserFragment extends Fragment {
             new AlertDialog.Builder(requireContext())
                 .setTitle(noteFile.getName())
                 .setMessage(content.toString())
-                .setPositiveButton("OK", null)
+                .setPositiveButton(R.string.ok, null)
                 .show();
 
         } catch (IOException e) {
-            Toast.makeText(requireContext(), "Failed to read note: " + e.getMessage(),
+            Toast.makeText(requireContext(),
+                getString(R.string.memory_browser_note_load_failed, e.getMessage()),
                 Toast.LENGTH_LONG).show();
         }
     }
