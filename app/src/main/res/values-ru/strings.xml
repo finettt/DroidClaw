@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Core / Chat -->
+    <string name="type_message">Введите сообщение…</string>
+    <string name="send">Отправить</string>
+    <string name="stop_response">Остановить ответ</string>
+    <string name="response_stopped">Ответ остановлен</string>
+    <string name="attach_file">Прикрепить файл</string>
+    <string name="menu">Меню</string>
+    <string name="new_chat">Новый чат</string>
+    <string name="chats">Чаты</string>
+    <string name="chat_history">Недавние чаты</string>
+    <string name="settings">Настройки</string>
+    <string name="clear_chat">Очистить чат</string>
+    <string name="rename_chat">Переименовать чат</string>
+    <string name="delete_chat">Удалить чат</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="delete">Удалить</string>
+    <string name="confirm">Подтвердить</string>
+    <string name="api_configuration">Настройка API</string>
+    <string name="api_key">API-ключ</string>
+    <string name="api_url">URL-адрес API</string>
+    <string name="model_name">Название модели</string>
+    <string name="chat_settings">Настройки чата</string>
+    <string name="max_tokens">Максимум токенов</string>
+    <string name="save_settings">Сохранить настройки</string>
+
+    <!-- Settings menu -->
+    <string name="settings_providers">Провайдеры</string>
+    <string name="settings_providers_subtitle">Настроено провайдеров: %d</string>
+    <string name="settings_agent">Агент</string>
+    <string name="settings_agent_subtitle">Настройка поведения агента</string>
+    <string name="settings_heartbeat">Фоновый мониторинг</string>
+    <string name="settings_heartbeat_subtitle">Настройка проверок heartbeat</string>
+    <string name="settings_tool_approval">Одобрение инструментов</string>
+    <string name="settings_tool_approval_subtitle">Автоодобрение и блокировка для отдельных инструментов</string>
+    <string name="tool_approval_settings_title">Одобрение инструментов</string>
+    <string name="tool_approval_settings_description">Задайте режим одобрения для каждого инструмента. «Следовать глобальным» использует переключатель «Требовать одобрение» в настройках агента.</string>
+    <string name="tool_approval_global_fallback">⚙ Глобальный переключатель «Требовать одобрение» по-прежнему действует для инструментов в режиме «Следовать глобальным настройкам».</string>
+    <string name="tool_approval_mode">Режим одобрения</string>
+    <string name="settings_cron_jobs_subtitle">Управление запланированными задачами</string>
+    <string name="settings_reset_onboarding">Сброс начальной настройки</string>
+    <string name="settings_reset_onboarding_subtitle">Начать настройку заново</string>
+    <string name="settings_reset_onboarding_confirm">Сбросить начальную настройку? Процесс настройки будет запущен заново.</string>
+
+    <!-- Providers -->
+    <string name="providers">Провайдеры</string>
+    <string name="add_provider">Добавить провайдера</string>
+    <string name="edit_provider">Изменить провайдера</string>
+    <string name="delete_provider">Удалить провайдера</string>
+    <string name="delete_provider_confirm">Удалить этого провайдера и все его модели?</string>
+    <string name="provider_name">Название провайдера</string>
+    <string name="provider_base_url">Базовый URL</string>
+    <string name="provider_api_type">Тип API</string>
+    <string name="provider_models_count">Моделей: %d</string>
+    <string name="no_providers">Провайдеры не настроены</string>
+
+    <!-- Models -->
+    <string name="models">Модели</string>
+    <string name="add_model">Добавить модель</string>
+    <string name="edit_model">Изменить модель</string>
+    <string name="delete_model">Удалить модель</string>
+    <string name="delete_model_confirm">Удалить эту модель?</string>
+    <string name="model_id">ID модели</string>
+    <string name="model_display_name">Отображаемое имя</string>
+    <string name="model_context_window">Контекстное окно</string>
+    <string name="model_context_window_tokens">%d токенов</string>
+    <string name="model_reasoning">Модель с рассуждением</string>
+    <string name="model_input_types">Типы входных данных</string>
+    <string name="model_input_text">Текст</string>
+    <string name="model_input_image">Изображение</string>
+    <string name="no_models">Модели не настроены</string>
+
+    <!-- Agent settings -->
+    <string name="agent_settings">Настройки агента</string>
+    <string name="agent_default_model">Модель по умолчанию</string>
+    <string name="agent_default_model_hint">Выберите модель</string>
+    <string name="agent_execution_settings">Настройки выполнения</string>
+    <string name="shell_access">Доступ к shell</string>
+    <string name="shell_access_description">Разрешить агенту выполнять shell-команды</string>
+    <string name="sandbox_mode">Режим песочницы</string>
+    <string name="sandbox_strict">Строгий (только рабочая область)</string>
+    <string name="sandbox_relaxed">Ослабленный (команды из списка разрешённых)</string>
+    <string name="sandbox_full">Полный (любые команды, всегда спрашивать)</string>
+    <string name="max_iterations">Максимум итераций</string>
+    <string name="max_iterations_description">Максимальное число циклов выполнения инструментов</string>
+    <string name="require_approval">Требовать одобрение</string>
+    <string name="require_approval_description">Подтверждать перед выполнением инструментов</string>
+    <string name="stream_responses">Потоковые ответы</string>
+    <string name="stream_responses_description">Показывать текст по мере генерации (SSE)</string>
+    <string name="shell_timeout">Таймаут shell (секунды)</string>
+    <string name="shell_timeout_description">Ограничение времени выполнения команды</string>
+    <string name="background_shell_access">Shell в фоновых задачах</string>
+    <string name="background_shell_access_description">Разрешить cron-задачам и воркерам выполнять shell/Python-команды</string>
+    <string name="background_exec">Фоновое выполнение инструментов</string>
+    <string name="background_exec_description">Разрешить агенту запускать инструменты асинхронно с background=true</string>
+    <string name="custom_allowlist">Свой список разрешённых команд</string>
+    <string name="custom_allowlist_description">Дополнительные исполняемые пути для ослабленного режима (по одному на строку)</string>
+    <string name="screen_control">Управление экраном</string>
+    <string name="screen_control_description">Разрешить агенту читать видимый интерфейс и управлять телефоном через специальные возможности</string>
+    <string name="screen_control_trust_mode">Доверенный режим управления экраном</string>
+    <string name="screen_control_trust_mode_description">Автоодобрение нажатий, свайпов, ввода текста и навигации</string>
+    <string name="screen_control_accessibility_granted">Доступ к специальным возможностям предоставлен</string>
+    <string name="screen_control_accessibility_not_granted">Доступ к специальным возможностям не предоставлен</string>
+    <string name="screen_control_open_accessibility_settings">Открыть настройки специальных возможностей</string>
+    <string name="calendar_access">Доступ к календарю</string>
+    <string name="calendar_access_description">Разрешить агенту читать события календаря и управлять ими (Google и другие синхронизированные календари)</string>
+    <string name="guidelines_learning">Самообучение (GUIDELINES.md)</string>
+    <string name="guidelines_learning_description">После каждого ответа анализировать чат и дополнять .agent/GUIDELINES.md устойчивыми уроками о рабочих процессах. Файл добавляется в каждый новый диалог.</string>
+    <string name="calendar_permission_denied">Доступ к календарю запрещён — функция остаётся выключенной. Разрешите доступ в настройках системы.</string>
+    <string name="accessibility_service_description">Позволяет DroidClaw читать видимый интерфейс и управлять экраном телефона для задач агента</string>
+    <string name="network_timeouts">Сетевые таймауты</string>
+    <string name="llm_connect_timeout">Таймаут подключения к LLM (секунды)</string>
+    <string name="llm_connect_timeout_description">Таймаут подключения к API LLM</string>
+    <string name="llm_read_timeout">Таймаут чтения ответа LLM (секунды)</string>
+    <string name="llm_read_timeout_description">Таймаут чтения ответа от API LLM</string>
+    <string name="llm_write_timeout">Таймаут отправки запроса LLM (секунды)</string>
+    <string name="llm_write_timeout_description">Таймаут отправки запроса к API LLM</string>
+    <string name="searxng_timeout">Таймаут SearXNG (секунды)</string>
+    <string name="searxng_timeout_description">Таймаут поискового запроса к SearXNG</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Добро пожаловать в DroidClaw</string>
+    <string name="onboarding_welcome_subtitle">Ваш ИИ-ассистент для разработки</string>
+    <string name="onboarding_name_title">Как вас зовут?</string>
+    <string name="onboarding_name_hint">Введите ваше имя</string>
+    <string name="onboarding_name_error">Пожалуйста, введите имя</string>
+    <string name="onboarding_provider_title">Настройте первого провайдера</string>
+    <string name="onboarding_provider_subtitle">Настройте ИИ-провайдера, чтобы начать</string>
+    <string name="onboarding_next">Далее</string>
+    <string name="onboarding_skip">Пропустить</string>
+    <string name="onboarding_get_started">Начать</string>
+
+    <!-- Skills -->
+    <string name="skills">Навыки</string>
+    <string name="skill_browser_title">Доступные навыки</string>
+    <string name="skill_content_title">Детали навыка</string>
+    <string name="skill_description">Описание</string>
+    <string name="skill_capabilities">Возможности</string>
+    <string name="skill_guidelines">Рекомендации</string>
+    <string name="skill_examples">Примеры</string>
+    <string name="skill_limitations">Ограничения</string>
+    <string name="skill_required_tools">Необходимые инструменты</string>
+    <string name="skill_category">Категория</string>
+    <string name="skill_author">Автор</string>
+    <string name="skill_version">Версия</string>
+    <string name="skill_tags">Теги</string>
+    <string name="no_skills_found">Навыки не найдены</string>
+    <string name="skill_loading">Загрузка навыка…</string>
+    <string name="skill_delete">Удалить навык</string>
+    <string name="skill_delete_confirm">Удалить этот навык?</string>
+    <string name="skill_delete_success">Навык удалён</string>
+    <string name="skill_delete_error">Не удалось удалить навык</string>
+    <string name="skill_create_via_chat">Создать новый навык через чат</string>
+    <string name="skill_discovery_status">Поиск навыков…</string>
+    <string name="skill_loaded_status">Загружен навык: %1$s</string>
+
+    <!-- File Browser -->
+    <string name="files">Файлы</string>
+    <string name="file_browser_title">Файлы</string>
+    <string name="file_browser_empty">Пустая папка</string>
+    <string name="file_browser_error">Ошибка: %1$s</string>
+    <string name="file_browser_directory">Папка</string>
+    <string name="file_browser_parent_directory">Родительская папка</string>
+
+    <!-- File Viewer -->
+    <string name="file_viewer_open_title">Открыть %1$s</string>
+    <string name="file_viewer_view_internal">Просмотр в приложении</string>
+    <string name="file_viewer_open_external">Открыть во внешнем приложении</string>
+    <string name="file_viewer_close">Закрыть</string>
+    <string name="file_viewer_error">Ошибка чтения файла: %1$s</string>
+    <string name="file_viewer_file_not_found">Файл не найден: %1$s</string>
+    <string name="file_viewer_no_app_found">Не найдено приложение для открытия: %1$s</string>
+    <string name="file_viewer_open_error">Ошибка открытия файла: %1$s</string>
+    <string name="file_viewer_open_with">Открыть с помощью</string>
+    <string name="settings_skills">Навыки</string>
+    <string name="settings_skills_subtitle">Просмотр и управление навыками агента</string>
+    <string name="settings_info">Информация</string>
+    <string name="settings_info_subtitle">Версия приложения и информация</string>
+    <string name="info_screen_title">Информация</string>
+    <string name="info_app_version">версия: %1$s</string>
+    <string name="info_screen_image_description">Изображение с информацией о приложении</string>
+
+    <!-- Memory -->
+    <string name="memory">Память</string>
+    <string name="memory_browser_title">Память</string>
+    <string name="long_term_memory">Долговременная память</string>
+    <string name="daily_notes">Ежедневные заметки</string>
+
+    <!-- Validation -->
+    <string name="validation_required">Обязательное поле</string>
+    <string name="validation_invalid_url">Введите корректный URL</string>
+    <string name="validation_invalid_number">Введите корректное число</string>
+
+    <!-- Zen Result -->
+    <string name="chat_about_this">Обсудить в чате</string>
+    <string name="share_result">Поделиться результатом</string>
+    <string name="result_share_title">Результат задачи</string>
+    <string name="result_type_heartbeat">Heartbeat</string>
+    <string name="result_type_cron">Cron-задача</string>
+    <string name="result_type_manual">Ручная задача</string>
+    <string name="chat_continuation_new">Новый чат</string>
+    <string name="chat_continuation_existing">Добавить в существующий чат</string>
+    <string name="chat_continuation_picker_title">Как продолжить?</string>
+    <string name="chat_continuation_agent_prompt">Я добавил результаты (%1$s) выше. Что хотите уточнить или исследовать?</string>
+
+    <!-- Heartbeat Settings -->
+    <string name="heartbeat_enabled">Включить Heartbeat</string>
+    <string name="heartbeat_enabled_description">Периодические проверки состояния системы</string>
+    <string name="heartbeat_interval">Интервал проверок</string>
+    <string name="heartbeat_status">Статус</string>
+    <string name="heartbeat_last_run">Последний запуск</string>
+    <string name="heartbeat_last_status">Последний статус</string>
+    <string name="heartbeat_staleness">Состояние системы мониторинга</string>
+    <string name="heartbeat_never">Никогда</string>
+    <string name="heartbeat_no_data">Нет данных</string>
+    <string name="heartbeat_actions">Действия</string>
+    <string name="heartbeat_run_now">Запустить Heartbeat сейчас</string>
+    <string name="heartbeat_edit_template">Редактировать HEARTBEAT.md</string>
+
+    <!-- Cron Jobs -->
+    <string name="cron_jobs">Запланированные задачи</string>
+    <string name="cron_jobs_empty_state">Запланированных задач пока нет.\nНажмите +, чтобы создать первую cron-задачу.</string>
+    <string name="add_cron_job">Добавить cron-задачу</string>
+    <string name="cron_job_name">Название задачи</string>
+    <string name="cron_job_prompt">Промпт / инструкции</string>
+    <string name="cron_schedule">Расписание</string>
+    <string name="cron_schedule_daily">Ежедневно</string>
+    <string name="cron_schedule_weekly">Еженедельно</string>
+    <string name="cron_schedule_hourly">Ежечасно</string>
+    <string name="cron_schedule_custom">Свой интервал</string>
+    <string name="cron_daily_at_time">Время (ЧЧ:ММ)</string>
+    <string name="cron_weekly_day_time">День и время</string>
+    <string name="cron_custom_interval_value">Интервал</string>
+    <string name="cron_status_active">Активна</string>
+    <string name="cron_status_paused">На паузе</string>
+    <string name="cron_status_disabled">Отключена</string>
+    <string name="cron_last_run">Последний запуск: %s</string>
+    <string name="cron_success_rate">Успешно: %d%%</string>
+    <string name="cron_job_created">Cron-задача создана</string>
+    <string name="cron_job_updated">Cron-задача обновлена</string>
+    <string name="cron_job_deleted">Cron-задача удалена</string>
+    <string name="cron_job_run_now">Запустить сейчас</string>
+    <string name="cron_job_pause">Пауза</string>
+    <string name="cron_job_resume">Возобновить</string>
+    <string name="cron_job_delete">Удалить</string>
+    <string name="cron_job_edit">Изменить</string>
+    <string name="cron_job_history">История запусков</string>
+    <string name="cron_delete_confirm">Удалить эту cron-задачу? Её история выполнения также будет удалена.</string>
+    <string name="cron_validation_name_required">Укажите название задачи</string>
+    <string name="cron_validation_prompt_required">Укажите промпт</string>
+
+    <!-- Task History -->
+    <string name="task_history">История задач</string>
+    <string name="task_history_stats">Статистика выполнения</string>
+    <string name="task_history_empty">Истории выполнения пока нет.</string>
+    <string name="task_history_filter_all">Все задачи</string>
+    <string name="status_success">Успех</string>
+    <string name="status_failed">Ошибка</string>
+    <string name="execution_duration">Длительность: %s</string>
+    <string name="execution_tokens">Токены: %s</string>
+    <string name="execution_iterations">Шагов: %d</string>
+    <string name="execution_time_format">%1$s в %2$s</string>
+    <string name="refresh">Обновить</string>
+    <string name="view_details">Подробнее</string>
+    <string name="cron_job_detail">Детали задачи</string>
+    <string name="cron_job_detail_title">Cron-задача: детали</string>
+    <string name="cron_never_run">Ещё не запускалась</string>
+    <string name="cron_error_prefix">Ошибка: %s</string>
+    <string name="execution_error_prefix">Ошибка: %s</string>
+    <string name="execution_detail">Нажмите, чтобы посмотреть полные детали выполнения</string>
+    <string name="execution_datetime_fmt">%1$s в %2$s</string>
+    <string name="stats_total_fmt">Всего: %d</string>
+    <string name="stats_success_fmt">Успешно: %d%%</string>
+    <string name="stats_avg_fmt">Среднее: %s</string>
+    <string name="cron_status_paused_fmt">Статус: на паузе</string>
+    <string name="cron_status_active_fmt">Статус: активна</string>
+    <string name="cron_status_disabled_fmt">Статус: отключена</string>
+    <string name="cron_created_fmt">Создана: %s</string>
+    <string name="cron_success_rate_fmt">Доля успехов: %d%%</string>
+    <string name="cron_avg_duration_fmt">Средняя длительность: %s</string>
+    <string name="cron_avg_duration_na">н/д</string>
+    <string name="cron_total_runs_fmt">Всего запусков: %d</string>
+    <string name="cron_last_run_fmt">Последний запуск: %s</string>
+
+    <!-- Notification Permissions -->
+    <string name="notification_permission_title">Включить уведомления</string>
+    <string name="notification_permission_message">DroidClaw может присылать уведомления о результатах фоновых задач, состоянии системы и завершении запланированных задач. Включить эту функцию?</string>
+    <string name="allow">Разрешить</string>
+    <string name="not_now">Не сейчас</string>
+
+    <!-- Notification Channels -->
+    <string name="notification_channel_heartbeat_alerts">Оповещения Heartbeat</string>
+    <string name="notification_channel_heartbeat_alerts_desc">Приоритетные оповещения при обнаружении проблем heartbeat</string>
+    <string name="notification_channel_task_results">Результаты задач</string>
+    <string name="notification_channel_task_results_desc">Результаты cron-задач и ручных задач</string>
+    <string name="notification_channel_task_errors">Ошибки задач</string>
+    <string name="notification_channel_task_errors_desc">Уведомления об ошибках при сбое задач</string>
+
+    <!-- Environment Variables Settings -->
+    <string name="settings_env_vars">Переменные окружения</string>
+    <string name="settings_env_vars_subtitle">Настройка переменных окружения агента</string>
+    <string name="env_vars_title">Переменные окружения</string>
+    <string name="env_vars_empty">Переменные окружения не заданы.\nНажмите +, чтобы добавить.</string>
+    <string name="env_var_key">Имя переменной (например, SEARXNG_URL)</string>
+    <string name="env_var_value">Значение</string>
+    <string name="env_var_add">Добавить переменную</string>
+    <string name="env_var_edit">Изменить переменную</string>
+    <string name="env_var_delete_confirm">Удалить эту переменную окружения?</string>
+    <string name="env_var_key_required">Укажите имя переменной</string>
+    <string name="env_var_key_invalid">Используйте только заглавные буквы, цифры и подчёркивания (A-Z, 0-9, _)</string>
+    <string name="env_var_saved">Переменная окружения сохранена</string>
+    <string name="env_var_deleted">Переменная окружения удалена</string>
+
+    <!-- Terminal Backend Settings -->
+    <string name="terminal_backend">Терминал</string>
+    <string name="terminal_backend_description">Где выполнять shell-команды</string>
+    <string name="terminal_backend_local">Локальное устройство</string>
+    <string name="terminal_backend_ssh">SSH-сервер</string>
+    <string name="ssh_connection">SSH-подключение</string>
+    <string name="ssh_host">Хост</string>
+    <string name="ssh_host_hint">например, server.example.com или 192.168.1.100</string>
+    <string name="ssh_port">Порт</string>
+    <string name="ssh_username">Имя пользователя</string>
+    <string name="ssh_username_hint">Введите имя пользователя</string>
+    <string name="ssh_auth_type">Аутентификация</string>
+    <string name="ssh_auth_password">Пароль</string>
+    <string name="ssh_auth_key">Приватный ключ</string>
+    <string name="ssh_password">Пароль</string>
+    <string name="ssh_password_hint">Введите SSH-пароль</string>
+    <string name="ssh_private_key">Путь к приватному ключу</string>
+    <string name="ssh_verify_host">Проверка ключа хоста</string>
+    <string name="ssh_verify_host_description">Включить проверку ключа хоста (рекомендуется для продакшена)</string>
+    <string name="ssh_test_connection">Проверить подключение</string>
+    <string name="ssh_connection_success">SSH-подключение успешно</string>
+    <string name="ssh_connection_failed">Ошибка SSH-подключения: %1$s</string>
+    <string name="ssh_connection_failed_no_detail">Ошибка SSH-подключения</string>
+    <string name="ssh_config_required">Настройте параметры SSH-подключения</string>
+    <string name="ssh_host_required">Укажите хост</string>
+    <string name="ssh_user_required">Укажите имя пользователя</string>
+    <string name="ssh_verify_host_warning_title">Отключить проверку ключа хоста?</string>
+    <string name="ssh_verify_host_warning_message">Отключение проверки ключа хоста допускает возможные атаки «человек посередине». Отключайте только для доверенных сетей.</string>
+    <string name="ssh_verify_host_warning_dont_ask_again">Больше не показывать</string>
+
+    <!-- Accessibility -->
+    <string name="accessibility_service_label">DroidClaw — специальные возможности</string>
+
+    <!-- Chat Search -->
+    <string name="search">Поиск</string>
+    <string name="search_hint">Поиск по сообщениям…</string>
+    <string name="search_prev">Предыдущий результат</string>
+    <string name="search_next">Следующий результат</string>
+    <string name="search_result_count">%1$d из %2$d</string>
+    <string name="no_search_results">Ничего не найдено</string>
+
+    <!-- Chat Export / Import -->
+    <string name="export_chat">Экспорт чата</string>
+    <string name="import_chat">Импорт чата</string>
+    <string name="export_as_markdown">Экспорт в Markdown (.md)</string>
+    <string name="export_as_json">Экспорт в JSON (.json)</string>
+    <string name="export_as_pdf">Экспорт в PDF (.pdf)</string>
+    <string name="import_from_json">Импорт из JSON</string>
+    <string name="import_from_markdown">Импорт из Markdown</string>
+    <string name="import_append">Добавить в текущий чат</string>
+    <string name="import_replace">Заменить текущий чат (новая сессия)</string>
+    <string name="export_success">Чат успешно экспортирован</string>
+    <string name="export_error">Ошибка экспорта: %1$s</string>
+    <string name="import_success">Импортировано сообщений: %1$d</string>
+    <string name="import_error">Ошибка импорта: %1$s</string>
+    <string name="import_warnings">Предупреждений при импорте: %1$d</string>
+    <string name="import_choose_action">Выберите действие импорта</string>
+    <string name="export_choose_format">Выберите формат экспорта</string>
+
+    <!-- Common actions -->
+    <string name="ok">ОК</string>
+
+    <!-- Memory Browser -->
+    <string name="memory_browser_long_term_empty">Долговременной памяти пока нет. Нажмите «Изменить», чтобы добавить.</string>
+    <string name="memory_browser_load_error">Ошибка загрузки памяти</string>
+    <string name="memory_browser_guidelines_empty">Рекомендаций пока нет. Они формируются автоматически после чатов.</string>
+    <string name="memory_browser_edit_guidelines_title">Редактирование рекомендаций (GUIDELINES.md)</string>
+    <string name="memory_browser_guidelines_saved">Рекомендации сохранены</string>
+    <string name="memory_browser_guidelines_save_failed">Не удалось сохранить рекомендации (пусто или слишком большой объём)</string>
+    <string name="memory_browser_edit_long_term_title">Редактирование долговременной памяти</string>
+    <string name="memory_browser_long_term_saved">Сохранено в долговременную память</string>
+    <string name="memory_browser_save_failed">Не удалось сохранить: %1$s</string>
+    <string name="memory_browser_note_read_error">Ошибка чтения файла</string>
+    <string name="memory_browser_note_load_failed">Не удалось прочитать заметку: %1$s</string>
+</resources>

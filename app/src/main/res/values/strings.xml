@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">DroidClaw</string>
+    <string name="app_name" translatable="false">DroidClaw</string>
     <string name="type_message">Type a message…</string>
     <string name="send">Send</string>
     <string name="stop_response">Stop response</string>
@@ -72,10 +72,10 @@
     <string name="no_models">No models configured</string>
     
     <!-- API Types -->
-    <string name="api_type_openai_completions">OpenAI Completions</string>
-    <string name="api_type_openai_responses">OpenAI Responses</string>
-    <string name="api_type_anthropic">Anthropic</string>
-    <string name="api_type_google">Google</string>
+    <string name="api_type_openai_completions" translatable="false">OpenAI Completions</string>
+    <string name="api_type_openai_responses" translatable="false">OpenAI Responses</string>
+    <string name="api_type_anthropic" translatable="false">Anthropic</string>
+    <string name="api_type_google" translatable="false">Google</string>
     
     <!-- Agent settings -->
     <string name="agent_settings">Agent Settings</string>
@@ -186,7 +186,7 @@
     <string name="settings_info_subtitle">App version and information</string>
     <string name="info_screen_title">Info</string>
     <string name="info_app_version">ver: %1$s</string>
-    <string name="info_github_link">GitHub</string>
+    <string name="info_github_link" translatable="false">GitHub</string>
     <string name="info_screen_image_description">App information image</string>
     
     <!-- Memory -->
@@ -321,7 +321,7 @@
     <string name="env_var_deleted">Environment variable deleted</string>
 
     <!-- SearXNG Search Tool -->
-    <string name="searxng_url_hint">e.g. SEARXNG_URL = https://searx.example.com</string>
+    <string name="searxng_url_hint" translatable="false">e.g. SEARXNG_URL = https://searx.example.com</string>
 
     <!-- Chat Search -->
     <string name="search">Search</string>
@@ -358,7 +358,7 @@
     <string name="ssh_host">Host</string>
     <string name="ssh_host_hint">e.g. server.example.com or 192.168.1.100</string>
     <string name="ssh_port">Port</string>
-    <string name="ssh_port_hint">22</string>
+    <string name="ssh_port_hint" translatable="false">22</string>
     <string name="ssh_username">Username</string>
     <string name="ssh_username_hint">Enter username</string>
     <string name="ssh_auth_type">Authentication</string>
@@ -367,7 +367,7 @@
     <string name="ssh_password">Password</string>
     <string name="ssh_password_hint">Enter SSH password</string>
     <string name="ssh_private_key">Private Key Path</string>
-    <string name="ssh_private_key_hint">/path/to/id_rsa</string>
+    <string name="ssh_private_key_hint" translatable="false">/path/to/id_rsa</string>
     <string name="ssh_verify_host">Verify Host Key</string>
     <string name="ssh_verify_host_description">Enable host key verification (recommended for production)</string>
     <string name="ssh_test_connection">Test Connection</string>
