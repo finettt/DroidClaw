@@ -113,6 +113,8 @@
     <string name="calendar_access_description">Allow the agent to read and manage your device calendar events (Google and other synced calendars)</string>
     <string name="guidelines_learning">Self-Improvement (GUIDELINES.md)</string>
     <string name="guidelines_learning_description">After each response, analyze the chat and update .agent/GUIDELINES.md with durable workflow lessons. The file is injected into every new conversation.</string>
+    <string name="lesson_extraction">Lesson Extraction</string>
+    <string name="lesson_extraction_description">After each finished chat, extract durable lessons (corrections, preferences, tool patterns) into the lesson store. Fresh lessons are injected into new conversations and the agent can save or recall them with tools.</string>
     <string name="calendar_permission_denied">Calendar permission denied — Calendar Access stays off. Grant it in system settings to enable it.</string>
     <string name="accessibility_service_label">DroidClaw Accessibility</string>
     <string name="accessibility_service_description">Lets DroidClaw read the visible UI and control the phone screen for agent tasks</string>

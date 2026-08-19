@@ -72,6 +72,7 @@ public class AgentSettingsFragment extends Fragment {
 
     // Self-improvement views
     private SwitchMaterial switchGuidelinesLearning;
+    private SwitchMaterial switchLessonExtraction;
 
     private Button buttonSave;
 
@@ -168,6 +169,7 @@ public class AgentSettingsFragment extends Fragment {
         calendarPermissionHelper = new CalendarPermissionHelper(requireContext());
 
         switchGuidelinesLearning = view.findViewById(R.id.switch_guidelines_learning);
+        switchLessonExtraction = view.findViewById(R.id.switch_lesson_extraction);
 
         buttonSave = view.findViewById(R.id.button_save);
     }
@@ -280,6 +282,7 @@ public class AgentSettingsFragment extends Fragment {
 
             // Self-improvement
             switchGuidelinesLearning.setChecked(agentConfig.isGuidelinesLearningEnabled());
+            switchLessonExtraction.setChecked(agentConfig.isLessonExtractionEnabled());
 
             // Terminal backend
             String backend = agentConfig.getShellBackend();
@@ -644,6 +647,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setScreenControlTrustMode(switchScreenControlTrustMode.isChecked());
         agentConfig.setCalendarEnabled(switchCalendarAccess.isChecked());
         agentConfig.setGuidelinesLearningEnabled(switchGuidelinesLearning.isChecked());
+        agentConfig.setLessonExtractionEnabled(switchLessonExtraction.isChecked());
 
         // Terminal backend
         String backendText = dropdownTerminalBackend.getText().toString();
