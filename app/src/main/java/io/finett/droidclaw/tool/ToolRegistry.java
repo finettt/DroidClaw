@@ -48,6 +48,8 @@ import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.tool.impl.SearxngSearchTool;
 import io.finett.droidclaw.tool.impl.ListAppsTool;
+import io.finett.droidclaw.tool.impl.ListLessonsTool;
+import io.finett.droidclaw.tool.impl.SaveLessonTool;
 import io.finett.droidclaw.tool.impl.OpenAppTool;
 import io.finett.droidclaw.tool.impl.CalendarListCalendarsTool;
 import io.finett.droidclaw.tool.impl.CalendarListEventsTool;
@@ -133,6 +135,10 @@ public class ToolRegistry {
         registerTool(new ViewTaskHistoryTool(context));
         registerTool(new TaskStatsTool(context));
         registerTool(new SetupHeartbeatTool(context));
+
+        // Self-improvement: deliberate lesson capture and recall (workspace-only writes)
+        registerTool(new SaveLessonTool(context));
+        registerTool(new ListLessonsTool(context));
 
         registerTool(new SubmitNotificationTool(context));
 

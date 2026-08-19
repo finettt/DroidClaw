@@ -51,15 +51,15 @@ public class ToolRegistryTest {
         // Without SettingsManager: sandboxMode="strict", shellEnabled=true but strict blocks
         // shell/python and also mutating file tools (write/edit/delete).
         // Read-only file tools (4) + automation/notification tools (10)
-        // + background process tools (2) + app tools (2) = 18.
-        assertEquals("Should have exactly 18 tools in strict mode without settings", 18, toolCount);
+        // + lesson tools (2) + background process tools (2) + app tools (2) = 20.
+        assertEquals("Should have exactly 20 tools in strict mode without settings", 20, toolCount);
     }
 
     @Test
     public void testGetAllTools() {
         List<Tool> tools = toolRegistry.getAllTools();
         assertNotNull("Tools list should not be null", tools);
-        assertEquals("Should return all registered tools", 18, tools.size());
+        assertEquals("Should return all registered tools", 20, tools.size());
     }
 
     @Test
@@ -152,7 +152,7 @@ public class ToolRegistryTest {
     public void testGetToolDefinitions() {
         JsonArray definitions = toolRegistry.getToolDefinitions();
         assertNotNull("Tool definitions should not be null", definitions);
-        assertEquals("Should have definitions for all tools in strict mode", 18, definitions.size());
+        assertEquals("Should have definitions for all tools in strict mode", 20, definitions.size());
         
         JsonObject firstDef = definitions.get(0).getAsJsonObject();
         assertTrue("Should have 'type' field", firstDef.has("type"));
@@ -274,7 +274,7 @@ public class ToolRegistryTest {
         t1.join();
         t2.join();
 
-        assertEquals("Tool count should remain consistent", 18, toolRegistry.getToolCount());
+        assertEquals("Tool count should remain consistent", 20, toolRegistry.getToolCount());
     }
 
     // ==================== Calendar tool gating ====================

@@ -20,6 +20,7 @@ public class AgentConfig {
     private boolean streamResponses;        // stream LLM text via SSE as it is generated
     private boolean calendarEnabled; // allow agent to read and manage device calendar events
     private boolean guidelinesLearningEnabled; // analyze each finished chat and update .agent/GUIDELINES.md
+    private boolean lessonExtractionEnabled; // extract durable lessons from finished chats into the lesson store
     private int llmConnectTimeout;   // seconds
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
@@ -43,6 +44,7 @@ public class AgentConfig {
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
         this.guidelinesLearningEnabled = true;
+        this.lessonExtractionEnabled = true;
         this.toolApprovalOverrides = new HashMap<>();
         this.shellBackend = "local";
         this.sshPort = 22;
@@ -69,6 +71,7 @@ public class AgentConfig {
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
         this.guidelinesLearningEnabled = true;
+        this.lessonExtractionEnabled = true;
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
     }
@@ -220,6 +223,14 @@ public class AgentConfig {
 
     public void setGuidelinesLearningEnabled(boolean guidelinesLearningEnabled) {
         this.guidelinesLearningEnabled = guidelinesLearningEnabled;
+    }
+
+    public boolean isLessonExtractionEnabled() {
+        return lessonExtractionEnabled;
+    }
+
+    public void setLessonExtractionEnabled(boolean lessonExtractionEnabled) {
+        this.lessonExtractionEnabled = lessonExtractionEnabled;
     }
 
     public Map<String, String> getToolApprovalOverrides() {

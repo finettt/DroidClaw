@@ -19,6 +19,7 @@ import androidx.core.app.NotificationCompat;
 
 import com.google.gson.JsonObject;
 
+import java.io.File;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.SynchronousQueue;
@@ -30,11 +31,13 @@ import io.finett.droidclaw.agent.ConversationSummarizer;
 import io.finett.droidclaw.agent.GuidelinesManager;
 import io.finett.droidclaw.agent.GuidelinesReflector;
 import io.finett.droidclaw.agent.IdentityManager;
+import io.finett.droidclaw.agent.LessonExtractor;
 import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.ChatRepository;
+import io.finett.droidclaw.repository.LessonRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.SettingsManager;
@@ -373,6 +376,32 @@ public class AgentExecutionService extends Service {
         }
     }
 
+    /**
+     * Self-improvement hook (layer ①): after the run completes, extract
+     * durable lessons from the transcript and append them to the lesson
+     * store. Skipped when lesson extraction is disabled or the conversation
+     * is too short. Never affects the user-visible flow.
+     */
+    private void maybeExtractLessons(String sessionId, List<ChatMessage> history,
+                                     WorkspaceManager workspaceManager) {
+        try {
+            SettingsManager settingsManager = new SettingsManager(getApplicationContext());
+            io.finett.droidclaw.model.AgentConfig config = settingsManager.getAgentConfig();
+            if (config == null || !config.isLessonExtractionEnabled()) {
+                Log.d(TAG, "Lesson extraction disabled, skipping");
+                return;
+            }
+
+            LessonRepository lessonRepository = new LessonRepository(
+                    new File(workspaceManager.getMemoryDirectory(), "lessons"));
+            LlmApiService extractionApi = new LlmApiService(settingsManager);
+            LessonExtractor extractor = new LessonExtractor(extractionApi, lessonRepository);
+            extractor.extract(sessionId, history);
+        } catch (Exception e) {
+            Log.w(TAG, "Lesson extraction skipped", e);
+        }
+    }
+
     // ==================== Worker thread ====================
 
     private void runAgentLoop(AgentSession session, List<ChatMessage> conversationHistory,
@@ -388,7 +417,10 @@ public class AgentExecutionService extends Service {
 
             ConversationSummarizer summarizer = new ConversationSummarizer(
                     apiService, memoryRepository, modelContextWindow);
-            MemoryContextBuilder memoryContext = new MemoryContextBuilder(memoryRepository);
+            LessonRepository lessonRepository = new LessonRepository(
+                    new File(workspaceManager.getMemoryDirectory(), "lessons"));
+            MemoryContextBuilder memoryContext = new MemoryContextBuilder(
+                    memoryRepository, lessonRepository);
 
             IdentityManager identityManager = new IdentityManager(
                     getApplicationContext(), workspaceManager);
@@ -471,6 +503,10 @@ public class AgentExecutionService extends Service {
                     // Self-improvement: analyze the finished conversation and update
                     // GUIDELINES.md when a durable workflow improvement was found.
                     maybeAnalyzeGuidelines(history, guidelinesManager);
+
+                    // Self-improvement layer ①: extract durable lessons into the
+                    // JSONL lesson store for injection into future conversations.
+                    maybeExtractLessons(session.sessionId, history, workspaceManager);
 
                     mainHandler.post(() -> {
                         UICallback cb = uiCallbacks.remove(session.sessionId);
