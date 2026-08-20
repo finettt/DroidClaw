@@ -20,6 +20,7 @@ import io.finett.droidclaw.model.CronJob;
 import io.finett.droidclaw.model.HeartbeatConfig;
 import io.finett.droidclaw.worker.CronJobWorker;
 import io.finett.droidclaw.worker.HeartbeatWorker;
+import io.finett.droidclaw.worker.LessonConsolidationWorker;
 
 public class CronJobScheduler {
 
@@ -267,6 +268,56 @@ public class CronJobScheduler {
         );
 
         Log.d(TAG, "Heartbeat queued for immediate execution");
+    }
+
+    // ==================== Lesson consolidation ====================
+
+    private static final String CONSOLIDATION_WORK_NAME = "lesson_consolidation_task";
+
+    /**
+     * Ensures the daily lesson consolidation job is scheduled (roughly once
+     * per 24h; WorkManager decides the exact time). No-op when already
+     * scheduled (KEEP policy).
+     */
+    public void ensureConsolidation() {
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
+                .setRequiresCharging(false)
+                .build();
+
+        PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(
+                LessonConsolidationWorker.class,
+                24, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .build();
+
+        workManager.enqueueUniquePeriodicWork(
+                CONSOLIDATION_WORK_NAME,
+                ExistingPeriodicWorkPolicy.KEEP,
+                workRequest);
+
+        Log.d(TAG, "Lesson consolidation ensured (daily, KEEP policy)");
+    }
+
+    public void cancelConsolidation() {
+        workManager.cancelUniqueWork(CONSOLIDATION_WORK_NAME);
+        Log.d(TAG, "Lesson consolidation cancelled");
+    }
+
+    public void runConsolidationNow() {
+        String workName = "lesson_consolidation_now_" + System.currentTimeMillis();
+
+        OneTimeWorkRequest oneTimeWork = new OneTimeWorkRequest.Builder(
+                LessonConsolidationWorker.class)
+                .build();
+
+        workManager.enqueueUniqueWork(
+                workName,
+                ExistingWorkPolicy.APPEND,
+                oneTimeWork);
+
+        Log.d(TAG, "Lesson consolidation queued for immediate execution");
     }
 
     public static long parseScheduleToInterval(String schedule) {

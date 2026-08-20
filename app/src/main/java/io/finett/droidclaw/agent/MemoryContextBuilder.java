@@ -5,6 +5,10 @@ import android.util.Log;
 import java.io.IOException;
 import java.util.List;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 import io.finett.droidclaw.model.Lesson;
 import io.finett.droidclaw.repository.LessonRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
@@ -19,15 +23,23 @@ public class MemoryContextBuilder {
 
     private final MemoryRepository memoryRepository;
     private final LessonRepository lessonRepository; // nullable — injection is skipped when absent
+    private final long consolidationLastRunMillis; // 0 = unknown/never ran
 
     public MemoryContextBuilder(MemoryRepository memoryRepository) {
-        this(memoryRepository, null);
+        this(memoryRepository, null, 0L);
     }
 
     public MemoryContextBuilder(MemoryRepository memoryRepository,
                                 LessonRepository lessonRepository) {
+        this(memoryRepository, lessonRepository, 0L);
+    }
+
+    public MemoryContextBuilder(MemoryRepository memoryRepository,
+                                LessonRepository lessonRepository,
+                                long consolidationLastRunMillis) {
         this.memoryRepository = memoryRepository;
         this.lessonRepository = lessonRepository;
+        this.consolidationLastRunMillis = consolidationLastRunMillis;
     }
 
     public String buildMemoryContext() {
@@ -108,6 +120,7 @@ public class MemoryContextBuilder {
             if (included == 0) {
                 return "";
             }
+            section.append(buildConsolidationStatusLine(lessons.size())).append('\n');
             section.append("\n");
             Log.d(TAG, "Injected " + included + " fresh lesson(s)");
             return section.toString();
@@ -115,6 +128,21 @@ public class MemoryContextBuilder {
             Log.w(TAG, "Failed to load lessons for context", e);
             return "";
         }
+    }
+
+    /**
+     * One-line consolidation status so the agent can reason about its own
+     * memory freshness ("N lesson(s) pending; last run <date>").
+     */
+    private String buildConsolidationStatusLine(int pendingCount) {
+        StringBuilder status = new StringBuilder("_Consolidation: ")
+                .append(pendingCount).append(" lesson(s) pending");
+        if (consolidationLastRunMillis > 0) {
+            String formatted = new SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                    .format(new Date(consolidationLastRunMillis));
+            status.append("; last run ").append(formatted);
+        }
+        return status.append("_").toString();
     }
 
     public boolean hasMemory() {

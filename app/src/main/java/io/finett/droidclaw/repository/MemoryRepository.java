@@ -98,6 +98,16 @@ public class MemoryRepository {
         Log.d(TAG, "Appended to MEMORY.md: " + content.length() + " characters");
     }
 
+    /**
+     * Full rewrite of MEMORY.md, used by lesson consolidation after merging
+     * fresh lessons into the existing content.
+     */
+    public void writeLongTermMemory(String content) throws IOException {
+        File memoryFile = new File(memoryDir, LONG_TERM_FILE);
+        writeToFile(memoryFile, content, false);
+        Log.d(TAG, "Rewrote MEMORY.md: " + content.length() + " characters");
+    }
+
     public List<File> getAllDailyNotes() {
         File[] files = memoryDir.listFiles((dir, name) ->
             name.matches("\\d{4}-\\d{2}-\\d{2}\\.md")

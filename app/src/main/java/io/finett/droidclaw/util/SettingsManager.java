@@ -38,6 +38,7 @@ public class SettingsManager {
     private Map<String, Provider> providers;
     private AgentConfig agentConfig;
     private boolean onboardingCompleted;
+    private long lessonConsolidationLastRunMillis;
     private String userName;
     private Map<String, String> envVars;
 
@@ -148,6 +149,14 @@ public class SettingsManager {
             } else {
                 onboardingCompleted = false;
                 userName = "";
+            }
+
+            // Load lesson consolidation state
+            if (root.has("lessonConsolidation")) {
+                lessonConsolidationLastRunMillis = root.getJSONObject("lessonConsolidation")
+                        .optLong("lastRunMillis", 0L);
+            } else {
+                lessonConsolidationLastRunMillis = 0L;
             }
 
             // Load env vars
@@ -282,6 +291,10 @@ public class SettingsManager {
             onboardingObj.put("completed", onboardingCompleted);
             onboardingObj.put("userName", userName);
             root.put("onboarding", onboardingObj);
+
+            JSONObject lessonConsolidationObj = new JSONObject();
+            lessonConsolidationObj.put("lastRunMillis", lessonConsolidationLastRunMillis);
+            root.put("lessonConsolidation", lessonConsolidationObj);
 
             JSONObject envVarsObj = new JSONObject();
             for (Map.Entry<String, String> entry : envVars.entrySet()) {
@@ -515,6 +528,18 @@ public class SettingsManager {
 
     public void setOnboardingCompleted(boolean completed) {
         this.onboardingCompleted = completed;
+        saveToJson();
+    }
+
+    // ==================== Lesson consolidation ====================
+
+    /** Epoch millis of the last successful lesson consolidation run; 0 = never ran. */
+    public long getLessonConsolidationLastRunMillis() {
+        return lessonConsolidationLastRunMillis;
+    }
+
+    public void setLessonConsolidationLastRunMillis(long millis) {
+        this.lessonConsolidationLastRunMillis = millis;
         saveToJson();
     }
 
