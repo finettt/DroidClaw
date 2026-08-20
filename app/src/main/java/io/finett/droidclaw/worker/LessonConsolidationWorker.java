@@ -44,14 +44,18 @@ public class LessonConsolidationWorker extends Worker {
         try {
             WorkspaceManager workspaceManager = new WorkspaceManager(getApplicationContext());
             File lessonsDir = new File(workspaceManager.getMemoryDirectory(), "lessons");
+            LessonRepository lessonRepository = new LessonRepository(lessonsDir);
             LessonConsolidator consolidator = new LessonConsolidator(
                     new LlmApiService(settingsManager),
                     new MemoryRepository(workspaceManager),
-                    new LessonRepository(lessonsDir),
+                    lessonRepository,
                     new LessonConsolidationRepository(lessonsDir));
 
             boolean success = consolidator.runConsolidation();
             if (success) {
+                // Drop consumed lessons past their retention window so the
+                // store stays compact after consolidation.
+                lessonRepository.pruneConsumed();
                 settingsManager.setLessonConsolidationLastRunMillis(
                         System.currentTimeMillis());
                 Log.i(TAG, "Lesson consolidation finished successfully");
