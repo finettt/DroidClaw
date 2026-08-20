@@ -420,7 +420,8 @@ public class AgentExecutionService extends Service {
             LessonRepository lessonRepository = new LessonRepository(
                     new File(workspaceManager.getMemoryDirectory(), "lessons"));
             MemoryContextBuilder memoryContext = new MemoryContextBuilder(
-                    memoryRepository, lessonRepository);
+                    memoryRepository, lessonRepository,
+                    settingsManager.getLessonConsolidationLastRunMillis());
 
             IdentityManager identityManager = new IdentityManager(
                     getApplicationContext(), workspaceManager);

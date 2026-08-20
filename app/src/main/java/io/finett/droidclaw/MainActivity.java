@@ -71,6 +71,10 @@ public class MainActivity extends AppCompatActivity {
         settingsManager = new SettingsManager(this);
         apiService = new LlmApiService(settingsManager);
 
+        // Self-improvement: keep the daily lesson consolidation job scheduled.
+        // The worker itself no-ops when the feature is disabled in settings.
+        new io.finett.droidclaw.scheduler.CronJobScheduler(this).ensureConsolidation();
+
         MaterialToolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 

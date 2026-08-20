@@ -21,6 +21,7 @@ public class AgentConfig {
     private boolean calendarEnabled; // allow agent to read and manage device calendar events
     private boolean guidelinesLearningEnabled; // analyze each finished chat and update .agent/GUIDELINES.md
     private boolean lessonExtractionEnabled; // extract durable lessons from finished chats into the lesson store
+    private boolean lessonConsolidationEnabled; // daily consolidation of lessons into MEMORY.md
     private int llmConnectTimeout;   // seconds
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
@@ -45,6 +46,7 @@ public class AgentConfig {
         this.calendarEnabled = false;
         this.guidelinesLearningEnabled = true;
         this.lessonExtractionEnabled = true;
+        this.lessonConsolidationEnabled = true;
         this.toolApprovalOverrides = new HashMap<>();
         this.shellBackend = "local";
         this.sshPort = 22;
@@ -72,6 +74,7 @@ public class AgentConfig {
         this.calendarEnabled = false;
         this.guidelinesLearningEnabled = true;
         this.lessonExtractionEnabled = true;
+        this.lessonConsolidationEnabled = true;
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
     }
@@ -231,6 +234,14 @@ public class AgentConfig {
 
     public void setLessonExtractionEnabled(boolean lessonExtractionEnabled) {
         this.lessonExtractionEnabled = lessonExtractionEnabled;
+    }
+
+    public boolean isLessonConsolidationEnabled() {
+        return lessonConsolidationEnabled;
+    }
+
+    public void setLessonConsolidationEnabled(boolean lessonConsolidationEnabled) {
+        this.lessonConsolidationEnabled = lessonConsolidationEnabled;
     }
 
     public Map<String, String> getToolApprovalOverrides() {

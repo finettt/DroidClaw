@@ -73,6 +73,7 @@ public class AgentSettingsFragment extends Fragment {
     // Self-improvement views
     private SwitchMaterial switchGuidelinesLearning;
     private SwitchMaterial switchLessonExtraction;
+    private SwitchMaterial switchLessonConsolidation;
 
     private Button buttonSave;
 
@@ -170,6 +171,7 @@ public class AgentSettingsFragment extends Fragment {
 
         switchGuidelinesLearning = view.findViewById(R.id.switch_guidelines_learning);
         switchLessonExtraction = view.findViewById(R.id.switch_lesson_extraction);
+        switchLessonConsolidation = view.findViewById(R.id.switch_lesson_consolidation);
 
         buttonSave = view.findViewById(R.id.button_save);
     }
@@ -283,6 +285,7 @@ public class AgentSettingsFragment extends Fragment {
             // Self-improvement
             switchGuidelinesLearning.setChecked(agentConfig.isGuidelinesLearningEnabled());
             switchLessonExtraction.setChecked(agentConfig.isLessonExtractionEnabled());
+            switchLessonConsolidation.setChecked(agentConfig.isLessonConsolidationEnabled());
 
             // Terminal backend
             String backend = agentConfig.getShellBackend();
@@ -648,6 +651,16 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setCalendarEnabled(switchCalendarAccess.isChecked());
         agentConfig.setGuidelinesLearningEnabled(switchGuidelinesLearning.isChecked());
         agentConfig.setLessonExtractionEnabled(switchLessonExtraction.isChecked());
+        agentConfig.setLessonConsolidationEnabled(switchLessonConsolidation.isChecked());
+
+        // Keep the daily consolidation job in sync with the toggle
+        io.finett.droidclaw.scheduler.CronJobScheduler consolidationScheduler =
+                new io.finett.droidclaw.scheduler.CronJobScheduler(requireContext());
+        if (switchLessonConsolidation.isChecked()) {
+            consolidationScheduler.ensureConsolidation();
+        } else {
+            consolidationScheduler.cancelConsolidation();
+        }
 
         // Terminal backend
         String backendText = dropdownTerminalBackend.getText().toString();
