@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://droidclaw.finett.io/schemas/workflow-v1.json",
+  "title": "DroidClaw Workflow v1",
+  "type": "object",
+  "required": ["version", "goal", "agents"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "goal": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "entry": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+        { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" } }
+      ]
+    },
+    "output": { "type": "string", "minLength": 1 },
+    "defaults": { "$ref": "#/definitions/nodeDefaults" },
+    "agents": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 64,
+      "patternProperties": {
+        "^[a-z][a-z0-9_]{0,63}$": { "$ref": "#/definitions/agent" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "modelRef": { "type": "string", "pattern": "^[^/]+/.+$" },
+    "toolName": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$" },
+    "template": { "type": "string", "minLength": 1 },
+    "nodeDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": { "$ref": "#/definitions/modelRef" },
+        "max_turns": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "timeout_ms": { "type": "integer", "minimum": 1000 },
+        "allowed_tools": { "type": "array", "items": { "$ref": "#/definitions/toolName" } },
+        "denied_tools": { "type": "array", "items": { "$ref": "#/definitions/toolName" } },
+        "approval": { "enum": ["inherit", "auto_approve", "deny_writes", "strict"] },
+        "on_error": { "enum": ["fail", "skip", "continue"] },
+        "retry": { "$ref": "#/definitions/retry" },
+        "max_parallel": { "type": "integer", "minimum": 1, "maximum": 8 },
+        "max_nodes": { "type": "integer", "minimum": 1, "maximum": 64 }
+      }
+    },
+    "retry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_attempts": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "backoff_ms": { "type": "integer", "minimum": 0, "maximum": 30000 }
+      }
+    },
+    "prompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "system": { "type": "string" },
+        "text": { "$ref": "#/definitions/template" },
+        "template": { "$ref": "#/definitions/template" },
+        "from_agent": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" }
+      },
+      "oneOf": [
+        { "required": ["text"] },
+        { "required": ["template"] },
+        { "required": ["from_agent"] }
+      ]
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt"],
+      "properties": {
+        "description": { "type": "string", "maxLength": 500 },
+        "model": { "$ref": "#/definitions/modelRef" },
+        "prompt": { "$ref": "#/definitions/prompt" },
+        "allowed_tools": { "type": "array", "items": { "$ref": "#/definitions/toolName" } },
+        "denied_tools": { "type": "array", "items": { "$ref": "#/definitions/toolName" } },
+        "max_turns": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "timeout_ms": { "type": "integer", "minimum": 1000 },
+        "retry": { "$ref": "#/definitions/retry" },
+        "on_error": { "enum": ["fail", "skip", "continue"] },
+        "approval": { "enum": ["inherit", "auto_approve", "deny_writes", "strict"] },
+        "output_schema": { "type": ["object", "null"] },
+        "depends_on": { "type": "array", "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" } },
+        "inputs": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } },
+        "when": { "type": ["string", "null"], "minLength": 1 }
+      }
+    }
+  }
+}

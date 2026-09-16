@@ -31,6 +31,7 @@ public class WorkspaceManager {
     private static final String MEMORY_DIR = ".agent/memory";
     private static final String SKILLS_DIR = ".agent/skills";
     private static final String CONFIG_DIR = ".agent/config";
+    private static final String WORKFLOWS_DIR = ".agent/workflows";
     private static final String UPLOADS_DIR = "uploads";
 
     private static final String SOUL_FILE = ".agent/soul.md";
@@ -65,6 +66,7 @@ public class WorkspaceManager {
             MEMORY_DIR,
             SKILLS_DIR,
             CONFIG_DIR,
+            WORKFLOWS_DIR,
             UPLOADS_DIR
         };
 
@@ -228,6 +230,10 @@ public class WorkspaceManager {
 
     public File getConfigDirectory() {
         return new File(workspaceRoot, CONFIG_DIR);
+    }
+
+    public File getWorkflowsDirectory() {
+        return new File(workspaceRoot, WORKFLOWS_DIR);
     }
 
     public File getUploadsDirectory() {

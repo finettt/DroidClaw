@@ -360,6 +360,220 @@ public class LlmApiService {
         });
     }
 
+    // ==================== Per-model overloads (workflow B1) ====================
+
+    /**
+     * Send a message with tools using an explicit provider/model instead of the
+     * global default. Used by workflow nodes that specify a per-node model (spec §7).
+     */
+    public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools,
+                                     List<ChatMessage> identityMessages,
+                                     io.finett.droidclaw.model.Provider provider,
+                                     io.finett.droidclaw.model.Model model,
+                                     ChatCallbackWithTools callback) {
+        if (provider == null || model == null) {
+            sendMessageWithTools(conversationHistory, tools, identityMessages, callback);
+            return;
+        }
+
+        String apiUrl = provider.getBaseUrl();
+        if (apiUrl == null || apiUrl.isEmpty()) {
+            mainHandler.post(() -> callback.onError("No API URL configured for provider " + provider.getId()));
+            return;
+        }
+
+        String apiType = resolveApiType(provider, model);
+        String jsonBody;
+        Request.Builder requestBuilder;
+
+        if (API_ANTHROPIC.equals(apiType)) {
+            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, identityMessages, model));
+            requestBuilder = buildRequestBuilderForProvider(jsonBody, provider, apiType);
+        } else {
+            jsonBody = gson.toJson(buildOpenAiRequestBody(conversationHistory, tools, identityMessages, model));
+            requestBuilder = buildRequestBuilderForProvider(jsonBody, provider, apiType);
+        }
+
+        Request request = requestBuilder.build();
+        Log.d(TAG, "sendMessageWithTools (per-model): HTTP " + request.method() + " " + request.url()
+                + " model=" + model.getId());
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                if (call.isCanceled()) {
+                    Log.d(TAG, "Request canceled");
+                    return;
+                }
+                Log.e(TAG, "Network error", e);
+                mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    if (!response.isSuccessful()) {
+                        String errMsg = parseApiError(responseBody, response.code(), apiType);
+                        Log.e(TAG, "API error: " + response.code() + " - " + responseBody);
+                        mainHandler.post(() -> callback.onError(errMsg));
+                        return;
+                    }
+                    LlmResponse llmResponse;
+                    if (API_ANTHROPIC.equals(apiType)) {
+                        llmResponse = parseAnthropicResponseWithTools(responseBody);
+                    } else {
+                        llmResponse = parseOpenAiResponseWithTools(responseBody);
+                    }
+                    mainHandler.post(() -> callback.onSuccess(llmResponse));
+                } catch (Exception e) {
+                    Log.e(TAG, "Parse error", e);
+                    mainHandler.post(() -> callback.onError("Parse error: " + e.getMessage()));
+                }
+            }
+        });
+    }
+
+    /**
+     * Send a structured-output message using an explicit provider/model.
+     */
+    public void sendMessageStructured(List<ChatMessage> conversationHistory, JsonArray tools,
+                                      List<ChatMessage> identityMessages,
+                                      JsonObject responseSchema,
+                                      io.finett.droidclaw.model.Provider provider,
+                                      io.finett.droidclaw.model.Model model,
+                                      StructuredResponseCallback callback) {
+        if (provider == null || model == null) {
+            sendMessageStructured(conversationHistory, tools, identityMessages, responseSchema, callback);
+            return;
+        }
+
+        String apiUrl = provider.getBaseUrl();
+        if (apiUrl == null || apiUrl.isEmpty()) {
+            mainHandler.post(() -> callback.onError("No API URL configured for provider " + provider.getId()));
+            return;
+        }
+
+        String apiType = resolveApiType(provider, model);
+        String jsonBody;
+        Request.Builder requestBuilder;
+
+        if (API_ANTHROPIC.equals(apiType)) {
+            List<ChatMessage> augmentedIdentity = buildAnthropicSchemaInstructions(identityMessages, responseSchema);
+            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, augmentedIdentity, model));
+            requestBuilder = buildRequestBuilderForProvider(jsonBody, provider, apiType);
+        } else {
+            JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages, model);
+            JsonObject responseFormat = new JsonObject();
+            responseFormat.addProperty("type", "json_schema");
+            JsonObject jsonSchema = new JsonObject();
+            jsonSchema.addProperty("strict", true);
+            jsonSchema.add("schema", responseSchema);
+            responseFormat.add("json_schema", jsonSchema);
+            body.add("response_format", responseFormat);
+            jsonBody = gson.toJson(body);
+            requestBuilder = buildRequestBuilderForProvider(jsonBody, provider, apiType);
+        }
+
+        client.newCall(requestBuilder.build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                if (call.isCanceled()) {
+                    Log.d(TAG, "Request canceled");
+                    return;
+                }
+                Log.e(TAG, "Network error", e);
+                mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    if (!response.isSuccessful()) {
+                        String errMsg = parseApiError(responseBody, response.code(), apiType);
+                        Log.e(TAG, "API error: " + response.code() + " - " + responseBody);
+                        mainHandler.post(() -> callback.onError(errMsg));
+                        return;
+                    }
+                    StructuredResponse structuredResponse;
+                    if (API_ANTHROPIC.equals(apiType)) {
+                        LlmResponse llmResp = parseAnthropicResponseWithTools(responseBody);
+                        structuredResponse = new StructuredResponse(
+                                llmResp.getContent(), null, llmResp.getToolCalls(), llmResp.getUsage());
+                    } else {
+                        structuredResponse = parseOpenAiStructuredResponse(responseBody);
+                    }
+                    mainHandler.post(() -> callback.onSuccess(structuredResponse));
+                } catch (Exception e) {
+                    Log.e(TAG, "Parse error", e);
+                    mainHandler.post(() -> callback.onError("Parse error: " + e.getMessage()));
+                }
+            }
+        });
+    }
+
+    // ==================== Per-model helpers ====================
+
+    private String resolveApiType(io.finett.droidclaw.model.Provider provider,
+                                   io.finett.droidclaw.model.Model model) {
+        // Model-level api takes precedence, then provider-level, then global
+        if (model.getApi() != null && !model.getApi().isEmpty()) return model.getApi();
+        if (provider.getApi() != null && !provider.getApi().isEmpty()) return provider.getApi();
+        return settingsManager.getApiType();
+    }
+
+    private Request.Builder buildRequestBuilderForProvider(String jsonBody,
+                                                            io.finett.droidclaw.model.Provider provider,
+                                                            String apiType) {
+        Request.Builder builder = new Request.Builder()
+                .url(provider.getBaseUrl())
+                .addHeader("Content-Type", "application/json");
+
+        String apiKey = provider.getApiKey();
+        if (API_ANTHROPIC.equals(apiType)) {
+            builder.addHeader("anthropic-version", ANTHROPIC_VERSION);
+            if (apiKey != null && !apiKey.trim().isEmpty()) {
+                builder.addHeader("x-api-key", apiKey);
+            }
+        } else {
+            if (apiKey != null && !apiKey.trim().isEmpty() && !"lm-studio".equalsIgnoreCase(apiKey.trim())) {
+                builder.addHeader("Authorization", "Bearer " + apiKey);
+            }
+        }
+
+        builder.post(RequestBody.create(jsonBody, JSON));
+        return builder;
+    }
+
+    /** Build OpenAI request body with an explicit model instead of the global one. */
+    private JsonObject buildOpenAiRequestBody(List<ChatMessage> conversationHistory,
+                                               JsonArray tools,
+                                               List<ChatMessage> identityMessages,
+                                               io.finett.droidclaw.model.Model model) {
+        JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages);
+        body.addProperty("model", model.getId());
+        if (model.getMaxTokens() > 0) {
+            body.addProperty("max_tokens", model.getMaxTokens());
+        }
+        return body;
+    }
+
+    /** Build Anthropic request body with an explicit model instead of the global one. */
+    private JsonObject buildAnthropicRequestBody(List<ChatMessage> conversationHistory,
+                                                   JsonArray tools,
+                                                   List<ChatMessage> identityMessages,
+                                                   io.finett.droidclaw.model.Model model) {
+        JsonObject body = buildAnthropicRequestBody(conversationHistory, tools, identityMessages);
+        body.addProperty("model", model.getId());
+        if (model.getMaxTokens() > 0) {
+            body.addProperty("max_tokens", model.getMaxTokens());
+        }
+        return body;
+    }
+
+    // ==================== Structured outputs ====================
+
     /**
      * Send a message with structured outputs support.
      *
