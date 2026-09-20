@@ -56,8 +56,8 @@ jobs:
                 "NODE_ENV": "test",
                 "ANTHROPIC_BASE_URL": "${{ secrets.OPENAI_URL }}",
                 "ANTHROPIC_AUTH_TOKEN": "${{ secrets.LLAMA_CPP_API_KEY }}",
-                "ANTHROPIC_DEFAULT_OPUS_MODEL": "ornith-1-5",
-                "ANTHROPIC_DEFAULT_SONNET_MODEL": "ornith-1-5",
+                "ANTHROPIC_DEFAULT_OPUS_MODEL": "ornith-1p5",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL": "ornith-1p5",
                 "ANTHROPIC_DEFAULT_HAIKU_MODEL": ""
               }
             }
