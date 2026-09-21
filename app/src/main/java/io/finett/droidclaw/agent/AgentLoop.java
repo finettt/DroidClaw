@@ -21,6 +21,7 @@ import io.finett.droidclaw.model.ToolApprovalMode;
 import io.finett.droidclaw.service.BackgroundProcessManager;
 import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.tool.Tool;
+import io.finett.droidclaw.tool.impl.RunWorkflowTool;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.tool.ToolResult;
 import io.finett.droidclaw.util.SettingsManager;
@@ -595,7 +596,7 @@ public class AgentLoop {
             return;
         }
 
-        if (wantsBackground && bgExecEnabled) {
+        if (wantsBackground && bgExecEnabled && !"run_workflow".equals(toolName)) {
             JsonObject cleanedArgs = arguments.deepCopy();
             cleanedArgs.remove("background");
             dispatchBackgroundTool(toolCall, cleanedArgs, toolCalls, index, conversationHistory, callback);
@@ -603,33 +604,46 @@ public class AgentLoop {
         }
 
         // Determine whether we need user approval
-        boolean needsApproval = (mode == ToolApprovalMode.ALWAYS_APPROVE)
-                ? false
-                : requireApproval && tool != null && tool.requiresApproval();
+        boolean needsApproval = tool != null && ("run_workflow".equals(toolName)
+                || (mode != ToolApprovalMode.ALWAYS_APPROVE && requireApproval && tool.requiresApproval()));
 
         if (needsApproval) {
             // Build a normalised ExecPlan for exec-type tools (shell, etc.).
             // The approval dialog shows the plan's description — the canonical exe path,
             // tokenised argv, and plan hash — NOT the raw LLM-provided string.
             // This prevents prompt-injection where approval description differs from execution.
-            ExecPlan execPlan = tool.buildExecPlan(arguments);
-            String description = (execPlan != null)
-                    ? execPlan.toApprovalDescription()
-                    : tool.getApprovalDescription(arguments);
-
+            final java.util.function.Supplier<ToolResult> approvedExecution;
+            final String description;
+            if (tool instanceof RunWorkflowTool) {
+                try {
+                    RunWorkflowTool.ApprovalReview review = ((RunWorkflowTool) tool).prepareApproval(arguments);
+                    description = review.getDescription();
+                    approvedExecution = review::execute;
+                } catch (Exception e) {
+                    executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback,
+                            () -> ToolResult.error("Cannot safely review workflow: " + e.getMessage()));
+                    return;
+                }
+            } else {
+                ExecPlan execPlan = tool.buildExecPlan(arguments);
+                description = execPlan != null ? execPlan.toApprovalDescription()
+                        : tool.getApprovalDescription(arguments);
+                approvedExecution = () -> toolRegistry.executeTool(toolName, arguments);
+            }
+            AtomicBoolean decided = new AtomicBoolean();
             callback.onApprovalRequired(toolName, description, arguments, new ApprovalCallback() {
                 @Override
                 public void onApproved() {
-                    if (cancelled.get()) {
+                    if (cancelled.get() || !decided.compareAndSet(false, true)) {
                         return;
                     }
-                    // Execute the tool and continue
-                    executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback);
+                    executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback,
+                            approvedExecution);
                 }
 
                 @Override
                 public void onDenied() {
-                    if (cancelled.get()) {
+                    if (cancelled.get() || !decided.compareAndSet(false, true)) {
                         return;
                     }
                     // Add denial result to history and continue
@@ -706,12 +720,19 @@ public class AgentLoop {
 
     private void executeToolAndContinue(LlmApiService.ToolCall toolCall, List<LlmApiService.ToolCall> toolCalls,
                                         int index, List<ChatMessage> conversationHistory, AgentCallback callback) {
+        executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback,
+                () -> toolRegistry.executeTool(toolCall.getName(), toolCall.getArguments()));
+    }
+
+    private void executeToolAndContinue(LlmApiService.ToolCall toolCall, List<LlmApiService.ToolCall> toolCalls,
+                                        int index, List<ChatMessage> conversationHistory, AgentCallback callback,
+                                        java.util.function.Supplier<ToolResult> execution) {
         if (cancelled.get()) {
             return;
         }
         String toolName = toolCall.getName();
 
-        ToolResult result = toolRegistry.executeTool(toolName, toolCall.getArguments());
+        ToolResult result = execution.get();
 
         String resultContent;
         if (result.isSuccess()) {
