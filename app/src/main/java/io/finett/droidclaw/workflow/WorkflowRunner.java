@@ -542,7 +542,9 @@ public final class WorkflowRunner {
             WorkflowApprovalPolicy policy, ScopedToolRegistry scopedRegistry) {
 
         if (policy == WorkflowApprovalPolicy.INHERIT) {
-            return null; // use global config
+            // Nodes have no interactive approval UI. Never inherit permission to write
+            // from permissive globals or per-tool ALWAYS_APPROVE settings.
+            policy = WorkflowApprovalPolicy.DENY_WRITES;
         }
 
         Map<String, ToolApprovalMode> overrides = new HashMap<>();

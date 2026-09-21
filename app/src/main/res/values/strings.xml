@@ -400,4 +400,11 @@
     <string name="memory_browser_save_failed">Failed to save: %1$s</string>
     <string name="memory_browser_note_read_error">Error reading file</string>
     <string name="memory_browser_note_load_failed">Failed to read note: %1$s</string>
+    <string name="workflow_review_header">Run workflow %1$s\nGoal: %2$s\nAgents: %3$d\n</string>
+    <string name="workflow_review_agent">\nAgent: %1$s\nRequested model: %2$s\nEffective allowed tools: %3$s\nDenied/excluded tools: %4$s\nApproval: %5$s (effective: %6$s)\n</string>
+    <string name="workflow_review_global_model">Global default model</string>
+    <string name="workflow_review_auto_approve">\nWARNING: auto_approve allows tools, including writes, without further approval. Approve only if you trust this workflow.</string>
+    <string name="workflow_review_failed">Cannot safely inspect workflow: %1$s</string>
+    <string name="workflow_review_execution_model">\nExecution model: %1$s. Node-specific model routing is not supported; all nodes use the global model setting.\n</string>
+    <string name="workflow_review_live_settings">Review-time settings are shown. Changes before launch require a fresh review. A running workflow still uses live global settings.\n</string>
 </resources>
