@@ -307,10 +307,12 @@ public class AgentLoop {
         callback.onCancelled(history);
     }
 
-    /** Clear the in-flight run references so late cancellation becomes a no-op. */
+    /** Drop run-local policy before notifying callers, which may reuse this loop. */
     private void detachActiveRun() {
         activeCallback = null;
         activeHistory = null;
+        setApprovalOverrides(null);
+        setModelOverride(null, null);
     }
 
     /**
