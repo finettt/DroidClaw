@@ -74,11 +74,12 @@ public final class WorkflowRunner {
      *
      * @param workflowJson the raw JSON workflow file content
      * @param input        runtime input for {{workflow.input}}; may be null
-     * @param callback     progress/completion callbacks; may be null
+     * @param callback     main-looper progress/completion callbacks; may be null
      * @return the terminal result
      */
     public WorkflowRunResult run(String workflowJson, String input, WorkflowRunCallback callback) {
         cancelled.set(false);
+        callback = MainThreadWorkflowRunCallback.wrap(callback);
 
         // Stage 1-3: load and validate
         WorkflowLoader.Result loadResult = WorkflowLoader.load(workflowJson, buildEnvironment());
