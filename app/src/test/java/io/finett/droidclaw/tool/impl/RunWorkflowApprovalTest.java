@@ -119,8 +119,9 @@ public class RunWorkflowApprovalTest {
         args.addProperty("background", background);
         repliesWithTool("run_workflow", args);
         AgentLoop.AgentCallback callback = mock(AgentLoop.AgentCallback.class);
-        new AgentLoop(api, registry, settings).start(new ArrayList<>(Collections.singletonList(
+        new AgentLoop(api, registry, settings, null, null, Runnable::run).start(new ArrayList<>(Collections.singletonList(
                 new ChatMessage("run", ChatMessage.TYPE_USER))), callback);
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
         return callback;
     }
 
@@ -162,6 +163,7 @@ public class RunWorkflowApprovalTest {
         verify(callback).onApprovalRequired(anyString(), anyString(), any(), approval.capture());
         approval.getValue().onApproved();
         approval.getValue().onApproved();
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
         verify(callback, times(1)).onToolResult(eq("run_workflow"), contains("success"));
         verify(api, times(3)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
     }
@@ -172,6 +174,7 @@ public class RunWorkflowApprovalTest {
         verify(callback).onApprovalRequired(anyString(), anyString(), any(), approval.capture());
         write(JSON.replace("hello", "changed"));
         approval.getValue().onApproved();
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
         verify(callback).onToolResult(eq("run_workflow"), contains("changed after approval"));
         verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
     }

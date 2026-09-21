@@ -10,7 +10,9 @@ import com.google.gson.JsonObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,6 +42,7 @@ public class AgentLoop {
     private final SettingsManager settingsManager;
     private final ConversationSummarizer summarizer;
     private final MemoryContextBuilder memoryContext;
+    private final Executor workflowExecutor;
     private int iterationCount;
     private int maxIterations;
     private boolean requireApproval;
@@ -181,6 +184,15 @@ public class AgentLoop {
 
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager,
                      ConversationSummarizer summarizer, MemoryContextBuilder memoryContext) {
+        this(apiService, toolRegistry, settingsManager, summarizer, memoryContext,
+                io.finett.droidclaw.workflow.WorkflowDispatch.executor());
+    }
+
+    /** The supplied executor must run workflow work off the main looper. */
+    public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager,
+                     ConversationSummarizer summarizer, MemoryContextBuilder memoryContext,
+                     Executor workflowExecutor) {
+        this.workflowExecutor = java.util.Objects.requireNonNull(workflowExecutor);
         this.apiService = apiService;
         this.toolRegistry = toolRegistry;
         this.settingsManager = settingsManager;
@@ -726,14 +738,42 @@ public class AgentLoop {
 
     private void executeToolAndContinue(LlmApiService.ToolCall toolCall, List<LlmApiService.ToolCall> toolCalls,
                                         int index, List<ChatMessage> conversationHistory, AgentCallback callback,
-                                        java.util.function.Supplier<ToolResult> execution) {
+                                        Supplier<ToolResult> execution) {
         if (cancelled.get()) {
             return;
         }
+        if ("run_workflow".equals(toolCall.getName())) {
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+            java.util.function.Consumer<ToolResult> deliver = result -> mainHandler.post(() -> {
+                if (!cancelled.get()) {
+                    completeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback, result);
+                }
+            });
+            try {
+                workflowExecutor.execute(() -> {
+                    if (cancelled.get()) {
+                        return;
+                    }
+                    ToolResult result;
+                    try {
+                        result = execution.get();
+                    } catch (RuntimeException e) {
+                        result = ToolResult.error("Tool execution failed: " + e.getMessage());
+                    }
+                    deliver.accept(result);
+                });
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                deliver.accept(ToolResult.error("Workflow execution unavailable: " + e.getMessage()));
+            }
+            return;
+        }
+        completeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback, execution.get());
+    }
+
+    private void completeToolAndContinue(LlmApiService.ToolCall toolCall, List<LlmApiService.ToolCall> toolCalls,
+                                        int index, List<ChatMessage> conversationHistory, AgentCallback callback,
+                                        ToolResult result) {
         String toolName = toolCall.getName();
-
-        ToolResult result = execution.get();
-
         String resultContent;
         if (result.isSuccess()) {
             resultContent = result.getContent();

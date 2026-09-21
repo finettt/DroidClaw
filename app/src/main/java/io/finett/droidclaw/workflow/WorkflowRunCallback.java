@@ -3,8 +3,8 @@ package io.finett.droidclaw.workflow;
 import java.util.Map;
 
 /**
- * Callbacks for monitoring a workflow run. All methods are called on the
- * thread that drives the run (typically a background thread).
+ * Callbacks for monitoring a workflow run. WorkflowRunner delivers these on
+ * the main looper. Delivery from a worker is posted and can follow run() returning.
  */
 public interface WorkflowRunCallback {
 
