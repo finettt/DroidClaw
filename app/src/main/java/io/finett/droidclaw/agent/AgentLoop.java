@@ -46,6 +46,11 @@ public class AgentLoop {
     private List<ChatMessage> identityMessages;
     private String guidelinesContent;
     private JsonObject responseSchema;
+    /** Per-run approval overrides set by the workflow runner; null means use global config. */
+    private java.util.Map<String, ToolApprovalMode> scopedApprovalOverrides;
+    /** Per-run model override for workflow nodes; null means use global default. */
+    private io.finett.droidclaw.model.Provider modelOverrideProvider;
+    private io.finett.droidclaw.model.Model modelOverrideModel;
 
     // ==================== Cancellation state ====================
 
@@ -70,6 +75,11 @@ public class AgentLoop {
      * reading the overrides fails (logged at warn level).
      */
     private ToolApprovalMode getPerToolApprovalMode(String toolName) {
+        // Scoped overrides (workflow runner) take precedence over global config
+        if (scopedApprovalOverrides != null) {
+            ToolApprovalMode scoped = scopedApprovalOverrides.get(toolName);
+            if (scoped != null) return scoped;
+        }
         try {
             java.util.Map<String, String> overrides = settingsManager.getAgentConfig()
                     .getToolApprovalOverrides();
@@ -85,6 +95,34 @@ public class AgentLoop {
             Log.w(TAG, "Error reading tool approval override for " + toolName, e);
             return ToolApprovalMode.DEFAULT;
         }
+    }
+
+    /**
+     * Set per-run approval overrides. Used by the workflow runner to enforce
+     * per-node approval policies (spec §10.1) without touching global settings.
+     * Pass {@code null} to clear and fall back to global config.
+     */
+    public void setApprovalOverrides(java.util.Map<String, ToolApprovalMode> overrides) {
+        this.scopedApprovalOverrides = overrides;
+    }
+
+    /**
+     * Set a per-run model override. Used by the workflow runner to let each
+     * node use a different model (spec §7). Pass {@code null} for either
+     * argument to fall back to the global default.
+     */
+    public void setModelOverride(io.finett.droidclaw.model.Provider provider,
+                                  io.finett.droidclaw.model.Model model) {
+        this.modelOverrideProvider = provider;
+        this.modelOverrideModel = model;
+        if (provider != null && model != null) {
+            Log.d(TAG, "Model override set: " + provider.getId() + "/" + model.getId());
+        }
+    }
+
+    /** Whether a per-run model override is active. */
+    public boolean hasModelOverride() {
+        return modelOverrideProvider != null && modelOverrideModel != null;
     }
 
     // Token tracking - "Last Usage" algorithm
@@ -166,6 +204,16 @@ public class AgentLoop {
     /** Whether streaming (SSE) responses are enabled for the standard chat path. */
     public boolean isStreamingEnabled() {
         return streamResponses;
+    }
+
+    /**
+     * Override the maximum iteration cap for this run. Used by the workflow
+     * runner to enforce per-node {@code max_turns} (spec §5.1).
+     *
+     * @param max the new cap, clamped to [1, 200] per spec §12 rule 5
+     */
+    public void setMaxIterations(int max) {
+        this.maxIterations = Math.max(1, Math.min(200, max));
     }
 
     public void setIdentityContext(List<ChatMessage> identityMessages) {
@@ -361,18 +409,15 @@ public class AgentLoop {
      */
     private void sendStructuredMessage(List<ChatMessage> conversationHistory, JsonArray tools,
                                        List<ChatMessage> contextMessages, AgentCallback callback) {
-        apiService.sendMessageStructured(conversationHistory, tools, contextMessages, responseSchema,
-                new LlmApiService.StructuredResponseCallback() {
+        LlmApiService.StructuredResponseCallback cb = new LlmApiService.StructuredResponseCallback() {
             @Override
             public void onSuccess(LlmApiService.StructuredResponse response) {
                 trackTokenUsage(response.getUsage());
-
                 if (response.isRefusal()) {
                     Log.w(TAG, "Model refused to respond: " + response.getRefusal());
                     handleRefusal(response, conversationHistory, callback);
                     return;
                 }
-
                 handleStructuredLlmResponse(response, conversationHistory, callback);
             }
 
@@ -381,7 +426,15 @@ public class AgentLoop {
                 detachActiveRun();
                 callback.onError(error);
             }
-        });
+        };
+
+        if (hasModelOverride()) {
+            apiService.sendMessageStructured(conversationHistory, tools, contextMessages,
+                    responseSchema, modelOverrideProvider, modelOverrideModel, cb);
+        } else {
+            apiService.sendMessageStructured(conversationHistory, tools, contextMessages,
+                    responseSchema, cb);
+        }
     }
 
     /**
@@ -389,35 +442,14 @@ public class AgentLoop {
      */
     private void sendStandardMessage(List<ChatMessage> conversationHistory, JsonArray tools,
                                      List<ChatMessage> contextMessages, AgentCallback callback) {
-        if (streamResponses) {
+        if (streamResponses && !hasModelOverride()) {
+            // Streaming path (global model only for now)
             apiService.sendMessageWithToolsStreaming(conversationHistory, tools, contextMessages,
-                    new LlmApiService.StreamingChatCallback() {
-                @Override
-                public void onDelta(String textChunk) {
-                    if (textChunk != null && !cancelled.get()) {
-                        synchronized (streamedText) {
-                            streamedText.append(textChunk);
-                        }
-                    }
-                    callback.onStreamDelta(textChunk);
-                }
-
-                @Override
-                public void onSuccess(LlmApiService.LlmResponse response) {
-                    trackTokenUsage(response.getUsage());
-                    handleLlmResponse(response, conversationHistory, callback);
-                }
-
-                @Override
-                public void onError(String error) {
-                    detachActiveRun();
-                    callback.onError(error);
-                }
-            });
+                    buildStreamingCallback(conversationHistory, callback));
             return;
         }
 
-        apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, new LlmApiService.ChatCallbackWithTools() {
+        LlmApiService.ChatCallbackWithTools cb = new LlmApiService.ChatCallbackWithTools() {
             @Override
             public void onSuccess(LlmApiService.LlmResponse response) {
                 trackTokenUsage(response.getUsage());
@@ -429,7 +461,41 @@ public class AgentLoop {
                 detachActiveRun();
                 callback.onError(error);
             }
-        });
+        };
+
+        if (hasModelOverride()) {
+            apiService.sendMessageWithTools(conversationHistory, tools, contextMessages,
+                    modelOverrideProvider, modelOverrideModel, cb);
+        } else {
+            apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, cb);
+        }
+    }
+
+    private LlmApiService.StreamingChatCallback buildStreamingCallback(
+            List<ChatMessage> conversationHistory, AgentCallback callback) {
+        return new LlmApiService.StreamingChatCallback() {
+            @Override
+            public void onDelta(String textChunk) {
+                if (textChunk != null && !cancelled.get()) {
+                    synchronized (streamedText) {
+                        streamedText.append(textChunk);
+                    }
+                }
+                callback.onStreamDelta(textChunk);
+            }
+
+            @Override
+            public void onSuccess(LlmApiService.LlmResponse response) {
+                trackTokenUsage(response.getUsage());
+                handleLlmResponse(response, conversationHistory, callback);
+            }
+
+            @Override
+            public void onError(String error) {
+                detachActiveRun();
+                callback.onError(error);
+            }
+        };
     }
 
     /**
@@ -504,19 +570,12 @@ public class AgentLoop {
         boolean bgExecEnabled = settingsManager != null
                 && settingsManager.getAgentConfig().isBackgroundExecEnabled();
 
-        if (wantsBackground && bgExecEnabled) {
-            JsonObject cleanedArgs = arguments.deepCopy();
-            cleanedArgs.remove("background");
-
-            dispatchBackgroundTool(toolCall, cleanedArgs, toolCalls, index, conversationHistory, callback);
-            return;
-        }
-
-        // Check if this tool requires approval
+        // Resolve scoped approval before considering background execution. A workflow's
+        // DENY_WRITES/STRICT policy must not be bypassable with {"background": true}.
         Tool tool = toolRegistry.getTool(toolName);
         ToolApprovalMode mode = getPerToolApprovalMode(toolName);
 
-        // ALWAYS_REJECT: block immediately, no prompt
+        // ALWAYS_REJECT: block immediately, no prompt or background dispatch.
         if (mode == ToolApprovalMode.ALWAYS_REJECT) {
             String resultContent = "Tool execution blocked by per-tool setting";
             Log.d(TAG, "Tool " + toolName + " blocked (ALWAYS_REJECT)");
@@ -531,6 +590,13 @@ public class AgentLoop {
 
             // Process next tool call
             processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
+            return;
+        }
+
+        if (wantsBackground && bgExecEnabled) {
+            JsonObject cleanedArgs = arguments.deepCopy();
+            cleanedArgs.remove("background");
+            dispatchBackgroundTool(toolCall, cleanedArgs, toolCalls, index, conversationHistory, callback);
             return;
         }
 

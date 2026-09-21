@@ -58,6 +58,7 @@ import io.finett.droidclaw.tool.impl.CalendarUpdateEventTool;
 import io.finett.droidclaw.tool.impl.CalendarDeleteEventTool;
 import io.finett.droidclaw.util.CalendarPermissionHelper;
 import io.finett.droidclaw.util.SettingsManager;
+import io.finett.droidclaw.tool.impl.RunWorkflowTool;
 
 public class ToolRegistry {
     private static final String TOOL_EXECUTE_SHELL = "execute_shell";
@@ -73,6 +74,17 @@ public class ToolRegistry {
     private final WorkspaceManager workspaceManager;
     private final VirtualFileSystem vfs;
     private final SettingsManager settingsManager;
+
+    /**
+     * Protected no-op constructor for subclass adapters (e.g. ScopedToolRegistryAdapter)
+     * that override all public methods and do not need the default initialization.
+     */
+    protected ToolRegistry() {
+        this.context = null;
+        this.settingsManager = null;
+        this.workspaceManager = null;
+        this.vfs = null;
+    }
 
     public ToolRegistry(Context context) {
         this(context, null);
@@ -177,6 +189,18 @@ public class ToolRegistry {
             registerTool(new CalendarCreateEventTool(calendarRepository));
             registerTool(new CalendarUpdateEventTool(calendarRepository));
             registerTool(new CalendarDeleteEventTool(calendarRepository));
+        }
+    }
+
+    /**
+     * Register the run_workflow tool. Called after the LlmApiService is available
+     * (i.e. after the registry is fully constructed and the API service exists).
+     * This is separate from registerTools() because RunWorkflowTool needs a reference
+     * to this registry and the API service, which are not available during construction.
+     */
+    public void registerWorkflowTool(io.finett.droidclaw.api.LlmApiService apiService) {
+        if (!tools.containsKey("run_workflow") && apiService != null) {
+            registerTool(new RunWorkflowTool(context, apiService, this, settingsManager));
         }
     }
 

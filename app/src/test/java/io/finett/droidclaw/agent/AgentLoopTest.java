@@ -24,6 +24,9 @@ import java.util.List;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.api.TokenUsage;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.ToolApprovalMode;
+import io.finett.droidclaw.tool.Tool;
+import java.util.Collections;
 import io.finett.droidclaw.repository.MemoryRepository;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.tool.ToolResult;
@@ -770,4 +773,46 @@ public class AgentLoopTest {
         conversation.add(new ChatMessage("Hello", ChatMessage.TYPE_USER));
         return conversation;
     }
+    @Test
+    public void scopedRejectBlocksBackgroundToolBeforeDispatch() {
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+        Tool tool = mock(Tool.class);
+        when(tool.requiresApproval()).thenReturn(true);
+        when(mockToolRegistry.getTool("write_file")).thenReturn(tool);
+        io.finett.droidclaw.util.SettingsManager workflowSettings =
+                mock(io.finett.droidclaw.util.SettingsManager.class);
+        io.finett.droidclaw.model.AgentConfig workflowConfig =
+                mock(io.finett.droidclaw.model.AgentConfig.class);
+        when(workflowSettings.getMaxAgentIterations()).thenReturn(20);
+        when(workflowSettings.isRequireApproval()).thenReturn(true);
+        when(workflowSettings.getAgentConfig()).thenReturn(workflowConfig);
+        when(workflowConfig.isBackgroundExecEnabled()).thenReturn(true);
+        when(workflowConfig.isStreamResponses()).thenReturn(false);
+        AgentLoop workflowLoop = new AgentLoop(mockApiService, mockToolRegistry, workflowSettings);
+        workflowLoop.setApprovalOverrides(Collections.singletonMap(
+                "write_file", ToolApprovalMode.ALWAYS_REJECT));
+
+        final int[] calls = {0};
+        doAnswer(invocation -> {
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            if (calls[0]++ == 0) {
+                JsonObject args = new JsonObject();
+                args.addProperty("background", true);
+                cb.onSuccess(new LlmApiService.LlmResponse(null, Collections.singletonList(
+                        new LlmApiService.ToolCall("call-bg", "write_file", args))));
+            } else {
+                cb.onSuccess(new LlmApiService.LlmResponse("done", null));
+            }
+            return null;
+        }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
+                any(), any(LlmApiService.ChatCallbackWithTools.class));
+
+        workflowLoop.start(createSimpleConversation(), mockCallback);
+
+        verify(mockToolRegistry, never()).executeTool(eq("write_file"), any(JsonObject.class));
+        verify(mockCallback).onToolResult(eq("write_file"), contains("blocked"));
+        verify(mockCallback, never()).onApprovalRequired(anyString(), anyString(),
+                any(JsonObject.class), any(AgentLoop.ApprovalCallback.class));
+    }
+
 }
