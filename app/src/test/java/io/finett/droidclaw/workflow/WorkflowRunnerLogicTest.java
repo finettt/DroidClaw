@@ -207,6 +207,13 @@ public class WorkflowRunnerLogicTest {
         assertEquals("error", result);
     }
 
+    @Test
+    public void nodeMaxTurnsCannotExceedGlobalLimit() {
+        assertEquals(20, WorkflowRunner.capMaxTurns(200, 20));
+        assertEquals(7, WorkflowRunner.capMaxTurns(7, 20));
+        assertEquals(1, WorkflowRunner.capMaxTurns(0, 20));
+    }
+
     // ==================== Helpers ====================
 
     private boolean evaluateGuard(String value, String op, String literal) {

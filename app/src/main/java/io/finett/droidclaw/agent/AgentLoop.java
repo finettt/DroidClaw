@@ -570,19 +570,12 @@ public class AgentLoop {
         boolean bgExecEnabled = settingsManager != null
                 && settingsManager.getAgentConfig().isBackgroundExecEnabled();
 
-        if (wantsBackground && bgExecEnabled) {
-            JsonObject cleanedArgs = arguments.deepCopy();
-            cleanedArgs.remove("background");
-
-            dispatchBackgroundTool(toolCall, cleanedArgs, toolCalls, index, conversationHistory, callback);
-            return;
-        }
-
-        // Check if this tool requires approval
+        // Resolve scoped approval before considering background execution. A workflow's
+        // DENY_WRITES/STRICT policy must not be bypassable with {"background": true}.
         Tool tool = toolRegistry.getTool(toolName);
         ToolApprovalMode mode = getPerToolApprovalMode(toolName);
 
-        // ALWAYS_REJECT: block immediately, no prompt
+        // ALWAYS_REJECT: block immediately, no prompt or background dispatch.
         if (mode == ToolApprovalMode.ALWAYS_REJECT) {
             String resultContent = "Tool execution blocked by per-tool setting";
             Log.d(TAG, "Tool " + toolName + " blocked (ALWAYS_REJECT)");
@@ -597,6 +590,13 @@ public class AgentLoop {
 
             // Process next tool call
             processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
+            return;
+        }
+
+        if (wantsBackground && bgExecEnabled) {
+            JsonObject cleanedArgs = arguments.deepCopy();
+            cleanedArgs.remove("background");
+            dispatchBackgroundTool(toolCall, cleanedArgs, toolCalls, index, conversationHistory, callback);
             return;
         }
 

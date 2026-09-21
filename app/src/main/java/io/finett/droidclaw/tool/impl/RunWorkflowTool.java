@@ -8,7 +8,6 @@ import com.google.gson.JsonObject;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import io.finett.droidclaw.agent.IdentityManager;
 import io.finett.droidclaw.agent.GuidelinesManager;
@@ -47,8 +46,10 @@ public class RunWorkflowTool implements Tool {
     private static final String NAME = "run_workflow";
     private static final String WORKFLOWS_DIR = ".agent/workflows";
 
-    /** Recursion guard: depth of nested workflow runs. */
-    private static final AtomicInteger runDepth = new AtomicInteger(0);
+    /** Recursion guard scoped to the synchronous execution context. Independent
+     * top-level runs on other threads must not block each other. */
+    private static final ThreadLocal<Integer> runDepth =
+            ThreadLocal.withInitial(() -> 0);
 
     private final ToolDefinition definition;
     private final Context context;
@@ -180,7 +181,7 @@ public class RunWorkflowTool implements Tool {
         }
 
         // Run the workflow
-        runDepth.incrementAndGet();
+        runDepth.set(runDepth.get() + 1);
         try {
             WorkflowRunner runner = new WorkflowRunner(
                     apiService, toolRegistry, settingsManager, identityMessages, guidelines);
@@ -230,7 +231,9 @@ public class RunWorkflowTool implements Tool {
                 return ToolResult.error(result.getError());
             }
         } finally {
-            runDepth.decrementAndGet();
+            int depth = runDepth.get() - 1;
+            if (depth == 0) runDepth.remove();
+            else runDepth.set(depth);
         }
     }
 }

@@ -8,6 +8,13 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
+import io.finett.droidclaw.tool.Tool;
+import io.finett.droidclaw.tool.ToolRegistry;
+import io.finett.droidclaw.tool.ToolResult;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 /**
  * Tests for the scoped tool registry filtering logic.
@@ -116,4 +123,37 @@ public class ScopedToolRegistryTest {
             assertEquals("ALWAYS_APPROVE", overrides.get(tool));
         }
     }
+    @Test
+    public void productionRegistryAlwaysExcludesRunWorkflow() {
+        ToolRegistry delegate = mock(ToolRegistry.class);
+        Tool read = mock(Tool.class);
+        Tool nested = mock(Tool.class);
+        when(read.getName()).thenReturn("read_file");
+        when(nested.getName()).thenReturn("run_workflow");
+        when(delegate.getAllTools()).thenReturn(Arrays.asList(read, nested));
+        when(delegate.hasToolWithName(anyString())).thenReturn(true);
+        when(delegate.getTool("read_file")).thenReturn(read);
+
+        ScopedToolRegistry all = new ScopedToolRegistry(delegate, null, null);
+        ScopedToolRegistry explicit = new ScopedToolRegistry(delegate,
+                Arrays.asList("run_workflow", "read_file"), null);
+
+        assertTrue(all.hasToolWithName("read_file"));
+        assertFalse(all.hasToolWithName("run_workflow"));
+        assertFalse(explicit.hasToolWithName("run_workflow"));
+        assertNull(explicit.getTool("run_workflow"));
+        assertFalse(explicit.executeTool("run_workflow", new JsonObject()).isSuccess());
+        verify(delegate, never()).executeTool(eq("run_workflow"), any(JsonObject.class));
+    }
+
+    @Test
+    public void productionRegistryAppliesDenyListLast() {
+        ToolRegistry delegate = mock(ToolRegistry.class);
+        when(delegate.hasToolWithName(anyString())).thenReturn(true);
+        ScopedToolRegistry scoped = new ScopedToolRegistry(delegate,
+                Arrays.asList("read_file", "write_file"),
+                Collections.singletonList("write_file"));
+        assertEquals(Collections.singleton("read_file"), scoped.getEffectiveToolNames());
+    }
+
 }

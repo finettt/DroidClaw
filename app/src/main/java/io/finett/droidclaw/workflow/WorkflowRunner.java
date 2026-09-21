@@ -151,7 +151,6 @@ public final class WorkflowRunner {
                     key, agent, defaults, wf, input, results, totalTokens, callback);
 
             results.put(key, nodeResult.templateResult);
-            if (callback != null) callback.onNodeComplete(key, nodeResult.templateResult.getStatus());
 
             if (nodeResult.templateResult.getStatus() == WorkflowNodeStatus.ERROR) {
                 WorkflowErrorPolicy policy = defaults.resolveOnError(agent.getOnError());
@@ -159,7 +158,10 @@ public final class WorkflowRunner {
                     case FAIL:
                         String err = "Node '" + key + "' failed: " + nodeResult.errorMessage;
                         Log.e(TAG, err);
-                        if (callback != null) callback.onError(err);
+                        if (callback != null) {
+                            callback.onNodeComplete(key, WorkflowNodeStatus.ERROR);
+                            callback.onError(err);
+                        }
                         return WorkflowRunResult.failed(err, results);
 
                     case SKIP:
@@ -173,6 +175,9 @@ public final class WorkflowRunner {
                         // Keep the error result; dependents see {{key.status}} == "error"
                         break;
                 }
+            }
+            if (callback != null) {
+                callback.onNodeComplete(key, results.get(key).getStatus());
             }
         }
 
@@ -213,6 +218,10 @@ public final class WorkflowRunner {
 
         WorkflowRetry retry = defaults.resolveRetry(agent.getRetry());
         int maxAttempts = retry.getMaxAttempts();
+        Integer nodeTimeoutMs = defaults.resolveTimeoutMs(agent.getTimeoutMs());
+        long deadlineNanos = nodeTimeoutMs == null ? Long.MAX_VALUE
+                : System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(nodeTimeoutMs);
+        String lastError = null;
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             if (cancelled.get()) {
@@ -223,15 +232,26 @@ public final class WorkflowRunner {
             if (attempt > 1) {
                 long delay = retry.delayBeforeAttempt(attempt - 1);
                 if (delay > 0) {
+                    long remainingMs = remainingMillis(deadlineNanos);
+                    if (remainingMs <= 0 || delay >= remainingMs) {
+                        return timedOut(key, nodeTimeoutMs);
+                    }
                     if (callback != null) callback.onProgress("Retrying '" + key + "' in " + delay + "ms (attempt " + attempt + "/" + maxAttempts + ")");
-                    try { Thread.sleep(delay); } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return new NodeExecutionResult(TemplateResolver.NodeResult.error(null), "interrupted");
+                    if (!sleepCancellable(delay)) {
+                        return new NodeExecutionResult(TemplateResolver.NodeResult.error(null),
+                                cancelled.get() ? "cancelled" : "interrupted");
                     }
                 }
             }
 
-            NodeExecutionResult result = executeNode(key, agent, defaults, wf, input, results, totalTokens, callback);
+            Integer remainingTimeoutMs = nodeTimeoutMs == null ? null
+                    : (int) Math.min(Integer.MAX_VALUE, remainingMillis(deadlineNanos));
+            if (remainingTimeoutMs != null && remainingTimeoutMs <= 0) {
+                return timedOut(key, nodeTimeoutMs);
+            }
+            NodeExecutionResult result = executeNode(key, agent, defaults, wf, input, results,
+                    totalTokens, callback, remainingTimeoutMs);
+            lastError = result.errorMessage;
 
             if (result.templateResult.getStatus() == WorkflowNodeStatus.OK) {
                 return result;
@@ -247,14 +267,16 @@ public final class WorkflowRunner {
 
         // All attempts exhausted
         return new NodeExecutionResult(TemplateResolver.NodeResult.error(null),
-                "Node '" + key + "' failed after " + maxAttempts + " attempt(s)");
+                "Node '" + key + "' failed after " + maxAttempts + " attempt(s)"
+                        + (lastError == null ? "" : ": " + lastError));
     }
 
     private NodeExecutionResult executeNode(
             String key, WorkflowAgent agent, WorkflowDefaults defaults,
             Workflow wf, String input,
             Map<String, TemplateResolver.NodeResult> results,
-            AtomicInteger totalTokens, WorkflowRunCallback callback) {
+            AtomicInteger totalTokens, WorkflowRunCallback callback,
+            Integer timeoutMs) {
 
         // Resolve prompt
         String resolvedPrompt;
@@ -288,7 +310,7 @@ public final class WorkflowRunner {
         // Configure per-node settings
         Integer maxTurns = defaults.resolveMaxTurns(agent.getMaxTurns());
         if (maxTurns != null) {
-            nodeLoop.setMaxIterations(maxTurns);
+            nodeLoop.setMaxIterations(capMaxTurns(maxTurns, settingsManager.getMaxAgentIterations()));
         }
 
         // Approval policy
@@ -310,8 +332,8 @@ public final class WorkflowRunner {
 
         activeNodeLoop = nodeLoop;
 
-        // Timeout enforcement
-        Integer timeoutMs = defaults.resolveTimeoutMs(agent.getTimeoutMs());
+        // Timeout enforcement. timeoutMs is the remaining node-wide budget after
+        // earlier attempts and retry backoff, not a fresh budget per attempt.
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<String> finalResponse = new AtomicReference<>(null);
         final AtomicReference<String> nodeError = new AtomicReference<>(null);
@@ -489,8 +511,8 @@ public final class WorkflowRunner {
                                    Map<String, TemplateResolver.NodeResult> results) {
         Matcher m = GUARD_PATTERN.matcher(when.trim());
         if (!m.matches()) {
-            Log.w(TAG, "Invalid guard expression: " + when + " — treating as true");
-            return true;
+            Log.w(TAG, "Invalid guard expression: " + when + " — treating as false");
+            return false;
         }
 
         String expr = m.group(1);
@@ -563,6 +585,37 @@ public final class WorkflowRunner {
             }
         }
         return reordered;
+    }
+
+    static int capMaxTurns(int requested, int globalLimit) {
+        return Math.max(1, Math.min(requested, globalLimit));
+    }
+
+    private long remainingMillis(long deadlineNanos) {
+        if (deadlineNanos == Long.MAX_VALUE) return Long.MAX_VALUE;
+        long nanos = deadlineNanos - System.nanoTime();
+        if (nanos <= 0) return 0;
+        return Math.max(1, TimeUnit.NANOSECONDS.toMillis(nanos));
+    }
+
+    private boolean sleepCancellable(long delayMs) {
+        long end = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMs);
+        while (!cancelled.get()) {
+            long remaining = TimeUnit.NANOSECONDS.toMillis(end - System.nanoTime());
+            if (remaining <= 0) return true;
+            try {
+                Thread.sleep(Math.min(remaining, 50L));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private NodeExecutionResult timedOut(String key, Integer timeoutMs) {
+        return new NodeExecutionResult(TemplateResolver.NodeResult.error(null),
+                "Node '" + key + "' timed out after " + timeoutMs + "ms");
     }
 
     private boolean isRetryableError(String error) {

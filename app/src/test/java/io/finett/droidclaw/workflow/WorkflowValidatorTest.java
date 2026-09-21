@@ -232,4 +232,18 @@ public class WorkflowValidatorTest {
         assertEquals(WorkflowErrorPolicy.SKIP, d.resolveOnError(a.getOnError()));
         assertEquals("openrouter/openai/gpt-4o-mini", d.resolveModel(a.getModel()));
     }
+    @Test
+    public void malformedGuardWithDoubleQuotesRejected() {
+        assertError(wf("\"a\":{\"prompt\":{\"text\":\"x\"}},"
+                + "\"b\":{\"prompt\":{\"text\":\"y\"},\"when\":\"{{a.output}} == \\\"yes\\\"\"}"),
+                "not a valid guard");
+    }
+
+    @Test
+    public void guardBooleanCombinatorRejected() {
+        assertError(wf("\"a\":{\"prompt\":{\"text\":\"x\"}},"
+                + "\"b\":{\"prompt\":{\"text\":\"y\"},\"when\":\"{{a.output}} == 'yes' and {{a.status}} == 'ok'\"}"),
+                "not a valid guard");
+    }
+
 }
