@@ -71,8 +71,15 @@ The agent can read and manage your device calendar through CalendarContract.
 | `list_background_processes` | Shows processes DroidClaw manages in the background (tasks, heartbeats, cron runs). |
 | `kill_background_process` | Stops a managed background process by id. Always requires approval. |
 
+## Workflow tool
+
+| Tool | What it does |
+|------|--------------|
+| `run_workflow` | Runs a multi-agent workflow file from `.agent/workflows/`. Always requires user approval with a content-bound (SHA-256) review; never available *inside* a workflow. Full details in [Workflows](workflows.md). |
+
 ## Related docs
 
+- [Workflows](workflows.md)
 - [Calendar integration](calendar.md)
 - [Settings](../user/settings.md)
 - [First steps](../user/first-steps.md)
