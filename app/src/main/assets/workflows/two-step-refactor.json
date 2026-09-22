@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "name": "Two-step refactor",
+  "goal": "Analyze one workspace file with a read-only agent, then apply the agreed edit in a second, isolated step and verify it.",
+  "entry": "analyze",
+  "output": "{{apply.output}}\n\nVerification:\n{{verify.output}}",
+  "defaults": {
+    "max_turns": 8,
+    "timeout_ms": 240000,
+    "on_error": "fail",
+    "retry": {
+      "max_attempts": 2,
+      "backoff_ms": 2000
+    }
+  },
+  "agents": {
+    "analyze": {
+      "description": "Read-only analysis; proposes exactly one edit",
+      "prompt": {
+        "text": "Read the file named in the request below with read_file and propose exactly one small, safe improvement. Describe the change precisely: the file path, the exact text to replace, and the replacement text. Do not modify anything in this step.\n\nRequest:\n{{workflow.input}}"
+      },
+      "allowed_tools": [
+        "read_file",
+        "search_files",
+        "list_files"
+      ]
+    },
+    "apply": {
+      "description": "Applies exactly the proposed edit",
+      "prompt": {
+        "text": "Apply exactly the change proposed below using edit_file. Do not make any other modification. Reply with the file path and a one-line description of the applied change.\n\n{{analyze.output}}"
+      },
+      "allowed_tools": [
+        "read_file",
+        "edit_file"
+      ],
+      "approval": "inherit",
+      "retry": {
+        "max_attempts": 3,
+        "backoff_ms": 1000
+      },
+      "max_turns": 6
+    },
+    "verify": {
+      "description": "Optional read-only check of the result",
+      "prompt": {
+        "text": "Re-read the edited file with read_file and confirm the change below is present and did not break the surrounding text. Reply with 'VERIFIED' plus one sentence, or describe the mismatch.\n\n{{apply.output}}"
+      },
+      "allowed_tools": [
+        "read_file"
+      ],
+      "on_error": "continue",
+      "max_turns": 4
+    }
+  }
+}
