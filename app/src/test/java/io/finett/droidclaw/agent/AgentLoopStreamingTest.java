@@ -92,14 +92,14 @@ public class AgentLoopStreamingTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.StreamingChatCallback callback =
-                        invocation.getArgument(3, LlmApiService.StreamingChatCallback.class);
+                        invocation.getArgument(4, LlmApiService.StreamingChatCallback.class);
                 callback.onDelta("Hello ");
                 callback.onDelta("world");
                 callback.onSuccess(new LlmApiService.LlmResponse("Hello world", null));
                 return null;
             }
         }).when(mockApiService).sendMessageWithToolsStreaming(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.StreamingChatCallback.class));
+                any(), any(), any(LlmApiService.StreamingChatCallback.class));
 
         AgentLoop loop = createLoop();
         loop.start(simpleConversation(), mockCallback);
@@ -109,7 +109,7 @@ public class AgentLoopStreamingTest {
         verify(mockCallback).onComplete(eq("Hello world"), anyList());
         verify(mockCallback, never()).onError(anyString());
         verify(mockApiService, never()).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
     }
 
     @Test
@@ -118,13 +118,13 @@ public class AgentLoopStreamingTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.StreamingChatCallback callback =
-                        invocation.getArgument(3, LlmApiService.StreamingChatCallback.class);
+                        invocation.getArgument(4, LlmApiService.StreamingChatCallback.class);
                 callback.onDelta("par");
                 callback.onError("Stream read error: timeout");
                 return null;
             }
         }).when(mockApiService).sendMessageWithToolsStreaming(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.StreamingChatCallback.class));
+                any(), any(), any(LlmApiService.StreamingChatCallback.class));
 
         AgentLoop loop = createLoop();
         loop.start(simpleConversation(), mockCallback);
@@ -142,20 +142,20 @@ public class AgentLoopStreamingTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                        invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                        invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 callback.onSuccess(new LlmApiService.LlmResponse("Legacy response", null));
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         AgentLoop loop = createLoop();
         loop.start(simpleConversation(), mockCallback);
 
         verify(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         verify(mockApiService, never()).sendMessageWithToolsStreaming(anyList(),
-                any(JsonArray.class), any(), any(LlmApiService.StreamingChatCallback.class));
+                any(JsonArray.class), any(), any(), any(LlmApiService.StreamingChatCallback.class));
         verify(mockCallback).onComplete(eq("Legacy response"), anyList());
     }
 }

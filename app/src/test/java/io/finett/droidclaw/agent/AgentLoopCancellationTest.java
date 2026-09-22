@@ -77,14 +77,14 @@ public class AgentLoopCancellationTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.StreamingChatCallback callback =
-                        invocation.getArgument(3, LlmApiService.StreamingChatCallback.class);
+                        invocation.getArgument(4, LlmApiService.StreamingChatCallback.class);
                 for (String delta : deltas) {
                     callback.onDelta(delta);
                 }
                 return null;
             }
         }).when(mockApiService).sendMessageWithToolsStreaming(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.StreamingChatCallback.class));
+                any(), any(), any(LlmApiService.StreamingChatCallback.class));
     }
 
     @SuppressWarnings("unchecked")
@@ -157,13 +157,13 @@ public class AgentLoopCancellationTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.StreamingChatCallback callback =
-                        invocation.getArgument(3, LlmApiService.StreamingChatCallback.class);
+                        invocation.getArgument(4, LlmApiService.StreamingChatCallback.class);
                 callback.onDelta("Done");
                 callback.onSuccess(new LlmApiService.LlmResponse("Done", null));
                 return null;
             }
         }).when(mockApiService).sendMessageWithToolsStreaming(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.StreamingChatCallback.class));
+                any(), any(), any(LlmApiService.StreamingChatCallback.class));
 
         AgentLoop loop = createLoop();
         loop.start(simpleConversation(), mockCallback);
@@ -188,7 +188,7 @@ public class AgentLoopCancellationTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.StreamingChatCallback callback =
-                        invocation.getArgument(3, LlmApiService.StreamingChatCallback.class);
+                        invocation.getArgument(4, LlmApiService.StreamingChatCallback.class);
                 callback.onSuccess(new LlmApiService.LlmResponse("", toolCalls));
                 return null;
             }
@@ -199,7 +199,7 @@ public class AgentLoopCancellationTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithToolsStreaming(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.StreamingChatCallback.class));
+                any(), any(), any(LlmApiService.StreamingChatCallback.class));
 
         when(mockToolRegistry.getTool(anyString())).thenReturn(null);
         when(mockToolRegistry.executeTool(anyString(), any()))

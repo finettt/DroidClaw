@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import io.finett.droidclaw.api.LlmApiService;
+import io.finett.droidclaw.api.RequestScope;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.model.ToolApprovalMode;
@@ -66,6 +67,9 @@ public class AgentLoop {
 
     /** Text streamed so far in the current response segment (guarded by itself). */
     private final StringBuilder streamedText = new StringBuilder();
+
+    /** Per-run request scope: cancelling it aborts only this run's HTTP calls (issue #144). */
+    private volatile RequestScope runScope;
 
     /** History of the in-flight run, used by cancellation to preserve partial output. */
     private volatile List<ChatMessage> activeHistory;
@@ -254,6 +258,7 @@ public class AgentLoop {
         iterationCount = 0;
         cancelled.set(false);
         cancelFinalized.set(false);
+        runScope = new RequestScope();
         synchronized (streamedText) {
             streamedText.setLength(0);
         }
@@ -273,7 +278,17 @@ public class AgentLoop {
     }
 
     /**
-     * Cancel the running agent loop: aborts in-flight HTTP requests and stops the
+     * The request scope of the current run. Exposed for future mid-run steering,
+     * which can cancel just the in-flight call and re-issue within the same scope.
+     */
+    RequestScope getRunScope() {
+        return runScope;
+    }
+
+    /**
+     * Cancel the running agent loop: aborts this run's in-flight HTTP requests
+     * (only this run's — unrelated requests on the shared client are untouched,
+     * see issue #144) and stops the
      * iteration cycle at the next checkpoint. Any text already streamed in the
      * current response segment is preserved as a partial assistant message, and the
      * callback receives {@link AgentCallback#onCancelled(List)}.
@@ -286,8 +301,9 @@ public class AgentLoop {
             return;
         }
         Log.d(TAG, "Agent loop cancellation requested");
-        if (apiService != null) {
-            apiService.cancelAllRequests();
+        RequestScope scope = runScope;
+        if (scope != null) {
+            scope.cancel();
         }
         new Handler(Looper.getMainLooper()).post(this::finalizeCancellation);
     }
@@ -445,10 +461,10 @@ public class AgentLoop {
 
         if (hasModelOverride()) {
             apiService.sendMessageStructured(conversationHistory, tools, contextMessages,
-                    responseSchema, modelOverrideProvider, modelOverrideModel, cb);
+                    responseSchema, modelOverrideProvider, modelOverrideModel, runScope, cb);
         } else {
             apiService.sendMessageStructured(conversationHistory, tools, contextMessages,
-                    responseSchema, cb);
+                    responseSchema, runScope, cb);
         }
     }
 
@@ -460,7 +476,7 @@ public class AgentLoop {
         if (streamResponses && !hasModelOverride()) {
             // Streaming path (global model only for now)
             apiService.sendMessageWithToolsStreaming(conversationHistory, tools, contextMessages,
-                    buildStreamingCallback(conversationHistory, callback));
+                    runScope, buildStreamingCallback(conversationHistory, callback));
             return;
         }
 
@@ -480,9 +496,9 @@ public class AgentLoop {
 
         if (hasModelOverride()) {
             apiService.sendMessageWithTools(conversationHistory, tools, contextMessages,
-                    modelOverrideProvider, modelOverrideModel, cb);
+                    modelOverrideProvider, modelOverrideModel, runScope, cb);
         } else {
-            apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, cb);
+            apiService.sendMessageWithTools(conversationHistory, tools, contextMessages, runScope, cb);
         }
     }
 

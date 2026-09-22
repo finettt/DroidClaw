@@ -75,7 +75,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 LlmApiService.LlmResponse response = new LlmApiService.LlmResponse(
                     "Hello! How can I help you?",
@@ -85,7 +85,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -108,7 +108,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 callCount[0]++;
                 
@@ -137,7 +137,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -164,7 +164,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 callCount[0]++;
                 
@@ -195,7 +195,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -220,7 +220,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 callCount[0]++;
                 
@@ -249,7 +249,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -268,7 +268,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 JsonObject args = new JsonObject();
                 LlmApiService.ToolCall toolCall = new LlmApiService.ToolCall(
@@ -285,7 +285,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -302,13 +302,13 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 callback.onError("Network error: Connection timeout");
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -325,7 +325,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 LlmApiService.LlmResponse response = new LlmApiService.LlmResponse(
                     null,
@@ -335,7 +335,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -351,7 +351,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 LlmApiService.LlmResponse response = new LlmApiService.LlmResponse(
                     "Response text",
@@ -361,7 +361,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         int originalSize = conversation.size();
@@ -395,7 +395,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 callCount[0]++;
                 
@@ -425,7 +425,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -448,7 +448,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
 
                 List<ChatMessage> contextMessages = invocation.getArgument(2, List.class);
                 assertNotNull("Context messages should be passed", contextMessages);
@@ -461,7 +461,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -477,7 +477,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
 
                 LlmApiService.LlmResponse response = new LlmApiService.LlmResponse(
                     "Response to user",
@@ -487,7 +487,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         List<ChatMessage> conversation = new ArrayList<>();
         conversation.add(new ChatMessage("Hello", ChatMessage.TYPE_USER));
@@ -505,12 +505,12 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 callback.onSuccess(new LlmApiService.LlmResponse("Response", null));
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         List<ChatMessage> conversation = new ArrayList<>();
         conversation.add(new ChatMessage("Hello", ChatMessage.TYPE_USER));
@@ -529,7 +529,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
 
                 callCount[0]++;
                 if (callCount[0] == 1) {
@@ -540,7 +540,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         List<ChatMessage> conversation = new ArrayList<>();
         conversation.add(new ChatMessage("Hello", ChatMessage.TYPE_USER));
@@ -569,7 +569,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
 
                 List<ChatMessage> contextMessages = invocation.getArgument(2, List.class);
                 assertNotNull("Context messages should be passed", contextMessages);
@@ -585,7 +585,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -603,7 +603,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
 
                 List<ChatMessage> contextMessages = invocation.getArgument(2, List.class);
                 assertNotNull("Context messages should be passed (even if empty)", contextMessages);
@@ -612,7 +612,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -630,12 +630,12 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 callback.onSuccess(new LlmApiService.LlmResponse("Hello!", null));
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -663,7 +663,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 TokenUsage usage = new TokenUsage(1000, 800, 200);
                 LlmApiService.LlmResponse response = new LlmApiService.LlmResponse(
@@ -675,7 +675,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -701,7 +701,7 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 callCount[0]++;
                 
@@ -728,7 +728,7 @@ public class AgentLoopTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -752,14 +752,14 @@ public class AgentLoopTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.ChatCallbackWithTools callback =
-                    invocation.getArgument(3, LlmApiService.ChatCallbackWithTools.class);
+                    invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
                 
                 LlmApiService.LlmResponse response = new LlmApiService.LlmResponse("Hello!", null, null);
                 callback.onSuccess(response);
                 return null;
             }
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-            any(), any(LlmApiService.ChatCallbackWithTools.class));
+            any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
@@ -794,7 +794,7 @@ public class AgentLoopTest {
 
         final int[] calls = {0};
         doAnswer(invocation -> {
-            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(4);
             if (calls[0]++ == 0) {
                 JsonObject args = new JsonObject();
                 args.addProperty("background", true);
@@ -805,7 +805,7 @@ public class AgentLoopTest {
             }
             return null;
         }).when(mockApiService).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         workflowLoop.start(createSimpleConversation(), mockCallback);
 

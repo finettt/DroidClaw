@@ -162,7 +162,7 @@ public class MemorySystemIntegrationTest {
         when(mockToolRegistry.getToolDefinitions()).thenReturn(new com.google.gson.JsonArray());
 
         doAnswer(invocation -> {
-            LlmApiService.ChatCallbackWithTools callback = invocation.getArgument(3);
+            LlmApiService.ChatCallbackWithTools callback = invocation.getArgument(4);
 
             List<ChatMessage> contextMessages = invocation.getArgument(2, List.class);
 
@@ -177,7 +177,7 @@ public class MemorySystemIntegrationTest {
 
             callback.onSuccess(new LlmApiService.LlmResponse("Response", null));
             return null;
-        }).when(mockApiService).sendMessageWithTools(any(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
+        }).when(mockApiService).sendMessageWithTools(any(), any(), any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
 
         List<ChatMessage> conversation = new ArrayList<>();
         conversation.add(new ChatMessage("Hello", ChatMessage.TYPE_USER));

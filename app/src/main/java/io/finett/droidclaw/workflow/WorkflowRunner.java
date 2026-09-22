@@ -362,6 +362,12 @@ public final class WorkflowRunner {
                 nodeError.set(error);
                 latch.countDown();
             }
+            @Override public void onCancelled(List<ChatMessage> history) {
+                // Without this, a cancellation that wins the race against
+                // onComplete/onError would leave the latch stuck forever.
+                nodeError.set("cancelled");
+                latch.countDown();
+            }
             @Override public void onApprovalRequired(String toolName, String description,
                     JsonObject arguments, AgentLoop.ApprovalCallback approvalCallback) {
                 // Workflow nodes should not reach here due to approval overrides,
@@ -376,6 +382,13 @@ public final class WorkflowRunner {
                 boolean done = latch.await(timeoutMs, TimeUnit.MILLISECONDS);
                 if (!done) {
                     nodeLoop.cancel();
+                    // Bounded wait so the node's cancellation finalizes (onCancelled
+                    // counts the latch down) before we report the timeout.
+                    try {
+                        latch.await(5, TimeUnit.SECONDS);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
                     activeNodeLoop = null;
                     return new NodeExecutionResult(TemplateResolver.NodeResult.error(null),
                             "Node '" + key + "' timed out after " + timeoutMs + "ms");
