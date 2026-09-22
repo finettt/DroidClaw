@@ -1,5 +1,6 @@
 package io.finett.droidclaw.workflow;
 
+import android.os.Looper;
 import android.util.Log;
 
 import com.google.gson.JsonObject;
@@ -383,11 +384,15 @@ public final class WorkflowRunner {
                 if (!done) {
                     nodeLoop.cancel();
                     // Bounded wait so the node's cancellation finalizes (onCancelled
-                    // counts the latch down) before we report the timeout.
-                    try {
-                        latch.await(5, TimeUnit.SECONDS);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
+                    // counts the latch down) before we report the timeout. Cancellation
+                    // finalization is posted to the main looper, so never wait for it
+                    // while blocking that same looper.
+                    if (Looper.myLooper() != Looper.getMainLooper()) {
+                        try {
+                            latch.await(5, TimeUnit.SECONDS);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                     activeNodeLoop = null;
                     return new NodeExecutionResult(TemplateResolver.NodeResult.error(null),
