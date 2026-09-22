@@ -11,9 +11,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -79,14 +76,19 @@ public class PythonExecutor {
 
     private final Context context;
     private final PythonConfig config;
-    private final ExecutorService executorService;
+    /**
+     * Runs each execution on a fresh single-use thread and abandons (does not
+     * block behind) runs that exceed their timeout. See
+     * {@link SerialAbandoningRunner} for the containment rationale (#150).
+     */
+    private final SerialAbandoningRunner runner;
     private Python python;
     private boolean initialized = false;
 
     public PythonExecutor(Context context, PythonConfig config) {
         this.context = context.getApplicationContext();
         this.config = config;
-        this.executorService = Executors.newSingleThreadExecutor();
+        this.runner = new SerialAbandoningRunner("PythonExecutor");
     }
 
     // ==================== Initialisation ====================
@@ -121,7 +123,7 @@ public class PythonExecutor {
 
         final long startTime = System.currentTimeMillis();
 
-        Future<PythonResult> future = executorService.submit(new Callable<PythonResult>() {
+        Callable<PythonResult> task = new Callable<PythonResult>() {
             @Override
             public PythonResult call() {
                 PyObject sysModule = python.getModule("sys");
@@ -157,8 +159,14 @@ public class PythonExecutor {
                     // Execute the user code in __main__ namespace.
                     builtins.callAttr("exec", code, executionNamespace, executionNamespace);
 
-                    String output = stdoutBuf.callAttr("getvalue").toString();
-                    String errOutput = stderrBuf.callAttr("getvalue").toString();
+                    // Enforce maxOutputSize on read (#150). Growth during the
+                    // run itself is not bounded by this quick fix.
+                    String output = PythonOutputLimiter.truncate(
+                            stdoutBuf.callAttr("getvalue").toString(),
+                            config.getMaxOutputSize());
+                    String errOutput = PythonOutputLimiter.truncate(
+                            stderrBuf.callAttr("getvalue").toString(),
+                            config.getMaxOutputSize());
 
                     long executionTime = System.currentTimeMillis() - startTime;
 
@@ -179,7 +187,9 @@ public class PythonExecutor {
                     // Capture any stderr written before the exception
                     String errOutput = "";
                     try {
-                        errOutput = stderrBuf.callAttr("getvalue").toString();
+                        errOutput = PythonOutputLimiter.truncate(
+                                stderrBuf.callAttr("getvalue").toString(),
+                                config.getMaxOutputSize());
                     } catch (Exception ignored) { /* best-effort */ }
 
                     String errorMsg = formatPythonError(e);
@@ -202,21 +212,37 @@ public class PythonExecutor {
                     try { sysModule.put("stderr", originalStderr); } catch (Exception ignored) { }
                 }
             }
-        });
+        };
 
         try {
-            return future.get(timeoutSeconds, TimeUnit.SECONDS);
+            return runner.run(task, timeoutSeconds, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
-            future.cancel(true);
             long executionTime = System.currentTimeMillis() - startTime;
-            Log.w(TAG, "Python execution timed out after " + timeoutSeconds + " seconds");
+            Log.w(TAG, "Python execution timed out after " + timeoutSeconds
+                    + " seconds; the run was abandoned and may still be running");
             return PythonResult.error(
-                    "Execution timed out after " + timeoutSeconds + " seconds", executionTime);
+                    timeoutMessage(timeoutSeconds), executionTime);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            long executionTime = System.currentTimeMillis() - startTime;
+            return PythonResult.error("Execution interrupted", executionTime);
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
             Log.e(TAG, "Python execution failed", e);
             return PythonResult.error("Execution failed: " + e.getMessage(), executionTime);
         }
+    }
+
+    /**
+     * Honest timeout wording (#150): the timed-out code was <b>abandoned</b>,
+     * not cancelled -- CPython code does not observe the Java interrupt flag,
+     * so it may still be running in the background and cannot be stopped.
+     */
+    static String timeoutMessage(int timeoutSeconds) {
+        return "Execution timed out after " + timeoutSeconds + " seconds. "
+                + "The code was abandoned and may still be running in the "
+                + "background; it cannot be stopped. Subsequent executions "
+                + "will run on a new thread.";
     }
 
     // ==================== Script execution ====================
@@ -247,7 +273,7 @@ public class PythonExecutor {
         ensureInitialized();
         long startTime = System.currentTimeMillis();
 
-        Future<PythonResult> future = executorService.submit(new Callable<PythonResult>() {
+        Callable<PythonResult> task = new Callable<PythonResult>() {
             @Override
             public PythonResult call() {
                 try {
@@ -269,14 +295,19 @@ public class PythonExecutor {
                             "Failed to install package: " + e.getMessage(), executionTime);
                 }
             }
-        });
+        };
 
         try {
-            return future.get(5, TimeUnit.MINUTES);
+            return runner.run(task, 5, TimeUnit.MINUTES);
         } catch (TimeoutException e) {
-            future.cancel(true);
             long executionTime = System.currentTimeMillis() - startTime;
-            return PythonResult.error("Package installation timed out", executionTime);
+            return PythonResult.error(
+                    "Package installation timed out; the operation was abandoned "
+                    + "and may still be running in the background", executionTime);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            long executionTime = System.currentTimeMillis() - startTime;
+            return PythonResult.error("Package installation interrupted", executionTime);
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
             return PythonResult.error(
@@ -326,15 +357,10 @@ public class PythonExecutor {
     }
 
     public void shutdown() {
-        executorService.shutdown();
-        try {
-            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                executorService.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            executorService.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-        Log.i(TAG, "PythonExecutor shutdown complete");
+        // Worker threads are single-use daemons created per run; there is no
+        // shared pool to shut down. Abandoned (timed-out) runs cannot be
+        // stopped -- they die with the process (#150).
+        Log.i(TAG, "PythonExecutor shutdown complete (abandoned runs: "
+                + runner.getAbandonedCount() + ")");
     }
 }
