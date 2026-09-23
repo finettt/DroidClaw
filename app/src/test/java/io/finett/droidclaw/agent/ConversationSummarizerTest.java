@@ -24,6 +24,33 @@ import io.finett.droidclaw.util.TokenEstimator;
 @RunWith(MockitoJUnitRunner.class)
 public class ConversationSummarizerTest {
 
+
+    @Test
+    public void cancelledScopeSuppressesLateSummarySuccessAndError() {
+        io.finett.droidclaw.api.RequestScope scope = new io.finett.droidclaw.api.RequestScope();
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+        List<ChatMessage> messages = createSmallMessages(5);
+        summarizer.summarizeAndSave(messages, scope, callback);
+        ArgumentCaptor<LlmApiService.ChatCallback> captor = ArgumentCaptor.forClass(LlmApiService.ChatCallback.class);
+        verify(mockApiService).sendMessage(anyList(), isNull(), isNull(), same(scope), captor.capture());
+        scope.cancel();
+
+        captor.getValue().onSuccess("late summary");
+        captor.getValue().onError("Canceled");
+
+        verifyNoInteractions(mockMemoryRepository, callback);
+        assertEquals(5, messages.size());
+    }
+
+    @Test
+    public void alreadyCancelledScopeDoesNotStartSummary() {
+        io.finett.droidclaw.api.RequestScope scope = new io.finett.droidclaw.api.RequestScope();
+        scope.cancel();
+        ConversationSummarizer.SummarizeCallback callback = mock(ConversationSummarizer.SummarizeCallback.class);
+        summarizer.summarizeAndSave(createSmallMessages(5), scope, callback);
+        verifyNoInteractions(mockApiService, mockMemoryRepository, callback);
+    }
+
     private static final int DEFAULT_CONTEXT_WINDOW = 4096;
     private static final int TOKEN_THRESHOLD = (int) (DEFAULT_CONTEXT_WINDOW * 0.75); // 3072
 

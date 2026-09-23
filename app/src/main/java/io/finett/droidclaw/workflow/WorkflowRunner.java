@@ -1,5 +1,6 @@
 package io.finett.droidclaw.workflow;
 
+import android.os.Looper;
 import android.util.Log;
 
 import com.google.gson.JsonObject;
@@ -362,6 +363,12 @@ public final class WorkflowRunner {
                 nodeError.set(error);
                 latch.countDown();
             }
+            @Override public void onCancelled(List<ChatMessage> history) {
+                // Without this, a cancellation that wins the race against
+                // onComplete/onError would leave the latch stuck forever.
+                nodeError.set("cancelled");
+                latch.countDown();
+            }
             @Override public void onApprovalRequired(String toolName, String description,
                     JsonObject arguments, AgentLoop.ApprovalCallback approvalCallback) {
                 // Workflow nodes should not reach here due to approval overrides,
@@ -376,6 +383,17 @@ public final class WorkflowRunner {
                 boolean done = latch.await(timeoutMs, TimeUnit.MILLISECONDS);
                 if (!done) {
                     nodeLoop.cancel();
+                    // Bounded wait so the node's cancellation finalizes (onCancelled
+                    // counts the latch down) before we report the timeout. Cancellation
+                    // finalization is posted to the main looper, so never wait for it
+                    // while blocking that same looper.
+                    if (Looper.myLooper() != Looper.getMainLooper()) {
+                        try {
+                            latch.await(5, TimeUnit.SECONDS);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
                     activeNodeLoop = null;
                     return new NodeExecutionResult(TemplateResolver.NodeResult.error(null),
                             "Node '" + key + "' timed out after " + timeoutMs + "ms");

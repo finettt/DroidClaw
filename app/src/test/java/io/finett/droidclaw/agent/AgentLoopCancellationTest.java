@@ -29,7 +29,8 @@ import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
- * Tests cancellation of {@link AgentLoop}: aborting in-flight requests,
+ * Tests cancellation of {@link AgentLoop}: aborting in-flight requests via the
+ * per-run {@link io.finett.droidclaw.api.RequestScope} (never the shared client),
  * preserving partially streamed text, and single-delivery guarantees.
  */
 @RunWith(RobolectricTestRunner.class)
@@ -77,14 +78,14 @@ public class AgentLoopCancellationTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.StreamingChatCallback callback =
-                        invocation.getArgument(3, LlmApiService.StreamingChatCallback.class);
+                        invocation.getArgument(4, LlmApiService.StreamingChatCallback.class);
                 for (String delta : deltas) {
                     callback.onDelta(delta);
                 }
                 return null;
             }
         }).when(mockApiService).sendMessageWithToolsStreaming(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.StreamingChatCallback.class));
+                any(), any(), any(LlmApiService.StreamingChatCallback.class));
     }
 
     @SuppressWarnings("unchecked")
@@ -106,7 +107,7 @@ public class AgentLoopCancellationTest {
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
         assertTrue(loop.isCancelled());
-        verify(mockApiService).cancelAllRequests();
+        verify(mockApiService, never()).cancelAllRequests();
 
         List<ChatMessage> history = captureCancelledHistory();
         ChatMessage last = history.get(history.size() - 1);
@@ -127,7 +128,7 @@ public class AgentLoopCancellationTest {
         loop.cancel();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
-        verify(mockApiService).cancelAllRequests();
+        verify(mockApiService, never()).cancelAllRequests();
 
         List<ChatMessage> history = captureCancelledHistory();
         assertEquals(1, history.size());
@@ -147,7 +148,7 @@ public class AgentLoopCancellationTest {
         loop.cancel();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
-        verify(mockApiService, times(1)).cancelAllRequests();
+        verify(mockApiService, never()).cancelAllRequests();
         verify(mockCallback, times(1)).onCancelled(anyList());
     }
 
@@ -157,13 +158,13 @@ public class AgentLoopCancellationTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.StreamingChatCallback callback =
-                        invocation.getArgument(3, LlmApiService.StreamingChatCallback.class);
+                        invocation.getArgument(4, LlmApiService.StreamingChatCallback.class);
                 callback.onDelta("Done");
                 callback.onSuccess(new LlmApiService.LlmResponse("Done", null));
                 return null;
             }
         }).when(mockApiService).sendMessageWithToolsStreaming(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.StreamingChatCallback.class));
+                any(), any(), any(LlmApiService.StreamingChatCallback.class));
 
         AgentLoop loop = createLoop();
         loop.start(simpleConversation(), mockCallback);
@@ -188,7 +189,7 @@ public class AgentLoopCancellationTest {
             @Override
             public Void answer(InvocationOnMock invocation) {
                 LlmApiService.StreamingChatCallback callback =
-                        invocation.getArgument(3, LlmApiService.StreamingChatCallback.class);
+                        invocation.getArgument(4, LlmApiService.StreamingChatCallback.class);
                 callback.onSuccess(new LlmApiService.LlmResponse("", toolCalls));
                 return null;
             }
@@ -199,7 +200,7 @@ public class AgentLoopCancellationTest {
                 return null;
             }
         }).when(mockApiService).sendMessageWithToolsStreaming(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.StreamingChatCallback.class));
+                any(), any(), any(LlmApiService.StreamingChatCallback.class));
 
         when(mockToolRegistry.getTool(anyString())).thenReturn(null);
         when(mockToolRegistry.executeTool(anyString(), any()))
@@ -212,7 +213,7 @@ public class AgentLoopCancellationTest {
         loop.cancel();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
-        verify(mockApiService, times(1)).cancelAllRequests();
+        verify(mockApiService, never()).cancelAllRequests();
         verify(mockCallback).onCancelled(anyList());
         verify(mockCallback, never()).onComplete(anyString(), anyList());
     }

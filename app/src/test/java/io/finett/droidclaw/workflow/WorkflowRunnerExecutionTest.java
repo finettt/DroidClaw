@@ -44,13 +44,13 @@ public class WorkflowRunnerExecutionTest {
     private void replySequence(String... replies) {
         final int[] n = {0};
         doAnswer(inv -> {
-            LlmApiService.ChatCallbackWithTools cb = inv.getArgument(3);
+            LlmApiService.ChatCallbackWithTools cb = inv.getArgument(4);
             String reply = replies[Math.min(n[0]++, replies.length - 1)];
             if (reply.startsWith("ERROR:")) cb.onError(reply.substring(6));
             else cb.onSuccess(new LlmApiService.LlmResponse(reply, null));
             return null;
         }).when(api).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
     }
 
     @Test public void retryUsesProductionPathAndEventuallySucceeds() {
@@ -63,7 +63,7 @@ public class WorkflowRunnerExecutionTest {
         assertEquals("recovered", result.getOutput());
         assertTrue(progress.toString(), progress.toString().contains("Retrying 'a' in 10ms"));
         verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
     }
 
     @Test public void falseGuardSkipsNodeAndItsDependents() {
@@ -79,7 +79,7 @@ public class WorkflowRunnerExecutionTest {
         assertEquals(WorkflowNodeStatus.SKIPPED, result.getNodeResults().get("d").getStatus());
         assertEquals("independent", result.getOutput());
         verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
     }
 
     @Test public void skipPolicyReportsSkippedAndContinuesIndependentBranch() {
@@ -107,7 +107,7 @@ public class WorkflowRunnerExecutionTest {
 
     @Test public void nodeTimeoutCancelsAndStopsRetriesAtNodeDeadline() {
         doNothing().when(api).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
         String json = "{\"version\":1,\"goal\":\"g\",\"defaults\":{\"timeout_ms\":1000,"
                 + "\"retry\":{\"max_attempts\":5,\"backoff_ms\":10}},"
                 + "\"agents\":{\"a\":{\"prompt\":{\"text\":\"go\"}}}}";
@@ -118,7 +118,7 @@ public class WorkflowRunnerExecutionTest {
         assertTrue(result.getError(), result.getError().contains("timed out"));
         assertTrue("elapsed=" + elapsedMs, elapsedMs < 1500);
         verify(api, times(1)).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
     }
     @Test public void failPolicyStopsWorkflowImmediately() {
         replySequence("ERROR:network unavailable");
@@ -130,7 +130,7 @@ public class WorkflowRunnerExecutionTest {
         assertEquals(WorkflowNodeStatus.ERROR, result.getNodeResults().get("a").getStatus());
         assertNull(result.getNodeResults().get("b"));
         verify(api, times(1)).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
     }
 
     @Test public void continuePolicyRunsDependentAfterError() {
@@ -143,7 +143,7 @@ public class WorkflowRunnerExecutionTest {
         assertEquals(WorkflowNodeStatus.ERROR, result.getNodeResults().get("a").getStatus());
         assertEquals("continued", result.getOutput());
         verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class),
-                any(), any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(), any(LlmApiService.ChatCallbackWithTools.class));
     }
 
     private static class RecordingCallback implements WorkflowRunCallback {
