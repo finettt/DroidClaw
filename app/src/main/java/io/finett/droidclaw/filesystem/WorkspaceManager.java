@@ -11,6 +11,12 @@ import java.io.InputStream;
 public class WorkspaceManager {
     private static final String TAG = "WorkspaceManager";
 
+    private static final String[] BUILTIN_WORKFLOWS = {
+        "morning-digest",
+        "workspace-audit",
+        "two-step-refactor"
+    };
+
     private static final String[] BUILTIN_SKILLS = {
         "skill_creator",
         "web_search",
@@ -100,7 +106,35 @@ public class WorkspaceManager {
             }
         }
 
+        for (String workflowName : BUILTIN_WORKFLOWS) {
+            try {
+                copyWorkflowTemplate(workflowName);
+            } catch (IOException e) {
+                Log.w(TAG, "Failed to copy workflow template: " + workflowName, e);
+            }
+        }
+
         return true;
+    }
+
+    /**
+     * Seeds one bundled workflow template from {@code assets/workflows/} into
+     * {@code .agent/workflows/}. Existing files are never overwritten, so user
+     * edits to a template survive app updates.
+     */
+    private void copyWorkflowTemplate(String workflowName) throws IOException {
+        File outFile = new File(workspaceRoot, WORKFLOWS_DIR + "/" + workflowName + ".json");
+
+        if (outFile.exists()) {
+            Log.d(TAG, "Workflow template already exists: " + workflowName);
+            return;
+        }
+
+        String assetPath = "workflows/" + workflowName + ".json";
+        try (InputStream inputStream = context.getAssets().open(assetPath)) {
+            copyInputStreamToFile(inputStream, outFile);
+            Log.d(TAG, "Created workflow template: " + workflowName);
+        }
     }
 
     private void copySkill(String skillName) throws IOException {

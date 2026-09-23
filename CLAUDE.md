@@ -118,6 +118,47 @@ The agent uses an iterative tool-calling loop (`AgentLoop.java`):
 - `execute_python` / `pip_install` - Python execution (requires shell access)
 - `calendar_list_calendars`, `calendar_list_events`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event` - Device calendar via `CalendarContract` (requires `calendarEnabled` + READ/WRITE_CALENDAR permissions; write tools require approval)
 
+### Workflow System
+
+Multi-agent workflows are JSON files (`workflow-v1`, schema at
+`app/src/main/assets/workflow-v1.schema.json`) stored in `.agent/workflows/`
+and launched via the `run_workflow` tool. Package: `io.finett.droidclaw.workflow`.
+
+Pipeline: `WorkflowParser` (lenient JSON → model, `WorkflowNormalizer` repairs
+known misspellings with warnings) → `WorkflowValidator` (tool/model refs,
+template refs, guard syntax; needs a `WorkflowEnvironment` for host checks) →
+`WorkflowGraph` (dependency edges from `depends_on`, `from_agent`, and
+`{{node.output}}` refs; cycle detection; deterministic topological order) →
+`WorkflowRunner` (sequential execution — `max_parallel` is schema-only, the
+runtime behaves as `max_parallel = 1`). `WorkflowLoader` bundles
+parse+normalize+validate+graph into one call.
+
+Key semantics:
+
+- Node settings resolve node → `defaults` → built-in default (`WorkflowDefaults`).
+- Approval (`WorkflowApprovalPolicy`): omitted defaults to `deny_writes`
+  (read-only tools run, approval-requiring tools auto-rejected); `inherit`
+  also falls back to `deny_writes` because nodes have no interactive approval
+  UI. `auto_approve` is explicit opt-in and overrides global per-tool modes;
+  `strict` rejects all tools. Bundled writer nodes use `auto_approve` with
+  narrow tool scopes; the outer content-bound review is still mandatory.
+- Each node runs against a `ScopedToolRegistry`: `allowed_tools` (unset = all)
+  minus `denied_tools`, with `run_workflow` always excluded (recursion guard).
+- `on_error: skip` and false `when` guards cascade: transitive dependents are
+  skipped and substitute empty strings in templates.
+- `timeout_ms` is a node-wide budget covering retries and backoff; `retry`
+  applies only to transport/timeout errors.
+- `run_workflow` (`RunWorkflowTool`) always requires approval: the dialog shows
+  a parsed per-node review plus the file's SHA-256, and the file is re-read and
+  re-hashed at launch — mutation between review and launch rejects the run.
+  Names must match `[a-zA-Z0-9_-]{1,64}`; symlinked paths and files over 64KB
+  are rejected.
+- Template workflows in `app/src/main/assets/workflows/` are seeded into
+  `.agent/workflows/` by `WorkspaceManager` (never overwriting user edits) and
+  validated by `WorkflowTemplateAssetsTest`.
+
+User docs: `docs/features/workflows.md` (EN) / `docs/features/workflows.ru.md` (RU).
+
 ### Skills System
 
 Skills are directory-based with `SKILL.md` files in `.agent/skills/`:

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "name": "Morning digest",
+  "goal": "Summarize today's calendar and save a short morning digest note in the workspace.",
+  "entry": "collect",
+  "output": "{{write_note.output}}",
+  "defaults": {
+    "max_turns": 8,
+    "timeout_ms": 180000
+  },
+  "agents": {
+    "collect": {
+      "description": "Read today's events from the device calendar",
+      "prompt": {
+        "text": "Use calendar_list_events to list today's calendar events. Return a plain-text list with start time, title, and location for each event, in chronological order. If there are no events today, reply exactly: No events today."
+      },
+      "allowed_tools": [
+        "calendar_list_calendars",
+        "calendar_list_events"
+      ],
+      "max_turns": 6
+    },
+    "summarize": {
+      "description": "Turn the raw event list into a short digest",
+      "prompt": {
+        "text": "Turn this schedule into a short morning digest: one headline line, then a bullet per event, then one line naming the most important item of the day.\n\n{{collect.output}}"
+      },
+      "allowed_tools": [],
+      "max_turns": 2
+    },
+    "write_note": {
+      "description": "Save the digest as a note in the workspace",
+      "prompt": {
+        "text": "Save the digest below to home/notes/morning-digest.md using write_file (overwrite if it exists). Then reply with the saved path followed by the digest itself.\n\n{{summarize.output}}"
+      },
+      "allowed_tools": [
+        "write_file"
+      ],
+      "approval": "auto_approve",
+      "max_turns": 4
+    }
+  }
+}
