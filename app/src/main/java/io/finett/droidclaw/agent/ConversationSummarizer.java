@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 
 import io.finett.droidclaw.api.LlmApiService;
+import io.finett.droidclaw.api.RequestScope;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.repository.MemoryRepository;
 
@@ -50,6 +51,13 @@ public class ConversationSummarizer {
     }
 
     public void summarizeAndSave(List<ChatMessage> messages, SummarizeCallback callback) {
+        summarizeAndSave(messages, null, callback);
+    }
+
+    /** Scope run-owned summaries without changing standalone callers. */
+    public void summarizeAndSave(List<ChatMessage> messages, RequestScope scope,
+                                 SummarizeCallback callback) {
+        if (scope != null && scope.isCancelled()) return;
         if (messages.isEmpty()) {
             callback.onResult(messages);
             return;
@@ -70,9 +78,10 @@ public class ConversationSummarizer {
 
         Log.d(TAG, "Summarizing " + summarizeCount + " messages, keeping " + keepCount + " recent");
 
-        generateSummary(toSummarize, new SummaryCallback() {
+        generateSummary(toSummarize, scope, new SummaryCallback() {
             @Override
             public void onResult(String summary) {
+                if (scope != null && scope.isCancelled()) return;
                 try {
                     String timestamp = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
                     String entry = "## " + timestamp + " - Conversation Summary\n\n" + summary;
@@ -91,6 +100,7 @@ public class ConversationSummarizer {
 
             @Override
             public void onError(Throwable error) {
+                if (scope != null && scope.isCancelled()) return;
                 Log.e(TAG, "Failed to generate summary", error);
                 // On failure, return full conversation
                 callback.onResult(messages);
@@ -103,13 +113,13 @@ public class ConversationSummarizer {
         void onError(Throwable error);
     }
 
-    private void generateSummary(List<ChatMessage> messages, SummaryCallback callback) {
+    private void generateSummary(List<ChatMessage> messages, RequestScope scope, SummaryCallback callback) {
         String prompt = buildSummaryPrompt(messages);
 
         List<ChatMessage> summaryRequest = new ArrayList<>();
         summaryRequest.add(new ChatMessage(prompt, ChatMessage.TYPE_USER));
 
-        apiService.sendMessage(summaryRequest, null, new LlmApiService.ChatCallback() {
+        LlmApiService.ChatCallback apiCallback = new LlmApiService.ChatCallback() {
             @Override
             public void onSuccess(String response) {
                 Log.d(TAG, "Summary generated: " + response.length() + " chars");
@@ -123,7 +133,12 @@ public class ConversationSummarizer {
                 String fallback = createFallbackSummary(messages);
                 callback.onResult(fallback);
             }
-        });
+        };
+        if (scope == null) {
+            apiService.sendMessage(summaryRequest, null, apiCallback);
+        } else {
+            apiService.sendMessage(summaryRequest, null, null, scope, apiCallback);
+        }
     }
 
     private String buildSummaryPrompt(List<ChatMessage> messages) {

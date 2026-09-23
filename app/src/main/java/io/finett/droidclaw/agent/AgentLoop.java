@@ -366,9 +366,11 @@ public class AgentLoop {
         if (summarizer != null && summarizer.needsSummarization(currentContextTokens)) {
             callback.onProgress("Context limit approaching (" + currentContextTokens + " tokens), summarizing conversation...");
 
-            summarizer.summarizeAndSave(conversationHistory, new ConversationSummarizer.SummarizeCallback() {
+            final RequestScope summaryScope = runScope;
+            summarizer.summarizeAndSave(conversationHistory, summaryScope, new ConversationSummarizer.SummarizeCallback() {
                 @Override
                 public void onResult(List<ChatMessage> compressedHistory) {
+                    if (summaryScope.isCancelled()) return;
                     callback.onProgress("Summary saved, continuing conversation...");
 
                     // Replace conversation history with compressed version
@@ -385,6 +387,7 @@ public class AgentLoop {
 
                 @Override
                 public void onError(Throwable error) {
+                    if (summaryScope.isCancelled()) return;
                     Log.e(TAG, "Summarization failed, continuing with full history", error);
                     // Continue anyway with full history
                     continueIteration(conversationHistory, callback);

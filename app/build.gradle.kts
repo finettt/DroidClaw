@@ -151,6 +151,7 @@ dependencies {
         exclude(group = "org.jetbrains", module = "annotations-java5")
     }
     
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.mockito.core)
