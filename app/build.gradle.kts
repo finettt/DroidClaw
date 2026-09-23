@@ -152,6 +152,8 @@ dependencies {
     }
     
     testImplementation(libs.junit)
+    // Validate bundled workflow assets against the shipped draft-07 schema.
+    testImplementation("com.networknt:json-schema-validator:1.0.87")
     testImplementation(libs.robolectric)
     testImplementation(libs.mockito.core)
     androidTestImplementation(libs.ext.junit)

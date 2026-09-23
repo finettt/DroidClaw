@@ -138,8 +138,10 @@ Key semantics:
 - Node settings resolve node → `defaults` → built-in default (`WorkflowDefaults`).
 - Approval (`WorkflowApprovalPolicy`): omitted defaults to `deny_writes`
   (read-only tools run, approval-requiring tools auto-rejected); `inherit`
-  follows global config; `auto_approve` is explicit opt-in; `strict` rejects
-  all tools.
+  also falls back to `deny_writes` because nodes have no interactive approval
+  UI. `auto_approve` is explicit opt-in and overrides global per-tool modes;
+  `strict` rejects all tools. Bundled writer nodes use `auto_approve` with
+  narrow tool scopes; the outer content-bound review is still mandatory.
 - Each node runs against a `ScopedToolRegistry`: `allowed_tools` (unset = all)
   minus `denied_tools`, with `run_workflow` always excluded (recursion guard).
 - `on_error: skip` and false `when` guards cascade: transitive dependents are

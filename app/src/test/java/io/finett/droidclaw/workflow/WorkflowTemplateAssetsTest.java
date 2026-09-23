@@ -2,10 +2,19 @@ package io.finett.droidclaw.workflow;
 
 import org.junit.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
+import com.networknt.schema.ValidationMessage;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -16,7 +25,8 @@ import static org.junit.Assert.assertTrue;
  * seeded into the user workspace at {@code .agent/workflows/} by
  * {@code WorkspaceManager}. Each template must load through
  * {@link WorkflowLoader} (parser + normalizer + graph + validator) with zero
- * errors and zero warnings against the production tool list.
+ * errors and zero warnings against the production tool list, and validate
+ * against the shipped draft-07 JSON Schema.
  */
 public class WorkflowTemplateAssetsTest {
 
@@ -59,13 +69,42 @@ public class WorkflowTemplateAssetsTest {
     }
 
     @Test
-    public void allTemplatesLoadCleanAndAreValidWorkflowFileNames() throws IOException {
-        for (String name : TEMPLATES) {
+    public void allAssetsMatchSchemaAndLoadClean() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        File schemaFile = new File(assetsDir().getParentFile(), "workflow-v1.schema.json");
+        JsonSchema schema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V7)
+                .getSchema(mapper.readTree(schemaFile));
+        File[] assets = assetsDir().listFiles((dir, name) -> name.endsWith(".json"));
+        assertNotNull("must list bundled workflow assets", assets);
+        Set<String> names = new HashSet<>();
+        for (File asset : assets) {
+            String name = asset.getName().substring(0, asset.getName().length() - 5);
+            names.add(name);
+            Set<ValidationMessage> errors = schema.validate(mapper.readTree(readTemplate(name)));
+            assertTrue(name + " violates workflow-v1.schema.json: " + errors, errors.isEmpty());
             loadClean(name);
-            // Must be launchable via run_workflow's filename rules
-            // (RunWorkflowTool.requireValidWorkflowName: [a-zA-Z0-9_-]{1,64}).
+            // Must be launchable via run_workflow's filename rules.
             assertTrue(name + " must be a valid run_workflow name",
                     name.matches("[a-zA-Z0-9_-]{1,64}"));
+        }
+        assertEquals("asset additions must update the template inventory",
+                new HashSet<>(Arrays.asList(TEMPLATES)), names);
+    }
+
+    @Test
+    public void onlyScopedWriterNodesExplicitlyAutoApprove() throws IOException {
+        String[] writers = {"write_note", "report", "apply"};
+        String[][] writerTools = {{"write_file"}, {"write_file"}, {"read_file", "edit_file"}};
+        for (int i = 0; i < TEMPLATES.length; i++) {
+            Workflow workflow = loadClean(TEMPLATES[i]).getWorkflow();
+            for (WorkflowAgent agent : workflow.getAgents().values()) {
+                WorkflowApprovalPolicy expected = agent.getKey().equals(writers[i])
+                        ? WorkflowApprovalPolicy.AUTO_APPROVE : WorkflowApprovalPolicy.DENY_WRITES;
+                assertEquals(TEMPLATES[i] + "/" + agent.getKey() + " approval policy", expected,
+                        workflow.getDefaults().resolveApproval(agent.getApproval()));
+            }
+            assertEquals(TEMPLATES[i] + " must keep the writer's tool scope narrow",
+                    Arrays.asList(writerTools[i]), workflow.getAgent(writers[i]).getAllowedTools());
         }
     }
 

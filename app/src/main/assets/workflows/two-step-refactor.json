@@ -34,7 +34,7 @@
         "read_file",
         "edit_file"
       ],
-      "approval": "inherit",
+      "approval": "auto_approve",
       "retry": {
         "max_attempts": 3,
         "backoff_ms": 1000

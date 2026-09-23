@@ -38,7 +38,7 @@
       "allowed_tools": [
         "write_file"
       ],
-      "approval": "inherit"
+      "approval": "auto_approve"
     }
   }
 }
