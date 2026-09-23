@@ -219,6 +219,12 @@ public class LlmApiService {
 
     public void sendMessage(List<ChatMessage> conversationHistory, JsonArray tools,
                             List<ChatMessage> identityMessages, ChatCallback callback) {
+        sendMessage(conversationHistory, tools, identityMessages, null, callback);
+    }
+
+    public void sendMessage(List<ChatMessage> conversationHistory, JsonArray tools,
+                            List<ChatMessage> identityMessages, RequestScope scope,
+                            ChatCallback callback) {
         if (!settingsManager.isConfigured()) {
             Log.w(TAG, "sendMessage: isConfigured() returned false");
             mainHandler.post(() -> callback.onError("API key not configured. Please set it in Settings."));
@@ -250,7 +256,7 @@ public class LlmApiService {
         Request request = requestBuilder.build();
         Log.d(TAG, "sendMessage: HTTP " + request.method() + " " + request.url());
 
-        client.newCall(request).enqueue(new Callback() {
+        enqueueScoped(request, scope, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.e(TAG, "Network error", e);
@@ -291,6 +297,12 @@ public class LlmApiService {
 
     public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools,
                                      List<ChatMessage> identityMessages, ChatCallbackWithTools callback) {
+        sendMessageWithTools(conversationHistory, tools, identityMessages, (RequestScope) null, callback);
+    }
+
+    public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools,
+                                     List<ChatMessage> identityMessages, RequestScope scope,
+                                     ChatCallbackWithTools callback) {
         if (!settingsManager.isConfigured()) {
             Log.w(TAG, "sendMessageWithTools: isConfigured() returned false");
             mainHandler.post(() -> callback.onError("API key not configured. Please set it in Settings."));
@@ -322,7 +334,7 @@ public class LlmApiService {
         Request request = requestBuilder.build();
         Log.d(TAG, "sendMessageWithTools: HTTP " + request.method() + " " + request.url());
 
-        client.newCall(request).enqueue(new Callback() {
+        enqueueScoped(request, scope, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 if (call.isCanceled()) {
@@ -371,8 +383,17 @@ public class LlmApiService {
                                      io.finett.droidclaw.model.Provider provider,
                                      io.finett.droidclaw.model.Model model,
                                      ChatCallbackWithTools callback) {
+        sendMessageWithTools(conversationHistory, tools, identityMessages, provider, model, null, callback);
+    }
+
+    public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools,
+                                     List<ChatMessage> identityMessages,
+                                     io.finett.droidclaw.model.Provider provider,
+                                     io.finett.droidclaw.model.Model model,
+                                     RequestScope scope,
+                                     ChatCallbackWithTools callback) {
         if (provider == null || model == null) {
-            sendMessageWithTools(conversationHistory, tools, identityMessages, callback);
+            sendMessageWithTools(conversationHistory, tools, identityMessages, scope, callback);
             return;
         }
 
@@ -398,7 +419,7 @@ public class LlmApiService {
         Log.d(TAG, "sendMessageWithTools (per-model): HTTP " + request.method() + " " + request.url()
                 + " model=" + model.getId());
 
-        client.newCall(request).enqueue(new Callback() {
+        enqueueScoped(request, scope, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 if (call.isCanceled()) {
@@ -443,8 +464,19 @@ public class LlmApiService {
                                       io.finett.droidclaw.model.Provider provider,
                                       io.finett.droidclaw.model.Model model,
                                       StructuredResponseCallback callback) {
+        sendMessageStructured(conversationHistory, tools, identityMessages, responseSchema,
+                provider, model, null, callback);
+    }
+
+    public void sendMessageStructured(List<ChatMessage> conversationHistory, JsonArray tools,
+                                      List<ChatMessage> identityMessages,
+                                      JsonObject responseSchema,
+                                      io.finett.droidclaw.model.Provider provider,
+                                      io.finett.droidclaw.model.Model model,
+                                      RequestScope scope,
+                                      StructuredResponseCallback callback) {
         if (provider == null || model == null) {
-            sendMessageStructured(conversationHistory, tools, identityMessages, responseSchema, callback);
+            sendMessageStructured(conversationHistory, tools, identityMessages, responseSchema, scope, callback);
             return;
         }
 
@@ -475,7 +507,7 @@ public class LlmApiService {
             requestBuilder = buildRequestBuilderForProvider(jsonBody, provider, apiType);
         }
 
-        client.newCall(requestBuilder.build()).enqueue(new Callback() {
+        enqueueScoped(requestBuilder.build(), scope, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 if (call.isCanceled()) {
@@ -591,6 +623,14 @@ public class LlmApiService {
     public void sendMessageStructured(List<ChatMessage> conversationHistory, JsonArray tools,
                                       List<ChatMessage> identityMessages,
                                       JsonObject responseSchema, StructuredResponseCallback callback) {
+        sendMessageStructured(conversationHistory, tools, identityMessages, responseSchema,
+                (RequestScope) null, callback);
+    }
+
+    public void sendMessageStructured(List<ChatMessage> conversationHistory, JsonArray tools,
+                                      List<ChatMessage> identityMessages,
+                                      JsonObject responseSchema, RequestScope scope,
+                                      StructuredResponseCallback callback) {
         if (!settingsManager.isConfigured()) {
             Log.w(TAG, "sendMessageStructured: isConfigured() returned false");
             mainHandler.post(() -> callback.onError("API key not configured. Please set it in Settings."));
@@ -623,7 +663,7 @@ public class LlmApiService {
             requestBuilder = buildOpenAiRequestBuilder(jsonBody);
         }
 
-        client.newCall(requestBuilder.build()).enqueue(new Callback() {
+        enqueueScoped(requestBuilder.build(), scope, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 if (call.isCanceled()) {
@@ -681,6 +721,13 @@ public class LlmApiService {
     public void sendMessageWithToolsStreaming(List<ChatMessage> conversationHistory, JsonArray tools,
                                               List<ChatMessage> identityMessages,
                                               StreamingChatCallback callback) {
+        sendMessageWithToolsStreaming(conversationHistory, tools, identityMessages, null, callback);
+    }
+
+    public void sendMessageWithToolsStreaming(List<ChatMessage> conversationHistory, JsonArray tools,
+                                              List<ChatMessage> identityMessages,
+                                              RequestScope scope,
+                                              StreamingChatCallback callback) {
         if (!settingsManager.isConfigured()) {
             Log.w(TAG, "sendMessageWithToolsStreaming: isConfigured() returned false");
             mainHandler.post(() -> callback.onError("API key not configured. Please set it in Settings."));
@@ -719,7 +766,7 @@ public class LlmApiService {
         Request request = requestBuilder.build();
         Log.d(TAG, "sendMessageWithToolsStreaming: HTTP " + request.method() + " " + request.url());
 
-        client.newCall(request).enqueue(new Callback() {
+        enqueueScoped(request, scope, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 if (call.isCanceled()) {
@@ -789,6 +836,48 @@ public class LlmApiService {
         });
     }
 
+    /**
+     * Create the call for {@code request}, register it in {@code scope} (when non-null)
+     * so a run-level cancel aborts only its own requests, and unregister it once the
+     * callback fires. See {@link RequestScope}.
+     */
+    private void enqueueScoped(Request request, RequestScope scope, Callback callback) {
+        Call call = client.newCall(request);
+        if (scope != null) {
+            scope.register(call);
+        }
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call c, IOException e) {
+                if (scope != null) {
+                    scope.unregister(c);
+                }
+                callback.onFailure(c, e);
+            }
+
+            @Override
+            public void onResponse(Call c, Response response) throws IOException {
+                try {
+                    callback.onResponse(c, response);
+                } finally {
+                    if (scope != null) {
+                        scope.unregister(c);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Cancel every request on the shared OkHttp client, including requests that
+     * belong to unrelated concurrent runs.
+     *
+     * @deprecated Cancelling the shared dispatcher aborts unrelated chats and
+     * workflow nodes (issue #144). Pass a {@link RequestScope} to the send methods
+     * and cancel that scope instead. Retained only for a genuine
+     * "stop everything now" action.
+     */
+    @Deprecated
     public void cancelAllRequests() {
         client.dispatcher().cancelAll();
     }

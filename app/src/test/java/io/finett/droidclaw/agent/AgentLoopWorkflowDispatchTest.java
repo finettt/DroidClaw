@@ -76,7 +76,7 @@ public class AgentLoopWorkflowDispatchTest {
         loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
         ArgumentCaptor<LlmApiService.ChatCallbackWithTools> response =
                 ArgumentCaptor.forClass(LlmApiService.ChatCallbackWithTools.class);
-        verify(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), response.capture());
+        verify(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), response.capture());
         List<LlmApiService.ToolCall> calls = new ArrayList<>();
         for (String name : names) {
             JsonObject arguments = new JsonObject();
@@ -144,7 +144,7 @@ public class AgentLoopWorkflowDispatchTest {
 
         // The real runner waits for this main-looper API callback on its worker.
         doAnswer(inv -> {
-            LlmApiService.ChatCallbackWithTools response = inv.getArgument(3);
+            LlmApiService.ChatCallbackWithTools response = inv.getArgument(4);
             if (Looper.myLooper() != Looper.getMainLooper()) {
                 main.post(() -> response.onSuccess(new LlmApiService.LlmResponse("node output", null)));
                 nodeRequested.countDown();
@@ -152,7 +152,7 @@ public class AgentLoopWorkflowDispatchTest {
                 response.onSuccess(new LlmApiService.LlmResponse("chat complete", null));
             }
             return null;
-        }).when(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        }).when(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
         FutureTask<Void> worker = runQueuedWork();
         try {
             assertTrue(nodeRequested.await(5, TimeUnit.SECONDS));
@@ -213,7 +213,7 @@ public class AgentLoopWorkflowDispatchTest {
         }).when(callback).onToolResult(anyString(), anyString());
         shadowOf(Looper.getMainLooper()).idle();
         verify(callback).onToolResult("run_workflow", "Error: failed");
-        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void workerExceptionBecomesToolErrorOnMain() throws Exception {
@@ -224,7 +224,7 @@ public class AgentLoopWorkflowDispatchTest {
         verify(callback, never()).onToolResult(anyString(), anyString());
         shadowOf(Looper.getMainLooper()).idle();
         verify(callback).onToolResult("run_workflow", "Error: Tool execution failed: broken");
-        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void rejectedDispatchBecomesToolErrorOnMain() {
@@ -236,7 +236,7 @@ public class AgentLoopWorkflowDispatchTest {
         verify(callback, never()).onToolResult(anyString(), anyString());
         shadowOf(Looper.getMainLooper()).idle();
         verify(callback).onToolResult("run_workflow", "Error: Workflow execution unavailable: closed");
-        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
         verify(tools, never()).executeTool(anyString(), any());
     }
 
@@ -277,7 +277,7 @@ public class AgentLoopWorkflowDispatchTest {
         CountDownLatch nodeRequested = new CountDownLatch(1);
         Handler main = new Handler(Looper.getMainLooper());
         doAnswer(inv -> {
-            LlmApiService.ChatCallbackWithTools response = inv.getArgument(3);
+            LlmApiService.ChatCallbackWithTools response = inv.getArgument(4);
             if (Looper.myLooper() != Looper.getMainLooper()) {
                 main.post(() -> response.onSuccess(new LlmApiService.LlmResponse("real node output", null)));
                 nodeRequested.countDown();
@@ -285,7 +285,7 @@ public class AgentLoopWorkflowDispatchTest {
                 response.onSuccess(new LlmApiService.LlmResponse("chat complete", null));
             }
             return null;
-        }).when(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        }).when(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
         doAnswer(inv -> {
             assertSame(Looper.getMainLooper(), Looper.myLooper());
             return null;
@@ -307,7 +307,7 @@ public class AgentLoopWorkflowDispatchTest {
         verify(tools, never()).executeTool(eq("run_workflow"), any());
         verify(callback).onToolResult(eq("run_workflow"), contains("real node output"));
         verify(callback).onComplete(eq("chat complete"), anyList());
-        verify(api, times(3)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(3)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void cancellationBeforePostedResultSuppressesContinuation() throws Exception {
@@ -318,7 +318,7 @@ public class AgentLoopWorkflowDispatchTest {
         loop.cancel();
         shadowOf(Looper.getMainLooper()).idle();
         verify(callback, never()).onToolResult(anyString(), anyString());
-        verify(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void workflowValidationErrorNotificationIsPostedToMain() throws Exception {

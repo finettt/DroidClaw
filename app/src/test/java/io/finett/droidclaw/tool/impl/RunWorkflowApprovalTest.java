@@ -101,14 +101,14 @@ public class RunWorkflowApprovalTest {
     private AtomicInteger repliesWithTool(String name, JsonObject arguments) {
         AtomicInteger calls = new AtomicInteger();
         doAnswer(inv -> {
-            LlmApiService.ChatCallbackWithTools callback = inv.getArgument(3);
+            LlmApiService.ChatCallbackWithTools callback = inv.getArgument(4);
             if (calls.getAndIncrement() == 0) {
                 callback.onSuccess(new LlmApiService.LlmResponse(null, Collections.singletonList(
                         new LlmApiService.ToolCall("call", name, arguments))));
             } else callback.onSuccess(new LlmApiService.LlmResponse("finished", null));
             return null;
         }).when(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(),
-                any(LlmApiService.ChatCallbackWithTools.class));
+                any(), any(LlmApiService.ChatCallbackWithTools.class));
         return calls;
     }
 
@@ -135,7 +135,7 @@ public class RunWorkflowApprovalTest {
         verify(callback).onApprovalRequired(eq("run_workflow"), contains("SHA-256:"), eq(args), any());
         verify(registry, never()).executeTool(anyString(), any());
         verify(registry, never()).getContext();
-        verify(api, times(1)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(1)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void alwaysRejectWinsOverMandatoryApprovalAndBackground() {
@@ -154,7 +154,7 @@ public class RunWorkflowApprovalTest {
         approval.getValue().onApproved();
         verify(callback, times(1)).onToolResult(eq("run_workflow"), contains("denied"));
         verify(registry, never()).executeTool(anyString(), any());
-        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void unchangedApprovedWorkflowRunsExactlyOnceThroughRealRunner() {
@@ -165,7 +165,7 @@ public class RunWorkflowApprovalTest {
         approval.getValue().onApproved();
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
         verify(callback, times(1)).onToolResult(eq("run_workflow"), contains("success"));
-        verify(api, times(3)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(3)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void changedBytesAfterDialogFailBeforeRunner() throws Exception {
@@ -176,7 +176,7 @@ public class RunWorkflowApprovalTest {
         approval.getValue().onApproved();
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
         verify(callback).onToolResult(eq("run_workflow"), contains("changed after approval"));
-        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(2)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void llmHashAndDescriptionCannotAuthorizeDirectExecution() {
@@ -190,13 +190,13 @@ public class RunWorkflowApprovalTest {
         RunWorkflowTool.ApprovalReview review = tool.prepareApproval(args);
         args.addProperty("workflow", "different");
         doAnswer(inv -> {
-            ((LlmApiService.ChatCallbackWithTools) inv.getArgument(3)).onSuccess(
+            ((LlmApiService.ChatCallbackWithTools) inv.getArgument(4)).onSuccess(
                     new LlmApiService.LlmResponse("ok", null));
             return null;
-        }).when(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        }).when(api).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
         assertTrue(review.execute().isSuccess());
         assertFalse(review.execute().isSuccess());
-        verify(api, times(1)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any());
+        verify(api, times(1)).sendMessageWithTools(anyList(), any(JsonArray.class), any(), any(), any());
     }
 
     @Test public void parsedSummaryResolvesDefaultsDenialsModelsAndWarning() throws Exception {

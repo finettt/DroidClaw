@@ -151,6 +151,7 @@ dependencies {
         exclude(group = "org.jetbrains", module = "annotations-java5")
     }
     
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation(libs.junit)
     // Validate bundled workflow assets against the shipped draft-07 schema.
     testImplementation("com.networknt:json-schema-validator:1.0.87")

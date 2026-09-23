@@ -114,7 +114,7 @@ public class AgentLoopRunScopeTest {
         ArgumentCaptor<LlmApiService.StructuredResponseCallback> captor =
                 ArgumentCaptor.forClass(LlmApiService.StructuredResponseCallback.class);
         verify(api).sendMessageStructured(anyList(), any(), anyList(), any(),
-                same(provider), same(model), captor.capture());
+                same(provider), same(model), any(), captor.capture());
         captor.getValue().onError("invalid schema");
         verify(callback).onError("invalid schema");
         assertOverridesCleared();
@@ -126,7 +126,7 @@ public class AgentLoopRunScopeTest {
         ArgumentCaptor<LlmApiService.ChatCallbackWithTools> captor =
                 ArgumentCaptor.forClass(LlmApiService.ChatCallbackWithTools.class);
         verify(api).sendMessageWithTools(anyList(), any(), anyList(),
-                same(provider), same(model), captor.capture());
+                same(provider), same(model), any(), captor.capture());
         return captor.getValue();
     }
 
@@ -144,17 +144,17 @@ public class AgentLoopRunScopeTest {
         clearInvocations(api, tools);
         AgentLoop.AgentCallback nextCallback = mock(AgentLoop.AgentCallback.class);
         doAnswer(invocation -> {
-            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(3);
+            LlmApiService.ChatCallbackWithTools cb = invocation.getArgument(4);
             cb.onSuccess(new LlmApiService.LlmResponse(null, Collections.singletonList(
                     new LlmApiService.ToolCall("write", "write_file", new JsonObject()))));
             return null;
-        }).when(api).sendMessageWithTools(anyList(), any(), anyList(),
+        }).when(api).sendMessageWithTools(anyList(), any(), anyList(), any(),
                 any(LlmApiService.ChatCallbackWithTools.class));
         loop.start(Collections.singletonList(new ChatMessage("chat", ChatMessage.TYPE_USER)), nextCallback);
-        verify(api).sendMessageWithTools(anyList(), any(), anyList(),
+        verify(api).sendMessageWithTools(anyList(), any(), anyList(), any(),
                 any(LlmApiService.ChatCallbackWithTools.class));
         verify(api, never()).sendMessageWithTools(anyList(), any(), anyList(),
-                any(Provider.class), any(Model.class), any(LlmApiService.ChatCallbackWithTools.class));
+                any(Provider.class), any(Model.class), any(), any(LlmApiService.ChatCallbackWithTools.class));
         verify(nextCallback).onApprovalRequired(eq("write_file"), eq("Write file"),
                 any(), any(AgentLoop.ApprovalCallback.class));
         verify(tools, never()).executeTool(anyString(), any());
