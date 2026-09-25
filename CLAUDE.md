@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Plans Must Stay Local
+
+Never stage or commit planning documents. Keep plans local and untracked, using a `plans/` directory or filenames such as `PLAN.md` or `*-plan.md` covered by `.gitignore`. Never force-add ignored plans. If a plan is already tracked, remove it from the Git index with `git rm --cached` while preserving the local file. This rule applies to planning documents, not application source code or tests such as `ExecPlan.java`.
+
 ## Nix System Requirement
 
 **When working on a Nix-based Linux system (NixOS, Nix Darwin), always use the Nix development shell.**
