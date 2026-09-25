@@ -54,9 +54,7 @@ public final class WorkflowRunner {
     private volatile AgentLoop activeNodeLoop;
 
     /**
-     * @param apiService       LLM API service
      * @param toolRegistry     the full tool registry (will be scoped per node)
-     * @param settingsManager  global settings
      * @param identityMessages identity context messages (soul.md, user.md); may be null
      * @param guidelinesContent GUIDELINES.md content; may be null
      */
@@ -82,7 +80,6 @@ public final class WorkflowRunner {
         cancelled.set(false);
         callback = MainThreadWorkflowRunCallback.wrap(callback);
 
-        // Stage 1-3: load and validate
         WorkflowLoader.Result loadResult = WorkflowLoader.load(workflowJson, buildEnvironment());
         if (!loadResult.isRunnable()) {
             String err = "Workflow validation failed:\n" + loadResult.describeProblems();
@@ -93,7 +90,6 @@ public final class WorkflowRunner {
         Workflow wf = loadResult.getWorkflow();
         WorkflowGraph graph = loadResult.getGraph();
 
-        // Compute execution order
         List<String> order = graph.topologicalOrder();
         if (order == null) {
             String err = "Workflow contains a dependency cycle";
@@ -101,7 +97,6 @@ public final class WorkflowRunner {
             return WorkflowRunResult.failed(err, null);
         }
 
-        // If entry is declared, reorder: entry nodes first, then remaining in topo order
         if (!wf.getEntry().isEmpty()) {
             order = reorderWithEntry(order, wf.getEntry());
         }
@@ -111,19 +106,16 @@ public final class WorkflowRunner {
                     + "' loaded: " + wf.getAgentCount() + " agent(s), goal: " + wf.getGoal());
         }
 
-        // Run state
         Map<String, TemplateResolver.NodeResult> results = new LinkedHashMap<>();
         Set<String> skipped = new HashSet<>();
         AtomicInteger totalTokens = new AtomicInteger(0);
 
-        // Execute nodes sequentially in topological order
         for (String key : order) {
             if (cancelled.get()) {
                 if (callback != null) callback.onError("Workflow cancelled");
                 return WorkflowRunResult.cancelled(results);
             }
 
-            // Already skipped via cascade?
             if (skipped.contains(key)) {
                 results.put(key, TemplateResolver.NodeResult.skipped());
                 if (callback != null) callback.onNodeComplete(key, WorkflowNodeStatus.SKIPPED);
@@ -133,13 +125,11 @@ public final class WorkflowRunner {
             WorkflowAgent agent = wf.getAgent(key);
             WorkflowDefaults defaults = wf.getDefaults();
 
-            // Evaluate guard
             if (agent.hasGuard()) {
                 boolean guardResult = evaluateGuard(agent.getWhen(), wf, input, results);
                 if (!guardResult) {
                     Log.d(TAG, "Node '" + key + "' guard is false, skipping");
                     results.put(key, TemplateResolver.NodeResult.skipped());
-                    // Cascade skip to transitive dependents
                     skipped.addAll(graph.transitiveDependents(key));
                     if (callback != null) callback.onNodeComplete(key, WorkflowNodeStatus.SKIPPED);
                     continue;
@@ -148,7 +138,6 @@ public final class WorkflowRunner {
 
             if (callback != null) callback.onNodeStart(key);
 
-            // Execute the node with retries
             NodeExecutionResult nodeResult = executeNodeWithRetry(
                     key, agent, defaults, wf, input, results, totalTokens, callback);
 
@@ -183,7 +172,6 @@ public final class WorkflowRunner {
             }
         }
 
-        // Resolve workflow output
         String finalOutput;
         try {
             finalOutput = resolveWorkflowOutput(wf, input, results);
@@ -210,8 +198,6 @@ public final class WorkflowRunner {
         return cancelled.get();
     }
 
-    // ==================== node execution ====================
-
     private NodeExecutionResult executeNodeWithRetry(
             String key, WorkflowAgent agent, WorkflowDefaults defaults,
             Workflow wf, String input,
@@ -230,7 +216,6 @@ public final class WorkflowRunner {
                 return new NodeExecutionResult(TemplateResolver.NodeResult.error(null), "cancelled");
             }
 
-            // Backoff before retry
             if (attempt > 1) {
                 long delay = retry.delayBeforeAttempt(attempt - 1);
                 if (delay > 0) {
@@ -267,7 +252,6 @@ public final class WorkflowRunner {
             Log.d(TAG, "Node '" + key + "' attempt " + attempt + " failed: " + result.errorMessage);
         }
 
-        // All attempts exhausted
         return new NodeExecutionResult(TemplateResolver.NodeResult.error(null),
                 "Node '" + key + "' failed after " + maxAttempts + " attempt(s)"
                         + (lastError == null ? "" : ": " + lastError));
@@ -280,7 +264,6 @@ public final class WorkflowRunner {
             AtomicInteger totalTokens, WorkflowRunCallback callback,
             Integer timeoutMs) {
 
-        // Resolve prompt
         String resolvedPrompt;
         try {
             resolvedPrompt = resolveNodePrompt(key, agent, wf, input, results);
@@ -289,7 +272,6 @@ public final class WorkflowRunner {
                     "Template resolution failed: " + e.getMessage());
         }
 
-        // Resolve node inputs
         Map<String, String> resolvedInputs = new LinkedHashMap<>();
         try {
             for (Map.Entry<String, String> in : agent.getInputs().entrySet()) {
@@ -301,25 +283,20 @@ public final class WorkflowRunner {
                     "Input resolution failed: " + e.getMessage());
         }
 
-        // Build scoped tool registry
         List<String> allowedTools = defaults.resolveAllowedTools(agent.getAllowedTools());
         List<String> deniedTools = defaults.resolveDeniedTools(agent.getDeniedTools());
         ScopedToolRegistry scopedRegistry = new ScopedToolRegistry(toolRegistry, allowedTools, deniedTools);
 
-        // Create agent loop for this node
         AgentLoop nodeLoop = new AgentLoop(apiService, new ScopedToolRegistryAdapter(scopedRegistry), settingsManager);
 
-        // Configure per-node settings
         Integer maxTurns = defaults.resolveMaxTurns(agent.getMaxTurns());
         if (maxTurns != null) {
             nodeLoop.setMaxIterations(capMaxTurns(maxTurns, settingsManager.getMaxAgentIterations()));
         }
 
-        // Approval policy
         WorkflowApprovalPolicy approvalPolicy = defaults.resolveApproval(agent.getApproval());
         nodeLoop.setApprovalOverrides(buildApprovalOverrides(approvalPolicy, scopedRegistry));
 
-        // Identity and guidelines
         if (identityMessages != null) {
             nodeLoop.setIdentityContext(identityMessages);
         }
@@ -327,7 +304,6 @@ public final class WorkflowRunner {
             nodeLoop.setGuidelinesContext(guidelinesContent);
         }
 
-        // Structured output schema
         if (agent.hasOutputSchema()) {
             nodeLoop.setResponseSchema(agent.getOutputSchema());
         }
@@ -341,7 +317,6 @@ public final class WorkflowRunner {
         final AtomicReference<String> nodeError = new AtomicReference<>(null);
         final AtomicReference<List<ChatMessage>> finalHistory = new AtomicReference<>(null);
 
-        // Fresh history with the resolved prompt as user message
         List<ChatMessage> freshHistory = new ArrayList<>();
         String goalPrefix = "Goal: " + wf.getGoal() + "\n\n";
         freshHistory.add(new ChatMessage(goalPrefix + resolvedPrompt, ChatMessage.TYPE_USER));
@@ -377,7 +352,6 @@ public final class WorkflowRunner {
             }
         });
 
-        // Wait for completion with optional timeout
         try {
             if (timeoutMs != null) {
                 boolean done = latch.await(timeoutMs, TimeUnit.MILLISECONDS);
@@ -419,10 +393,8 @@ public final class WorkflowRunner {
             return new NodeExecutionResult(TemplateResolver.NodeResult.error(null), "Empty response from node");
         }
 
-        // Track tokens
         totalTokens.addAndGet(nodeLoop.getTotalTokens());
 
-        // Parse structured output if schema is set
         JsonObject structured = null;
         if (agent.hasOutputSchema()) {
             try {
@@ -436,8 +408,6 @@ public final class WorkflowRunner {
         return new NodeExecutionResult(TemplateResolver.NodeResult.ok(response, structured), null);
     }
 
-    // ==================== template resolution ====================
-
     private String resolveNodePrompt(String key, WorkflowAgent agent, Workflow wf, String input,
                                      Map<String, TemplateResolver.NodeResult> results)
             throws TemplateResolver.TemplateException {
@@ -446,7 +416,6 @@ public final class WorkflowRunner {
         String template = prompt.effectiveTemplate();
         TemplateResolver.Context ctx = buildContext(wf, input, results, key);
 
-        // Also bind this node's inputs
         for (Map.Entry<String, String> in : agent.getInputs().entrySet()) {
             String value = TemplateResolver.resolve(in.getValue(), ctx);
             ctx.input(in.getKey(), value);
@@ -454,7 +423,6 @@ public final class WorkflowRunner {
 
         String resolved = TemplateResolver.resolve(template, ctx, TemplateResolver.Mode.STRICT);
 
-        // Prepend system prompt if present
         if (prompt.getSystem() != null && !prompt.getSystem().isEmpty()) {
             String systemResolved = TemplateResolver.resolve(prompt.getSystem(), ctx, TemplateResolver.Mode.STRICT);
             return "[System: " + systemResolved + "]\n\n" + resolved;
@@ -472,7 +440,6 @@ public final class WorkflowRunner {
 
         for (Map.Entry<String, TemplateResolver.NodeResult> e : results.entrySet()) {
             ctx.node(e.getKey(), e.getValue());
-            // Mark tolerable nodes (on_error: continue)
             WorkflowAgent a = wf.getAgent(e.getKey());
             if (a != null) {
                 WorkflowErrorPolicy policy = wf.getDefaults().resolveOnError(a.getOnError());
@@ -524,8 +491,6 @@ public final class WorkflowRunner {
         return TemplateResolver.resolve(outputTemplate, ctx, TemplateResolver.Mode.FINAL);
     }
 
-    // ==================== guards ====================
-
     private boolean evaluateGuard(String when, Workflow wf, String input,
                                    Map<String, TemplateResolver.NodeResult> results) {
         Matcher m = GUARD_PATTERN.matcher(when.trim());
@@ -554,8 +519,6 @@ public final class WorkflowRunner {
             default: return true;
         }
     }
-
-    // ==================== approval ====================
 
     private Map<String, ToolApprovalMode> buildApprovalOverrides(
             WorkflowApprovalPolicy policy, ScopedToolRegistry scopedRegistry) {
@@ -588,18 +551,14 @@ public final class WorkflowRunner {
         return overrides;
     }
 
-    // ==================== helpers ====================
-
     private List<String> reorderWithEntry(List<String> topoOrder, List<String> entry) {
         List<String> reordered = new ArrayList<>();
         Set<String> added = new HashSet<>();
-        // Entry nodes first (in declared order)
         for (String e : entry) {
             if (topoOrder.contains(e) && added.add(e)) {
                 reordered.add(e);
             }
         }
-        // Remaining in topo order
         for (String k : topoOrder) {
             if (added.add(k)) {
                 reordered.add(k);
@@ -672,8 +631,6 @@ public final class WorkflowRunner {
             }
         };
     }
-
-    // ==================== inner classes ====================
 
     private static final class NodeExecutionResult {
         final TemplateResolver.NodeResult templateResult;

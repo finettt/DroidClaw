@@ -65,14 +65,12 @@ public final class WorkflowDefaults {
     public int getMaxNodes() { return maxNodes; }
     public void setMaxNodes(int v) { this.maxNodes = v; }
 
-    /** Effective approval policy for a node, applying the documented default. */
     public WorkflowApprovalPolicy resolveApproval(WorkflowApprovalPolicy node) {
         if (node != null) return node;
         if (approval != null) return approval;
         return WorkflowApprovalPolicy.defaultValue();
     }
 
-    /** Effective error policy for a node, applying the documented default. */
     public WorkflowErrorPolicy resolveOnError(WorkflowErrorPolicy node) {
         if (node != null) return node;
         if (onError != null) return onError;

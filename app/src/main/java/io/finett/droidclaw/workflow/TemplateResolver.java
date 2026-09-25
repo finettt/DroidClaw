@@ -67,7 +67,6 @@ public final class TemplateResolver {
         public String getExpression() { return expression; }
     }
 
-    /** One node's terminal result, as visible to templates. */
     public static final class NodeResult {
         private final WorkflowNodeStatus status;
         private final String output;
@@ -100,7 +99,6 @@ public final class TemplateResolver {
         public JsonObject getStructured() { return structured; }
     }
 
-    /** Everything a template may read while resolving. */
     public static final class Context {
         private String workflowName = "";
         private String workflowGoal = "";
@@ -143,8 +141,6 @@ public final class TemplateResolver {
 
         private static String nz(String v) { return v == null ? "" : v; }
     }
-
-    // ==================== resolution ====================
 
     /** Resolves with {@link Mode#STRICT} and no local inputs. */
     public static String resolve(String template, Context ctx) throws TemplateException {
@@ -192,7 +188,6 @@ public final class TemplateResolver {
             return ctx.inputs.get(parts[1]);
         }
 
-        // agent reference
         NodeResult r = ctx.nodes.get(root);
         if (r == null) {
             throw new TemplateException(expr, "agent '" + root + "' has no result (it did not run)");
@@ -234,8 +229,6 @@ public final class TemplateResolver {
         }
         return el.isJsonPrimitive() ? el.getAsString() : el.toString();
     }
-
-    // ==================== static analysis ====================
 
     /** Every {@code {{...}}} expression body, in order of appearance. */
     public static List<String> expressions(String template) {
@@ -286,7 +279,6 @@ public final class TemplateResolver {
         return out;
     }
 
-    /** True when {@code {{} and {@code }} counts differ — a malformed template. */
     public static boolean hasUnbalancedBraces(String template) {
         if (template == null) return false;
         return countOf(template, "{{") != countOf(template, "}}");
@@ -298,7 +290,6 @@ public final class TemplateResolver {
         return n;
     }
 
-    /** Reserved-root check helper used by the validator. */
     public static boolean isReservedRoot(String root) {
         return RESERVED_ROOTS.contains(root);
     }

@@ -54,7 +54,6 @@ public final class WorkflowParser {
         return new HashSet<>(Arrays.asList(v));
     }
 
-    /** Outcome of a parse: a workflow when it succeeded, plus every issue found. */
     public static final class Result {
         private final Workflow workflow;
         private final WorkflowValidationResult issues;
@@ -69,8 +68,6 @@ public final class WorkflowParser {
         public WorkflowValidationResult getIssues() { return issues; }
         public boolean isSuccess() { return workflow != null && issues.isValid(); }
     }
-
-    // ==================== entry points ====================
 
     public static Result parse(String json) {
         WorkflowValidationResult res = new WorkflowValidationResult();
@@ -109,7 +106,6 @@ public final class WorkflowParser {
 
         Workflow wf = new Workflow();
 
-        // version
         Integer version = readInt(root, "version", null, null, res);
         if (version == null) {
             res.add(WorkflowIssue.error(null, "version",
@@ -122,7 +118,6 @@ public final class WorkflowParser {
             wf.setVersion(version);
         }
 
-        // goal (required)
         String goal = readString(root, "goal", null, null, res);
         if (goal == null || goal.trim().isEmpty()) {
             res.add(WorkflowIssue.error(null, "goal", "'goal' is required and must be a non-empty string"));
@@ -135,7 +130,6 @@ public final class WorkflowParser {
         String output = readString(root, "output", null, null, res);
         if (output != null) wf.setOutput(output);
 
-        // entry: string or array of strings
         if (root.has("entry") && !root.get("entry").isJsonNull()) {
             JsonElement e = root.get("entry");
             List<String> entries = new ArrayList<>();
@@ -155,7 +149,6 @@ public final class WorkflowParser {
             wf.setEntry(entries);
         }
 
-        // defaults
         if (root.has("defaults") && !root.get("defaults").isJsonNull()) {
             JsonElement d = root.get("defaults");
             if (!d.isJsonObject()) {
@@ -165,7 +158,6 @@ public final class WorkflowParser {
             }
         }
 
-        // agents (required)
         if (!root.has("agents") || !root.get("agents").isJsonObject()) {
             res.add(WorkflowIssue.error(null, "agents", "'agents' is required and must be an object"));
             return new Result(null, res);
@@ -204,8 +196,6 @@ public final class WorkflowParser {
         if (res.hasErrors()) return new Result(null, res);
         return new Result(wf, res);
     }
-
-    // ==================== defaults ====================
 
     private static WorkflowDefaults parseDefaults(JsonObject o, WorkflowValidationResult res) {
         rejectUnknown(o, DEFAULTS_KEYS, null, "defaults", res);
@@ -270,8 +260,6 @@ public final class WorkflowParser {
         return d;
     }
 
-    // ==================== agent ====================
-
     private static WorkflowAgent parseAgent(String key, JsonObject o, WorkflowValidationResult res) {
         rejectUnknown(o, AGENT_KEYS, key, null, res);
         WorkflowAgent.Builder b = WorkflowAgent.builder(key);
@@ -287,7 +275,6 @@ public final class WorkflowParser {
             } else b.model(model);
         }
 
-        // prompt is required
         if (!o.has("prompt") || o.get("prompt").isJsonNull()) {
             res.add(WorkflowIssue.error(key, "prompt", "'prompt' is required"));
         } else if (!o.get("prompt").isJsonObject()) {
@@ -440,8 +427,6 @@ public final class WorkflowParser {
         }
         return new WorkflowRetry(attempts, backoff);
     }
-
-    // ==================== strict readers ====================
 
     private static void rejectUnknown(JsonObject o, Set<String> allowed, String key, String scope,
                                       WorkflowValidationResult res) {

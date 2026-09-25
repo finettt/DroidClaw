@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Aggregate of every {@link WorkflowIssue} found while loading a workflow. */
 public final class WorkflowValidationResult {
 
     private final List<WorkflowIssue> issues = new ArrayList<>();

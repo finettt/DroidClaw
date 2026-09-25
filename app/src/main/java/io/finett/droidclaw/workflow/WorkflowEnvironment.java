@@ -10,7 +10,6 @@ package io.finett.droidclaw.workflow;
  */
 public interface WorkflowEnvironment {
 
-    /** Whether {@code ToolRegistry} currently exposes a tool with this name. */
     boolean hasTool(String toolName);
 
     /**
