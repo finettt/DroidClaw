@@ -34,7 +34,6 @@ public final class WorkflowLoader {
 
         public WorkflowValidationResult getIssues() { return issues; }
 
-        /** True only when every stage passed with no errors. */
         public boolean isRunnable() { return workflow != null && graph != null && issues.isValid(); }
 
         public String describeProblems() { return issues.describe(); }

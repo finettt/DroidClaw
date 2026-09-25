@@ -191,7 +191,6 @@ public class RunWorkflowTool implements Tool {
             return ToolResult.error("Cannot launch a workflow from inside a workflow (recursion guard)");
         }
 
-        // Build identity context
         List<ChatMessage> identityMessages = null;
         String guidelines = null;
         try {
@@ -206,7 +205,6 @@ public class RunWorkflowTool implements Tool {
             Log.w(TAG, "Could not build identity/guidelines context for workflow", e);
         }
 
-        // Run the workflow
         runDepth.set(runDepth.get() + 1);
         try {
             WorkflowRunner runner = new WorkflowRunner(

@@ -128,7 +128,6 @@ public class AgentLoop {
         }
     }
 
-    /** Whether a per-run model override is active. */
     public boolean hasModelOverride() {
         return modelOverrideProvider != null && modelOverrideModel != null;
     }

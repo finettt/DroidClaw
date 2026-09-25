@@ -151,7 +151,6 @@ public class SettingsManager {
                 userName = "";
             }
 
-            // Load lesson consolidation state
             if (root.has("lessonConsolidation")) {
                 lessonConsolidationLastRunMillis = root.getJSONObject("lessonConsolidation")
                         .optLong("lastRunMillis", 0L);

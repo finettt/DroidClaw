@@ -455,9 +455,6 @@ public class LlmApiService {
         });
     }
 
-    /**
-     * Send a structured-output message using an explicit provider/model.
-     */
     public void sendMessageStructured(List<ChatMessage> conversationHistory, JsonArray tools,
                                       List<ChatMessage> identityMessages,
                                       JsonObject responseSchema,
@@ -578,7 +575,6 @@ public class LlmApiService {
         return builder;
     }
 
-    /** Build OpenAI request body with an explicit model instead of the global one. */
     private JsonObject buildOpenAiRequestBody(List<ChatMessage> conversationHistory,
                                                JsonArray tools,
                                                List<ChatMessage> identityMessages,
@@ -591,7 +587,6 @@ public class LlmApiService {
         return body;
     }
 
-    /** Build Anthropic request body with an explicit model instead of the global one. */
     private JsonObject buildAnthropicRequestBody(List<ChatMessage> conversationHistory,
                                                    JsonArray tools,
                                                    List<ChatMessage> identityMessages,

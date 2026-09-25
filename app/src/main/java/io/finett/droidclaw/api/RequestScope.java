@@ -69,7 +69,6 @@ public class RequestScope {
         }
     }
 
-    /** Whether {@link #cancel()} has been invoked on this scope. */
     public boolean isCancelled() {
         return cancelled;
     }

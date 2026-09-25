@@ -653,7 +653,6 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setLessonExtractionEnabled(switchLessonExtraction.isChecked());
         agentConfig.setLessonConsolidationEnabled(switchLessonConsolidation.isChecked());
 
-        // Keep the daily consolidation job in sync with the toggle
         io.finett.droidclaw.scheduler.CronJobScheduler consolidationScheduler =
                 new io.finett.droidclaw.scheduler.CronJobScheduler(requireContext());
         if (switchLessonConsolidation.isChecked()) {

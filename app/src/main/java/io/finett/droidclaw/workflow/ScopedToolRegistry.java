@@ -49,7 +49,6 @@ public final class ScopedToolRegistry {
         Set<String> effective = new java.util.LinkedHashSet<>();
 
         if (allowed == null) {
-            // All registered tools
             for (Tool t : registry.getAllTools()) {
                 effective.add(t.getName());
             }
@@ -63,7 +62,6 @@ public final class ScopedToolRegistry {
             }
         }
 
-        // Subtract denied
         if (denied != null) {
             effective.removeAll(denied);
         }
@@ -74,7 +72,6 @@ public final class ScopedToolRegistry {
         return Collections.unmodifiableSet(effective);
     }
 
-    /** Tool definitions filtered to the effective set, for the LLM request. */
     public JsonArray getToolDefinitions() {
         JsonArray all = delegate.getToolDefinitions();
         if (effectiveTools.isEmpty()) {
@@ -91,7 +88,6 @@ public final class ScopedToolRegistry {
         return filtered;
     }
 
-    /** Execute a tool if it is within scope. */
     public ToolResult executeTool(String toolName, JsonObject arguments) {
         if (!effectiveTools.contains(toolName)) {
             return ToolResult.error("Tool '" + toolName + "' is not available in this workflow node's scope");

@@ -410,7 +410,6 @@ public class AgentExecutionService extends Service {
             SettingsManager settingsManager = new SettingsManager(getApplicationContext());
             LlmApiService apiService = new LlmApiService(settingsManager);
             ToolRegistry toolRegistry = new ToolRegistry(getApplicationContext(), settingsManager);
-            // Register the run_workflow tool (needs both apiService and toolRegistry)
             toolRegistry.registerWorkflowTool(apiService);
 
             WorkspaceManager workspaceManager = new WorkspaceManager(getApplicationContext());

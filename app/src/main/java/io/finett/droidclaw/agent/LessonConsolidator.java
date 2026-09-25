@@ -204,7 +204,6 @@ public class LessonConsolidator {
         return builder.toString();
     }
 
-    /** Structured output schema for the consolidation plan. */
     public static JsonObject getResponseSchema() {
         JsonObject contentProperty = new JsonObject();
         contentProperty.addProperty("type", "string");

@@ -40,7 +40,6 @@ public final class WorkflowGraph {
         }
     }
 
-    /** Builds the graph for a workflow. */
     public static WorkflowGraph build(Workflow wf) {
         WorkflowGraph g = new WorkflowGraph(new LinkedHashSet<>(wf.getAgentKeys()));
         for (Map.Entry<String, WorkflowAgent> e : wf.getAgents().entrySet()) {
@@ -78,13 +77,11 @@ public final class WorkflowGraph {
 
     public Set<String> getDeclared() { return Collections.unmodifiableSet(declared); }
 
-    /** Keys this node depends on (its upstream / inbound edges). */
     public Set<String> dependenciesOf(String key) {
         Set<String> s = upstream.get(key);
         return s == null ? Collections.<String>emptySet() : Collections.unmodifiableSet(s);
     }
 
-    /** Keys that depend on this node (its downstream / outbound edges). */
     public Set<String> dependentsOf(String key) {
         Set<String> s = downstream.get(key);
         return s == null ? Collections.<String>emptySet() : Collections.unmodifiableSet(s);
@@ -97,7 +94,6 @@ public final class WorkflowGraph {
         return out;
     }
 
-    /** Leaves: nodes nothing depends on. */
     public Set<String> leaves() {
         Set<String> out = new LinkedHashSet<>();
         for (String k : declared) if (downstream.get(k).isEmpty()) out.add(k);

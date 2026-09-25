@@ -80,7 +80,6 @@ class SerialAbandoningRunner {
         }
     }
 
-    /** Number of runs that timed out and were abandoned (still running). */
     int getAbandonedCount() {
         return abandonedCount.get();
     }

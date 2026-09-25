@@ -3,9 +3,6 @@ package io.finett.droidclaw.workflow;
 import java.util.Collections;
 import java.util.Map;
 
-/**
- * The terminal result of a workflow run.
- */
 public final class WorkflowRunResult {
 
     public enum Status { SUCCESS, FAILED, CANCELLED }
