@@ -15,3 +15,11 @@
 local.properties
 .claude
 *.jks
+
+# Local planning documents: never commit
+[Pp][Ll][Aa][Nn]/
+[Pp][Ll][Aa][Nn][Ss]/
+[Pp][Ll][Aa][Nn].md
+[Pp][Ll][Aa][Nn][Ss].md
+*-[Pp][Ll][Aa][Nn].md
+*-[Pp][Ll][Aa][Nn][Ss].md
