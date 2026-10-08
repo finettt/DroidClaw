@@ -12,7 +12,7 @@
     "collect": {
       "description": "Read today's events from the device calendar",
       "prompt": {
-        "text": "Use calendar_list_events to list today's calendar events. Return a plain-text list with start time, title, and location for each event, in chronological order. If there are no events today, reply exactly: No events today."
+        "text": "Use calendar_list_events to list today's calendar events. You must pass explicit start and end arguments: start is today at 00:00 local time and end is tomorrow at 00:00 local time, both in ISO-8601 format. Return a plain-text list with start time, title, and location for each event, in chronological order. If there are no events today, reply exactly: No events today."
       },
       "allowed_tools": [
         "calendar_list_calendars",

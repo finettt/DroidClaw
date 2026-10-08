@@ -125,8 +125,8 @@ Multi-agent workflows are JSON files (`workflow-v1`, schema at
 and launched via the `run_workflow` tool. Package: `io.finett.droidclaw.workflow`.
 
 Pipeline: `WorkflowParser` (lenient JSON → model, `WorkflowNormalizer` repairs
-known misspellings with warnings) → `WorkflowValidator` (tool/model refs,
-template refs, guard syntax; needs a `WorkflowEnvironment` for host checks) →
+known misspellings with warnings) → `WorkflowValidator` (tool refs, template
+refs, guard syntax; needs a `WorkflowEnvironment` for host checks) →
 `WorkflowGraph` (dependency edges from `depends_on`, `from_agent`, and
 `{{node.output}}` refs; cycle detection; deterministic topological order) →
 `WorkflowRunner` (sequential execution — `max_parallel` is schema-only, the

@@ -125,15 +125,36 @@ public class WorkspaceManager {
     private void copyWorkflowTemplate(String workflowName) throws IOException {
         File outFile = new File(workspaceRoot, WORKFLOWS_DIR + "/" + workflowName + ".json");
 
-        if (outFile.exists()) {
-            Log.d(TAG, "Workflow template already exists: " + workflowName);
-            return;
-        }
+        synchronized (WorkspaceManager.class) {
+            if (outFile.exists()) {
+                Log.d(TAG, "Workflow template already exists: " + workflowName);
+                return;
+            }
 
-        String assetPath = "workflows/" + workflowName + ".json";
-        try (InputStream inputStream = context.getAssets().open(assetPath)) {
-            copyInputStreamToFile(inputStream, outFile);
-            Log.d(TAG, "Created workflow template: " + workflowName);
+            File tempFile = File.createTempFile(workflowName + "-", ".json.tmp", outFile.getParentFile());
+            boolean installed = false;
+            try {
+                String assetPath = "workflows/" + workflowName + ".json";
+                try (InputStream inputStream = context.getAssets().open(assetPath)) {
+                    copyInputStreamToFile(inputStream, tempFile);
+                }
+
+                // Recheck while holding the process-wide lock. Never replace a file
+                // which another initializer or the user created during the copy.
+                if (outFile.exists()) {
+                    Log.d(TAG, "Workflow template already exists: " + workflowName);
+                    return;
+                }
+                if (!tempFile.renameTo(outFile)) {
+                    throw new IOException("Failed to install workflow template: " + workflowName);
+                }
+                installed = true;
+                Log.d(TAG, "Created workflow template: " + workflowName);
+            } finally {
+                if (!installed && tempFile.exists() && !tempFile.delete()) {
+                    Log.w(TAG, "Failed to delete temporary workflow file: " + tempFile);
+                }
+            }
         }
     }
 

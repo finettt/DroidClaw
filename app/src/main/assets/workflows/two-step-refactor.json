@@ -3,7 +3,7 @@
   "name": "Two-step refactor",
   "goal": "Analyze one workspace file with a read-only agent, then apply the agreed edit in a second, isolated step and verify it.",
   "entry": "analyze",
-  "output": "{{apply.output}}\n\nVerification:\n{{verify.output}}",
+  "output": "{{apply.output}}\n\nVerification status: {{verify.status}}",
   "defaults": {
     "max_turns": 8,
     "timeout_ms": 240000,

@@ -59,7 +59,7 @@ The machine-readable contract is `app/src/main/assets/workflow-v1.schema.json`
 | Field | Meaning |
 |-------|---------|
 | `prompt` *(required)* | Exactly one of `text`, `template`, or `from_agent` (plus optional `system`). `from_agent: "x"` feeds node x's output in and creates a dependency edge. |
-| `model` | `providerId/modelId` reference. Omit to use your configured default model. |
+| `model` | Reserved `providerId/modelId` reference. **Currently unsupported at runtime:** nodes use the configured default model (see limitations). |
 | `depends_on` | Explicit dependency edges. Edges are also inferred from `{{other_node.output}}` references and `from_agent`. |
 | `inputs` | Named template bindings available to this node as `{{inputs.name}}`. |
 | `when` | Guard expression: `{{node.field}} == 'value'`, `!=`, or `contains`, with a single-quoted literal. A false guard skips the node **and every transitive dependent**. |
@@ -119,6 +119,9 @@ Workflow files are capped at 64 KB.
 - **The runner is sequential.** `max_parallel` is accepted by the schema but
   **not implemented**: nodes execute one at a time in deterministic topological
   order, as if `max_parallel` were 1. Declaring it changes nothing today.
+- **Per-node model selection is not implemented.** The `model` field is parsed
+  and shown during review, but nodes currently use the configured default model.
+  See [#156](https://github.com/finettt/DroidClaw/issues/156).
 - `on_error: skip` cascades: every transitive dependent of the skipped node is
   also skipped, and a skipped node contributes an empty string to templates and
   the workflow `output`.
