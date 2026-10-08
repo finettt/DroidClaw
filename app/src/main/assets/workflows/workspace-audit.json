@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "Workspace audit",
+  "goal": "Audit the sandboxed workspace and write a report describing what is stored where.",
+  "entry": "scan",
+  "output": "{{report.output}}",
+  "defaults": {
+    "max_turns": 10,
+    "timeout_ms": 240000
+  },
+  "agents": {
+    "scan": {
+      "description": "Inventory the workspace tree",
+      "prompt": {
+        "text": "Explore the workspace with list_files, starting at '.' and descending into each top-level directory. Use file_info on anything that looks large. Produce an inventory: one section per top-level directory with file counts and notable files."
+      },
+      "allowed_tools": [
+        "list_files",
+        "file_info"
+      ]
+    },
+    "inspect": {
+      "description": "Look for stale or surprising content",
+      "prompt": {
+        "text": "Using search_files and read_file, look for stale or surprising content in the workspace: leftover files in tmp/, TODO or FIXME markers in home/, and notes that reference finished work. List each finding with its path and one line of context.\n\nInventory from the previous step:\n\n{{scan.output}}"
+      },
+      "allowed_tools": [
+        "search_files",
+        "read_file",
+        "list_files"
+      ]
+    },
+    "report": {
+      "description": "Write the audit report into the workspace",
+      "prompt": {
+        "text": "Write a workspace audit report to home/documents/workspace-audit.md using write_file. Combine the inventory and the findings below into sections 'Inventory', 'Findings', and 'Suggested cleanups'. Then reply with the report path and a three-line summary.\n\nInventory:\n{{scan.output}}\n\nFindings:\n{{inspect.output}}"
+      },
+      "allowed_tools": [
+        "write_file"
+      ],
+      "approval": "auto_approve"
+    }
+  }
+}

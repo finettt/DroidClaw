@@ -14,6 +14,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -221,6 +223,46 @@ public class WorkspaceManagerTest {
         assertTrue(workspaceManager.initializeWithSkills());
 
         assertTrue(workspaceManager.getWorkspaceRoot().exists());
+    }
+
+    @Test
+    public void testWorkflowSeedingRetriesAfterPartialRead() throws Exception {
+        byte[] partial = "{\"version\":".getBytes(StandardCharsets.UTF_8);
+        InputStream failingStream = new InputStream() {
+            private boolean firstRead = true;
+
+            @Override
+            public int read() throws IOException {
+                throw new IOException("simulated interrupted asset read");
+            }
+
+            @Override
+            public int read(byte[] buffer, int offset, int length) throws IOException {
+                if (!firstRead) {
+                    throw new IOException("simulated interrupted asset read");
+                }
+                firstRead = false;
+                System.arraycopy(partial, 0, buffer, offset, partial.length);
+                return partial.length;
+            }
+        };
+        byte[] complete = "{\"version\":1}".getBytes(StandardCharsets.UTF_8);
+        doReturn(failingStream, new ByteArrayInputStream(complete))
+                .when(mockAssets).open("workflows/morning-digest.json");
+
+        workspaceManager.initializeWithSkills();
+
+        File workflow = new File(workspaceManager.getWorkflowsDirectory(), "morning-digest.json");
+        assertFalse("a partial workflow must never be installed", workflow.exists());
+        File[] temporaryFiles = workspaceManager.getWorkflowsDirectory()
+                .listFiles((dir, name) -> name.endsWith(".json.tmp"));
+        assertNotNull(temporaryFiles);
+        assertEquals("temporary workflow files must be cleaned up", 0, temporaryFiles.length);
+
+        workspaceManager.initializeWithSkills();
+
+        assertTrue("the next initialization must retry seeding", workflow.isFile());
+        assertArrayEquals(complete, java.nio.file.Files.readAllBytes(workflow.toPath()));
     }
 
     // ==================== temp cleanup: nested trees ====================

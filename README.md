@@ -61,6 +61,7 @@ Go through the onboarding screen, and you are ready to go! If you want to set up
 - **Shell, on-device or remote:** The agent runs shell commands locally in its sandbox, or on a remote host over the SSH backend.
 - **Device control:** The agent can list and open apps and operate the screen — tap, swipe, type, and read the UI tree. See [agent tools](docs/features/agent-tools.md).
 - **Calendar integration:** The agent reads and manages your device calendar — list calendars and events, create, update, and delete events. See [calendar](docs/features/calendar.md).
+- **Workflows:** Fan one request out into several focused subagents from a reviewed JSON file — with scoped tools and content-bound approval. Templates included. See [workflows](docs/features/workflows.md).
 - **Onboarding:** Users can configure the app for its first run with just a couple of questions.
 
 # Docs
