@@ -1,0 +1,71 @@
+name: Bug report
+description: Something in DroidClaw is broken or crashes
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Keep it factual — trim logs to the relevant part.
+        Русский тоже подойдёт.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Ask the agent ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - chat / agent loop
+        - python execution
+        - shell / ssh
+        - workflows
+        - device control (screen / apps)
+        - calendar
+        - file browser / workspace
+        - settings / onboarding
+        - CI / tests
+        - other
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: CalVer from the Releases page (e.g. 2026.09.28) or commit sha for main builds.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Pixel 7, Android 15 (API 35)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        For crashes: `adb logcat -b crash -d`.
+        Otherwise the relevant logcat excerpt (about 50 lines max, not the whole buffer).
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues (open and closed) for duplicates
+        - label: This happens on the latest release or a recent main build
