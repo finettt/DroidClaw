@@ -255,3 +255,27 @@ Settings stored as JSON in SharedPreferences (`droidclaw_settings`):
 - Skill files limited to 100KB
 - Identity files (soul.md, user.md) are loaded at session start and injected as system context
 - Agent can update user.md anytime via write_file tool to maintain user knowledge across sessions
+
+## Agent communication policy
+
+Public comments and PR descriptions are for reviewers, not for narration.
+
+### Comments (PR/issue)
+- Max ONE structured comment per task. Follow-up edits go into that same
+  comment, or as a short new comment — never duplicate the full text again.
+- Format: findings as a flat list — `file:line — issue — suggestion`. Max 30 lines.
+- FORBIDDEN in comments: plans, checklists, roadmaps, "next steps", TODOs,
+  internal reasoning, task decomposition, copies of documentation, pasted
+  build/test logs (link to the CI run instead).
+- No comment-editing churn: do not rewrite/delete your comments repeatedly.
+
+### PR description
+- Sections exactly: `What` / `Why` / `Tests` / `Limitations` (the PR template).
+  Max 40 lines total. The diff speaks for itself.
+
+### What stays out of the repo entirely
+- Planning documents, session notes, drafts: keep them local (untracked)
+  or in a gist — see #154 for the convention.
+
+Violation of this policy is a defect: a comment that needs cleanup is a bug
+filed against the agent, same as a failing test.

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/finettt/DroidClaw/discussions
+    about: Not sure whether it is a bug or a feature? Ask in Discussions first.
