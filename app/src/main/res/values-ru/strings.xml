@@ -46,6 +46,7 @@
 
     <!-- Providers -->
     <string name="providers">Провайдеры</string>
+    <string name="provider_details">Настройки провайдера</string>
     <string name="add_provider">Добавить провайдера</string>
     <string name="edit_provider">Изменить провайдера</string>
     <string name="delete_provider">Удалить провайдера</string>
@@ -58,6 +59,7 @@
 
     <!-- Models -->
     <string name="models">Модели</string>
+    <string name="model_details">Настройки модели</string>
     <string name="add_model">Добавить модель</string>
     <string name="edit_model">Изменить модель</string>
     <string name="delete_model">Удалить модель</string>

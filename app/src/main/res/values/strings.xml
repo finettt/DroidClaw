@@ -45,6 +45,7 @@
     
     <!-- Providers -->
     <string name="providers">Providers</string>
+    <string name="provider_details">Provider Details</string>
     <string name="add_provider">Add Provider</string>
     <string name="edit_provider">Edit Provider</string>
     <string name="delete_provider">Delete Provider</string>
@@ -57,6 +58,7 @@
     
     <!-- Models -->
     <string name="models">Models</string>
+    <string name="model_details">Model Details</string>
     <string name="add_model">Add Model</string>
     <string name="edit_model">Edit Model</string>
     <string name="delete_model">Delete Model</string>

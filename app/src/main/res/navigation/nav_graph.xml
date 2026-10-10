@@ -28,7 +28,7 @@
     <fragment
         android:id="@+id/settingsFragment"
         android:name="io.finett.droidclaw.fragment.SettingsFragment"
-        android:label="Settings">
+        android:label="@string/settings">
         <action
             android:id="@+id/action_settingsFragment_to_providersListFragment"
             app:destination="@id/providersListFragment"
@@ -97,7 +97,7 @@
     <fragment
         android:id="@+id/providersListFragment"
         android:name="io.finett.droidclaw.fragment.ProvidersListFragment"
-        android:label="Providers">
+        android:label="@string/providers">
         <action
             android:id="@+id/action_providersListFragment_to_providerDetailFragment"
             app:destination="@id/providerDetailFragment"
@@ -115,7 +115,7 @@
     <fragment
         android:id="@+id/providerDetailFragment"
         android:name="io.finett.droidclaw.fragment.ProviderDetailFragment"
-        android:label="Provider Details">
+        android:label="@string/provider_details">
         <argument
             android:name="providerId"
             app:argType="string"
@@ -138,7 +138,7 @@
     <fragment
         android:id="@+id/modelDetailFragment"
         android:name="io.finett.droidclaw.fragment.ModelDetailFragment"
-        android:label="Model Details">
+        android:label="@string/model_details">
         <argument
             android:name="providerId"
             app:argType="string" />
@@ -157,7 +157,7 @@
     <fragment
         android:id="@+id/agentSettingsFragment"
         android:name="io.finett.droidclaw.fragment.AgentSettingsFragment"
-        android:label="Agent Settings">
+        android:label="@string/agent_settings">
         <action
             android:id="@+id/action_agentSettingsFragment_to_settingsFragment"
             app:destination="@id/settingsFragment"
@@ -179,7 +179,7 @@
     <fragment
         android:id="@+id/heartbeatSettingsFragment"
         android:name="io.finett.droidclaw.fragment.HeartbeatSettingsFragment"
-        android:label="Background Monitoring">
+        android:label="@string/settings_heartbeat">
         <action
             android:id="@+id/action_heartbeatSettingsFragment_to_settingsFragment"
             app:destination="@id/settingsFragment"
@@ -197,7 +197,7 @@
     <fragment
         android:id="@+id/onboardingFragment"
         android:name="io.finett.droidclaw.fragment.OnboardingFragment"
-        android:label="Welcome">
+        android:label="@string/onboarding_welcome_title">
         <action
             android:id="@+id/action_onboardingFragment_to_chatFragment"
             app:destination="@id/chatFragment"
@@ -208,7 +208,7 @@
     <fragment
         android:id="@+id/skillsBrowserFragment"
         android:name="io.finett.droidclaw.fragment.SkillsBrowserFragment"
-        android:label="Skills" />
+        android:label="@string/skills" />
 
     <fragment
         android:id="@+id/infoFragment"
@@ -218,7 +218,7 @@
     <fragment
         android:id="@+id/skillContentFragment"
         android:name="io.finett.droidclaw.fragment.SkillContentFragment"
-        android:label="Skill Details">
+        android:label="@string/skill_content_title">
         <action
             android:id="@+id/action_skillContentFragment_to_skillsBrowserFragment"
             app:destination="@id/skillsBrowserFragment"
@@ -229,12 +229,12 @@
     <fragment
         android:id="@+id/fileBrowserFragment"
         android:name="io.finett.droidclaw.fragment.FileBrowserFragment"
-        android:label="Files" />
+        android:label="@string/file_browser_title" />
 
     <fragment
         android:id="@+id/memoryBrowserFragment"
         android:name="io.finett.droidclaw.fragment.MemoryBrowserFragment"
-        android:label="Memory">
+        android:label="@string/memory_browser_title">
         <action
             android:id="@+id/action_memoryBrowserFragment_to_settingsFragment"
             app:destination="@id/settingsFragment"
@@ -245,7 +245,7 @@
     <fragment
         android:id="@+id/zenResultFragment"
         android:name="io.finett.droidclaw.fragment.ZenResultFragment"
-        android:label="Task Result">
+        android:label="@string/result_share_title">
         <argument
             android:name="task_result"
             app:argType="java.io.Serializable"
