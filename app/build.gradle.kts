@@ -127,6 +127,7 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.okhttp)
     implementation(libs.gson)
+    implementation(libs.jsoup)
     implementation(libs.security.crypto)
 
     // SSH backend for remote shell execution (mwiede fork with modern crypto + Terrapin fix)

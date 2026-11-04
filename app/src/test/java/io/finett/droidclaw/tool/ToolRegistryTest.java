@@ -315,6 +315,38 @@ public class ToolRegistryTest {
         assertEquals(baseCount + 5, registry.getToolCount());
     }
 
+    // ==================== fetch_page (web tools) gating ====================
+
+    @Test
+    public void testFetchPage_notRegisteredWhenDisabled() {
+        SettingsManager settingsManager = new SettingsManager(context);
+        // webToolsEnabled defaults to false.
+        ToolRegistry registry = new ToolRegistry(context, settingsManager);
+        assertFalse("fetch_page should NOT be registered when web tools are disabled",
+                registry.hasToolWithName("fetch_page"));
+    }
+
+    @Test
+    public void testFetchPage_registeredWhenEnabled() {
+        SettingsManager settingsManager = new SettingsManager(context);
+        int baseCount = new ToolRegistry(context, settingsManager).getToolCount();
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setWebToolsEnabled(true);
+        settingsManager.setAgentConfig(config);
+
+        ToolRegistry registry = new ToolRegistry(context, settingsManager);
+        assertTrue("fetch_page should be registered when web tools are enabled",
+                registry.hasToolWithName("fetch_page"));
+        assertEquals("Enabling web tools adds exactly one tool", baseCount + 1, registry.getToolCount());
+    }
+
+    @Test
+    public void testFetchPage_notRegisteredWithoutSettings() {
+        // Without any SettingsManager, web tools default off.
+        assertFalse("fetch_page should NOT be registered without settings",
+                toolRegistry.hasToolWithName("fetch_page"));
+    }
+
     @Test
     public void testCalendarTools_notRegisteredWithoutPermission() {
         // Robolectric denies dangerous permissions by default, mirroring a

@@ -70,6 +70,9 @@ public class AgentSettingsFragment extends Fragment {
     private SwitchMaterial switchCalendarAccess;
     private CalendarPermissionHelper calendarPermissionHelper;
 
+    // Web tools views
+    private SwitchMaterial switchWebTools;
+
     // Self-improvement views
     private SwitchMaterial switchGuidelinesLearning;
     private SwitchMaterial switchLessonExtraction;
@@ -168,6 +171,8 @@ public class AgentSettingsFragment extends Fragment {
 
         switchCalendarAccess = view.findViewById(R.id.switch_calendar_access);
         calendarPermissionHelper = new CalendarPermissionHelper(requireContext());
+
+        switchWebTools = view.findViewById(R.id.switch_web_tools);
 
         switchGuidelinesLearning = view.findViewById(R.id.switch_guidelines_learning);
         switchLessonExtraction = view.findViewById(R.id.switch_lesson_extraction);
@@ -281,6 +286,9 @@ public class AgentSettingsFragment extends Fragment {
 
             // Calendar access
             switchCalendarAccess.setChecked(agentConfig.isCalendarEnabled());
+
+            // Web tools
+            switchWebTools.setChecked(agentConfig.isWebToolsEnabled());
 
             // Self-improvement
             switchGuidelinesLearning.setChecked(agentConfig.isGuidelinesLearningEnabled());
@@ -649,6 +657,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setScreenControlEnabled(switchScreenControl.isChecked());
         agentConfig.setScreenControlTrustMode(switchScreenControlTrustMode.isChecked());
         agentConfig.setCalendarEnabled(switchCalendarAccess.isChecked());
+        agentConfig.setWebToolsEnabled(switchWebTools.isChecked());
         agentConfig.setGuidelinesLearningEnabled(switchGuidelinesLearning.isChecked());
         agentConfig.setLessonExtractionEnabled(switchLessonExtraction.isChecked());
         agentConfig.setLessonConsolidationEnabled(switchLessonConsolidation.isChecked());

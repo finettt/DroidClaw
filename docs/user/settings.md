@@ -79,6 +79,10 @@ When the backend is set to `ssh`, configure the remote connection:
 
 - **Calendar access**: Enables the calendar tools (`calendar_list_calendars`, `calendar_list_events`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event`). Requires the Android `READ_CALENDAR` / `WRITE_CALENDAR` permissions, requested when you flip the switch. Off by default. See [Calendar Tools](../features/calendar.md).
 
+## Web tools
+
+- **Web tools**: Enables the `fetch_page` tool, which fetches a public web page and returns its readable content as Markdown or plain text (section targeting, truncation). Off by default. SSRF protection blocks private/loopback addresses; only http(s) URLs with allowlisted content types are fetched. See [Agent Tools](../features/agent-tools.md).
+
 ## Self-Improvement (Guidelines Learning)
 
 - **Self-Improvement (GUIDELINES.md)**: When enabled (default), the agent runs one extra structured LLM call after each finished conversation. It distills durable workflow lessons — your corrections, preferred formats, recurring workflows — into `.agent/GUIDELINES.md`, which is then injected into every new conversation.
