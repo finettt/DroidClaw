@@ -19,6 +19,7 @@ public class AgentConfig {
     private boolean screenControlTrustMode; // skip per-action approval for screen control tools
     private boolean streamResponses;        // stream LLM text via SSE as it is generated
     private boolean calendarEnabled; // allow agent to read and manage device calendar events
+    private boolean webToolsEnabled; // allow agent to fetch and read web pages via the fetch_page tool
     private boolean guidelinesLearningEnabled; // analyze each finished chat and update .agent/GUIDELINES.md
     private boolean lessonExtractionEnabled; // extract durable lessons from finished chats into the lesson store
     private boolean lessonConsolidationEnabled; // daily consolidation of lessons into MEMORY.md
@@ -44,6 +45,7 @@ public class AgentConfig {
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
+        this.webToolsEnabled = false;
         this.guidelinesLearningEnabled = true;
         this.lessonExtractionEnabled = true;
         this.lessonConsolidationEnabled = true;
@@ -72,6 +74,7 @@ public class AgentConfig {
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
+        this.webToolsEnabled = false;
         this.guidelinesLearningEnabled = true;
         this.lessonExtractionEnabled = true;
         this.lessonConsolidationEnabled = true;
@@ -218,6 +221,14 @@ public class AgentConfig {
 
     public void setCalendarEnabled(boolean calendarEnabled) {
         this.calendarEnabled = calendarEnabled;
+    }
+
+    public boolean isWebToolsEnabled() {
+        return webToolsEnabled;
+    }
+
+    public void setWebToolsEnabled(boolean webToolsEnabled) {
+        this.webToolsEnabled = webToolsEnabled;
     }
 
     public boolean isGuidelinesLearningEnabled() {

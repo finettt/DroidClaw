@@ -64,6 +64,12 @@ The agent can read and manage your device calendar through CalendarContract.
 > Write operations go through the approval flow. Full details in
 > [Calendar integration](calendar.md).
 
+## Web tools
+
+| Tool | What it does |
+|------|--------------|
+| `fetch_page` | Fetches a public web page and returns its readable content as Markdown or text, with section targeting and truncation. Gated by the Web tools setting; SSRF protection blocks private/loopback hosts. Off by default. |
+
 ## Background process tools
 
 | Tool | What it does |

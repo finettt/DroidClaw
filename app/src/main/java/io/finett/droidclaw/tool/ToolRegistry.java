@@ -47,6 +47,7 @@ import io.finett.droidclaw.tool.impl.ScreenTypeTextTool;
 import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
 import io.finett.droidclaw.tool.impl.SearxngSearchTool;
+import io.finett.droidclaw.tool.impl.FetchPageTool;
 import io.finett.droidclaw.tool.impl.ListAppsTool;
 import io.finett.droidclaw.tool.impl.ListLessonsTool;
 import io.finett.droidclaw.tool.impl.SaveLessonTool;
@@ -173,6 +174,12 @@ public class ToolRegistry {
         // Web search via SearXNG — reads SEARXNG_URL from env vars
         if (settingsManager != null) {
             registerTool(new SearxngSearchTool(settingsManager));
+        }
+
+        // Web page fetching — only when web tools are explicitly enabled (off by default)
+        if (settingsManager != null
+                && settingsManager.getAgentConfig().isWebToolsEnabled()) {
+            registerTool(new FetchPageTool());
         }
 
         // Android app management — always available
