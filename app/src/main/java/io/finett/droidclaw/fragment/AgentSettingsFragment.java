@@ -72,6 +72,8 @@ public class AgentSettingsFragment extends Fragment {
 
     // Web tools views
     private SwitchMaterial switchWebTools;
+    private TextInputEditText inputSearxngUrl;
+    private View layoutSearxngUrl;
 
     // Self-improvement views
     private SwitchMaterial switchGuidelinesLearning;
@@ -173,6 +175,9 @@ public class AgentSettingsFragment extends Fragment {
         calendarPermissionHelper = new CalendarPermissionHelper(requireContext());
 
         switchWebTools = view.findViewById(R.id.switch_web_tools);
+        inputSearxngUrl = view.findViewById(R.id.input_searxng_url);
+        layoutSearxngUrl = view.findViewById(R.id.layout_searxng_url);
+        switchWebTools.setOnCheckedChangeListener((buttonView, isChecked) -> updateSearxngUrlVisibility());
 
         switchGuidelinesLearning = view.findViewById(R.id.switch_guidelines_learning);
         switchLessonExtraction = view.findViewById(R.id.switch_lesson_extraction);
@@ -289,6 +294,8 @@ public class AgentSettingsFragment extends Fragment {
 
             // Web tools
             switchWebTools.setChecked(agentConfig.isWebToolsEnabled());
+            inputSearxngUrl.setText(agentConfig.getSearxngUrl());
+            updateSearxngUrlVisibility();
 
             // Self-improvement
             switchGuidelinesLearning.setChecked(agentConfig.isGuidelinesLearningEnabled());
@@ -400,6 +407,13 @@ public class AgentSettingsFragment extends Fragment {
         boolean isSsh = getString(R.string.terminal_backend_ssh).equals(backendText);
 
         groupSshConnection.setVisibility(isSsh ? View.VISIBLE : View.GONE);
+    }
+
+    // web_search's SearXNG URL field is only meaningful when web tools are enabled.
+    void updateSearxngUrlVisibility() {
+        boolean enabled = switchWebTools.isChecked();
+        layoutSearxngUrl.setEnabled(enabled);
+        layoutSearxngUrl.setVisibility(enabled ? View.VISIBLE : View.GONE);
     }
 
     /**
@@ -658,6 +672,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setScreenControlTrustMode(switchScreenControlTrustMode.isChecked());
         agentConfig.setCalendarEnabled(switchCalendarAccess.isChecked());
         agentConfig.setWebToolsEnabled(switchWebTools.isChecked());
+        agentConfig.setSearxngUrl(inputSearxngUrl.getText().toString().trim());
         agentConfig.setGuidelinesLearningEnabled(switchGuidelinesLearning.isChecked());
         agentConfig.setLessonExtractionEnabled(switchLessonExtraction.isChecked());
         agentConfig.setLessonConsolidationEnabled(switchLessonConsolidation.isChecked());

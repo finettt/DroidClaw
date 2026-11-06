@@ -20,6 +20,7 @@ public class AgentConfig {
     private boolean streamResponses;        // stream LLM text via SSE as it is generated
     private boolean calendarEnabled; // allow agent to read and manage device calendar events
     private boolean webToolsEnabled; // allow agent to fetch and read web pages via the fetch_page tool
+    private String searxngUrl;   // base URL of the user's own SearXNG instance (empty = web_search unavailable)
     private boolean guidelinesLearningEnabled; // analyze each finished chat and update .agent/GUIDELINES.md
     private boolean lessonExtractionEnabled; // extract durable lessons from finished chats into the lesson store
     private boolean lessonConsolidationEnabled; // daily consolidation of lessons into MEMORY.md
@@ -46,6 +47,7 @@ public class AgentConfig {
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
         this.webToolsEnabled = true;
+        this.searxngUrl = "";
         this.guidelinesLearningEnabled = true;
         this.lessonExtractionEnabled = true;
         this.lessonConsolidationEnabled = true;
@@ -75,6 +77,7 @@ public class AgentConfig {
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
         this.webToolsEnabled = true;
+        this.searxngUrl = "";
         this.guidelinesLearningEnabled = true;
         this.lessonExtractionEnabled = true;
         this.lessonConsolidationEnabled = true;
@@ -229,6 +232,14 @@ public class AgentConfig {
 
     public void setWebToolsEnabled(boolean webToolsEnabled) {
         this.webToolsEnabled = webToolsEnabled;
+    }
+
+    public String getSearxngUrl() {
+        return (searxngUrl == null) ? "" : searxngUrl.trim();
+    }
+
+    public void setSearxngUrl(String searxngUrl) {
+        this.searxngUrl = (searxngUrl == null) ? "" : searxngUrl.trim();
     }
 
     public boolean isGuidelinesLearningEnabled() {

@@ -110,6 +110,9 @@
     <string name="calendar_access_description">Разрешить агенту читать события календаря и управлять ими (Google и другие синхронизированные календари)</string>
     <string name="web_tools_enabled">Веб-инструменты</string>
     <string name="web_tools_enabled_description">Разрешить агенту загружать публичные веб-страницы и возвращать их читаемое содержимое (fetch_page). Включено по умолчанию; загрузки выполняются с вашего устройства.</string>
+    <string name="searxng_url">URL экземпляра SearXNG</string>
+    <string name="searxng_url_description">URL вашего собственного экземпляра SearXNG. web_search становится доступной, когда веб-инструменты включены и это поле заполнено.</string>
+    <string name="searxng_url_hint">https://your-instance.example.com</string>
     <string name="guidelines_learning">Самообучение (GUIDELINES.md)</string>
     <string name="guidelines_learning_description">После каждого ответа анализировать чат и дополнять .agent/GUIDELINES.md устойчивыми уроками о рабочих процессах. Файл добавляется в каждый новый диалог.</string>
     <string name="lesson_extraction">Извлечение уроков</string>
@@ -125,8 +128,6 @@
     <string name="llm_read_timeout_description">Таймаут чтения ответа от API LLM</string>
     <string name="llm_write_timeout">Таймаут отправки запроса LLM (секунды)</string>
     <string name="llm_write_timeout_description">Таймаут отправки запроса к API LLM</string>
-    <string name="searxng_timeout">Таймаут SearXNG (секунды)</string>
-    <string name="searxng_timeout_description">Таймаут поискового запроса к SearXNG</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Добро пожаловать в DroidClaw</string>

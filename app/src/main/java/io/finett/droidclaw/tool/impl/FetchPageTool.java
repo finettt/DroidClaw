@@ -23,7 +23,7 @@ import io.finett.droidclaw.web.WebFetcher;
  * or plain text, with optional section targeting and context-length truncation.
  *
  * <p>Network work runs on a background thread (blocked with a latch so the {@link Tool}
- * interface stays synchronous), following the same pattern as {@link SearxngSearchTool}.
+ * interface stays synchronous), following the same pattern as {@link WebSearchTool}.
  */
 public class FetchPageTool implements Tool {
 
