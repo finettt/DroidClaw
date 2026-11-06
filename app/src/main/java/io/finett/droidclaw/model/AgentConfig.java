@@ -45,7 +45,7 @@ public class AgentConfig {
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
-        this.webToolsEnabled = false;
+        this.webToolsEnabled = true;
         this.guidelinesLearningEnabled = true;
         this.lessonExtractionEnabled = true;
         this.lessonConsolidationEnabled = true;
@@ -74,7 +74,7 @@ public class AgentConfig {
         this.screenControlEnabled = false;
         this.screenControlTrustMode = false;
         this.calendarEnabled = false;
-        this.webToolsEnabled = false;
+        this.webToolsEnabled = true;
         this.guidelinesLearningEnabled = true;
         this.lessonExtractionEnabled = true;
         this.lessonConsolidationEnabled = true;

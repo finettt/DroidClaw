@@ -81,7 +81,7 @@ When the backend is set to `ssh`, configure the remote connection:
 
 ## Web tools
 
-- **Web tools**: Enables the `fetch_page` tool, which fetches a public web page and returns its readable content as Markdown or plain text (section targeting, truncation). Off by default. SSRF protection blocks private/loopback addresses; only http(s) URLs with allowlisted content types are fetched. See [Agent Tools](../features/agent-tools.md).
+- **Web tools**: Enables the `fetch_page` tool, which fetches a public web page and returns its readable content as Markdown or plain text (section targeting, truncation). Enabled by default (opt-out). SSRF protection blocks private/loopback addresses; only http(s) URLs with allowlisted content types are fetched. Note: page fetches run from your device's own network. See [Agent Tools](../features/agent-tools.md).
 
 ## Self-Improvement (Guidelines Learning)
 

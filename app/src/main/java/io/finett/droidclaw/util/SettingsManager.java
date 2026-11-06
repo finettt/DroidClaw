@@ -240,7 +240,7 @@ public class SettingsManager {
         config.setScreenControlTrustMode(json.optBoolean("screenControlTrustMode", false));
         config.setStreamResponses(json.optBoolean("streamResponses", true));
         config.setCalendarEnabled(json.optBoolean("calendarEnabled", false));
-        config.setWebToolsEnabled(json.optBoolean("webToolsEnabled", false));
+        config.setWebToolsEnabled(json.optBoolean("webToolsEnabled", true));
         config.setGuidelinesLearningEnabled(json.optBoolean("guidelinesLearningEnabled", true));
         config.setShellBackend(json.optString("shellBackend", "local"));
         config.setSshHost(json.optString("sshHost", ""));
