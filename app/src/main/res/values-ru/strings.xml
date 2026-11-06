@@ -109,7 +109,7 @@
     <string name="calendar_access">Доступ к календарю</string>
     <string name="calendar_access_description">Разрешить агенту читать события календаря и управлять ими (Google и другие синхронизированные календари)</string>
     <string name="web_tools_enabled">Веб-инструменты</string>
-    <string name="web_tools_enabled_description">Разрешить агенту загружать публичные веб-страницы и возвращать их читаемое содержимое (fetch_page). По умолчанию отключено.</string>
+    <string name="web_tools_enabled_description">Разрешить агенту загружать публичные веб-страницы и возвращать их читаемое содержимое (fetch_page). Включено по умолчанию; загрузки выполняются с вашего устройства.</string>
     <string name="guidelines_learning">Самообучение (GUIDELINES.md)</string>
     <string name="guidelines_learning_description">После каждого ответа анализировать чат и дополнять .agent/GUIDELINES.md устойчивыми уроками о рабочих процессах. Файл добавляется в каждый новый диалог.</string>
     <string name="lesson_extraction">Извлечение уроков</string>

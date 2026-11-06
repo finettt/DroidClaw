@@ -68,7 +68,7 @@ The agent can read and manage your device calendar through CalendarContract.
 
 | Tool | What it does |
 |------|--------------|
-| `fetch_page` | Fetches a public web page and returns its readable content as Markdown or text, with section targeting and truncation. Gated by the Web tools setting; SSRF protection blocks private/loopback hosts. Off by default. |
+| `fetch_page` | Fetches a public web page and returns its readable content as Markdown or text, with section targeting and truncation. Gated by the Web tools setting (enabled by default, opt-out); SSRF protection blocks private/loopback hosts. Fetches run from your device's network. |
 
 ## Background process tools
 

@@ -320,20 +320,38 @@ public class ToolRegistryTest {
     @Test
     public void testFetchPage_notRegisteredWhenDisabled() {
         SettingsManager settingsManager = new SettingsManager(context);
-        // webToolsEnabled defaults to false.
+        // webToolsEnabled now defaults to true; disable it to test the opt-out path.
+        settingsManager.getAgentConfig().setWebToolsEnabled(false);
         ToolRegistry registry = new ToolRegistry(context, settingsManager);
         assertFalse("fetch_page should NOT be registered when web tools are disabled",
                 registry.hasToolWithName("fetch_page"));
     }
 
     @Test
+    public void testFetchPage_registeredByDefault() {
+        // Fresh install: web tools are on out of the box, so fetch_page is present
+        // without touching any settings.
+        SettingsManager settingsManager = new SettingsManager(context);
+        assertTrue("webToolsEnabled should default to true",
+                settingsManager.getAgentConfig().isWebToolsEnabled());
+        ToolRegistry registry = new ToolRegistry(context, settingsManager);
+        assertTrue("fetch_page should be registered by default on a fresh install",
+                registry.hasToolWithName("fetch_page"));
+    }
+
+    @Test
     public void testFetchPage_registeredWhenEnabled() {
         SettingsManager settingsManager = new SettingsManager(context);
-        int baseCount = new ToolRegistry(context, settingsManager).getToolCount();
+        // Web tools default ON, so start disabled to observe fetch_page being added on enable.
         AgentConfig config = settingsManager.getAgentConfig();
+        config.setWebToolsEnabled(false);
+        settingsManager.setAgentConfig(config);
+        int baseCount = new ToolRegistry(context, settingsManager).getToolCount();
+        assertFalse("fetch_page should be absent with web tools disabled",
+                new ToolRegistry(context, settingsManager).hasToolWithName("fetch_page"));
+
         config.setWebToolsEnabled(true);
         settingsManager.setAgentConfig(config);
-
         ToolRegistry registry = new ToolRegistry(context, settingsManager);
         assertTrue("fetch_page should be registered when web tools are enabled",
                 registry.hasToolWithName("fetch_page"));
