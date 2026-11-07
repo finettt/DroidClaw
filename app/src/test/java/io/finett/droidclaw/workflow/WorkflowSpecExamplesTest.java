@@ -7,9 +7,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
- * The three worked examples and the migration case from
- * {@code docs/features/workflow-schema.md} §15-§16. These files were also checked
- * against the §14 JSON Schema; this test asserts the Java loader agrees.
+ * Covers the worked example workflows in
+ * {@code app/src/main/assets/workflows/} plus a v1→v2 migration case;
+ * asserts the Java loader agrees with
+ * {@code app/src/main/assets/workflow-v1.schema.json}.
  */
 public class WorkflowSpecExamplesTest {
 
@@ -265,7 +266,7 @@ public class WorkflowSpecExamplesTest {
     public void fanInExampleLoadsWithOnlyTheDocumentedGuardWarning() {
         WorkflowLoader.Result r = assertLoads("ex2 fan-in", EX2_FANIN);
         // 'reviewer' is conditional AND feeds the workflow output, so the loader
-        // warns that a false guard substitutes an empty string (spec §10.3).
+        // warns that a false guard substitutes an empty string.
         // That warning is intentional, not a defect in the example.
         assertEquals("expected exactly one warning: " + r.describeProblems(),
                 1, r.getIssues().getWarnings().size());
@@ -281,7 +282,7 @@ public class WorkflowSpecExamplesTest {
         assertTrue(g.dependenciesOf("code_scan").isEmpty()
                 || !g.dependenciesOf("code_scan").contains("history_scan"));
         assertFalseDep(g, "code_scan", "history_scan");
-        // a bare template reference is an ordering edge (spec §8.2)
+        // a bare template reference is an ordering edge
         assertTrue("template refs must create edges", g.dependenciesOf("code_scan").contains("triage"));
         // structured field access is backed by output_schema
         assertTrue(r.getWorkflow().getAgent("triage").hasOutputSchema());
@@ -313,7 +314,7 @@ public class WorkflowSpecExamplesTest {
         assertEquals("reviewer", first.get(first.size() - 1));
     }
 
-    // ---------- §16 migration ----------
+    // ---------- v1→v2 migration ----------
 
     @Test
     public void originalSketchIsRejectedWithExactlyTheDocumentedErrors() {

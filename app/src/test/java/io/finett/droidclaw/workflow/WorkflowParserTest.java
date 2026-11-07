@@ -10,7 +10,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/** Covers load-pipeline stages 1 and 2: normalisation and strict structural parsing (spec §12). */
+/** Covers load-pipeline stages 1 and 2: normalisation and strict structural parsing. */
 public class WorkflowParserTest {
 
     private static final String MINIMAL =
@@ -44,7 +44,7 @@ public class WorkflowParserTest {
         assertEquals("g", wf.getGoal());
         assertEquals(1, wf.getAgentCount());
         assertEquals(WorkflowPrompt.Form.TEXT, wf.getAgent("a").getPrompt().getForm());
-        // unset allowed_tools is null, meaning "inherit every tool" (§9 rule 1)
+        // unset allowed_tools is null, meaning "inherit every tool"
         assertNull(wf.getAgent("a").getAllowedTools());
         // runner-level defaults
         assertEquals(WorkflowDefaults.DEFAULT_MAX_PARALLEL, wf.getDefaults().getMaxParallel());
@@ -57,7 +57,7 @@ public class WorkflowParserTest {
                 "{\"version\":1,\"goal\":\"g\",\"agents\":{\"a\":{\"prompt\":{\"text\":\"hi\"},"
                         + "\"allowed_tools\":[]}}}").getWorkflow();
         List<String> tools = wf.getAgent("a").getAllowedTools();
-        assertNotNull("[] must be preserved, not treated as unset (§9 rule 2)", tools);
+        assertNotNull("[] must be preserved, not treated as unset", tools);
         assertTrue(tools.isEmpty());
     }
 

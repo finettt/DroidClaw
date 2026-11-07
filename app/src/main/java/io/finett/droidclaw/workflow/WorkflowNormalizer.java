@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Stage 1 of the load pipeline (spec §12): repairs the two legacy misspellings
+ * Stage 1 of the pipeline: repairs the two legacy misspellings
  * from the original sketch and coerces unsafe scalar types, emitting a warning
  * for every change.
  *

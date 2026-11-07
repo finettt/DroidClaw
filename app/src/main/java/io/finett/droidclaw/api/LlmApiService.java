@@ -372,11 +372,11 @@ public class LlmApiService {
         });
     }
 
-    // ==================== Per-model overloads (workflow B1) ====================
+    // ==================== Per-model overloads ====================
 
     /**
      * Send a message with tools using an explicit provider/model instead of the
-     * global default. Used by workflow nodes that specify a per-node model (spec §7).
+     * global default. Used by workflow nodes that specify a per-node model.
      */
     public void sendMessageWithTools(List<ChatMessage> conversationHistory, JsonArray tools,
                                      List<ChatMessage> identityMessages,

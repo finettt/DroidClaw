@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Stage 3 of the load pipeline (spec §12): the cross-node rules JSON Schema
+ * Stage 3 of the pipeline: the cross-node rules JSON Schema
  * cannot express — references resolve, the graph is acyclic, tool and model names
  * exist, and every {@code output.<field>} is backed by an {@code output_schema}.
  *

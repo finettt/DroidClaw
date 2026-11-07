@@ -52,7 +52,7 @@ public class WorkflowRunnerLogicTest {
 
     @Test
     public void guardWithAndOperatorRejected() {
-        // v1 does not support boolean combinators (spec §13)
+        // v1 does not support boolean combinators
         Matcher m = GUARD_PATTERN.matcher("{{a.output}} == 'x' and {{b.output}} == 'y'");
         assertFalse(m.matches());
     }

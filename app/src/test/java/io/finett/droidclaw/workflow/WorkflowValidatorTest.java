@@ -7,7 +7,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-/** Covers load-pipeline stage 3: the cross-node rules JSON Schema cannot express (spec §12). */
+/** Covers load-pipeline stage 3: the cross-node rules JSON Schema cannot express. */
 public class WorkflowValidatorTest {
 
     private static final WorkflowEnvironment ENV = WorkflowTestEnv.withExampleModels();

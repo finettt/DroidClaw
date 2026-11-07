@@ -15,8 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Resolves the {@code {{ expr }}} template grammar defined in
- * {@code docs/features/workflow-schema.md} §8.2.
+ * Resolves the {@code {{ expr }}} template grammar.
  *
  * <p>The grammar is deliberately tiny: no filters, no arithmetic, no string
  * methods. Keeping it small means the resolver is testable and cannot be abused
@@ -242,7 +241,7 @@ public final class TemplateResolver {
     /**
      * Agent keys referenced by a template. Reserved roots ({@code workflow},
      * {@code inputs}) are excluded. Used to derive dependency edges — a template
-     * reference is an edge (spec §8.2).
+     * reference is an edge.
      */
     public static Set<String> referencedAgents(String template) {
         Set<String> out = new LinkedHashSet<>();
@@ -266,7 +265,7 @@ public final class TemplateResolver {
     /**
      * Field names read from a given agent's structured output, i.e. every
      * {@code {{<agent>.output.<field>}}}. Used to check each field is backed by
-     * that agent's {@code output_schema} (spec §12, rule 11).
+     * that agent's {@code output_schema}.
      */
     public static Set<String> referencedFields(String template, String agentKey) {
         Set<String> out = new LinkedHashSet<>();

@@ -1,7 +1,7 @@
 package io.finett.droidclaw.workflow;
 
 /**
- * Runs the full three-stage load pipeline of spec §12 and returns a workflow
+ * Runs the full three-stage pipeline and returns a workflow
  * together with its dependency graph and every issue found.
  *
  * <pre>

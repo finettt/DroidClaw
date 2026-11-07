@@ -16,12 +16,12 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Stages 1 and 2 of the load pipeline (spec §12): normalise, then parse strictly.
+ * Stages 1 and 2 of the pipeline: normalise, then parse strictly.
  *
  * <p>Parsing is hand-written rather than Gson-reflective because the format
  * requires two things Gson does not do: rejecting unknown properties, and
  * distinguishing "field absent" from "field present but empty" — the difference
- * between <em>inherit every tool</em> and <em>no tools at all</em> (§9).
+ * between <em>inherit every tool</em> and <em>no tools at all</em>.
  *
  * <p>Cross-node rules (references resolve, no cycles, tools and models exist) are
  * stage 3 and live in {@link WorkflowValidator}, because they need a
@@ -468,7 +468,7 @@ public final class WorkflowParser {
     /**
      * Reads a string array. Returns {@code null} when the key is absent, and an
      * empty list when it is present but empty — a distinction that matters for
-     * {@code allowed_tools} (§9).
+     * {@code allowed_tools}.
      */
     private static List<String> readStringList(JsonObject o, String name, String key, String field,
                                                WorkflowValidationResult res, boolean checkToolShape) {
