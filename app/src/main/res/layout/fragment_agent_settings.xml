@@ -680,6 +680,23 @@
 
         </LinearLayout>
 
+        <!-- web_search SearXNG instance URL (only used when web tools are enabled) -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_searxng_url"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:hint="@string/searxng_url">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_searxng_url"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/searxng_url_hint"
+                android:inputType="textUri|textNoSuggestions" />
+        </com.google.android.material.textfield.TextInputLayout>
+
         <!-- Guidelines Learning (Self-Improvement) Toggle -->
         <LinearLayout
             android:layout_width="match_parent"

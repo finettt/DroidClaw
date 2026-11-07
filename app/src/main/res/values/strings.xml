@@ -115,6 +115,9 @@
     <string name="calendar_access_description">Allow the agent to read and manage your device calendar events (Google and other synced calendars)</string>
     <string name="web_tools_enabled">Web tools</string>
     <string name="web_tools_enabled_description">Let the agent fetch public web pages and return their readable content (fetch_page). Enabled by default; fetches run from your device\'s own network.</string>
+    <string name="searxng_url">SearXNG instance URL</string>
+    <string name="searxng_url_description">URL of your own SearXNG instance. web_search becomes available when web tools are enabled and this is set.</string>
+    <string name="searxng_url_hint">https://your-instance.example.com</string>
     <string name="guidelines_learning">Self-Improvement (GUIDELINES.md)</string>
     <string name="guidelines_learning_description">After each response, analyze the chat and update .agent/GUIDELINES.md with durable workflow lessons. The file is injected into every new conversation.</string>
     <string name="lesson_extraction">Lesson Extraction</string>
@@ -131,8 +134,6 @@
     <string name="llm_read_timeout_description">Response read timeout for LLM API</string>
     <string name="llm_write_timeout">LLM Write Timeout (seconds)</string>
     <string name="llm_write_timeout_description">Request write timeout for LLM API</string>
-    <string name="searxng_timeout">SearXNG Timeout (seconds)</string>
-    <string name="searxng_timeout_description">Search request timeout for SearXNG</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Welcome to DroidClaw</string>
@@ -328,8 +329,6 @@
     <string name="env_var_saved">Environment variable saved</string>
     <string name="env_var_deleted">Environment variable deleted</string>
 
-    <!-- SearXNG Search Tool -->
-    <string name="searxng_url_hint" translatable="false">e.g. SEARXNG_URL = https://searx.example.com</string>
 
     <!-- Chat Search -->
     <string name="search">Search</string>

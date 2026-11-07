@@ -241,6 +241,7 @@ public class SettingsManager {
         config.setStreamResponses(json.optBoolean("streamResponses", true));
         config.setCalendarEnabled(json.optBoolean("calendarEnabled", false));
         config.setWebToolsEnabled(json.optBoolean("webToolsEnabled", true));
+        config.setSearxngUrl(json.optString("searxngUrl", ""));
         config.setGuidelinesLearningEnabled(json.optBoolean("guidelinesLearningEnabled", true));
         config.setShellBackend(json.optString("shellBackend", "local"));
         config.setSshHost(json.optString("sshHost", ""));
@@ -359,6 +360,7 @@ public class SettingsManager {
         json.put("streamResponses", config.isStreamResponses());
         json.put("calendarEnabled", config.isCalendarEnabled());
         json.put("webToolsEnabled", config.isWebToolsEnabled());
+        json.put("searxngUrl", config.getSearxngUrl());
         json.put("guidelinesLearningEnabled", config.isGuidelinesLearningEnabled());
         json.put("shellBackend", config.getShellBackend());
         json.put("sshHost", config.getSshHost());

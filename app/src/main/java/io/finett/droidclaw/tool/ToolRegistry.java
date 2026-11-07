@@ -20,6 +20,7 @@ import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.python.PythonConfig;
 import io.finett.droidclaw.shell.ShellConfig;
 import io.finett.droidclaw.tool.impl.FileDeleteTool;
+import io.finett.droidclaw.tool.impl.WebSearchTool;
 import io.finett.droidclaw.tool.impl.FileEditTool;
 import io.finett.droidclaw.tool.impl.FileInfoTool;
 import io.finett.droidclaw.tool.impl.FileListTool;
@@ -46,7 +47,6 @@ import io.finett.droidclaw.tool.impl.ScreenTapTool;
 import io.finett.droidclaw.tool.impl.ScreenTypeTextTool;
 import io.finett.droidclaw.tool.impl.SetupHeartbeatTool;
 import io.finett.droidclaw.tool.impl.SubmitNotificationTool;
-import io.finett.droidclaw.tool.impl.SearxngSearchTool;
 import io.finett.droidclaw.tool.impl.FetchPageTool;
 import io.finett.droidclaw.tool.impl.ListAppsTool;
 import io.finett.droidclaw.tool.impl.ListLessonsTool;
@@ -171,12 +171,15 @@ public class ToolRegistry {
             registerTool(new ScreenPerformActionTool(trustMode));
         }
 
-        // Web search via SearXNG — reads SEARXNG_URL from env vars
-        if (settingsManager != null) {
-            registerTool(new SearxngSearchTool(settingsManager));
+        // Web search via SearXNG — only when web tools are enabled AND the user has
+        // configured a SearXNG URL in Agent Settings (searxngUrl). Reads searxngUrl, not an env var.
+        if (settingsManager != null
+                && settingsManager.getAgentConfig().isWebToolsEnabled()
+                && !settingsManager.getAgentConfig().getSearxngUrl().isEmpty()) {
+            registerTool(new WebSearchTool(settingsManager.getAgentConfig().getSearxngUrl()));
         }
 
-        // Web page fetching — only when web tools are explicitly enabled (off by default)
+        // Web page fetching — only when web tools are enabled
         if (settingsManager != null
                 && settingsManager.getAgentConfig().isWebToolsEnabled()) {
             registerTool(new FetchPageTool());

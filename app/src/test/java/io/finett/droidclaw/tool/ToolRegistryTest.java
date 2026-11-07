@@ -366,6 +366,22 @@ public class ToolRegistryTest {
     }
 
     @Test
+    public void testWebSearch_absentByDefault_whenNoSearxngUrlSet() {
+        // Default settings: web tools are on, but no SearXNG URL is configured, so
+        // web_search must NOT register while fetch_page is present.
+        SettingsManager settingsManager = new SettingsManager(context);
+        assertTrue("web tools should be on by default",
+                settingsManager.getAgentConfig().isWebToolsEnabled());
+        assertTrue("searxngUrl should be empty by default",
+                settingsManager.getAgentConfig().getSearxngUrl().isEmpty());
+        ToolRegistry registry = new ToolRegistry(context, settingsManager);
+        assertTrue("fetch_page should be present on a fresh install",
+                registry.hasToolWithName("fetch_page"));
+        assertFalse("web_search should NOT register without a SearXNG URL",
+                registry.hasToolWithName("web_search"));
+    }
+
+    @Test
     public void testCalendarTools_notRegisteredWithoutPermission() {
         // Robolectric denies dangerous permissions by default, mirroring a
         // fresh install where the user has not granted calendar access.
