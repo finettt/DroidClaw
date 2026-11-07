@@ -70,7 +70,8 @@ public class FetchPageToolInstrumentedTest {
 
     @Test
     public void disabledFlag_keepsToolUnregistered() {
-        settingsManager.clear();
+        // webToolsEnabled now defaults to true; disable it to exercise the opt-out path.
+        settingsManager.getAgentConfig().setWebToolsEnabled(false);
         ToolRegistry registry = new ToolRegistry(context, settingsManager);
         assertFalse("fetch_page must stay unregistered when Web tools are off",
                 registry.hasToolWithName("fetch_page"));
