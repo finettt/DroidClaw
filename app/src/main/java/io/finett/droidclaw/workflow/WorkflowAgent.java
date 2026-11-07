@@ -17,7 +17,7 @@ import java.util.Map;
  *
  * <p>{@link #getAllowedTools()} is the one field where {@code null} and an empty
  * list differ sharply: {@code null} means "every registered tool", while an
- * empty list means "no tools at all" — a pure LLM call. See spec §9.
+ * empty list means "no tools at all" — a pure LLM call.
  */
 public final class WorkflowAgent {
 

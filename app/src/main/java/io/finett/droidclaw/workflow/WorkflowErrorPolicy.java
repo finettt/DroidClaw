@@ -8,7 +8,6 @@ package io.finett.droidclaw.workflow;
  * {@code CONTINUE} degrades in place so dependents still run and observe
  * {@code {{node.status}} == "error"} with an empty output.
  *
- * <p>See {@code docs/features/workflow-schema.md} §10.3.
  */
 public enum WorkflowErrorPolicy {
     /** Cancel the whole workflow. Default. */

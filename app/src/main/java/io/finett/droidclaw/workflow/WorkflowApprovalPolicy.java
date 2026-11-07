@@ -7,7 +7,6 @@ package io.finett.droidclaw.workflow;
  * blocking approval dialog has nobody to answer it. The default is therefore
  * {@link #DENY_WRITES}, the only policy that is safe in every launch context.
  *
- * <p>See {@code docs/features/workflow-schema.md} §10.1.
  */
 public enum WorkflowApprovalPolicy {
     /** Follow the global {@code AgentConfig} settings. Foreground runs only. */

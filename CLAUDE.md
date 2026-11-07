@@ -6,6 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Never stage or commit planning documents. Keep plans local and untracked, using a `plans/` directory or filenames such as `PLAN.md` or `*-plan.md` covered by `.gitignore`. Never force-add ignored plans. If a plan is already tracked, remove it from the Git index with `git rm --cached` while preserving the local file. This rule applies to planning documents, not application source code or tests such as `ExecPlan.java`.
 
+## Comments Must Be Self-Contained
+
+Never reference internal planning documents, spec section numbers, phases, or
+workstream ids in code comments (e.g. "spec §7", "Phase 3", "B1", "item B9").
+These documents do not exist in the repository, so such comments are dangling
+pointers. If a comment needs a reference, link to a real file in the repo
+(source, docs under `docs/`, test assets under `app/src/main/assets/`), or state
+the rule in prose. The general comment policy lives in CONTRIBUTING.md ("Comments").
+
 ## Nix System Requirement
 
 **When working on a Nix-based Linux system (NixOS, Nix Darwin), always use the Nix development shell.**

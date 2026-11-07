@@ -32,7 +32,7 @@ import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
- * Executes a validated workflow sequentially (spec §10.2, Phase 3: max_parallel = 1).
+ * Executes a validated workflow sequentially (max_parallel is schema-only: nodes run one at a time).
  *
  * <p>Each node is one {@link AgentLoop} run with a fresh conversation history.
  * Nodes communicate only through declared template outputs.

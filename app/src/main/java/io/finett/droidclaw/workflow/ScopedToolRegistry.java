@@ -17,14 +17,14 @@ import io.finett.droidclaw.tool.ToolResult;
 
 /**
  * A read-only decorator around {@link ToolRegistry} that exposes only the tools
- * a workflow node is allowed to use (spec §9).
+ * a workflow node is allowed to use.
  *
  * <p>Semantics:
  * <ul>
  *   <li>{@code allowedTools == null} → every registered tool (subject to global gates)</li>
  *   <li>{@code allowedTools == []} → no tools at all; the node is a pure LLM call</li>
  *   <li>{@code deniedTools} is subtracted last</li>
- *   <li>{@code run_workflow} is always excluded (recursion guard, spec §13)</li>
+ *   <li>{@code run_workflow} is always excluded (recursion guard)</li>
  * </ul>
  */
 public final class ScopedToolRegistry {

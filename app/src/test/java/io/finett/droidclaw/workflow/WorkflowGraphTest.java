@@ -13,7 +13,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-/** Covers §8.2 edge derivation and §10.2 scheduling primitives. */
+/** Covers edge derivation and scheduling primitives. */
 public class WorkflowGraphTest {
 
     /**

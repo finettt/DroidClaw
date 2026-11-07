@@ -107,7 +107,7 @@ public class AgentLoop {
 
     /**
      * Set per-run approval overrides. Used by the workflow runner to enforce
-     * per-node approval policies (spec §10.1) without touching global settings.
+     * per-node approval policies without touching global settings.
      * Pass {@code null} to clear and fall back to global config.
      */
     public void setApprovalOverrides(java.util.Map<String, ToolApprovalMode> overrides) {
@@ -116,7 +116,7 @@ public class AgentLoop {
 
     /**
      * Set a per-run model override. Used by the workflow runner to let each
-     * node use a different model (spec §7). Pass {@code null} for either
+     * node use a different model. Pass {@code null} for either
      * argument to fall back to the global default.
      */
     public void setModelOverride(io.finett.droidclaw.model.Provider provider,
@@ -224,9 +224,9 @@ public class AgentLoop {
 
     /**
      * Override the maximum iteration cap for this run. Used by the workflow
-     * runner to enforce per-node {@code max_turns} (spec §5.1).
+     * runner to enforce per-node {@code max_turns}.
      *
-     * @param max the new cap, clamped to [1, 200] per spec §12 rule 5
+     * @param max the new cap, clamped to [1, 200]
      */
     public void setMaxIterations(int max) {
         this.maxIterations = Math.max(1, Math.min(200, max));

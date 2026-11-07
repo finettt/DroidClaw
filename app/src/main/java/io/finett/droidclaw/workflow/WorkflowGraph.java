@@ -15,7 +15,7 @@ import java.util.Set;
 /**
  * The workflow dependency DAG, built as the <b>union</b> of edges from four
  * sources: {@code depends_on}, {@code inputs}, {@code from_agent}, and every
- * {@code {{<agent>...}}} template reference (spec §8.2).
+ * {@code {{<agent>...}}} template reference.
  *
  * <p>Including template references is mandatory, not an optimisation: without it
  * a node that reads {@code {{triage.output.area}}} could be scheduled before

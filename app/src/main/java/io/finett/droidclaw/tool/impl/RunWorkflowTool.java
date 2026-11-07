@@ -39,7 +39,7 @@ import io.finett.droidclaw.workflow.TemplateResolver;
 import java.util.Map;
 
 /**
- * Agent-launched workflow execution tool (spec §11B item B9, Q11).
+ * Agent-launched workflow execution tool.
  *
  * <p>Workflows are discovered by listing {@code .agent/workflows/} and reading
  * a JSON file, the same way skills are discovered. This tool executes a workflow

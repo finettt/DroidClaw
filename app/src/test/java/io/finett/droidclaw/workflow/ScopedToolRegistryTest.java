@@ -26,25 +26,25 @@ public class ScopedToolRegistryTest {
     // ==================== Effective set computation logic tests ====================
     // Since ScopedToolRegistry requires a real ToolRegistry (Android Context),
     // we test the filtering logic indirectly through the WorkflowValidator
-    // and verify the semantics documented in spec §9.
+    // and verify the documented semantics.
 
     @Test
     public void allowedToolsNullMeansAllTools() {
-        // null allowed_tools = all tools (spec §9 rule 1)
+        // null allowed_tools = all tools
         List<String> allowed = null;
         assertNull("null means unset/inherit all", allowed);
     }
 
     @Test
     public void allowedToolsEmptyMeansNoTools() {
-        // [] allowed_tools = no tools (spec §9 rule 2)
+        // [] allowed_tools = no tools
         List<String> allowed = Collections.emptyList();
         assertTrue("empty list means no tools", allowed.isEmpty());
     }
 
     @Test
     public void deniedToolsSubtractedAfterAllowed() {
-        // Spec §9 rule 4: denied subtracted last
+        // denied subtracted last
         List<String> allowed = Arrays.asList("read_file", "write_file", "execute_shell");
         List<String> denied = Arrays.asList("execute_shell");
 
@@ -59,7 +59,7 @@ public class ScopedToolRegistryTest {
 
     @Test
     public void runWorkflowAlwaysExcluded() {
-        // Spec §13: run_workflow excluded from workflow tool views
+        // run_workflow excluded from workflow tool views
         List<String> allowed = Arrays.asList("read_file", "run_workflow", "write_file");
 
         java.util.Set<String> effective = new java.util.LinkedHashSet<>(allowed);
@@ -71,7 +71,7 @@ public class ScopedToolRegistryTest {
 
     @Test
     public void approvalPolicyDenyWritesRejectsApprovalTools() {
-        // Spec §10.1: deny_writes rejects tools with requiresApproval()==true
+        // deny_writes rejects tools with requiresApproval()==true
         Set<String> approvalTools = new java.util.HashSet<>(Arrays.asList(
                 "calendar_create_event", "calendar_delete_event", "calendar_update_event",
                 "create_task", "delete_file", "delete_task",
@@ -94,7 +94,7 @@ public class ScopedToolRegistryTest {
 
     @Test
     public void approvalPolicyStrictRejectsAll() {
-        // Spec §10.1: strict rejects all tool calls
+        // strict rejects all tool calls
         List<String> nodeTools = Arrays.asList("read_file", "list_files", "search_files");
 
         java.util.Map<String, String> overrides = new java.util.HashMap<>();
@@ -110,7 +110,7 @@ public class ScopedToolRegistryTest {
 
     @Test
     public void approvalPolicyAutoApproveApprovesAll() {
-        // Spec §10.1: auto_approve approves every allowed tool
+        // auto_approve approves every allowed tool
         List<String> nodeTools = Arrays.asList("read_file", "write_file", "execute_shell");
 
         java.util.Map<String, String> overrides = new java.util.HashMap<>();

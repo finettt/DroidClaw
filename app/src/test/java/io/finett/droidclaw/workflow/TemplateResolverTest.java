@@ -11,7 +11,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-/** Covers the {{ expr }} grammar of spec §8.2 and the two resolution modes of §10.3. */
+/** Covers the {{ expr }} template grammar and its two resolution modes. */
 public class TemplateResolverTest {
 
     private TemplateResolver.Context base() {
@@ -68,7 +68,7 @@ public class TemplateResolverTest {
 
     @Test
     public void finalModeToleratesSkippedButNotError() throws Exception {
-        // §10.3: a conditional branch that did not fire must not fail the run
+        // a conditional branch that did not fire must not fail the run
         assertEquals("", TemplateResolver.resolve("{{b.output}}", base(), TemplateResolver.Mode.FINAL));
         try {
             TemplateResolver.resolve("{{c.output}}", base(), TemplateResolver.Mode.FINAL);
