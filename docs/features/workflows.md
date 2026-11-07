@@ -59,7 +59,7 @@ The machine-readable contract is `app/src/main/assets/workflow-v1.schema.json`
 | Field | Meaning |
 |-------|---------|
 | `prompt` *(required)* | Exactly one of `text`, `template`, or `from_agent` (plus optional `system`). `from_agent: "x"` feeds node x's output in and creates a dependency edge. |
-| `model` | Reserved `providerId/modelId` reference. **Currently unsupported at runtime:** nodes use the configured default model (see limitations). |
+| `model` | `providerId/modelId` reference. Overrides the default model for this node only (see Model selection below). |
 | `depends_on` | Explicit dependency edges. Edges are also inferred from `{{other_node.output}}` references and `from_agent`. |
 | `inputs` | Named template bindings available to this node as `{{inputs.name}}`. |
 | `when` | Guard expression: `{{node.field}} == 'value'`, `!=`, or `contains`, with a single-quoted literal. A false guard skips the node **and every transitive dependent**. |
@@ -88,6 +88,20 @@ unbalanced `{{ }}`, references to undeclared agents, and dependency cycles are
 errors; a workflow with errors will not run. Warnings flag likely mistakes such
 as a root node missing from `entry` or a node whose output nobody consumes.
 Workflow files are capped at 64 KB.
+
+### Model selection
+
+Each node runs on the model referenced by its `model` field, a
+`providerId/modelId` reference split on the first `/` (a model id may itself
+contain slashes). Precedence, highest first: the node's own `model`, then
+`defaults.model`, then the global configured default. A node with no `model` and
+no `defaults.model` uses the global default.
+
+A referenced provider or model that is not configured is rejected before any LLM
+call: the run fails fast with an error naming the node id and the
+`providerId/modelId` string, so a bad reference never spends a token. Run-scoped
+model and approval overrides are cleared on every terminal callback path, so a
+node's model never leaks to the next node or to a plain agent run.
 
 ## Security model
 
@@ -119,9 +133,6 @@ Workflow files are capped at 64 KB.
 - **The runner is sequential.** `max_parallel` is accepted by the schema but
   **not implemented**: nodes execute one at a time in deterministic topological
   order, as if `max_parallel` were 1. Declaring it changes nothing today.
-- **Per-node model selection is not implemented.** The `model` field is parsed
-  and shown during review, but nodes currently use the configured default model.
-  See [#156](https://github.com/finettt/DroidClaw/issues/156).
 - `on_error: skip` cascades: every transitive dependent of the skipped node is
   also skipped, and a skipped node contributes an empty string to templates and
   the workflow `output`.

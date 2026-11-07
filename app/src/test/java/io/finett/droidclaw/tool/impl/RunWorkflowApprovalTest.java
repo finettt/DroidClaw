@@ -218,7 +218,7 @@ public class RunWorkflowApprovalTest {
         assertTrue(summary, summary.contains("Requested model: p/default"));
         assertTrue(summary, summary.contains("Requested model: p/node"));
         assertTrue(summary, summary.contains("Execution model: provider/global"));
-        assertTrue(summary, summary.contains("Node-specific model routing is not supported"));
+        assertTrue(summary, summary.contains("A node can override this with its `model` field"));
         assertTrue(summary, summary.contains("Effective allowed tools: [read_file]"));
         assertTrue(summary, summary.contains("Denied/excluded tools: [run_workflow, write_file]"));
         assertTrue(summary, summary.contains("inherit (effective: deny_writes)"));

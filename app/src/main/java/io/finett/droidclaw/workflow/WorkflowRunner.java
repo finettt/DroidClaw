@@ -24,6 +24,8 @@ import java.util.regex.Pattern;
 import io.finett.droidclaw.agent.AgentLoop;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Model;
+import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.model.ToolApprovalMode;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolRegistry;
@@ -297,6 +299,12 @@ public final class WorkflowRunner {
         WorkflowApprovalPolicy approvalPolicy = defaults.resolveApproval(agent.getApproval());
         nodeLoop.setApprovalOverrides(buildApprovalOverrides(approvalPolicy, scopedRegistry));
 
+        // Per-node model: resolve the reference to configured provider/model
+        // objects and apply. The override is cleared on every terminal path by the
+        // AgentLoop (detachActiveRun), just like the approval overrides, so it never
+        // leaks to the next node or to a plain agent run.
+        applyModelOverride(nodeLoop, defaults.resolveModel(agent.getModel()));
+
         if (identityMessages != null) {
             nodeLoop.setIdentityContext(identityMessages);
         }
@@ -520,6 +528,31 @@ public final class WorkflowRunner {
         }
     }
 
+    /**
+     * Resolve a {@code providerId/modelId} reference to the user's configured
+     * provider/model objects and apply it as a per-run model override on the node's
+     * {@link AgentLoop}. A {@code null} reference (inherit) is a no-op, letting the
+     * AgentLoop fall back to the global default. The reference is split on the first
+     * {@code /} only, so model ids may themselves contain slashes.
+     *
+     * <p>The caller validates the reference before this runs, so an unknown
+     * provider/model never reaches the LLM: {@code hasModel} fails the load and the
+     * node is never scheduled. If for any reason the pair cannot be resolved here,
+     * no override is applied rather than silently using the default model.
+     */
+    private void applyModelOverride(AgentLoop nodeLoop, String modelRef) {
+        if (modelRef == null) return;
+        int slash = modelRef.indexOf('/');
+        if (slash < 0) return; // malformed; already rejected at validation
+        String providerId = modelRef.substring(0, slash);
+        String modelId = modelRef.substring(slash + 1);
+        Provider provider = settingsManager.getProvider(providerId);
+        Model model = settingsManager.getModel(providerId, modelId);
+        if (provider != null && model != null) {
+            nodeLoop.setModelOverride(provider, model);
+        }
+    }
+
     private Map<String, ToolApprovalMode> buildApprovalOverrides(
             WorkflowApprovalPolicy policy, ScopedToolRegistry scopedRegistry) {
 
@@ -615,9 +648,9 @@ public final class WorkflowRunner {
 
             @Override
             public boolean hasModel(String providerId, String modelId) {
-                // For now, accept all model references; full validation requires
-                // SettingsManager model lookup which is done in B1
-                return true;
+                Provider provider = settingsManager.getProvider(providerId);
+                return provider != null
+                        && settingsManager.getModel(providerId, modelId) != null;
             }
 
             @Override
