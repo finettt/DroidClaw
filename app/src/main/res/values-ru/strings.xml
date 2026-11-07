@@ -401,6 +401,6 @@
     <string name="workflow_review_global_model">Глобальная модель по умолчанию</string>
     <string name="workflow_review_auto_approve">\nВНИМАНИЕ: auto_approve разрешает инструменты, включая запись, без дальнейшего подтверждения. Подтверждайте только доверенные процессы.</string>
     <string name="workflow_review_failed">Невозможно безопасно проверить процесс: %1$s</string>
-    <string name="workflow_review_execution_model">\nМодель выполнения: %1$s. Выбор модели для отдельных узлов не поддерживается; все узлы используют глобальную настройку модели.\n</string>
+    <string name="workflow_review_execution_model">\nМодель выполнения: %1$s. Поле `model` узла переопределяет её только для этого узла.\n</string>
     <string name="workflow_review_live_settings">Показаны настройки на момент проверки. Изменения до запуска требуют повторного подтверждения. Запущенный процесс использует текущие глобальные настройки.\n</string>
 </resources>
