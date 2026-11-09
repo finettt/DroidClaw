@@ -85,8 +85,13 @@
     <string name="sandbox_strict">Строгий (только рабочая область)</string>
     <string name="sandbox_relaxed">Ослабленный (команды из списка разрешённых)</string>
     <string name="sandbox_full">Полный (любые команды, всегда спрашивать)</string>
-    <string name="max_iterations">Максимум итераций</string>
-    <string name="max_iterations_description">Максимальное число циклов выполнения инструментов</string>
+    <string name="effort">Усиление</string>
+    <string name="effort_description">Усилие на рассуждения и лимит ходов агента</string>
+    <string name="effort_low">Низкое</string>
+    <string name="effort_medium">Среднее</string>
+    <string name="effort_high">Высокое</string>
+    <string name="effort_xhigh">Очень высокое</string>
+    <string name="effort_max">Максимум</string>
     <string name="require_approval">Требовать одобрение</string>
     <string name="require_approval_description">Подтверждать перед выполнением инструментов</string>
     <string name="stream_responses">Потоковые ответы</string>

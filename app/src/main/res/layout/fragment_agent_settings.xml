@@ -188,20 +188,21 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Max Iterations -->
+        <!-- Effort -->
         <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:hint="@string/max_iterations"
-            app:helperText="@string/max_iterations_description"
+            android:hint="@string/effort"
+            app:helperText="@string/effort_description"
             app:boxBackgroundMode="outline">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_max_iterations"
+            <AutoCompleteTextView
+                android:id="@+id/dropdown_effort"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="none" />
 
         </com.google.android.material.textfield.TextInputLayout>
 

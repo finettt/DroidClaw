@@ -90,8 +90,13 @@
     <string name="sandbox_strict">Strict (Workspace only)</string>
     <string name="sandbox_relaxed">Relaxed (Allowlisted commands)</string>
     <string name="sandbox_full">Full (Any command, always ask)</string>
-    <string name="max_iterations">Max Iterations</string>
-    <string name="max_iterations_description">Maximum tool execution cycles</string>
+    <string name="effort">Effort</string>
+    <string name="effort_description">Reasoning effort and agent turn budget</string>
+    <string name="effort_low">Low</string>
+    <string name="effort_medium">Medium</string>
+    <string name="effort_high">High</string>
+    <string name="effort_xhigh">Very High</string>
+    <string name="effort_max">Max</string>
     <string name="require_approval">Require Approval</string>
     <string name="require_approval_description">Confirm before executing tools</string>
     <string name="stream_responses">Stream Responses</string>

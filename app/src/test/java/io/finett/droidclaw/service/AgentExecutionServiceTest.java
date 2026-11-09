@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import io.finett.droidclaw.agent.AgentLoop;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Effort;
 
 /**
  * Unit tests for AgentExecutionService session/notification paths.
@@ -240,5 +241,46 @@ public class AgentExecutionServiceTest {
     @Test
     public void stripMarkdown_excessiveNewlines_collapsed() {
         assertEquals("a\n\nb", AgentExecutionService.stripMarkdown("a\n\n\n\nb"));
+    }
+
+    // ==================== session effort override (chat switcher) ====================
+
+    /** Reflective access to the private session-effort-override map (test-only seam). */
+    @SuppressWarnings("unchecked")
+    private static ConcurrentHashMap<String, Effort> sessionEffortOverridesOf(
+            AgentExecutionService svc) throws Exception {
+        Field f = AgentExecutionService.class.getDeclaredField("sessionEffortOverrides");
+        f.setAccessible(true);
+        return (ConcurrentHashMap<String, Effort>) f.get(svc);
+    }
+
+    @Test
+    public void setSessionEffort_roundTripsThroughgetSessionEffort() {
+        service.setSessionEffort("s1", Effort.HIGH);
+        assertEquals("Chat switcher selection round-trips through the service",
+                Effort.HIGH, service.getSessionEffort("s1"));
+    }
+
+    @Test
+    public void getSessionEffort_unknownSession_returnsNull() {
+        assertNull("Unknown session has no override; the loop falls back to the global config",
+                service.getSessionEffort("never-set"));
+    }
+
+    @Test
+    public void sessionEffortOverrides_areIsolatedPerSession() {
+        service.setSessionEffort("a", Effort.LOW);
+        service.setSessionEffort("b", Effort.MAX);
+        assertEquals("Each session keeps its own effort override", Effort.LOW,
+                service.getSessionEffort("a"));
+        assertEquals("Each session keeps its own effort override", Effort.MAX,
+                service.getSessionEffort("b"));
+    }
+
+    @Test
+    public void setSessionEffort_storesInRunReadMap() throws Exception {
+        service.setSessionEffort("s9", Effort.XHIGH);
+        assertEquals("Override is stored where runAgentLoop reads it",
+                Effort.XHIGH, sessionEffortOverridesOf(service).get("s9"));
     }
 }

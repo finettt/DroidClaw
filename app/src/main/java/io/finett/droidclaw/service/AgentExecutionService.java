@@ -36,6 +36,7 @@ import io.finett.droidclaw.agent.MemoryContextBuilder;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.repository.LessonRepository;
 import io.finett.droidclaw.repository.MemoryRepository;
@@ -149,6 +150,8 @@ public class AgentExecutionService extends Service {
 
     private final ConcurrentHashMap<String, AgentSession> sessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, UICallback> uiCallbacks = new ConcurrentHashMap<>();
+    /** Chat switcher override per session id; applied when the loop starts. */
+    private final ConcurrentHashMap<String, Effort> sessionEffortOverrides = new ConcurrentHashMap<>();
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -294,6 +297,16 @@ public class AgentExecutionService extends Service {
                 && session.state != AgentSession.State.ERROR;
     }
 
+    /** Chat-switcher effort override for a session, or null if using the global config. */
+    public Effort getSessionEffort(String sessionId) {
+        return sessionEffortOverrides.get(sessionId);
+    }
+
+    /** Store a chat-switcher effort override; it takes effect on the next run. */
+    public void setSessionEffort(String sessionId, Effort effort) {
+        sessionEffortOverrides.put(sessionId, effort);
+    }
+
     /**
      * Cancel the agent loop for the given session. In-flight HTTP requests are
      * aborted, any partially streamed response text is persisted, and the UI
@@ -430,6 +443,13 @@ public class AgentExecutionService extends Service {
             AgentLoop agentLoop = new AgentLoop(
                     apiService, toolRegistry, settingsManager, summarizer, memoryContext);
             session.agentLoop = agentLoop;
+
+            // Chat-switcher override takes precedence over the global config effort;
+            // it is applied before start(), which snapshots it into the run scope.
+            Effort override = sessionEffortOverrides.get(session.sessionId);
+            if (override != null) {
+                agentLoop.setEffortOverride(override);
+            }
 
             // Cancellation was requested before the loop even started (user tapped
             // stop within milliseconds of sending). Deliver it without running.

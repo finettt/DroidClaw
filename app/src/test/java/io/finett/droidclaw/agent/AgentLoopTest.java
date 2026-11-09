@@ -24,8 +24,10 @@ import java.util.List;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.api.TokenUsage;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.AgentConfig;
 import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.model.ToolApprovalMode;
+import io.finett.droidclaw.util.SettingsManager;
 import io.finett.droidclaw.tool.Tool;
 import java.util.Collections;
 import io.finett.droidclaw.repository.MemoryRepository;
@@ -879,6 +881,52 @@ public class AgentLoopTest {
         verify(mockCallback).onError(contains("Maximum iterations"));
         verify(mockCallback, never()).onComplete(anyString(), anyList());
         assertEquals("explicit cap of 5 stops the loop at iteration 6", 6, agentLoop.getIterationCount());
+    }
+
+    // ==================== Chat-switcher override vs. global effort ====================
+
+    /** A real AgentConfig so the test can assert the global config is never mutated. */
+    private static SettingsManager settingsManagerWithEffort(String effort) {
+        AgentConfig config = new AgentConfig();
+        config.setEffort(effort);
+        SettingsManager settingsManager = mock(SettingsManager.class);
+        when(settingsManager.getAgentConfig()).thenReturn(config);
+        return settingsManager;
+    }
+
+    @Test
+    public void effortOverride_takesPrecedenceOverGlobalConfig() {
+        SettingsManager settingsManager = settingsManagerWithEffort("high");
+        AgentConfig config = settingsManager.getAgentConfig(); // global = HIGH (budget 40)
+
+        AgentLoop loop = new AgentLoop(mockApiService, mockToolRegistry, settingsManager);
+        assertEquals("Global effort resolves from the agent config", Effort.HIGH, loop.getEffort());
+
+        loop.setEffortOverride(Effort.MEDIUM); // chat switcher picks Medium
+        assertEquals("Per-session override wins over the global effort", Effort.MEDIUM, loop.getEffort());
+
+        // The override must never mutate the stored global AgentConfig.
+        assertEquals("Global AgentConfig.effort is never written by the override",
+                "high", config.getEffort());
+
+        loop.setEffortOverride(null);
+        assertEquals("Clearing the override falls back to the global effort", Effort.HIGH, loop.getEffort());
+    }
+
+    @Test
+    public void effortOverride_overGlobal_drives_loop_stop_budget() {
+        SettingsManager settingsManager = settingsManagerWithEffort("high");
+        AgentLoop loop = new AgentLoop(mockApiService, mockToolRegistry, settingsManager);
+        assertEquals("Baseline global effort is High (budget 40)", Effort.HIGH, loop.getEffort());
+
+        stubApiWithToolCallsFor(100); // would otherwise run toward the global budget
+        loop.setEffortOverride(Effort.LOW); // switcher picks Low (budget 8)
+        loop.start(createSimpleConversation(), mockCallback);
+
+        verify(mockCallback).onError(contains("Maximum iterations"));
+        verify(mockCallback, never()).onComplete(anyString(), anyList());
+        assertEquals("Low override stops the loop at 9 even though the global effort is High",
+                9, loop.getIterationCount());
     }
 
 }
