@@ -22,6 +22,7 @@ import java.util.Collections;
 
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.model.ToolApprovalMode;
@@ -128,6 +129,60 @@ public class AgentLoopRunScopeTest {
         verify(api).sendMessageWithTools(anyList(), any(), anyList(),
                 same(provider), same(model), any(), captor.capture());
         return captor.getValue();
+    }
+    private void assertEffortOverrideCleared() throws Exception {
+        Field field = AgentLoop.class.getDeclaredField("effortOverride");
+        field.setAccessible(true);
+        assertNull("effortOverride must not survive a terminal callback", field.get(loop));
+    }
+
+    @Test
+    public void effortOverride_winsOverGlobal() {
+        loop.setEffortOverride(Effort.HIGH);
+        assertSame("explicit run effort overrides the global default", Effort.HIGH, loop.getEffort());
+        loop.setEffortOverride(null);
+        assertSame("clearing the effort falls back to the global default",
+                Effort.getDefault(), loop.getEffort());
+    }
+
+    @Test
+    public void effortOverrideClearedOnCompletion() throws Exception {
+        loop.setEffortOverride(Effort.HIGH);
+        LlmApiService.ChatCallbackWithTools pending = startScopedRun();
+        doAnswer(invocation -> {
+            assertEffortOverrideCleared();
+            return null;
+        }).when(callback).onComplete(anyString(), anyList());
+        pending.onSuccess(new LlmApiService.LlmResponse("done", null));
+        verify(callback).onComplete(eq("done"), anyList());
+        assertEffortOverrideCleared();
+    }
+
+    @Test
+    public void effortOverrideClearedOnError() throws Exception {
+        loop.setEffortOverride(Effort.HIGH);
+        LlmApiService.ChatCallbackWithTools pending = startScopedRun();
+        doAnswer(invocation -> {
+            assertEffortOverrideCleared();
+            return null;
+        }).when(callback).onError(anyString());
+        pending.onError("network failed");
+        verify(callback).onError("network failed");
+        assertEffortOverrideCleared();
+    }
+
+    @Test
+    public void effortOverrideClearedOnCancellation() throws Exception {
+        loop.setEffortOverride(Effort.HIGH);
+        startScopedRun();
+        doAnswer(invocation -> {
+            assertEffortOverrideCleared();
+            return null;
+        }).when(callback).onCancelled(anyList());
+        loop.cancel();
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        verify(callback).onCancelled(anyList());
+        assertEffortOverrideCleared();
     }
 
     private void assertOverridesCleared() throws Exception {

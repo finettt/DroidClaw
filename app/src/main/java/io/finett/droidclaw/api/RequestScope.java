@@ -3,6 +3,8 @@ package io.finett.droidclaw.api;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import io.finett.droidclaw.model.Effort;
+
 import okhttp3.Call;
 
 /**
@@ -26,6 +28,13 @@ public class RequestScope {
 
     private final Set<Call> calls = ConcurrentHashMap.newKeySet();
     private volatile boolean cancelled;
+
+    /**
+     * Reasoning effort for this run, resolved once when the run starts. Carried
+     * on the scope (not a shared field) so concurrent runs on the shared
+     * LlmApiService never observe each other's effort. Null means "no override".
+     */
+    private volatile Effort effort;
 
     /**
      * Register a call as belonging to this scope. If the scope was already
@@ -71,5 +80,15 @@ public class RequestScope {
 
     public boolean isCancelled() {
         return cancelled;
+    }
+
+    /** Reasoning effort for this run, or null when unset. */
+    public Effort getEffort() {
+        return effort;
+    }
+
+    /** Set the reasoning effort for this run. */
+    public void setEffort(Effort effort) {
+        this.effort = effort;
     }
 }

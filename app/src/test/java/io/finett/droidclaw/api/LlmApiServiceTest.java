@@ -5,12 +5,20 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertSame;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
+
+import android.content.Context;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -19,8 +27,21 @@ import java.util.Collections;
 import java.util.List;
 
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Effort;
+import io.finett.droidclaw.model.Model;
+import io.finett.droidclaw.model.Provider;
+import io.finett.droidclaw.util.SettingsManager;
 
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 28)
 public class LlmApiServiceTest {
+
+    private Context context;
+
+    @Before
+    public void setUp() {
+        context = RuntimeEnvironment.getApplication();
+    }
 
     private final Gson gson = new Gson();
 
@@ -455,6 +476,144 @@ public class LlmApiServiceTest {
         assertEquals("tool", toolResultMsg.get("role").getAsString());
         assertEquals("call_123", toolResultMsg.get("tool_call_id").getAsString());
         assertEquals("File content here", toolResultMsg.get("content").getAsString());
+    }
+
+    // ==================== Effort wire mapping (real LlmApiService builders) ====================
+
+    private LlmApiService newService() {
+        SettingsManager settingsManager = new SettingsManager(context);
+        return new LlmApiService(settingsManager);
+    }
+
+    private List<ChatMessage> conversation() {
+        return Collections.singletonList(new ChatMessage("hi", ChatMessage.TYPE_USER));
+    }
+
+    private Model reasoningModel(boolean reasoning) {
+        Model model = new Model();
+        model.setId("test-model");
+        model.setReasoning(reasoning);
+        return model;
+    }
+
+    private JsonObject invokeOpenAiBase(LlmApiService service, List<ChatMessage> messages,
+            JsonArray tools, List<ChatMessage> identity, Effort effort, boolean reasoning)
+            throws Exception {
+        Method method = LlmApiService.class.getDeclaredMethod("buildOpenAiRequestBody",
+            java.util.List.class, JsonArray.class, java.util.List.class, Effort.class, boolean.class);
+        method.setAccessible(true);
+        return (JsonObject) method.invoke(service, messages, tools, identity, effort, reasoning);
+    }
+
+    private JsonObject invokeOpenAiPerModel(LlmApiService service, List<ChatMessage> messages,
+            JsonArray tools, List<ChatMessage> identity, Model model, Effort effort)
+            throws Exception {
+        Method method = LlmApiService.class.getDeclaredMethod("buildOpenAiRequestBody",
+            java.util.List.class, JsonArray.class, java.util.List.class, Model.class, Effort.class);
+        method.setAccessible(true);
+        return (JsonObject) method.invoke(service, messages, tools, identity, model, effort);
+    }
+
+    private JsonObject invokeAnthropicBase(LlmApiService service, List<ChatMessage> messages,
+            JsonArray tools, List<ChatMessage> identity, Effort effort, boolean reasoning)
+            throws Exception {
+        Method method = LlmApiService.class.getDeclaredMethod("buildAnthropicRequestBody",
+            java.util.List.class, JsonArray.class, java.util.List.class, Effort.class, boolean.class);
+        method.setAccessible(true);
+        return (JsonObject) method.invoke(service, messages, tools, identity, effort, reasoning);
+    }
+
+    private JsonObject invokeAnthropicPerModel(LlmApiService service, List<ChatMessage> messages,
+            JsonArray tools, List<ChatMessage> identity, Model model, Effort effort)
+            throws Exception {
+        Method method = LlmApiService.class.getDeclaredMethod("buildAnthropicRequestBody",
+            java.util.List.class, JsonArray.class, java.util.List.class, Model.class, Effort.class);
+        method.setAccessible(true);
+        return (JsonObject) method.invoke(service, messages, tools, identity, model, effort);
+    }
+
+    @Test
+    public void openaiReasoningEffortPresent_whenReasoningEnabled() throws Exception {
+        JsonObject body = invokeOpenAiBase(newService(), conversation(), null, null, Effort.HIGH, true);
+        assertEquals("high", body.get("reasoning_effort").getAsString());
+    }
+
+    @Test
+    public void openaiReasoningEffortAbsent_whenReasoningDisabled() throws Exception {
+        JsonObject body = invokeOpenAiBase(newService(), conversation(), null, null, Effort.HIGH, false);
+        assertFalse(body.has("reasoning_effort"));
+    }
+
+    @Test
+    public void openaiReasoningEffortAbsent_whenEffortNull() throws Exception {
+        JsonObject body = invokeOpenAiBase(newService(), conversation(), null, null, null, true);
+        assertFalse(body.has("reasoning_effort"));
+    }
+
+    @Test
+    public void anthropicOutputConfigEffortPresent_whenReasoningEnabled() throws Exception {
+        JsonObject body = invokeAnthropicBase(newService(), conversation(), null, null, Effort.HIGH, true);
+        assertTrue(body.has("output_config"));
+        assertEquals("high", body.getAsJsonObject("output_config").get("effort").getAsString());
+    }
+
+    @Test
+    public void anthropicOutputConfigEffortAbsent_whenReasoningDisabled() throws Exception {
+        JsonObject body = invokeAnthropicBase(newService(), conversation(), null, null, Effort.HIGH, false);
+        assertFalse(body.has("output_config"));
+    }
+
+    @Test
+    public void openaiPerModelGatesOnModelReasoning() throws Exception {
+        LlmApiService service = newService();
+        JsonObject on = invokeOpenAiPerModel(service, conversation(), null, null, reasoningModel(true), Effort.HIGH);
+        JsonObject off = invokeOpenAiPerModel(service, conversation(), null, null, reasoningModel(false), Effort.HIGH);
+        assertTrue("reasoning model should carry reasoning_effort", on.has("reasoning_effort"));
+        assertFalse("non-reasoning model must not carry reasoning_effort", off.has("reasoning_effort"));
+    }
+
+    @Test
+    public void anthropicPerModelGatesOnModelReasoning() throws Exception {
+        LlmApiService service = newService();
+        JsonObject on = invokeAnthropicPerModel(service, conversation(), null, null, reasoningModel(true), Effort.HIGH);
+        JsonObject off = invokeAnthropicPerModel(service, conversation(), null, null, reasoningModel(false), Effort.HIGH);
+        assertTrue("reasoning model should carry output_config.effort", on.has("output_config"));
+        assertFalse("non-reasoning model must not carry output_config", off.has("output_config"));
+    }
+
+    @Test
+    public void effortSourcedFromRequestScope() throws Exception {
+        LlmApiService service = newService();
+        Method resolve = LlmApiService.class.getDeclaredMethod("resolveEffort", RequestScope.class);
+        resolve.setAccessible(true);
+
+        RequestScope scope = new RequestScope();
+        scope.setEffort(Effort.HIGH);
+        assertSame("effort is read from the run scope", Effort.HIGH, resolve.invoke(null, scope));
+
+        scope.setEffort(null);
+        assertNull(resolve.invoke(null, scope));
+        assertNull(resolve.invoke(null, (Object) null));
+    }
+
+    @Test
+    public void globalReasoningEnabled_reflectsSelectedReasoningModel() throws Exception {
+        SettingsManager settingsManager = new SettingsManager(context);
+        LlmApiService service = new LlmApiService(settingsManager);
+        Method enabled = LlmApiService.class.getDeclaredMethod("globalReasoningEnabled");
+        enabled.setAccessible(true);
+
+        assertFalse("no model selected yet -> reasoning disabled", (Boolean) enabled.invoke(service));
+
+        Provider provider = new Provider();
+        provider.setId("test-provider");
+        provider.setBaseUrl("https://example.com/v1");
+        settingsManager.addProvider(provider);
+        settingsManager.addModel("test-provider", reasoningModel(true));
+        settingsManager.getAgentConfig().setDefaultModel("test-provider/test-model");
+
+        assertTrue("selected reasoning model enables the effort API parameter",
+                (Boolean) enabled.invoke(service));
     }
 
     private JsonObject invokeBuildRequestBody(TestableLlmApiService service, java.util.List<ChatMessage> messages) throws Exception {

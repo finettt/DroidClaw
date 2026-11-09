@@ -17,6 +17,11 @@ import org.robolectric.annotation.Config;
 
 import java.util.Arrays;
 
+import android.content.SharedPreferences;
+import org.json.JSONObject;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 import io.finett.droidclaw.model.AgentConfig;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
@@ -116,7 +121,7 @@ public class SettingsManagerTest {
         assertEquals("", config.getDefaultModel());
         assertFalse(config.isShellAccess());
         assertEquals("strict", config.getSandboxMode());
-        assertEquals(20, config.getMaxIterations());
+        assertEquals("med", config.getEffort());
         assertTrue(config.isRequireApproval());
         assertEquals(30, config.getShellTimeout());
         assertFalse(config.isBackgroundExecEnabled());
@@ -222,15 +227,15 @@ public class SettingsManagerTest {
     }
 
     @Test
-    public void setMaxAgentIterations_storesAndRetrievesValue() {
-        settingsManager.setMaxAgentIterations(50);
-        assertEquals(50, settingsManager.getMaxAgentIterations());
+    public void setEffort_storesAndRetrievesBudget() {
+        settingsManager.setEffort("high");
+        assertEquals(40, settingsManager.getMaxAgentIterations());
     }
 
     @Test
-    public void setMaxAgentIterations_canBeSetToMinimum() {
-        settingsManager.setMaxAgentIterations(1);
-        assertEquals(1, settingsManager.getMaxAgentIterations());
+    public void setEffort_canBeSetToMinimum() {
+        settingsManager.setEffort("low");
+        assertEquals(8, settingsManager.getMaxAgentIterations());
     }
 
     @Test
@@ -431,7 +436,7 @@ public class SettingsManagerTest {
     public void agentSettingsPersistAcrossInstances() {
         settingsManager.setShellAccessEnabled(true);
         settingsManager.setSandboxMode("relaxed");
-        settingsManager.setMaxAgentIterations(30);
+        settingsManager.setEffort("high");
         settingsManager.setRequireApproval(false);
         AgentConfig config = settingsManager.getAgentConfig();
         config.setShellTimeout(120);
@@ -441,7 +446,7 @@ public class SettingsManagerTest {
 
         assertTrue(newInstance.isShellAccessEnabled());
         assertEquals("relaxed", newInstance.getSandboxMode());
-        assertEquals(30, newInstance.getMaxAgentIterations());
+        assertEquals(40, newInstance.getMaxAgentIterations());
         assertFalse(newInstance.isRequireApproval());
         assertEquals(120, newInstance.getShellTimeoutSeconds());
     }
@@ -493,5 +498,85 @@ public class SettingsManagerTest {
         model.setContextWindow(8192);
         model.setInput(Arrays.asList("text"));
         return model;
+    }
+
+    // ==================== Legacy maxIterations -> effort migration ====================
+
+    private SettingsManager settingsManagerFromDefaults(JSONObject defaults) throws Exception {
+        // Seed a plain SharedPreferences with the given defaults and reload, so the
+        // migration path in loadFromJson() runs against controlled input.
+        SettingsManager manager = new SettingsManager(context);
+        SharedPreferences prefs = context.getSharedPreferences(
+                "migration_test", Context.MODE_PRIVATE);
+        JSONObject root = new JSONObject();
+        JSONObject agents = new JSONObject();
+        agents.put("defaults", defaults);
+        root.put("agents", agents);
+        prefs.edit().clear().putString("settings_json", root.toString()).apply();
+        Field prefsField = SettingsManager.class.getDeclaredField("prefs");
+        prefsField.setAccessible(true);
+        prefsField.set(manager, prefs);
+        Method load = SettingsManager.class.getDeclaredMethod("loadFromJson");
+        load.setAccessible(true);
+        load.invoke(manager);
+        return manager;
+    }
+
+    @Test
+    public void legacyMaxIterations_migrateLow() throws Exception {
+        JSONObject defaults = new JSONObject().put("maxIterations", 5);
+        SettingsManager manager = settingsManagerFromDefaults(defaults);
+        assertEquals("low", manager.getAgentConfig().getEffort());
+    }
+
+    @Test
+    public void legacyMaxIterations_migrateMedium() throws Exception {
+        JSONObject defaults = new JSONObject().put("maxIterations", 20);
+        SettingsManager manager = settingsManagerFromDefaults(defaults);
+        assertEquals("med", manager.getAgentConfig().getEffort());
+    }
+
+    @Test
+    public void legacyMaxIterations_migrateHigh() throws Exception {
+        JSONObject defaults = new JSONObject().put("maxIterations", 35);
+        SettingsManager manager = settingsManagerFromDefaults(defaults);
+        assertEquals("high", manager.getAgentConfig().getEffort());
+    }
+
+    @Test
+    public void legacyMaxIterations_migrateXHigh() throws Exception {
+        JSONObject defaults = new JSONObject().put("maxIterations", 60);
+        SettingsManager manager = settingsManagerFromDefaults(defaults);
+        assertEquals("xhigh", manager.getAgentConfig().getEffort());
+    }
+
+    @Test
+    public void legacyMaxIterations_migrateMax() throws Exception {
+        JSONObject defaults = new JSONObject().put("maxIterations", 200);
+        SettingsManager manager = settingsManagerFromDefaults(defaults);
+        assertEquals("max", manager.getAgentConfig().getEffort());
+    }
+
+    @Test
+    public void legacyMaxIterations_absentBoth_fallsBackToDefault() throws Exception {
+        // defaults object with neither effort nor maxIterations -> default effort.
+        SettingsManager manager = settingsManagerFromDefaults(new JSONObject());
+        assertEquals("med", manager.getAgentConfig().getEffort());
+    }
+
+    @Test
+    public void legacyMaxIterations_effortPresent_ignoresLegacyKey() throws Exception {
+        JSONObject defaults = new JSONObject().put("maxIterations", 5).put("effort", "high");
+        SettingsManager manager = settingsManagerFromDefaults(defaults);
+        assertEquals("high", manager.getAgentConfig().getEffort());
+    }
+
+    @Test
+    public void legacyMaxIterations_migratedConfig_carriesEffort() throws Exception {
+        JSONObject defaults = new JSONObject().put("maxIterations", 5);
+        SettingsManager manager = settingsManagerFromDefaults(defaults);
+        // After migration the config carries the effort value, not the old key.
+        assertNotNull(manager.getAgentConfig().getEffort());
+        assertEquals("low", manager.getAgentConfig().getEffort());
     }
 }

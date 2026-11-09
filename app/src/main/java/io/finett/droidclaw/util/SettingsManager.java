@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.finett.droidclaw.model.AgentConfig;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
 
@@ -136,7 +137,17 @@ public class SettingsManager {
             // Load agent config
             if (root.has("agents") && root.getJSONObject("agents").has("defaults")) {
                 JSONObject agentJson = root.getJSONObject("agents").getJSONObject("defaults");
+                // Existing installs may still carry the legacy maxIterations key.
+                // Derive the effort level from it once, then persist the new format.
+                boolean effortAbsent = !agentJson.has("effort")
+                        || agentJson.optString("effort", "").isEmpty();
+                boolean legacyMaxPresent = agentJson.has("maxIterations");
                 agentConfig = parseAgentConfig(agentJson);
+                if (effortAbsent && legacyMaxPresent) {
+                    Log.d(TAG, "Migrated legacy maxIterations to effort level "
+                            + agentConfig.getEffort());
+                    saveToJson();
+                }
             } else {
                 agentConfig = AgentConfig.getDefaults();
             }
@@ -226,12 +237,27 @@ public class SettingsManager {
         return model;
     }
 
+    /**
+     * Resolve the persisted effort string, migrating from a legacy
+     * {@code maxIterations} value when {@code effort} is absent. Falls back to the
+     * default level for a missing or blank value.
+     */
+    private String resolveEffort(JSONObject json) throws JSONException {
+        String effort = json.optString("effort", "");
+        if (effort == null || effort.isEmpty()) {
+            int legacyMax = json.optInt("maxIterations", -1);
+            effort = legacyMax >= 0 ? Effort.fromMaxIterations(legacyMax).persistedName()
+                    : Effort.getDefault().persistedName();
+        }
+        return effort;
+    }
+
     private AgentConfig parseAgentConfig(JSONObject json) throws JSONException {
         AgentConfig config = new AgentConfig();
         config.setDefaultModel(json.optString("model", ""));
         config.setShellAccess(json.optBoolean("shellAccess", false));
         config.setSandboxMode(json.optString("sandboxMode", "strict"));
-        config.setMaxIterations(json.optInt("maxIterations", 20));
+        config.setEffort(resolveEffort(json));
         config.setRequireApproval(json.optBoolean("requireApproval", true));
         config.setShellTimeout(json.optInt("shellTimeout", 30));
         config.setBackgroundShellEnabled(json.optBoolean("backgroundShellEnabled", false));
@@ -350,7 +376,7 @@ public class SettingsManager {
         json.put("model", config.getDefaultModel());
         json.put("shellAccess", config.isShellAccess());
         json.put("sandboxMode", config.getSandboxMode());
-        json.put("maxIterations", config.getMaxIterations());
+        json.put("effort", config.getEffort());
         json.put("requireApproval", config.isRequireApproval());
         json.put("shellTimeout", config.getShellTimeout());
         json.put("backgroundShellEnabled", config.isBackgroundShellEnabled());
@@ -501,12 +527,29 @@ public class SettingsManager {
         saveToJson();
     }
 
+    /**
+     * The global turn budget in effect, derived from the current effort level.
+     * Used as the ceiling for explicit per-node workflow {@code max_turns} caps;
+     * Effort Max is unbounded here.
+     */
     public int getMaxAgentIterations() {
-        return agentConfig.getMaxIterations();
+        return currentEffortBudget();
     }
 
-    public void setMaxAgentIterations(int iterations) {
-        agentConfig.setMaxIterations(iterations);
+    private int currentEffortBudget() {
+        try {
+            return Effort.fromString(agentConfig.getEffort()).turnBudget();
+        } catch (IllegalArgumentException e) {
+            return Effort.getDefault().turnBudget();
+        }
+    }
+
+    public String getEffort() {
+        return agentConfig.getEffort();
+    }
+
+    public void setEffort(String effort) {
+        agentConfig.setEffort(effort);
         saveToJson();
     }
 

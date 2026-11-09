@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.Model;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.util.SettingsManager;
 import okhttp3.Call;
@@ -246,10 +247,12 @@ public class LlmApiService {
         Request.Builder requestBuilder;
 
         if (API_ANTHROPIC.equals(apiType)) {
-            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, identityMessages));
+            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, identityMessages,
+                    resolveEffort(scope), globalReasoningEnabled()));
             requestBuilder = buildAnthropicRequestBuilder(jsonBody);
         } else {
-            jsonBody = gson.toJson(buildOpenAiRequestBody(conversationHistory, tools, identityMessages));
+            jsonBody = gson.toJson(buildOpenAiRequestBody(conversationHistory, tools, identityMessages,
+                    resolveEffort(scope), globalReasoningEnabled()));
             requestBuilder = buildOpenAiRequestBuilder(jsonBody);
         }
 
@@ -324,10 +327,12 @@ public class LlmApiService {
         Request.Builder requestBuilder;
 
         if (API_ANTHROPIC.equals(apiType)) {
-            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, identityMessages));
+            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, identityMessages,
+                    resolveEffort(scope), globalReasoningEnabled()));
             requestBuilder = buildAnthropicRequestBuilder(jsonBody);
         } else {
-            jsonBody = gson.toJson(buildOpenAiRequestBody(conversationHistory, tools, identityMessages));
+            jsonBody = gson.toJson(buildOpenAiRequestBody(conversationHistory, tools, identityMessages,
+                    resolveEffort(scope), globalReasoningEnabled()));
             requestBuilder = buildOpenAiRequestBuilder(jsonBody);
         }
 
@@ -408,10 +413,12 @@ public class LlmApiService {
         Request.Builder requestBuilder;
 
         if (API_ANTHROPIC.equals(apiType)) {
-            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, identityMessages, model));
+            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, identityMessages, model,
+                    resolveEffort(scope)));
             requestBuilder = buildRequestBuilderForProvider(jsonBody, provider, apiType);
         } else {
-            jsonBody = gson.toJson(buildOpenAiRequestBody(conversationHistory, tools, identityMessages, model));
+            jsonBody = gson.toJson(buildOpenAiRequestBody(conversationHistory, tools, identityMessages, model,
+                    resolveEffort(scope)));
             requestBuilder = buildRequestBuilderForProvider(jsonBody, provider, apiType);
         }
 
@@ -489,10 +496,12 @@ public class LlmApiService {
 
         if (API_ANTHROPIC.equals(apiType)) {
             List<ChatMessage> augmentedIdentity = buildAnthropicSchemaInstructions(identityMessages, responseSchema);
-            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, augmentedIdentity, model));
+            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, augmentedIdentity, model,
+                    resolveEffort(scope)));
             requestBuilder = buildRequestBuilderForProvider(jsonBody, provider, apiType);
         } else {
-            JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages, model);
+            JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages, model,
+                resolveEffort(scope));
             JsonObject responseFormat = new JsonObject();
             responseFormat.addProperty("type", "json_schema");
             JsonObject jsonSchema = new JsonObject();
@@ -552,6 +561,20 @@ public class LlmApiService {
         return settingsManager.getApiType();
     }
 
+    /** Effort set on the run's request scope, or null when the run set none. */
+    private static Effort resolveEffort(RequestScope scope) {
+        return scope != null ? scope.getEffort() : null;
+    }
+
+    /** Whether the default model has the reasoning flag, which gates the effort API param. */
+    private boolean globalReasoningEnabled() {
+        Object[] selected = settingsManager.getSelectedProviderAndModel();
+        if (selected == null || selected.length < 2 || !(selected[1] instanceof Model)) {
+            return false;
+        }
+        return ((Model) selected[1]).isReasoning();
+    }
+
     private Request.Builder buildRequestBuilderForProvider(String jsonBody,
                                                             io.finett.droidclaw.model.Provider provider,
                                                             String apiType) {
@@ -578,8 +601,10 @@ public class LlmApiService {
     private JsonObject buildOpenAiRequestBody(List<ChatMessage> conversationHistory,
                                                JsonArray tools,
                                                List<ChatMessage> identityMessages,
-                                               io.finett.droidclaw.model.Model model) {
-        JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages);
+                                               io.finett.droidclaw.model.Model model,
+                                               Effort effort) {
+        JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages,
+                effort, model.isReasoning());
         body.addProperty("model", model.getId());
         if (model.getMaxTokens() > 0) {
             body.addProperty("max_tokens", model.getMaxTokens());
@@ -590,8 +615,10 @@ public class LlmApiService {
     private JsonObject buildAnthropicRequestBody(List<ChatMessage> conversationHistory,
                                                    JsonArray tools,
                                                    List<ChatMessage> identityMessages,
-                                                   io.finett.droidclaw.model.Model model) {
-        JsonObject body = buildAnthropicRequestBody(conversationHistory, tools, identityMessages);
+                                                   io.finett.droidclaw.model.Model model,
+                                                   Effort effort) {
+        JsonObject body = buildAnthropicRequestBody(conversationHistory, tools, identityMessages,
+                effort, model.isReasoning());
         body.addProperty("model", model.getId());
         if (model.getMaxTokens() > 0) {
             body.addProperty("max_tokens", model.getMaxTokens());
@@ -649,11 +676,13 @@ public class LlmApiService {
             // Inject schema as a system instruction appended to identity messages
             List<ChatMessage> augmentedIdentity = buildAnthropicSchemaInstructions(
                     identityMessages, responseSchema);
-            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, augmentedIdentity));
+            jsonBody = gson.toJson(buildAnthropicRequestBody(conversationHistory, tools, augmentedIdentity,
+                    resolveEffort(scope), globalReasoningEnabled()));
             requestBuilder = buildAnthropicRequestBuilder(jsonBody);
         } else {
             JsonObject body = buildOpenAiRequestBodyWithStructuredOutput(
-                    conversationHistory, tools, identityMessages, responseSchema);
+                    conversationHistory, tools, identityMessages, responseSchema,
+                    resolveEffort(scope));
             jsonBody = gson.toJson(body);
             requestBuilder = buildOpenAiRequestBuilder(jsonBody);
         }
@@ -743,12 +772,14 @@ public class LlmApiService {
         Request.Builder requestBuilder;
 
         if (API_ANTHROPIC.equals(apiType)) {
-            JsonObject body = buildAnthropicRequestBody(conversationHistory, tools, identityMessages);
+            JsonObject body = buildAnthropicRequestBody(conversationHistory, tools, identityMessages,
+                    resolveEffort(scope), globalReasoningEnabled());
             body.addProperty("stream", true);
             jsonBody = gson.toJson(body);
             requestBuilder = buildAnthropicRequestBuilder(jsonBody);
         } else {
-            JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages);
+            JsonObject body = buildOpenAiRequestBody(conversationHistory, tools, identityMessages,
+                    resolveEffort(scope), globalReasoningEnabled());
             body.addProperty("stream", true);
             JsonObject streamOptions = new JsonObject();
             streamOptions.addProperty("include_usage", true);
@@ -908,7 +939,9 @@ public class LlmApiService {
 
     private JsonObject buildOpenAiRequestBody(List<ChatMessage> conversationHistory,
                                               JsonArray tools,
-                                              List<ChatMessage> identityMessages) {
+                                              List<ChatMessage> identityMessages,
+                                              Effort effort,
+                                              boolean reasoning) {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", settingsManager.getModelName());
         requestBody.addProperty("max_tokens", settingsManager.getMaxTokens());
@@ -939,14 +972,20 @@ public class LlmApiService {
             requestBody.addProperty("tool_choice", "auto");
         }
 
+        if (effort != null && reasoning) {
+            requestBody.addProperty("reasoning_effort", effort.wire());
+        }
+
         return requestBody;
     }
 
     private JsonObject buildOpenAiRequestBodyWithStructuredOutput(List<ChatMessage> conversationHistory,
                                                                    JsonArray tools,
                                                                    List<ChatMessage> identityMessages,
-                                                                   JsonObject responseSchema) {
-        JsonObject requestBody = buildOpenAiRequestBody(conversationHistory, tools, identityMessages);
+                                                                   JsonObject responseSchema,
+                                                                   Effort effort) {
+        JsonObject requestBody = buildOpenAiRequestBody(conversationHistory, tools, identityMessages,
+                effort, globalReasoningEnabled());
 
         JsonObject responseFormat = new JsonObject();
         responseFormat.addProperty("type", "json_schema");
@@ -974,7 +1013,9 @@ public class LlmApiService {
      */
     private JsonObject buildAnthropicRequestBody(List<ChatMessage> conversationHistory,
                                                   JsonArray openAiTools,
-                                                  List<ChatMessage> identityMessages) {
+                                                  List<ChatMessage> identityMessages,
+                                                  Effort effort,
+                                                  boolean reasoning) {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("model", settingsManager.getModelName());
         requestBody.addProperty("max_tokens", settingsManager.getMaxTokens());
@@ -1024,6 +1065,12 @@ public class LlmApiService {
                 toolChoice.addProperty("type", "auto");
                 requestBody.add("tool_choice", toolChoice);
             }
+        }
+
+        if (effort != null && reasoning) {
+            JsonObject outputConfig = new JsonObject();
+            outputConfig.addProperty("effort", effort.wire());
+            requestBody.add("output_config", outputConfig);
         }
 
         return requestBody;

@@ -9,7 +9,7 @@ public class AgentConfig {
     private String defaultModel; // Format: "provider-id/model-id"
     private boolean shellAccess;
     private String sandboxMode; // "strict", "relaxed", or "full"
-    private int maxIterations;
+    private String effort; // reasoning effort / turn budget level (see Effort)
     private boolean requireApproval;
     private int shellTimeout;
     private boolean backgroundShellEnabled; // allow shell/python in background workers
@@ -40,6 +40,7 @@ public class AgentConfig {
     public AgentConfig() {
         this.customAllowlist = new ArrayList<>();
         this.streamResponses = true;
+        this.effort = Effort.getDefault().persistedName();
         this.llmConnectTimeout = 30;
         this.llmReadTimeout = 120;
         this.llmWriteTimeout = 30;
@@ -58,13 +59,13 @@ public class AgentConfig {
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
-                       int maxIterations, boolean requireApproval, int shellTimeout,
+                       boolean requireApproval, int shellTimeout,
                        boolean backgroundShellEnabled, List<String> customAllowlist) {
         this.defaultModel = defaultModel;
         this.shellAccess = shellAccess;
         this.sandboxMode = sandboxMode;
-        this.maxIterations = maxIterations;
         this.requireApproval = requireApproval;
+        this.effort = Effort.getDefault().persistedName();
         this.shellTimeout = shellTimeout;
         this.backgroundShellEnabled = backgroundShellEnabled;
         this.backgroundExecEnabled = false;
@@ -90,7 +91,6 @@ public class AgentConfig {
                 "",
                 false,
                 "strict",
-                20,
                 true,
                 30,
                 false,
@@ -122,12 +122,13 @@ public class AgentConfig {
         this.sandboxMode = sandboxMode;
     }
 
-    public int getMaxIterations() {
-        return maxIterations;
+    /** Current reasoning effort / turn-budget level. See {@link Effort}. */
+    public String getEffort() {
+        return effort;
     }
 
-    public void setMaxIterations(int maxIterations) {
-        this.maxIterations = maxIterations;
+    public void setEffort(String effort) {
+        this.effort = effort;
     }
 
     public boolean isRequireApproval() {

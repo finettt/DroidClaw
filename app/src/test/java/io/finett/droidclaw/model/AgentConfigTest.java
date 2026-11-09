@@ -33,7 +33,6 @@ public class AgentConfigTest {
             "openai/gpt-5.4",
             true,
             "relaxed",
-            50,
             false,
             60,
             true,
@@ -43,7 +42,7 @@ public class AgentConfigTest {
         assertEquals("openai/gpt-5.4", c.getDefaultModel());
         assertTrue(c.isShellAccess());
         assertEquals("relaxed", c.getSandboxMode());
-        assertEquals(50, c.getMaxIterations());
+        assertEquals("med", c.getEffort());
         assertFalse(c.isRequireApproval());
         assertEquals(60, c.getShellTimeout());
         assertTrue(c.isBackgroundShellEnabled());
@@ -59,7 +58,7 @@ public class AgentConfigTest {
         assertEquals("", defaults.getDefaultModel());
         assertFalse(defaults.isShellAccess());
         assertEquals("strict", defaults.getSandboxMode());
-        assertEquals(20, defaults.getMaxIterations());
+        assertEquals("med", defaults.getEffort());
         assertTrue(defaults.isRequireApproval());
         assertEquals(30, defaults.getShellTimeout());
         assertFalse(defaults.isBackgroundShellEnabled());
@@ -100,9 +99,9 @@ public class AgentConfigTest {
     }
 
     @Test
-    public void setMaxIterations_updatesMaxIterations() {
-        config.setMaxIterations(100);
-        assertEquals(100, config.getMaxIterations());
+    public void setEffort_updatesEffort() {
+        config.setEffort("high");
+        assertEquals("high", config.getEffort());
     }
 
     @Test
@@ -207,15 +206,15 @@ public class AgentConfigTest {
     }
 
     @Test
-    public void config_withZeroMaxIterations_acceptsValue() {
-        config.setMaxIterations(0);
-        assertEquals(0, config.getMaxIterations());
+    public void config_effortCanBeSetToMax_acceptsValue() {
+        config.setEffort("max");
+        assertEquals("max", config.getEffort());
     }
 
     @Test
-    public void config_withNegativeMaxIterations_acceptsValue() {
-        config.setMaxIterations(-1);
-        assertEquals(-1, config.getMaxIterations());
+    public void config_effortCanBeSetToLow_acceptsValue() {
+        config.setEffort("low");
+        assertEquals("low", config.getEffort());
     }
 
     @Test
@@ -231,9 +230,9 @@ public class AgentConfigTest {
     }
 
     @Test
-    public void config_withVeryLargeMaxIterations_acceptsValue() {
-        config.setMaxIterations(Integer.MAX_VALUE);
-        assertEquals(Integer.MAX_VALUE, config.getMaxIterations());
+    public void config_effortCanBeSetToXHigh_acceptsValue() {
+        config.setEffort("xhigh");
+        assertEquals("xhigh", config.getEffort());
     }
 
     @Test
@@ -267,7 +266,7 @@ public class AgentConfigTest {
         config.setDefaultModel("openai/gpt-5.4");
         config.setShellAccess(true);
         config.setSandboxMode("relaxed");
-        config.setMaxIterations(50);
+        config.setEffort("high");
         config.setRequireApproval(false);
         config.setShellTimeout(60);
         config.setBackgroundShellEnabled(true);
@@ -276,7 +275,7 @@ public class AgentConfigTest {
         assertEquals("openai/gpt-5.4", config.getDefaultModel());
         assertTrue(config.isShellAccess());
         assertEquals("relaxed", config.getSandboxMode());
-        assertEquals(50, config.getMaxIterations());
+        assertEquals("high", config.getEffort());
         assertFalse(config.isRequireApproval());
         assertEquals(60, config.getShellTimeout());
         assertTrue(config.isBackgroundShellEnabled());
@@ -285,7 +284,7 @@ public class AgentConfigTest {
         config.setDefaultModel("anthropic/claude-sonnet-4-6");
         config.setShellAccess(false);
         config.setSandboxMode("strict");
-        config.setMaxIterations(20);
+        config.setEffort("med");
         config.setRequireApproval(true);
         config.setShellTimeout(30);
         config.setBackgroundShellEnabled(false);
@@ -294,7 +293,7 @@ public class AgentConfigTest {
         assertEquals("anthropic/claude-sonnet-4-6", config.getDefaultModel());
         assertFalse(config.isShellAccess());
         assertEquals("strict", config.getSandboxMode());
-        assertEquals(20, config.getMaxIterations());
+        assertEquals("med", config.getEffort());
         assertTrue(config.isRequireApproval());
         assertEquals(30, config.getShellTimeout());
         assertFalse(config.isBackgroundShellEnabled());

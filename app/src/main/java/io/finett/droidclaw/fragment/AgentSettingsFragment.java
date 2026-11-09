@@ -27,6 +27,7 @@ import java.util.List;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.accessibility.AccessibilityBridge;
 import io.finett.droidclaw.model.AgentConfig;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.shell.SshConfig;
 import io.finett.droidclaw.shell.SshShellBackend;
 import io.finett.droidclaw.util.CalendarPermissionHelper;
@@ -267,7 +268,9 @@ public class AgentSettingsFragment extends Fragment {
                 dropdownSandboxMode.setText(getString(R.string.sandbox_strict), false);
             }
 
-            inputMaxIterations.setText(String.valueOf(agentConfig.getMaxIterations()));
+            Effort effort = effortOrDefault(agentConfig.getEffort());
+            inputMaxIterations.setText(String.valueOf(
+                    effort.isUnlimited() ? DISPLAY_UNLIMITED : effort.turnBudget()));
             switchRequireApproval.setChecked(agentConfig.isRequireApproval());
             switchStreamResponses.setChecked(agentConfig.isStreamResponses());
             inputShellTimeout.setText(String.valueOf(agentConfig.getShellTimeout()));
@@ -584,6 +587,17 @@ public class AgentSettingsFragment extends Fragment {
         }
     }
 
+    /** Sentinel turn budget shown for the unlimited (Max) effort level. */
+    private static final int DISPLAY_UNLIMITED = 1_000_000;
+
+    private static Effort effortOrDefault(String value) {
+        try {
+            return Effort.fromString(value);
+        } catch (IllegalArgumentException e) {
+            return Effort.getDefault();
+        }
+    }
+
     private void saveAgentSettings() {
         String maxIterationsStr = inputMaxIterations.getText().toString().trim();
         String shellTimeoutStr = inputShellTimeout.getText().toString().trim();
@@ -591,8 +605,8 @@ public class AgentSettingsFragment extends Fragment {
         int maxIterations;
         try {
             maxIterations = Integer.parseInt(maxIterationsStr);
-            if (maxIterations < 1 || maxIterations > 50) {
-                inputMaxIterations.setError("Max iterations must be between 1 and 50");
+            if (maxIterations < 1) {
+                inputMaxIterations.setError(getString(R.string.validation_invalid_number));
                 return;
             }
         } catch (NumberFormatException e) {
@@ -658,7 +672,8 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setDefaultModel(selectedModel);
         agentConfig.setShellAccess(switchShellAccess.isChecked());
         agentConfig.setSandboxMode(sandboxMode);
-        agentConfig.setMaxIterations(maxIterations);
+        // The numeric field expresses the turn budget; map it to an effort level.
+        agentConfig.setEffort(Effort.fromMaxIterations(maxIterations).persistedName());
         agentConfig.setRequireApproval(switchRequireApproval.isChecked());
         agentConfig.setStreamResponses(switchStreamResponses.isChecked());
         agentConfig.setShellTimeout(shellTimeout);
