@@ -23,7 +23,21 @@ Once a provider is added, you can select which specific models are available for
 
 Adjust how the agent interacts and processes tasks:
 
-- **Max Iterations**: Limits how many steps the agent can take in a single loop to prevent infinite loops or excessive API usage.
+- **Effort**: Replaces the old "Max Iterations" number. It sets two things at once — the reasoning level sent to the API and the agent's turn budget (how many iterations the loop runs before it stops). Levels:
+
+| Level | Turn budget (iterations) |
+| --- | --- |
+| Low | 8 |
+| Medium | 20 |
+| High | 40 |
+| Very High | 80 |
+| Max | No turn cap |
+
+- **Turn budget**: the loop stops after this many iterations and reports a "Maximum iterations" message. **Max** never imposes a cap and runs without a limit.
+- **API parameter**: for reasoning-capable models the effort is sent to the provider (OpenAI `reasoning_effort`, Anthropic `output_config.effort`). It is only sent when the selected model actually flags reasoning; the turn budget always applies regardless of the model.
+- **Quick switch**: the effort chip row above the message box switches effort for the current chat. The change applies to the next run of the session and never writes to global settings — it is a per-session override. Change it there without opening Settings.
+
+Pick a higher level for tasks that need more planning or deeper reasoning, and a lower one to save tokens on quick questions.
 - **Context Window**: Configure how much conversation history is sent to the model.
 - **Require Approval**: Ask for confirmation before executing tools that change state.
 - **Stream Responses**: When enabled (default), LLM text is streamed live over SSE as it is generated, instead of waiting for the full answer. Disable it if a provider does not support streaming.

@@ -54,6 +54,7 @@ import io.finett.droidclaw.filesystem.FileUploadManager;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.ChatSession;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
@@ -80,6 +81,10 @@ public class ChatFragment extends Fragment {
     private View statusContainer;
     private HorizontalScrollView attachmentBarContainer;
     private LinearLayout attachmentBar;
+    private HorizontalScrollView effortSwitcherContainer;
+    private LinearLayout effortChips;
+    /** Chat-local effort override; applied to the next run of this session. */
+    private Effort chatEffort;
     private ProgressBar progressBar;
     private TextView statusText;
     private TextView statusSubText;
@@ -477,6 +482,63 @@ public class ChatFragment extends Fragment {
         setupRecyclerView();
         setupClickListeners();
         setupSearchBar();
+        buildEffortChips();
+    }
+
+    /** Build the effort quick-switcher strip and show it when a session exists. */
+    private void buildEffortChips() {
+        effortChips.removeAllViews();
+        chatEffort = resolveChatEffort();
+        for (Effort level : EFFORT_LEVELS) {
+            Chip chip = new Chip(requireContext());
+            chip.setText(getString(effortLabelRes(level)));
+            chip.setCheckable(true);
+            chip.setChecked(level.equals(chatEffort));
+            chip.setOnClickListener(v -> setChatEffort(level));
+            effortChips.addView(chip);
+        }
+        effortSwitcherContainer.setVisibility(
+                currentSessionId != null ? View.VISIBLE : View.GONE);
+    }
+
+    /** Effort levels in display order, matching the settings dropdown. */
+    private static final Effort[] EFFORT_LEVELS = {
+            Effort.LOW, Effort.MEDIUM, Effort.HIGH, Effort.XHIGH, Effort.MAX
+    };
+
+    /** String resource id for the display label of an effort level. */
+    private static int effortLabelRes(Effort effort) {
+        switch (effort) {
+            case LOW: return R.string.effort_low;
+            case MEDIUM: return R.string.effort_medium;
+            case HIGH: return R.string.effort_high;
+            case XHIGH: return R.string.effort_xhigh;
+            default: return R.string.effort_max;
+        }
+    }
+
+    /** Effort for this chat: the session override if set, else the global config. */
+    private Effort resolveChatEffort() {
+        Effort override = (agentExecutionService != null && currentSessionId != null)
+                ? agentExecutionService.getSessionEffort(currentSessionId) : null;
+        if (override != null) return override;
+        try {
+            return Effort.fromString(settingsManager.getAgentConfig().getEffort());
+        } catch (IllegalArgumentException e) {
+            return Effort.getDefault();
+        }
+    }
+
+    /** Apply a chat effort selection, store the per-session override, refresh the strip. */
+    private void setChatEffort(Effort effort) {
+        chatEffort = effort;
+        if (agentExecutionService != null && currentSessionId != null) {
+            agentExecutionService.setSessionEffort(currentSessionId, effort);
+        }
+        for (int i = 0; i < effortChips.getChildCount(); i++) {
+            Chip chip = (Chip) effortChips.getChildAt(i);
+            chip.setChecked(EFFORT_LEVELS[i].equals(effort));
+        }
     }
 
     private void initViews(View view) {
@@ -487,6 +549,8 @@ public class ChatFragment extends Fragment {
         statusContainer        = view.findViewById(R.id.statusContainer);
         attachmentBarContainer = view.findViewById(R.id.attachmentBarContainer);
         attachmentBar          = view.findViewById(R.id.attachmentBar);
+        effortSwitcherContainer = view.findViewById(R.id.effortSwitcherContainer);
+        effortChips              = view.findViewById(R.id.effortChips);
         progressBar            = view.findViewById(R.id.progressBar);
         statusText             = view.findViewById(R.id.statusText);
         statusSubText          = view.findViewById(R.id.statusSubText);

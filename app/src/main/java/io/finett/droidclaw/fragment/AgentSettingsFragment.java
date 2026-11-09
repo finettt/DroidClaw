@@ -38,7 +38,7 @@ public class AgentSettingsFragment extends Fragment {
     private AutoCompleteTextView dropdownDefaultModel;
     private SwitchMaterial switchShellAccess;
     private AutoCompleteTextView dropdownSandboxMode;
-    private TextInputEditText inputMaxIterations;
+    private AutoCompleteTextView dropdownEffort;
     private SwitchMaterial switchRequireApproval;
     private SwitchMaterial switchStreamResponses;
     private TextInputEditText inputShellTimeout;
@@ -144,7 +144,7 @@ public class AgentSettingsFragment extends Fragment {
         dropdownDefaultModel = view.findViewById(R.id.dropdown_default_model);
         switchShellAccess = view.findViewById(R.id.switch_shell_access);
         dropdownSandboxMode = view.findViewById(R.id.dropdown_sandbox_mode);
-        inputMaxIterations = view.findViewById(R.id.input_max_iterations);
+        dropdownEffort = view.findViewById(R.id.dropdown_effort);
         switchRequireApproval = view.findViewById(R.id.switch_require_approval);
         switchStreamResponses = view.findViewById(R.id.switch_stream_responses);
         inputShellTimeout = view.findViewById(R.id.input_shell_timeout);
@@ -222,6 +222,16 @@ public class AgentSettingsFragment extends Fragment {
         );
         dropdownSandboxMode.setAdapter(sandboxAdapter);
 
+        String[] effortLabels = new String[EFFORT_LEVELS.length];
+        for (int i = 0; i < EFFORT_LEVELS.length; i++) {
+            effortLabels[i] = getString(effortLabelRes(EFFORT_LEVELS[i]));
+        }
+        ArrayAdapter<String> effortAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                effortLabels
+        );
+        dropdownEffort.setAdapter(effortAdapter);
         // Terminal backend dropdown
         String[] terminalBackends = {
                 getString(R.string.terminal_backend_local),
@@ -268,9 +278,7 @@ public class AgentSettingsFragment extends Fragment {
                 dropdownSandboxMode.setText(getString(R.string.sandbox_strict), false);
             }
 
-            Effort effort = effortOrDefault(agentConfig.getEffort());
-            inputMaxIterations.setText(String.valueOf(
-                    effort.isUnlimited() ? DISPLAY_UNLIMITED : effort.turnBudget()));
+            dropdownEffort.setText(effortLabel(agentConfig.getEffort()), false);
             switchRequireApproval.setChecked(agentConfig.isRequireApproval());
             switchStreamResponses.setChecked(agentConfig.isStreamResponses());
             inputShellTimeout.setText(String.valueOf(agentConfig.getShellTimeout()));
@@ -587,8 +595,10 @@ public class AgentSettingsFragment extends Fragment {
         }
     }
 
-    /** Sentinel turn budget shown for the unlimited (Max) effort level. */
-    private static final int DISPLAY_UNLIMITED = 1_000_000;
+    /** Effort levels in display order for the settings dropdown and chat chips. */
+    private static final Effort[] EFFORT_LEVELS = {
+            Effort.LOW, Effort.MEDIUM, Effort.HIGH, Effort.XHIGH, Effort.MAX
+    };
 
     private static Effort effortOrDefault(String value) {
         try {
@@ -598,21 +608,40 @@ public class AgentSettingsFragment extends Fragment {
         }
     }
 
-    private void saveAgentSettings() {
-        String maxIterationsStr = inputMaxIterations.getText().toString().trim();
-        String shellTimeoutStr = inputShellTimeout.getText().toString().trim();
+    /** String resource id for the display label of an effort level. */
+    private static int effortLabelRes(Effort effort) {
+        switch (effort) {
+            case LOW: return R.string.effort_low;
+            case MEDIUM: return R.string.effort_medium;
+            case HIGH: return R.string.effort_high;
+            case XHIGH: return R.string.effort_xhigh;
+            default: return R.string.effort_max;
+        }
+    }
 
-        int maxIterations;
-        try {
-            maxIterations = Integer.parseInt(maxIterationsStr);
-            if (maxIterations < 1) {
-                inputMaxIterations.setError(getString(R.string.validation_invalid_number));
-                return;
+    /** Display label for an effort level, resolved from the current locale. */
+    private String effortLabel(String persistedName) {
+        return getString(effortLabelRes(effortOrDefault(persistedName)));
+    }
+
+    /** Map a shown effort label back to its level; null if it matches none. */
+    private Effort resolveEffortFromLabel(String label) {
+        for (Effort level : EFFORT_LEVELS) {
+            if (getString(effortLabelRes(level)).equals(label)) {
+                return level;
             }
-        } catch (NumberFormatException e) {
-            inputMaxIterations.setError(getString(R.string.validation_invalid_number));
+        }
+        return null;
+    }
+
+    private void saveAgentSettings() {
+        Effort effort = resolveEffortFromLabel(dropdownEffort.getText().toString().trim());
+        if (effort == null) {
+            dropdownEffort.setError(getString(R.string.validation_invalid_number));
             return;
         }
+
+        String shellTimeoutStr = inputShellTimeout.getText().toString().trim();
 
         int shellTimeout;
         try {
@@ -672,8 +701,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setDefaultModel(selectedModel);
         agentConfig.setShellAccess(switchShellAccess.isChecked());
         agentConfig.setSandboxMode(sandboxMode);
-        // The numeric field expresses the turn budget; map it to an effort level.
-        agentConfig.setEffort(Effort.fromMaxIterations(maxIterations).persistedName());
+        agentConfig.setEffort(effort.persistedName());
         agentConfig.setRequireApproval(switchRequireApproval.isChecked());
         agentConfig.setStreamResponses(switchStreamResponses.isChecked());
         agentConfig.setShellTimeout(shellTimeout);
