@@ -24,6 +24,7 @@ import java.util.List;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.api.TokenUsage;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.model.ToolApprovalMode;
 import io.finett.droidclaw.tool.Tool;
 import java.util.Collections;
@@ -813,6 +814,71 @@ public class AgentLoopTest {
         verify(mockCallback).onToolResult(eq("write_file"), contains("blocked"));
         verify(mockCallback, never()).onApprovalRequired(anyString(), anyString(),
                 any(JsonObject.class), any(AgentLoop.ApprovalCallback.class));
+    }
+
+    // ==================== Effort turn-budget stop behavior ====================
+
+    private void stubApiWithToolCallsFor(int toolCallCount) {
+        when(mockToolRegistry.getToolDefinitions()).thenReturn(new JsonArray());
+        when(mockToolRegistry.executeTool(anyString(), any(JsonObject.class)))
+                .thenReturn(ToolResult.success("ok"));
+        Answer<Void> toolCallAnswer = new Answer<Void>() {
+            private int calls = 0;
+
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                calls++;
+                LlmApiService.ChatCallbackWithTools callback =
+                        invocation.getArgument(4, LlmApiService.ChatCallbackWithTools.class);
+                if (calls <= toolCallCount) {
+                    LlmApiService.ToolCall toolCall = new LlmApiService.ToolCall(
+                            "call_" + calls, "file_read", new JsonObject());
+                    callback.onSuccess(new LlmApiService.LlmResponse(null,
+                            Collections.singletonList(toolCall)));
+                } else {
+                    callback.onSuccess(new LlmApiService.LlmResponse("done", null));
+                }
+                return null;
+            }
+        };
+        doAnswer(toolCallAnswer).when(mockApiService).sendMessageWithTools(
+                anyList(), any(JsonArray.class), any(), any(),
+                any(LlmApiService.ChatCallbackWithTools.class));
+    }
+
+    @Test
+    public void effortLowStopsLoopAtTurnBudget() {
+        stubApiWithToolCallsFor(100); // would otherwise run forever
+        agentLoop.setEffortOverride(Effort.LOW); // budget 8
+        agentLoop.start(createSimpleConversation(), mockCallback);
+
+        verify(mockCallback).onError(contains("Maximum iterations"));
+        verify(mockCallback, never()).onComplete(anyString(), anyList());
+        assertEquals("LOW budget of 8 stops the loop at iteration 9", 9, agentLoop.getIterationCount());
+    }
+
+    @Test
+    public void effortMaxWithNoExplicitCapRunsBeyondBudget() {
+        stubApiWithToolCallsFor(12); // tool call for 12 iterations, then a text response
+        agentLoop.setEffortOverride(Effort.MAX); // unbounded budget
+
+        agentLoop.start(createSimpleConversation(), mockCallback);
+
+        verify(mockCallback).onComplete(eq("done"), anyList());
+        verify(mockCallback, never()).onError(contains("Maximum iterations"));
+        assertTrue("MAX must not impose the LOW/MEDIUM budget", agentLoop.getIterationCount() >= 11);
+    }
+
+    @Test
+    public void explicitMaxIterationsWinsOverTighterBudget() {
+        stubApiWithToolCallsFor(100);
+        agentLoop.setEffortOverride(Effort.HIGH); // budget 40
+        agentLoop.setMaxIterations(5);             // explicit cap tighter than 40
+        agentLoop.start(createSimpleConversation(), mockCallback);
+
+        verify(mockCallback).onError(contains("Maximum iterations"));
+        verify(mockCallback, never()).onComplete(anyString(), anyList());
+        assertEquals("explicit cap of 5 stops the loop at iteration 6", 6, agentLoop.getIterationCount());
     }
 
 }

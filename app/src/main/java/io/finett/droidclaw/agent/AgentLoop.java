@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.api.RequestScope;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.model.ToolApprovalMode;
 import io.finett.droidclaw.service.BackgroundProcessManager;
@@ -32,7 +33,6 @@ import io.finett.droidclaw.repository.MemoryRepository;
 
 public class AgentLoop {
     private static final String TAG = "AgentLoop";
-    private static final int DEFAULT_MAX_ITERATIONS = 20;
 
     private static final Pattern FILE_PATH_PATTERN = Pattern.compile(
         "(?:`([^`]+)`|(/data/data/[^\\s]+|uploads/[^\\s]+|home/[^\\s]+|tmp/[^\\s]+))"
@@ -45,7 +45,12 @@ public class AgentLoop {
     private final MemoryContextBuilder memoryContext;
     private final Executor workflowExecutor;
     private int iterationCount;
+    /** Explicit per-node turn cap (workflow max_turns); 0 means unset. */
     private int maxIterations;
+    /** Effort override for this run (chat switcher / workflow node); null means global. */
+    private Effort effortOverride;
+    /** Effort resolved from the global agent config for this run. */
+    private Effort globalEffort;
     private boolean requireApproval;
     private boolean streamResponses;
     private List<ChatMessage> identityMessages;
@@ -202,14 +207,15 @@ public class AgentLoop {
         this.summarizer = summarizer;
         this.memoryContext = memoryContext;
         this.iterationCount = 0;
+        this.maxIterations = 0; // unset; the effort budget caps the run unless a node sets max_turns
 
         if (settingsManager != null) {
-            this.maxIterations = settingsManager.getMaxAgentIterations();
+            this.globalEffort = resolveEffort(settingsManager.getAgentConfig());
             this.requireApproval = settingsManager.isRequireApproval();
             io.finett.droidclaw.model.AgentConfig cfg = settingsManager.getAgentConfig();
             this.streamResponses = cfg != null && cfg.isStreamResponses();
         } else {
-            this.maxIterations = DEFAULT_MAX_ITERATIONS;
+            this.globalEffort = Effort.getDefault();
             this.requireApproval = true;
             // No settings manager (unit tests / programmatic use): keep the
             // legacy non-streaming path.
@@ -230,6 +236,48 @@ public class AgentLoop {
      */
     public void setMaxIterations(int max) {
         this.maxIterations = Math.max(1, Math.min(200, max));
+    }
+
+    /**
+     * Override the reasoning effort / turn budget for this run. Takes priority
+     * over the global setting. Pass {@code null} to clear and fall back to the
+     * global effort. Used by the chat switcher and workflow nodes.
+     */
+    public void setEffortOverride(Effort effort) {
+        this.effortOverride = effort;
+    }
+
+    /** Effort in effect for this run: the override if set, otherwise the global effort. */
+    public Effort getEffort() {
+        return effortOverride != null ? effortOverride : globalEffort;
+    }
+
+    /**
+     * The turn cap for the current run: the tighter of the active effort's budget
+     * and any explicit per-node cap set via {@link #setMaxIterations} (workflow
+     * max_turns). An effort with no budget (Max) and no explicit cap leaves the
+     * run uncapped, returned as 0 so the stop-check is skipped entirely.
+     */
+    private int effectiveTurnCap() {
+        Effort effort = getEffort();
+        int budget = effort.turnBudget();
+        if (effort.isUnlimited()) {
+            return maxIterations > 0 ? maxIterations : 0;
+        }
+        if (maxIterations <= 0) {
+            return budget;
+        }
+        return Math.min(budget, maxIterations);
+    }
+
+    /** Resolve an effort string from the agent config, falling back to the default. */
+    private static Effort resolveEffort(io.finett.droidclaw.model.AgentConfig cfg) {
+        if (cfg == null) return Effort.getDefault();
+        try {
+            return Effort.fromString(cfg.getEffort());
+        } catch (IllegalArgumentException e) {
+            return Effort.getDefault();
+        }
     }
 
     public void setIdentityContext(List<ChatMessage> identityMessages) {
@@ -258,6 +306,7 @@ public class AgentLoop {
         cancelled.set(false);
         cancelFinalized.set(false);
         runScope = new RequestScope();
+        runScope.setEffort(getEffort());
         synchronized (streamedText) {
             streamedText.setLength(0);
         }
@@ -341,6 +390,7 @@ public class AgentLoop {
         activeHistory = null;
         setApprovalOverrides(null);
         setModelOverride(null, null);
+        this.effortOverride = null;
     }
 
     /**
@@ -352,13 +402,14 @@ public class AgentLoop {
         }
         iterationCount++;
 
-        if (iterationCount > maxIterations) {
+        int cap = effectiveTurnCap();
+        if (cap > 0 && iterationCount > cap) {
             detachActiveRun();
-            callback.onError("Maximum iterations (" + maxIterations + ") reached. The agent may be stuck in a loop.");
+            callback.onError("Maximum iterations (" + cap + ") reached. The agent may be stuck in a loop.");
             return;
         }
 
-        Log.d(TAG, "Iteration " + iterationCount + "/" + maxIterations);
+        Log.d(TAG, "Iteration " + iterationCount + "/" + cap);
 
         // Check if summarization needed using "Last Usage" algorithm (if summarizer available)
         // Use actual current context tokens instead of estimated tokens

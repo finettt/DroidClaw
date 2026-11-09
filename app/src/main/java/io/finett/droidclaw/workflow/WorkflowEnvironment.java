@@ -19,7 +19,7 @@ public interface WorkflowEnvironment {
      */
     boolean hasModel(String providerId, String modelId);
 
-    /** Global {@code AgentConfig.maxIterations}, used when a node sets no {@code max_turns}. */
+    /** Global turn budget derived from {@code AgentConfig.effort}, used when a node sets no {@code max_turns}. */
     int defaultMaxTurns();
 
     /** Whether {@code requireApproval} is on globally, for the {@code inherit} policy. */
