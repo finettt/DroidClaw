@@ -58,8 +58,8 @@ public class AgentSettingsFragmentInstrumentedTest {
                         view.findViewById(R.id.switch_shell_access));
                 assertNotNull("Sandbox mode dropdown should exist",
                         view.findViewById(R.id.dropdown_sandbox_mode));
-                assertNotNull("Max iterations input should exist",
-                        view.findViewById(R.id.input_max_iterations));
+                assertNotNull("Effort dropdown should exist",
+                        view.findViewById(R.id.dropdown_effort));
                 assertNotNull("Require approval switch should exist",
                         view.findViewById(R.id.switch_require_approval));
                 assertNotNull("Shell timeout input should exist",
