@@ -887,10 +887,16 @@ public class AgentLoopTest {
 
     /** A real AgentConfig so the test can assert the global config is never mutated. */
     private static SettingsManager settingsManagerWithEffort(String effort) {
+        // Non-streaming, to match the existing effort-budget tests that drive the loop
+        // through the non-streaming sendMessageWithTools path.
         AgentConfig config = new AgentConfig();
         config.setEffort(effort);
+        config.setStreamResponses(false);
         SettingsManager settingsManager = mock(SettingsManager.class);
         when(settingsManager.getAgentConfig()).thenReturn(config);
+        // Fully stub the mock so no boolean/object falls back to Mockito's
+        // implicit default (e.g. isRequireApproval). Leave nothing to defaults.
+        when(settingsManager.isRequireApproval()).thenReturn(true);
         return settingsManager;
     }
 
@@ -913,7 +919,7 @@ public class AgentLoopTest {
         assertEquals("Clearing the override falls back to the global effort", Effort.HIGH, loop.getEffort());
     }
 
-    @Test
+    @Test(timeout = 10_000) // a stalled loop fails here (with the iteration count)
     public void effortOverride_overGlobal_drives_loop_stop_budget() {
         SettingsManager settingsManager = settingsManagerWithEffort("high");
         AgentLoop loop = new AgentLoop(mockApiService, mockToolRegistry, settingsManager);
