@@ -408,4 +408,13 @@
     <string name="workflow_review_failed">Невозможно безопасно проверить процесс: %1$s</string>
     <string name="workflow_review_execution_model">\nМодель выполнения: %1$s. Поле `model` узла переопределяет её только для этого узла.\n</string>
     <string name="workflow_review_live_settings">Показаны настройки на момент проверки. Изменения до запуска требуют повторного подтверждения. Запущенный процесс использует текущие глобальные настройки.\n</string>
+<!-- In-app update checker -->
+    <string name="info_check_for_updates">Проверить обновления</string>
+    <string name="info_update_check_enabled">Автоматически проверять обновления</string>
+    <string name="info_updates_up_to_date">Вы используете последнюю версию</string>
+    <string name="info_updates_failed">Не удалось проверить обновления</string>
+    <string name="info_update_banner">Доступная новая версия %1$s — коснитесь, чтобы посмотреть</string>
+    <string name="update_dialog_title">%1$s доступен</string>
+    <string name="update_dialog_open">Открыть релиз</string>
+    <string name="update_dialog_later">Позже</string>
 </resources>

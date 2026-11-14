@@ -57,6 +57,56 @@
 
         </LinearLayout>
 
+        <!-- In-app update checker -->
+        <LinearLayout
+            android:id="@+id/layout_update"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="24dp"
+            android:gravity="center_horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_check_updates"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/info_check_for_updates"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_auto_update"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/info_update_check_enabled" />
+
+            <!-- Banner for a known-newer release; gone until a newer tag is stored -->
+            <LinearLayout
+                android:id="@+id/banner_update"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/colorSecondaryContainer"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:layout_marginTop="4dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/banner_update_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/info_update_banner"
+                    android:textSize="14sp"
+                    android:textColor="?attr/colorOnSecondaryContainer" />
+            </LinearLayout>
+        </LinearLayout>
+
         <!-- Spacer to push image to bottom -->
         <View
             android:layout_width="match_parent"
