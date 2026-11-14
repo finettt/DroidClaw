@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import io.finett.droidclaw.model.Effort;
+
 /**
  * Node-level defaults applied when a node omits the field, plus two runner-level
  * settings that are not per-node.
@@ -24,6 +26,7 @@ public final class WorkflowDefaults {
     public static final int MAX_MAX_NODES = 64;
 
     private String model;
+    private Effort effort;
     private Integer maxTurns;
     private Integer timeoutMs;
     private List<String> allowedTools;
@@ -38,6 +41,8 @@ public final class WorkflowDefaults {
 
     public String getModel() { return model; }
     public void setModel(String v) { this.model = v; }
+    public Effort getEffort() { return effort; }
+    public void setEffort(Effort v) { this.effort = v; }
     public Integer getMaxTurns() { return maxTurns; }
     public void setMaxTurns(Integer v) { this.maxTurns = v; }
     public Integer getTimeoutMs() { return timeoutMs; }
@@ -80,6 +85,15 @@ public final class WorkflowDefaults {
     /** Effective model reference for a node; may still be {@code null} (use global default). */
     public String resolveModel(String node) {
         return node != null ? node : model;
+    }
+
+    /**
+     * Effective effort for a node: the node field when set, otherwise the defaults
+     * effort. {@code null} means neither set, so the run falls back to the global
+     * {@code AgentConfig.effort} resolved by the loop.
+     */
+    public Effort resolveEffort(Effort node) {
+        return node != null ? node : effort;
     }
 
     public Integer resolveMaxTurns(Integer node) {

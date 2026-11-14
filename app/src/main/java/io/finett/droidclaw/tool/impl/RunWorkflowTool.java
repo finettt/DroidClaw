@@ -13,6 +13,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import io.finett.droidclaw.R;
+import io.finett.droidclaw.model.AgentConfig;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.workflow.Workflow;
 import io.finett.droidclaw.workflow.WorkflowAgent;
 import io.finett.droidclaw.workflow.WorkflowParser;
@@ -274,6 +276,7 @@ public class RunWorkflowTool implements Tool {
             throw new IOException(parsed.getIssues().describe());
         }
         Workflow workflow = parsed.getWorkflow();
+        Effort globalEffort = globalEffort();
         StringBuilder summary = new StringBuilder(context.getString(R.string.workflow_review_header,
                 name, workflow.getGoal(), workflow.getAgentCount()));
         String globalModel = settingsManager.getDefaultModel();
@@ -311,13 +314,39 @@ public class RunWorkflowTool implements Tool {
             String model = workflow.getDefaults().resolveModel(agent.getModel());
             if (model == null) model = settingsManager.getDefaultModel();
             if (model == null) model = context.getString(R.string.workflow_review_global_model);
+            String effortSuffix = effortSuffix(workflow.getDefaults().resolveEffort(agent.getEffort()),
+                    globalEffort);
             summary.append(context.getString(R.string.workflow_review_agent, agent.getKey(), model,
                     effectiveAllowed.toString(), effectiveDenied.toString(),
-                    policy.jsonValue(), effectivePolicy.jsonValue()));
+                    policy.jsonValue(), effectivePolicy.jsonValue(), effortSuffix));
             autoApprove |= effectivePolicy == WorkflowApprovalPolicy.AUTO_APPROVE;
         }
         if (autoApprove) summary.append(context.getString(R.string.workflow_review_auto_approve));
         return summary.append("\nSHA-256: ").append(hash).toString();
+    }
+
+    /** Global effort resolved from the agent config, for the review's override comparison. */
+    private Effort globalEffort() {
+        AgentConfig cfg = settingsManager.getAgentConfig();
+        if (cfg == null) return Effort.getDefault();
+        try {
+            return Effort.fromString(cfg.getEffort());
+        } catch (RuntimeException e) {
+            return Effort.getDefault();
+        }
+    }
+
+    /**
+     * A short string describing a node's effective effort, or empty when it inherits the
+     * global effort. Only shown when the node actually overrides the global level, so the
+     * review summary highlights the nodes that differ from the default.
+     */
+    private static String effortSuffix(Effort nodeEffort, Effort globalEffort) {
+        if (nodeEffort == null || globalEffort == null || nodeEffort == globalEffort) {
+            return "";
+        }
+        return "\nEffort: " + nodeEffort.persistedName()
+                + " (overrides global " + globalEffort.persistedName() + ")";
     }
 
     static String sha256(byte[] bytes) {
