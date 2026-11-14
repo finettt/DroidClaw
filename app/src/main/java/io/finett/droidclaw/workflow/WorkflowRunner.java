@@ -27,6 +27,7 @@ import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.model.Model;
 import io.finett.droidclaw.model.Provider;
 import io.finett.droidclaw.model.ToolApprovalMode;
+import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.SettingsManager;
@@ -291,9 +292,19 @@ public final class WorkflowRunner {
 
         AgentLoop nodeLoop = new AgentLoop(apiService, new ScopedToolRegistryAdapter(scopedRegistry), settingsManager);
 
+        // Effort: node > defaults > global. The resolved effort's turn budget is the
+        // node's cap; an explicit max_turns narrows it via the tighter-of rule the loop
+        // already enforces (AgentLoop.effectiveTurnCap). Max with no max_turns leaves the
+        // run uncapped. The override is cleared on every terminal path by the loop, just
+        // like the approval/model overrides, so it never leaks to the next node.
+        Effort nodeEffort = defaults.resolveEffort(agent.getEffort());
+        if (nodeEffort != null) {
+            nodeLoop.setEffortOverride(nodeEffort);
+        }
+
         Integer maxTurns = defaults.resolveMaxTurns(agent.getMaxTurns());
         if (maxTurns != null) {
-            nodeLoop.setMaxIterations(capMaxTurns(maxTurns, settingsManager.getMaxAgentIterations()));
+            nodeLoop.setMaxIterations(maxTurns); // loop clamps to [1, 200]
         }
 
         WorkflowApprovalPolicy approvalPolicy = defaults.resolveApproval(agent.getApproval());
@@ -598,10 +609,6 @@ public final class WorkflowRunner {
             }
         }
         return reordered;
-    }
-
-    static int capMaxTurns(int requested, int globalLimit) {
-        return Math.max(1, Math.min(requested, globalLimit));
     }
 
     private long remainingMillis(long deadlineNanos) {

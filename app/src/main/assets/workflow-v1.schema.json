@@ -36,6 +36,7 @@
       "additionalProperties": false,
       "properties": {
         "model": { "$ref": "#/definitions/modelRef" },
+        "effort": { "enum": ["low", "medium", "high", "xhigh", "max"] },
         "max_turns": { "type": "integer", "minimum": 1, "maximum": 200 },
         "timeout_ms": { "type": "integer", "minimum": 1000 },
         "allowed_tools": { "type": "array", "items": { "$ref": "#/definitions/toolName" } },
@@ -78,6 +79,7 @@
       "properties": {
         "description": { "type": "string", "maxLength": 500 },
         "model": { "$ref": "#/definitions/modelRef" },
+        "effort": { "enum": ["low", "medium", "high", "xhigh", "max"] },
         "prompt": { "$ref": "#/definitions/prompt" },
         "allowed_tools": { "type": "array", "items": { "$ref": "#/definitions/toolName" } },
         "denied_tools": { "type": "array", "items": { "$ref": "#/definitions/toolName" } },

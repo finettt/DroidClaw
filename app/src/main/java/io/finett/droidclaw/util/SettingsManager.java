@@ -529,8 +529,10 @@ public class SettingsManager {
 
     /**
      * The global turn budget in effect, derived from the current effort level.
-     * Used as the ceiling for explicit per-node workflow {@code max_turns} caps;
-     * Effort Max is unbounded here.
+     * This caps a node run when the node sets neither an effort override nor a
+     * {@code max_turns}; a node's own {@code max_turns} can only tighten that cap,
+     * never raise it above the effort budget, and a node can exceed the global only
+     * by setting a higher effort. Effort Max is unbounded here.
      */
     public int getMaxAgentIterations() {
         return currentEffortBudget();

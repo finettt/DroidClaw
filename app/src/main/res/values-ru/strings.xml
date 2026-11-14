@@ -402,7 +402,7 @@
     <string name="memory_browser_note_read_error">Ошибка чтения файла</string>
     <string name="memory_browser_note_load_failed">Не удалось прочитать заметку: %1$s</string>
     <string name="workflow_review_header">Запустить процесс %1$s\nЦель: %2$s\nАгентов: %3$d\n</string>
-    <string name="workflow_review_agent">\nАгент: %1$s\nЗапрошенная модель: %2$s\nРазрешённые инструменты: %3$s\nЗапрещённые/исключённые инструменты: %4$s\nПодтверждение: %5$s (фактически: %6$s)\n</string>
+    <string name="workflow_review_agent">\nАгент: %1$s\nЗапрошенная модель: %2$s\nРазрешённые инструменты: %3$s\nЗапрещённые/исключённые инструменты: %4$s\nПодтверждение: %5$s (фактически: %6$s)%7$s\n</string>
     <string name="workflow_review_global_model">Глобальная модель по умолчанию</string>
     <string name="workflow_review_auto_approve">\nВНИМАНИЕ: auto_approve разрешает инструменты, включая запись, без дальнейшего подтверждения. Подтверждайте только доверенные процессы.</string>
     <string name="workflow_review_failed">Невозможно безопасно проверить процесс: %1$s</string>

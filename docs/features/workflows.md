@@ -60,6 +60,7 @@ The machine-readable contract is `app/src/main/assets/workflow-v1.schema.json`
 |-------|---------|
 | `prompt` *(required)* | Exactly one of `text`, `template`, or `from_agent` (plus optional `system`). `from_agent: "x"` feeds node x's output in and creates a dependency edge. |
 | `model` | `providerId/modelId` reference. Overrides the default model for this node only (see Model selection below). |
+| `effort` | Reasoning effort / turn budget (`low`, `medium`, `high`, `xhigh`, `max`; `med` also accepted, `inherit` inherits). Overrides the effort for this node only (see Effort below). |
 | `depends_on` | Explicit dependency edges. Edges are also inferred from `{{other_node.output}}` references and `from_agent`. |
 | `inputs` | Named template bindings available to this node as `{{inputs.name}}`. |
 | `when` | Guard expression: `{{node.field}} == 'value'`, `!=`, or `contains`, with a single-quoted literal. A false guard skips the node **and every transitive dependent**. |
@@ -102,6 +103,25 @@ call: the run fails fast with an error naming the node id and the
 `providerId/modelId` string, so a bad reference never spends a token. Run-scoped
 model and approval overrides are cleared on every terminal callback path, so a
 node's model never leaks to the next node or to a plain agent run.
+
+### Effort
+
+Each node runs at the effort level named by its `effort` field, one of
+`low`, `medium`, `high`, `xhigh`, `max` (`med` also accepted; `inherit` inherits). Effort sets both
+the reasoning API parameter (for reasoning-capable models) and the node's turn
+budget: how many iterations the loop runs before it stops. Precedence, highest
+first: the node's own `effort`, then `defaults.effort`, then the global effort in
+the agent settings. A node with no `effort`, `inherit`, or `defaults.effort` uses the
+global default.
+
+The effort's turn budget is the node's cap. When a node also sets `max_turns`,
+the tighter (smaller) of the two wins; `max` effort with no `max_turns` leaves the
+run uncapped. An invalid effort name is rejected before any LLM call: the run
+fails fast with an error naming the node id and the value, so a mistyped level
+never spends a token. Run-scoped effort, model, and approval overrides are cleared
+on every terminal callback path, so a node's effort never leaks to the next node or
+to a plain agent run. Only the reasoning API parameter is gated on the resolved
+model flag — the turn budget always applies.
 
 ## Security model
 

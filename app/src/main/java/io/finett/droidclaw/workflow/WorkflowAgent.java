@@ -2,6 +2,8 @@ package io.finett.droidclaw.workflow;
 
 import com.google.gson.JsonObject;
 
+import io.finett.droidclaw.model.Effort;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -27,6 +29,7 @@ public final class WorkflowAgent {
     private final WorkflowPrompt prompt;
     private final List<String> allowedTools;   // null = unset
     private final List<String> deniedTools;    // null = unset
+    private final Effort effort;              // null = unset
     private final Integer maxTurns;            // null = unset
     private final Integer timeoutMs;           // null = unset
     private final WorkflowRetry retry;         // null = unset
@@ -44,6 +47,7 @@ public final class WorkflowAgent {
         this.prompt = b.prompt;
         this.allowedTools = b.allowedTools == null ? null : Collections.unmodifiableList(new ArrayList<>(b.allowedTools));
         this.deniedTools = b.deniedTools == null ? null : Collections.unmodifiableList(new ArrayList<>(b.deniedTools));
+        this.effort = b.effort;
         this.maxTurns = b.maxTurns;
         this.timeoutMs = b.timeoutMs;
         this.retry = b.retry;
@@ -63,6 +67,8 @@ public final class WorkflowAgent {
     /** {@code null} when unset (inherit all tools); empty means "no tools". */
     public List<String> getAllowedTools() { return allowedTools; }
     public List<String> getDeniedTools() { return deniedTools; }
+    /** Effort for this node; {@code null} when unset (inherit defaults, then global). */
+    public Effort getEffort() { return effort; }
     public Integer getMaxTurns() { return maxTurns; }
     public Integer getTimeoutMs() { return timeoutMs; }
     public WorkflowRetry getRetry() { return retry; }
@@ -103,6 +109,7 @@ public final class WorkflowAgent {
         private WorkflowPrompt prompt;
         private List<String> allowedTools;
         private List<String> deniedTools;
+        private Effort effort;
         private Integer maxTurns;
         private Integer timeoutMs;
         private WorkflowRetry retry;
@@ -120,6 +127,7 @@ public final class WorkflowAgent {
         public Builder prompt(WorkflowPrompt v) { this.prompt = v; return this; }
         public Builder allowedTools(List<String> v) { this.allowedTools = v; return this; }
         public Builder deniedTools(List<String> v) { this.deniedTools = v; return this; }
+        public Builder effort(Effort v) { this.effort = v; return this; }
         public Builder maxTurns(Integer v) { this.maxTurns = v; return this; }
         public Builder timeoutMs(Integer v) { this.timeoutMs = v; return this; }
         public Builder retry(WorkflowRetry v) { this.retry = v; return this; }

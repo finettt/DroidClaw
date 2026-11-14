@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import io.finett.droidclaw.model.Effort;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -36,9 +37,9 @@ public final class WorkflowParser {
             "^\\{\\{\\s*[\\w.]+\\s*\\}\\}\\s*(==|!=|contains)\\s*'[^']*'$");
 
     private static final Set<String> TOP_KEYS = set("version", "name", "goal", "entry", "output", "defaults", "agents");
-    private static final Set<String> DEFAULTS_KEYS = set("model", "max_turns", "timeout_ms", "allowed_tools",
+    private static final Set<String> DEFAULTS_KEYS = set("model", "effort", "max_turns", "timeout_ms", "allowed_tools",
             "denied_tools", "approval", "on_error", "retry", "max_parallel", "max_nodes");
-    private static final Set<String> AGENT_KEYS = set("description", "model", "prompt", "allowed_tools",
+    private static final Set<String> AGENT_KEYS = set("description", "effort", "model", "prompt", "allowed_tools",
             "denied_tools", "max_turns", "timeout_ms", "retry", "on_error", "approval", "output_schema",
             "depends_on", "inputs", "when");
     private static final Set<String> PROMPT_KEYS = set("system", "text", "template", "from_agent");
@@ -210,6 +211,7 @@ public final class WorkflowParser {
                 d.setModel(model);
             }
         }
+        d.setEffort(readEffort(o, "effort", null, "defaults", res));
         Integer mt = readInt(o, "max_turns", null, "defaults", res);
         if (mt != null) {
             if (mt < MIN_MAX_TURNS || mt > MAX_MAX_TURNS) {
@@ -274,6 +276,7 @@ public final class WorkflowParser {
                                 + "(a bare model id is rejected rather than silently falling back to the global default)"));
             } else b.model(model);
         }
+        b.effort(readEffort(o, "effort", key, "effort", res));
 
         if (!o.has("prompt") || o.get("prompt").isJsonNull()) {
             res.add(WorkflowIssue.error(key, "prompt", "'prompt' is required"));
@@ -493,6 +496,33 @@ public final class WorkflowParser {
             if (!out.contains(s)) out.add(s);
         }
         return out;
+    }
+
+    /**
+     * Reads an {@code effort} string. Returns {@code null} when the key is absent or the
+     * value is {@code inherit}: both mean "use defaults, then global", so the node is left
+     * unset. The {@code med} alias is accepted and normalized to {@link Effort#MEDIUM} via
+     * {@link Effort#fromString}, so the stored value is always canonical. An unknown or
+     * non-string value is a hard failure that names the node id, matching the model/tool
+     * validation: misconfiguration surfaces instead of falling back to a default.
+     */
+    private static Effort readEffort(JsonObject o, String name, String key, String field,
+                                     WorkflowValidationResult res) {
+        if (!o.has(name) || o.get(name).isJsonNull()) return null;
+        String label = field == null ? name : field;
+        String v = readString(o, name, key, label, res);
+        if (v == null) return null;
+        // "inherit" is the unset sentinel for a per-node override: fall back to
+        // defaults.effort, then the global effort. Absent and "inherit" behave the same.
+        if (v.trim().equalsIgnoreCase("inherit")) {
+            return null;
+        }
+        try {
+            return Effort.fromString(v);
+        } catch (IllegalArgumentException e) {
+            res.add(WorkflowIssue.error(key, label, e.getMessage()));
+            return null;
+        }
     }
 
     private static String invalidEnum(String value, String field) {
