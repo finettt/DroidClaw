@@ -415,4 +415,13 @@
     <string name="workflow_review_failed">Cannot safely inspect workflow: %1$s</string>
     <string name="workflow_review_execution_model">\nExecution model: %1$s. A node can override this with its `model` field.\n</string>
     <string name="workflow_review_live_settings">Review-time settings are shown. Changes before launch require a fresh review. A running workflow still uses live global settings.\n</string>
+<!-- In-app update checker -->
+    <string name="info_check_for_updates">Check for updates</string>
+    <string name="info_update_check_enabled">Check for updates automatically</string>
+    <string name="info_updates_up_to_date">You\'re up to date</string>
+    <string name="info_updates_failed">Update check failed</string>
+    <string name="info_update_banner">New version %1$s available — tap to view</string>
+    <string name="update_dialog_title">%1$s available</string>
+    <string name="update_dialog_open">Open release</string>
+    <string name="update_dialog_later">Later</string>
 </resources>

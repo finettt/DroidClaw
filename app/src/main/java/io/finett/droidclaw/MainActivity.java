@@ -40,6 +40,11 @@ import io.finett.droidclaw.model.TaskResult;
 import io.finett.droidclaw.repository.ChatRepository;
 import io.finett.droidclaw.util.SettingsManager;
 
+import io.finett.droidclaw.update.UpdateChecker;
+import io.finett.droidclaw.update.UpdateInfo;
+import io.finett.droidclaw.update.UpdatePreferences;
+import io.finett.droidclaw.update.UpdatePromptDialog;
+
 import org.woheller69.freeDroidWarn.FreeDroidWarn;
 
 public class MainActivity extends AppCompatActivity {
@@ -478,6 +483,38 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         loadPersistedChatSessions();
+        startUpdateCheck();
+    }
+
+    /**
+     * Launch a throttled startup update check on a background thread.
+     *
+     * <p>The network call runs off the main thread via
+     * {@link UpdateChecker#checkNowAsync}, so the UI thread is never blocked.
+     * Checks are rate-limited to once per {@code 24 hours} (see
+     * {@link UpdatePreferences#THROTTLE_MS}) and, while enabled, surface a new
+     * release only once per release tag. Tapping the release opens the page in
+     * the browser: nothing is downloaded or installed inside the app.
+     */
+    private void startUpdateCheck() {
+        UpdatePreferences prefs = new UpdatePreferences(this);
+        long now = System.currentTimeMillis();
+        if (!prefs.shouldCheckNow(now)) {
+            return;
+        }
+        prefs.setLastCheckAt(now);
+        UpdateChecker.checkNowAsync(this, result -> {
+            if (result.getOutcome() == UpdateChecker.Outcome.UPDATE) {
+                UpdateInfo info = result.getInfo();
+                if (info != null) {
+                    prefs.setLastKnownNewerTag(info.getTag());
+                    if (prefs.shouldPrompt(info.getTag())) {
+                        prefs.setPromptedTag(info.getTag());
+                        runOnUiThread(() -> UpdatePromptDialog.show(this, info));
+                    }
+                }
+            }
+        });
     }
 
     /**
