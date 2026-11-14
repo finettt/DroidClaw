@@ -154,4 +154,48 @@ public class UpdateCheckerTest {
         assertEquals(Outcome.UP_TO_DATE, checker.checkNow().getOutcome());
     }
 
+    @Test
+    public void isOfferable_calVerNewer_isOfferable() {
+        UpdateChecker checker = new UpdateChecker(FakeFetcher.stable("2026.11.07"), "2026.10.10");
+
+        Result r = checker.checkNow();
+
+        assertTrue(checker.isOfferable(r.getInfo()));
+    }
+
+    @Test
+    public void isOfferable_calVerEqual_isNotOfferable() {
+        UpdateChecker checker = new UpdateChecker(FakeFetcher.stable("2026.10.10"), "2026.10.10");
+
+        Result r = checker.checkNow();
+
+        assertFalse(checker.isOfferable(r.getInfo()));
+    }
+
+    @Test
+    public void isOfferable_calVerOlder_isNotOfferable() {
+        UpdateChecker checker = new UpdateChecker(FakeFetcher.stable("2026.09.01"), "2026.10.10");
+
+        Result r = checker.checkNow();
+
+        assertFalse(checker.isOfferable(r.getInfo()));
+    }
+
+    @Test
+    public void isOfferable_devBuild_isOfferable() {
+        // A non-CalVer current version cannot be compared, so any release is offered.
+        UpdateChecker checker = new UpdateChecker(FakeFetcher.stable("2026.11.07"), "dev");
+
+        Result r = checker.checkNow();
+
+        assertTrue(checker.isOfferable(r.getInfo()));
+    }
+
+    @Test
+    public void isOfferable_null_isNotOfferable() {
+        UpdateChecker checker = new UpdateChecker(new FakeFetcher(200, ""), "2026.10.10");
+
+        assertFalse(checker.isOfferable(null));
+    }
+
 }

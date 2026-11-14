@@ -1,5 +1,6 @@
 package io.finett.droidclaw.update;
 
+import android.content.Context;
 import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
@@ -134,6 +135,24 @@ public class UpdateChecker {
     }
 
     /**
+     * Whether {@code info} should be offered on the <em>manual</em> check path.
+     *
+     * <p>For a CalVer build this is true only when the release is strictly newer;
+     * for a dev/local build (non-CalVer {@code APP_VERSION}, which cannot be
+     * compared) it is true for any available release, so a manual check on a local
+     * build still surfaces the latest release.
+     */
+    public boolean isOfferable(UpdateInfo info) {
+        if (info == null) {
+            return false;
+        }
+        if (!UpdateVersions.isCalVer(appVersion)) {
+            return true;
+        }
+        return UpdateVersions.compare(info.getTag(), appVersion) > 0;
+    }
+
+    /**
      * @param info a release fetched by {@link #checkNow()}
      * @return {@code true} only if the running build has a CalVer version and the
      *         release tag is numerically newer than it; dev/local builds
@@ -147,6 +166,25 @@ public class UpdateChecker {
             return false;
         }
         return UpdateVersions.compare(info.getTag(), appVersion) > 0;
+    }
+
+    /** Callback for a background {@link #checkNowAsync(Context, CheckCallback)} run. */
+    @FunctionalInterface
+    public interface CheckCallback {
+        void onResult(Result result);
+    }
+
+    /**
+     * Runs {@link #checkNow()} on a background thread so callers never block the UI.
+     * The result is delivered on whichever thread the callback runs on; callers that
+     * touch the UI must post to the main thread.
+     *
+     * @param context  a host context (kept only so a default client can be built)
+     * @param callback invoked once with the {@link Result} on a background thread
+     */
+    public static void checkNowAsync(Context context, CheckCallback callback) {
+        final UpdateChecker checker = new UpdateChecker();
+        new Thread(() -> callback.onResult(checker.checkNow()), "update-check").start();
     }
 
     /**
