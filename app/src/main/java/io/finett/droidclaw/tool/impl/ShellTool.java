@@ -9,6 +9,7 @@ import io.finett.droidclaw.filesystem.PathValidator;
 import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.shell.ExecPlanner;
 import io.finett.droidclaw.shell.ShellConfig;
+import io.finett.droidclaw.shell.ShellConfig;
 import io.finett.droidclaw.shell.ShellExecutor;
 import io.finett.droidclaw.shell.ShellResult;
 import io.finett.droidclaw.tool.Tool;
@@ -36,11 +37,13 @@ public class ShellTool implements Tool {
     private static final String TOOL_NAME = "execute_shell";
 
     private final PathValidator pathValidator;
+    private final ShellConfig config;
     private final ShellExecutor executor;
     private final ExecPlanner planner;
 
     public ShellTool(PathValidator pathValidator, ShellConfig config) {
         this.pathValidator = pathValidator;
+        this.config = config;
         this.executor = new ShellExecutor(config);
         this.planner = new ExecPlanner(config, pathValidator.getWorkspaceRoot());
     }
@@ -50,9 +53,21 @@ public class ShellTool implements Tool {
         return TOOL_NAME;
     }
 
+    /**
+     * Whether running this tool needs to pass an approval gate.
+     *
+     * <p>Governed by the shell-approval mode carried in {@link ShellConfig}:
+     * <ul>
+     *   <li>{@code full_access} → silent, no prompt (the judge never runs here);
+     *   <li>{@code ask_all} / {@code auto} → a gate is required. In {@code auto} the
+     *       judge short-circuits before the dialog (allow → silent, deny → refuse,
+     *       ask → dialog), so the gate is the fallback path.</li>
+     * </ul>
+     */
     @Override
     public boolean requiresApproval() {
-        return true;
+        String mode = config.getShellApprovalMode();
+        return mode == null || !"full_access".equals(mode);
     }
 
     /**

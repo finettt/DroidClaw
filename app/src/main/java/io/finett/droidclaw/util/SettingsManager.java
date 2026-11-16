@@ -252,11 +252,37 @@ public class SettingsManager {
         return effort;
     }
 
+    /**
+     * Resolve the shell-approval mode for a stored agent-config JSON object.
+     *
+     * <p>An explicit value always wins and is normalised; unknown values fall back to
+     * {@code auto}. When the key is absent (an upgrade from before this setting existed),
+     * migrate from the legacy sandbox mode: old {@code relaxed}/{@code full} users move to
+     * {@code ask_all} (a safer direction — they may see prompts they did not before),
+     * while {@code strict} and fresh installs default to {@code auto}.
+     */
+    private String resolveShellApprovalMode(JSONObject agentJson) {
+        if (agentJson.has("shellApprovalMode")) {
+            String v = agentJson.optString("shellApprovalMode", "").trim().toLowerCase(java.util.Locale.ROOT);
+            if ("ask_all".equals(v) || "auto".equals(v) || "full_access".equals(v)) {
+                return v;
+            }
+            Log.w(TAG, "Invalid shellApprovalMode '" + v + "', defaulting to auto");
+            return "auto";
+        }
+        String sandbox = agentJson.optString("sandboxMode", "strict").trim().toLowerCase(java.util.Locale.ROOT);
+        if ("relaxed".equals(sandbox) || "full".equals(sandbox)) {
+            return "ask_all";
+        }
+        return "auto";
+    }
+
     private AgentConfig parseAgentConfig(JSONObject json) throws JSONException {
         AgentConfig config = new AgentConfig();
         config.setDefaultModel(json.optString("model", ""));
         config.setShellAccess(json.optBoolean("shellAccess", false));
         config.setSandboxMode(json.optString("sandboxMode", "strict"));
+        config.setShellApprovalMode(resolveShellApprovalMode(json));
         config.setEffort(resolveEffort(json));
         config.setRequireApproval(json.optBoolean("requireApproval", true));
         config.setShellTimeout(json.optInt("shellTimeout", 30));
@@ -376,6 +402,7 @@ public class SettingsManager {
         json.put("model", config.getDefaultModel());
         json.put("shellAccess", config.isShellAccess());
         json.put("sandboxMode", config.getSandboxMode());
+        json.put("shellApprovalMode", config.getShellApprovalMode());
         json.put("effort", config.getEffort());
         json.put("requireApproval", config.isRequireApproval());
         json.put("shellTimeout", config.getShellTimeout());

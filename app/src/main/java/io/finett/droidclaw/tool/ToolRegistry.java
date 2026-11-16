@@ -125,9 +125,8 @@ public class ToolRegistry {
         }
 
         // Shell and Python execution — only when shell access is explicitly enabled
-        // AND sandbox mode is not strict.
-        // In "relaxed" mode: allowlist policy (safe command set, user approval on miss).
-        // In "full" mode: full policy (any command, approval always required).
+        // AND sandbox mode is not strict. Approval is governed by the shell-approval mode
+        // (ask_all/auto/full_access), not by the sandbox mode, once the tools are available.
         if (shellEnabled && !"strict".equals(sandboxMode)) {
             ShellConfig shellConfig = buildShellConfig(sandboxMode);
             registerTool(new ShellTool(workspaceManager.getPathValidator(), shellConfig));
@@ -217,34 +216,33 @@ public class ToolRegistry {
     /**
      * Build a ShellConfig appropriate for the given sandbox mode.
      * <ul>
-     *   <li>"relaxed" → ALLOWLIST policy with the safe minimal allowlist + ON_MISS ask,
-     *       plus any user-defined custom allowlist entries.</li>
-     *   <li>"full"    → FULL policy (any command) + ALWAYS ask.</li>
-     *   <li>anything else → DENY (belt-and-suspenders, should not be reached).</li>
+     *   <li>"relaxed" / "full" → blind policy (FULL, no ask); the shell-approval mode
+     *       decides prompting/judging on top of this policy.</li>
      * </ul>
      */
     private ShellConfig buildShellConfig(String sandboxMode) {
         int timeout = (settingsManager != null)
                 ? settingsManager.getShellTimeoutSeconds() : 30;
 
-        if ("full".equals(sandboxMode)) {
-            return new ShellConfig.Builder()
-                    .policy(io.finett.droidclaw.shell.ExecPolicy.full())
-                    .defaultMode(io.finett.droidclaw.shell.ExecPlan.ExecMode.DIRECT)
-                    .timeoutSeconds(timeout)
-                    .build();
-        }
+        // Approval is decided by the shell-approval MODE plus the command judge, never by
+        // argv curation. Both "relaxed" and "full" therefore share the blind policy (FULL +
+        // OFF ask); ShellTool and AgentLoop enforce ask_all, auto, or full_access on top of it.
+        return new ShellConfig.Builder()
+                .policy(io.finett.droidclaw.shell.ExecPolicy.blind())
+                .defaultMode(io.finett.droidclaw.shell.ExecPlan.ExecMode.DIRECT)
+                .timeoutSeconds(timeout)
+                .shellApprovalMode(currentShellApprovalMode())
+                .build();
+    }
 
-        // "relaxed" — allowlist with safe defaults + user custom entries
-        List<io.finett.droidclaw.shell.AllowlistEntry> extra = new ArrayList<>();
-        if (settingsManager != null) {
-            for (String path : settingsManager.getAgentConfig().getCustomAllowlist()) {
-                if (path != null && !path.trim().isEmpty()) {
-                    extra.add(new io.finett.droidclaw.shell.AllowlistEntry.Builder(path.trim()).build());
-                }
-            }
+    private String currentShellApprovalMode() {
+        try {
+            return settingsManager != null
+                    ? settingsManager.getAgentConfig().getShellApprovalMode()
+                    : "ask_all";
+        } catch (Exception e) {
+            return "ask_all";
         }
-        return ShellConfig.createAllowlistDefault(extra);
     }
 
     public boolean isShellAccessEnabled() {

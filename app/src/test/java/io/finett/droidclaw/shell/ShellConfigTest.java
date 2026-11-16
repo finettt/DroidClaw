@@ -208,4 +208,27 @@ public class ShellConfigTest {
             // expected
         }
     }
+
+    @Test
+    public void shellApprovalMode_defaultIsAskAll() {
+        ShellConfig config = ShellConfig.createDefault();
+        assertEquals("ask_all", config.getShellApprovalMode());
+    }
+
+    @Test
+    public void shellApprovalMode_builderOverridesDefault() {
+        ShellConfig config = new ShellConfig.Builder()
+                .policy(ExecPolicy.allowlist())
+                .shellApprovalMode("full_access")
+                .build();
+        assertEquals("full_access", config.getShellApprovalMode());
+    }
+
+    @Test
+    public void shellApprovalMode_defaultBuilderValueIsAskAll() {
+        ShellConfig config = new ShellConfig.Builder()
+                .policy(ExecPolicy.deny())
+                .build();
+        assertEquals("ask_all", config.getShellApprovalMode());
+    }
 }

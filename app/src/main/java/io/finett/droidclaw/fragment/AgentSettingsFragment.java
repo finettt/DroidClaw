@@ -38,6 +38,9 @@ public class AgentSettingsFragment extends Fragment {
     private AutoCompleteTextView dropdownDefaultModel;
     private SwitchMaterial switchShellAccess;
     private AutoCompleteTextView dropdownSandboxMode;
+    private AutoCompleteTextView dropdownShellApprovalMode;
+    /** Internal shell-approval mode matching the currently shown dropdown label. */
+    private String currentShellApprovalValue = "auto";
     private AutoCompleteTextView dropdownEffort;
     private SwitchMaterial switchRequireApproval;
     private SwitchMaterial switchStreamResponses;
@@ -144,6 +147,7 @@ public class AgentSettingsFragment extends Fragment {
         dropdownDefaultModel = view.findViewById(R.id.dropdown_default_model);
         switchShellAccess = view.findViewById(R.id.switch_shell_access);
         dropdownSandboxMode = view.findViewById(R.id.dropdown_sandbox_mode);
+        dropdownShellApprovalMode = view.findViewById(R.id.dropdown_shell_approval_mode);
         dropdownEffort = view.findViewById(R.id.dropdown_effort);
         switchRequireApproval = view.findViewById(R.id.switch_require_approval);
         switchStreamResponses = view.findViewById(R.id.switch_stream_responses);
@@ -278,6 +282,17 @@ public class AgentSettingsFragment extends Fragment {
                 dropdownSandboxMode.setText(getString(R.string.sandbox_strict), false);
             }
 
+            String shellApproval = agentConfig.getShellApprovalMode();
+            currentShellApprovalValue = shellApproval == null || shellApproval.isEmpty()
+                    ? "auto" : shellApproval;
+            if ("full_access".equals(shellApproval)) {
+                dropdownShellApprovalMode.setText(getString(R.string.shell_approval_full_access), false);
+            } else if ("ask_all".equals(shellApproval)) {
+                dropdownShellApprovalMode.setText(getString(R.string.shell_approval_ask_all), false);
+            } else {
+                dropdownShellApprovalMode.setText(getString(R.string.shell_approval_auto), false);
+            }
+
             dropdownEffort.setText(effortLabel(agentConfig.getEffort()), false);
             switchRequireApproval.setChecked(agentConfig.isRequireApproval());
             switchStreamResponses.setChecked(agentConfig.isStreamResponses());
@@ -394,6 +409,13 @@ public class AgentSettingsFragment extends Fragment {
             updateSshAuthFieldsVisibility();
         });
 
+        // Shell approval mode change listener: confirm before granting full access.
+        dropdownShellApprovalMode.setOnItemClickListener((parent, itemView, position, id) -> {
+            if (position == 2) {
+                showShellFullAccessWarning(() -> currentShellApprovalValue = "full_access");
+            }
+        });
+
         // Host key verification toggle — require explicit confirmation to disable
         switchSshVerifyHost.setOnCheckedChangeListener(null);
         switchSshVerifyHost.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -499,6 +521,36 @@ public class AgentSettingsFragment extends Fragment {
                 });
             }
         }).start();
+    }
+
+    /**
+     * Show a red confirmation dialog before letting the user grant full shell access.
+     * Full access disables the command judge and all approval prompts; it can only be
+     * reached by explicit confirmation, so a plain cancel reverts the dropdown.
+     *
+     * @param onConfirmed callback invoked on the UI thread if the user confirms, or null if
+     *                    the dialog is cancelled / activity is detached
+     */
+    private void showShellFullAccessWarning(java.lang.Runnable onConfirmed) {
+        if (!isAdded() || getActivity() == null) return;
+
+        androidx.appcompat.app.AlertDialog.Builder dialog =
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                        .setTitle(R.string.shell_approval_full_access_warning_title)
+                        .setMessage(R.string.shell_approval_full_access_warning_message)
+                        .setPositiveButton(R.string.confirm, (d, which) -> {
+                            if (isAdded() && onConfirmed != null) {
+                                onConfirmed.run();
+                            }
+                        })
+                        .setNegativeButton(R.string.cancel, (d, which) -> {
+                            String revert = ("ask_all".equals(currentShellApprovalValue))
+                                    ? getString(R.string.shell_approval_ask_all)
+                                    : getString(R.string.shell_approval_auto);
+                            dropdownShellApprovalMode.setText(revert, false);
+                        })
+                        .setCancelable(false);
+        dialog.show();
     }
 
     /**
@@ -672,6 +724,15 @@ public class AgentSettingsFragment extends Fragment {
             sandboxMode = "relaxed";
         } else if (selectedSandbox.equals(getString(R.string.sandbox_full))) {
             sandboxMode = "full";
+        }
+
+        String shellApprovalText = dropdownShellApprovalMode.getText().toString();
+        if (getString(R.string.shell_approval_full_access).equals(shellApprovalText)) {
+            agentConfig.setShellApprovalMode("full_access");
+        } else if (getString(R.string.shell_approval_ask_all).equals(shellApprovalText)) {
+            agentConfig.setShellApprovalMode("ask_all");
+        } else {
+            agentConfig.setShellApprovalMode("auto");
         }
 
         // Parse custom allowlist (one path per line)

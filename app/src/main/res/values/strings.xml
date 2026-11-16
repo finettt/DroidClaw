@@ -90,6 +90,12 @@
     <string name="sandbox_strict">Strict (Workspace only)</string>
     <string name="sandbox_relaxed">Relaxed (Allowlisted commands)</string>
     <string name="sandbox_full">Full (Any command, always ask)</string>
+    <string name="shell_approval_mode">Shell approval mode</string>
+    <string name="shell_approval_ask_all">Ask before every command</string>
+    <string name="shell_approval_auto">Auto (judge allows silent runs)</string>
+    <string name="shell_approval_full_access">Full access (no prompts)</string>
+    <string name="shell_approval_full_access_warning_title">Full shell access</string>
+    <string name="shell_approval_full_access_warning_message">Full access runs every shell command without asking. It removes the command judge and all approval prompts. Enable only for trusted operator-level use.</string>
     <string name="effort">Effort</string>
     <string name="effort_description">Reasoning effort and agent turn budget</string>
     <string name="effort_low">Low</string>

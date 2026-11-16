@@ -336,4 +336,23 @@ public class AgentConfigTest {
         assertNotNull(config.getCustomAllowlist());
         assertTrue(config.getCustomAllowlist().isEmpty());
     }
+
+    @Test
+    public void shellApprovalMode_defaultIsAuto() {
+        assertEquals("auto", config.getShellApprovalMode());
+    }
+
+    @Test
+    public void shellApprovalMode_setterUpdatesValue() {
+        config.setShellApprovalMode("full_access");
+        assertEquals("full_access", config.getShellApprovalMode());
+    }
+
+    @Test
+    public void shellApprovalMode_allModesAcceptable() {
+        for (String m : new String[] {"ask_all", "auto", "full_access"}) {
+            config.setShellApprovalMode(m);
+            assertEquals(m, config.getShellApprovalMode());
+        }
+    }
 }
