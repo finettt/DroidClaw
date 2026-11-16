@@ -15,6 +15,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -33,6 +34,8 @@ import io.finett.droidclaw.api.RequestScope;
 import io.finett.droidclaw.model.AgentConfig;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.tool.ToolRegistry;
+import io.finett.droidclaw.util.Flaky;
+import io.finett.droidclaw.util.FlakyTestRule;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
@@ -57,6 +60,10 @@ public class ShellApprovalModesInstrumentedTest {
     /** Append-only audit file shared with the agent loop's ApprovalAuditLog. */
     private File auditLog;
 
+    /** Retries on the flaky Android emulator (boot/adb/timing), like other instrumented tests. */
+    @Rule
+    public FlakyTestRule flakyTestRule = new FlakyTestRule(5);
+
     @Before
     public void setUp() {
         context = ApplicationProvider.getApplicationContext();
@@ -71,6 +78,7 @@ public class ShellApprovalModesInstrumentedTest {
     // ==================== ask_all ====================
 
     @Test
+    @Flaky(maxAttempts = 5)
     public void askAll_opensDialogBeforeEchoHello() {
         AgentLoop loop = newLoop("ask_all", "echo hello", c -> false);
 
@@ -97,6 +105,7 @@ public class ShellApprovalModesInstrumentedTest {
     // ==================== auto ====================
 
     @Test
+    @Flaky(maxAttempts = 5)
     public void auto_runsEchoHelloSilentlyWithoutDialog() {
         AgentLoop loop = newLoop("auto", "echo hello", c -> false);
 
@@ -112,6 +121,7 @@ public class ShellApprovalModesInstrumentedTest {
     }
 
     @Test
+    @Flaky(maxAttempts = 5)
     public void auto_refusesDestructiveCommandWithReason() {
         // mkfs on a device path is destructive; the judge must refuse it before it runs.
         AgentLoop loop =
@@ -133,6 +143,7 @@ public class ShellApprovalModesInstrumentedTest {
     // ==================== full_access ====================
 
     @Test
+    @Flaky(maxAttempts = 5)
     public void fullAccess_runsSilentlyAndAudits() {
         AgentLoop loop = newLoop("full_access", "echo hello", c -> false);
 
