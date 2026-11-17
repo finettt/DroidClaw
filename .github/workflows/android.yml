@@ -40,6 +40,7 @@ jobs:
     name: Run Android Tests on Emulator
     runs-on: ubuntu-latest
     needs: test
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -137,8 +138,10 @@ jobs:
 
       - name: Capture PRoot version from device logcat
         if: always()
+        timeout-minutes: 2
         run: |
-          adb logcat -d -t 300 | grep -E "ProotRuntimeTest" || echo "ProotRuntimeTest line not found in logcat"
+          timeout 90 adb logcat -d -t 300 | grep -E "ProotRuntimeTest" \
+            || echo "ProotRuntimeTest line not found in logcat"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
