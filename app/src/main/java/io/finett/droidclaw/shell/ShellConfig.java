@@ -49,6 +49,8 @@ public class ShellConfig {
     private final List<AllowlistEntry> allowlist;
     private final List<String> trustedDirs;
     private final ExecPlan.ExecMode defaultMode;
+    /** Shell-approval mode governing prompt vs. silent execution (ask_all/auto/full_access). */
+    private final String shellApprovalMode;
 
     private ShellConfig(Builder builder) {
         this.timeoutSeconds = builder.timeoutSeconds;
@@ -57,6 +59,7 @@ public class ShellConfig {
         this.allowlist = Collections.unmodifiableList(new ArrayList<>(builder.allowlist));
         this.trustedDirs = Collections.unmodifiableList(new ArrayList<>(builder.trustedDirs));
         this.defaultMode = builder.defaultMode;
+        this.shellApprovalMode = builder.shellApprovalMode;
     }
 
     // ==================== Factory methods ====================
@@ -191,6 +194,11 @@ public class ShellConfig {
 
     public ExecPlan.ExecMode getDefaultMode() {
         return defaultMode;
+    }
+
+    /** The shell-approval mode governing prompt vs. silent execution. */
+    public String getShellApprovalMode() {
+        return shellApprovalMode;
     }
 
     // ==================== Default allowlist ====================
@@ -342,6 +350,7 @@ public class ShellConfig {
         private List<AllowlistEntry> allowlist = new ArrayList<>();
         private List<String> trustedDirs = new ArrayList<>(DEFAULT_TRUSTED_DIRS);
         private ExecPlan.ExecMode defaultMode = ExecPlan.ExecMode.DIRECT;
+        private String shellApprovalMode = "ask_all";
 
         public Builder timeoutSeconds(int timeoutSeconds) {
             if (timeoutSeconds <= 0) {
@@ -381,6 +390,15 @@ public class ShellConfig {
 
         public Builder defaultMode(ExecPlan.ExecMode mode) {
             this.defaultMode = mode;
+            return this;
+        }
+
+        /**
+         * Set the shell-approval mode (ask_all/auto/full_access) that gates whether a
+         * command is prompted for, judged, or run silently. Default: ask_all.
+         */
+        public Builder shellApprovalMode(String shellApprovalMode) {
+            this.shellApprovalMode = shellApprovalMode;
             return this;
         }
 

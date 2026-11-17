@@ -85,6 +85,12 @@
     <string name="sandbox_strict">Строгий (только рабочая область)</string>
     <string name="sandbox_relaxed">Ослабленный (команды из списка разрешённых)</string>
     <string name="sandbox_full">Полный (любые команды, всегда спрашивать)</string>
+    <string name="shell_approval_mode">Режим проверки команд оболочки</string>
+    <string name="shell_approval_ask_all">Спрашивать перед каждой командой</string>
+    <string name="shell_approval_auto">Авто (проверка разрешает тихое выполнение)</string>
+    <string name="shell_approval_full_access">Полный доступ (без запросов)</string>
+    <string name="shell_approval_full_access_warning_title">Полный доступ к оболочке</string>
+    <string name="shell_approval_full_access_warning_message">Полный доступ выполняет любую команду оболочки без запросов. Это отключает автоматическую проверку команд и окна подтверждения. Включайте только для доверенного доступа оператора.</string>
     <string name="effort">Усиление</string>
     <string name="effort_description">Усилие на рассуждения и лимит ходов агента</string>
     <string name="effort_low">Низкое</string>

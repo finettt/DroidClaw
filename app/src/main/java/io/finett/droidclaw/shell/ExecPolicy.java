@@ -41,7 +41,25 @@ public class ExecPolicy {
     private final AskMode ask;
 
     public ExecPolicy(SecurityLevel security, AskMode ask) {
-        if (security == SecurityLevel.FULL && ask != AskMode.ALWAYS) {
+        // Two-arg form keeps the historical invariant: FULL always asks. Used by every
+        // existing factory, so their behaviour is unchanged.
+        this(security, ask, false);
+    }
+
+    /**
+     * Constructor that permits a FULL policy with {@link AskMode#OFF} (silent execution).
+     *
+     * <p>This is the primitive behind {@link #blind()}. Silent full access is only ever
+     * produced through the explicit {@code allowFullNoAsk=true} path so the invariant
+     * "FULL must always ask" survives for every factory except the one that opts in.
+     *
+     * <p><b>Owner decision (19.11.2026):</b> {@code full_access} shell-approval mode runs
+     * commands silently, so the policy is FULL with ask OFF. The approval mode (not this
+     * policy) is the single gate that decides whether silent execution is permitted; this
+     * factory exists only to represent that mode.
+     */
+    ExecPolicy(SecurityLevel security, AskMode ask, boolean allowFullNoAsk) {
+        if (security == SecurityLevel.FULL && ask != AskMode.ALWAYS && !allowFullNoAsk) {
             // Enforce: FULL mode must always ask — prevent silent full-access execution.
             ask = AskMode.ALWAYS;
         }
@@ -75,6 +93,17 @@ public class ExecPolicy {
      */
     public static ExecPolicy full() {
         return new ExecPolicy(SecurityLevel.FULL, AskMode.ALWAYS);
+    }
+
+    /**
+     * Full access with no approval prompt (FULL + OFF).
+     *
+     * <p>Silent full execution is gated by the {@code full_access} shell-approval mode in
+     * {@code ShellTool}/{@code AgentLoop}, not by this policy alone. Use only when the
+     * surrounding approval flow explicitly permits silent runs.
+     */
+    public static ExecPolicy blind() {
+        return new ExecPolicy(SecurityLevel.FULL, AskMode.OFF, true);
     }
 
     public SecurityLevel getSecurity() {

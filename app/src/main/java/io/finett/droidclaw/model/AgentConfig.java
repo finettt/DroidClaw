@@ -29,6 +29,7 @@ public class AgentConfig {
     private int llmWriteTimeout;     // seconds
     private Map<String, String> toolApprovalOverrides = new HashMap<>(); // toolName -> ToolApprovalMode.name()
     private String shellBackend;     // "local" or "ssh"
+    private String shellApprovalMode; // "ask_all", "auto", or "full_access"
     private String sshHost;
     private int sshPort;
     private String sshUser;
@@ -54,6 +55,7 @@ public class AgentConfig {
         this.lessonConsolidationEnabled = true;
         this.toolApprovalOverrides = new HashMap<>();
         this.shellBackend = "local";
+        this.shellApprovalMode = "auto";
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
     }
@@ -71,6 +73,7 @@ public class AgentConfig {
         this.backgroundExecEnabled = false;
         this.streamResponses = true;
         this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
+        this.shellApprovalMode = "auto";
         this.llmConnectTimeout = 30;
         this.llmReadTimeout = 120;
         this.llmWriteTimeout = 30;
@@ -283,6 +286,17 @@ public class AgentConfig {
 
     public void setShellBackend(String shellBackend) {
         this.shellBackend = shellBackend != null ? shellBackend : "local";
+    }
+
+    public String getShellApprovalMode() {
+        if (shellApprovalMode == null || shellApprovalMode.isEmpty()) {
+            return "auto";
+        }
+        return shellApprovalMode;
+    }
+
+    public void setShellApprovalMode(String shellApprovalMode) {
+        this.shellApprovalMode = shellApprovalMode;
     }
 
     public String getSshHost() {

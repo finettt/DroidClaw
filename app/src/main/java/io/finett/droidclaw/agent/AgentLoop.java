@@ -16,6 +16,10 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.gson.JsonParser;
+
+import io.finett.droidclaw.approval.ApprovalAuditLog;
+import io.finett.droidclaw.approval.CommandJudge;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.api.RequestScope;
 import io.finett.droidclaw.model.ChatMessage;
@@ -26,6 +30,7 @@ import io.finett.droidclaw.service.BackgroundProcessManager;
 import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.tool.Tool;
 import io.finett.droidclaw.tool.impl.RunWorkflowTool;
+import io.finett.droidclaw.tool.impl.ShellTool;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.tool.ToolResult;
 import io.finett.droidclaw.util.SettingsManager;
@@ -76,6 +81,20 @@ public class AgentLoop {
     /** Per-run request scope: cancelling it aborts only this run's HTTP calls (issue #144). */
     private volatile RequestScope runScope;
 
+    /** Judge for shell commands when the shell-approval mode is {@code auto}. Null if unavailable. */
+    private volatile CommandJudge judge;
+
+    /** Append-only audit trail for shell commands across all approval modes. */
+    private volatile ApprovalAuditLog auditLog;
+
+    /**
+     * Disposition recorded for the in-flight shell command, keyed by the tool call id and
+     * consumed by the audit on completion. Keying by id (not a single field) guarantees the
+     * line is never labelled with a disposition that belonged to a different command if
+     * execution is interrupted between the set and the consume.
+     */
+    private final java.util.Map<String, String> pendingDisposition = new java.util.concurrent.ConcurrentHashMap<>();
+
     /** History of the in-flight run, used by cancellation to preserve partial output. */
     private volatile List<ChatMessage> activeHistory;
 
@@ -108,6 +127,110 @@ public class AgentLoop {
             Log.w(TAG, "Error reading tool approval override for " + toolName, e);
             return ToolApprovalMode.DEFAULT;
         }
+    }
+
+    // ==================== Shell approval helpers ====================
+
+    /**
+     * Resolve the host Context via the tool registry. Returns null when unavailable so the
+     * judge and audit log stay optional (legacy behaviour for context-less unit paths).
+     */
+    private android.content.Context resolveContext() {
+        try {
+            return toolRegistry != null ? toolRegistry.getContext() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Lazily build the command judge and shell audit log, which need the host Context.
+     * Called only on the first shell-command approval pass, never during construction,
+     * so context-less unit paths keep the legacy behaviour and never call getContext().
+     * Idempotent and safe under the concurrent tool-approval paths.
+     */
+    private synchronized void ensureJudgeAndAudit() {
+        if (judge != null && auditLog != null) {
+            return;
+        }
+        android.content.Context hostContext = resolveContext();
+        if (hostContext == null) {
+            return;
+        }
+        if (auditLog == null) {
+            auditLog = new ApprovalAuditLog(hostContext);
+        }
+        if (judge == null && apiService != null && settingsManager != null) {
+            judge = new CommandJudge(apiService, settingsManager);
+        }
+    }
+
+    private String currentShellApprovalMode() {
+        try {
+            return settingsManager != null
+                    ? settingsManager.getAgentConfig().getShellApprovalMode()
+                    : "ask_all";
+        } catch (Exception e) {
+            return "ask_all";
+        }
+    }
+
+    private String currentBackendLabel() {
+        try {
+            return settingsManager != null
+                    ? settingsManager.getAgentConfig().getShellBackend()
+                    : "local";
+        } catch (Exception e) {
+            return "local";
+        }
+    }
+
+    private String workspaceRootPath() {
+        try {
+            java.io.File root = toolRegistry.getWorkspaceRoot();
+            return root != null ? root.getAbsolutePath() : "unknown";
+        } catch (Exception e) {
+            return "unknown";
+        }
+    }
+
+    private String commandArgument(JsonObject arguments) {
+        return arguments != null && arguments.has("command")
+                ? arguments.get("command").getAsString()
+                : "(unknown command)";
+    }
+
+    private String cwdArgument(JsonObject arguments) {
+        if (arguments != null && arguments.has("working_directory")
+                && !arguments.get("working_directory").isJsonNull()) {
+            return arguments.get("working_directory").getAsString();
+        }
+        return "(workspace root)";
+    }
+
+    /**
+     * Audit a single shell command. Writes one line per command with the disposition and
+     * exit code; never includes tool output bodies. Guarded to shell tools only.
+     */
+    private void auditShell(String toolName, String command, String disposition, Integer exitCode) {
+        if (auditLog == null || !"execute_shell".equals(toolName)) {
+            return;
+        }
+        auditLog.log(currentShellApprovalMode(), command, disposition, exitCode);
+    }
+
+    /** Extract the numeric exit code from a shell tool result body, or null when absent. */
+    private Integer exitCodeFromResult(String content) {
+        if (content == null) return null;
+        try {
+            JsonObject obj = JsonParser.parseString(content).getAsJsonObject();
+            if (obj.has("exit_code") && !obj.get("exit_code").isJsonNull()) {
+                return obj.get("exit_code").getAsInt();
+            }
+        } catch (Exception e) {
+            // non-JSON body — no exit code to record
+        }
+        return null;
     }
 
     /**
@@ -207,6 +330,9 @@ public class AgentLoop {
         this.summarizer = summarizer;
         this.memoryContext = memoryContext;
         this.iterationCount = 0;
+
+        // Judge + audit log are built lazily (ensureJudgeAndAudit) so context-less unit
+        // paths keep the legacy (always-ask) shell behaviour and never touch getContext().
         this.maxIterations = 0; // unset; the effort budget caps the run unless a node sets max_turns
 
         if (settingsManager != null) {
@@ -388,6 +514,7 @@ public class AgentLoop {
     private void detachActiveRun() {
         activeCallback = null;
         activeHistory = null;
+        pendingDisposition.clear();
         setApprovalOverrides(null);
         setModelOverride(null, null);
         this.effortOverride = null;
@@ -657,6 +784,13 @@ public class AgentLoop {
         // Resolve scoped approval before considering background execution. A workflow's
         // DENY_WRITES/STRICT policy must not be bypassable with {"background": true}.
         Tool tool = toolRegistry.getTool(toolName);
+
+        // Only shell commands drive the judge + audit log. Gate here so workflow review
+        // and other tools never call getContext() (keeps the context-less review path clean).
+        if (tool instanceof ShellTool) {
+            ensureJudgeAndAudit();
+        }
+
         ToolApprovalMode mode = getPerToolApprovalMode(toolName);
 
         // ALWAYS_REJECT: block immediately, no prompt or background dispatch.
@@ -688,13 +822,55 @@ public class AgentLoop {
         boolean needsApproval = tool != null && ("run_workflow".equals(toolName)
                 || (mode != ToolApprovalMode.ALWAYS_APPROVE && requireApproval && tool.requiresApproval()));
 
+        // Auto-mode judge: for shell commands, decide before any dialog so a benign command
+        // can run silently, a dangerous one be refused with a reason, and the rest fall back
+        // to the dialog. The judge sees only the command + context, never chat or web content.
+        CommandJudge.VerdictResult judgeResult = null;
+        if (judge != null && "auto".equals(currentShellApprovalMode())
+                && tool instanceof ShellTool && !("run_workflow".equals(toolName))) {
+            String command = commandArgument(arguments);
+            judgeResult = judge.evaluate(
+                    command, cwdArgument(arguments), currentBackendLabel(), workspaceRootPath());
+            if (judgeResult.verdict == CommandJudge.Verdict.DENY) {
+                String refused = "Tool execution denied by command judge: " + judgeResult.reason;
+                Log.d(TAG, "Shell command refused by judge: " + refused);
+                auditShell(toolName, command, "deny", null);
+                callback.onToolResult(toolName, refused);
+                conversationHistory.add(ChatMessage.createToolResultMessage(
+                        toolCall.getId(), toolName, refused));
+                processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
+                return;
+            }
+        }
+
+        // In auto mode, a silent "allow" verdict removes the need for a dialog; ask and the
+        // legacy paths keep the prompt. full_access runs silently (requiresApproval() == false).
+        if (judgeResult != null && judgeResult.verdict == CommandJudge.Verdict.ALLOW) {
+            needsApproval = false;
+        }
+
+        // Record the disposition to audit if/when the command actually runs, keyed by the
+        // tool call id so a later command can never pick up a stale or foreign disposition.
+        if (tool instanceof ShellTool && !("run_workflow".equals(toolName))) {
+            String disposition;
+            if (judgeResult != null) {
+                disposition = (judgeResult.verdict == CommandJudge.Verdict.ALLOW)
+                        ? "allow" : "dialog-approved";
+            } else if ("full_access".equals(currentShellApprovalMode())) {
+                disposition = "silent";
+            } else {
+                disposition = "dialog-approved";
+            }
+            pendingDisposition.put(toolCall.getId(), disposition);
+        }
+
         if (needsApproval) {
             // Build a normalised ExecPlan for exec-type tools (shell, etc.).
             // The approval dialog shows the plan's description — the canonical exe path,
             // tokenised argv, and plan hash — NOT the raw LLM-provided string.
             // This prevents prompt-injection where approval description differs from execution.
             final java.util.function.Supplier<ToolResult> approvedExecution;
-            final String description;
+            String description;
             if (tool instanceof RunWorkflowTool) {
                 try {
                     RunWorkflowTool.ApprovalReview review = ((RunWorkflowTool) tool).prepareApproval(arguments);
@@ -709,6 +885,10 @@ public class AgentLoop {
                 ExecPlan execPlan = tool.buildExecPlan(arguments);
                 description = execPlan != null ? execPlan.toApprovalDescription()
                         : tool.getApprovalDescription(arguments);
+                if (judgeResult != null && judgeResult.verdict == CommandJudge.Verdict.ASK
+                        && !judgeResult.reason.isEmpty()) {
+                    description += "\n\n[Command judge: " + judgeResult.reason + "]";
+                }
                 approvedExecution = () -> toolRegistry.executeTool(toolName, arguments);
             }
             AtomicBoolean decided = new AtomicBoolean();
@@ -730,6 +910,8 @@ public class AgentLoop {
                     // Add denial result to history and continue
                     String resultContent = "Tool execution denied by user";
                     Log.d(TAG, "Tool " + toolName + " denied by user");
+                    pendingDisposition.remove(toolCall.getId());
+                    auditShell(toolName, commandArgument(arguments), "dialog-denied", null);
                     callback.onToolResult(toolName, resultContent);
 
                     ChatMessage toolResultMessage = ChatMessage.createToolResultMessage(
@@ -843,6 +1025,22 @@ public class AgentLoop {
                                         int index, List<ChatMessage> conversationHistory, AgentCallback callback,
                                         ToolResult result) {
         String toolName = toolCall.getName();
+
+        // Record the executed shell command (disposition resolved before execution) in the
+        // audit log, in every mode and regardless of outcome, including commands that fail
+        // to start or time out.
+        if (result != null) {
+            String disposition = pendingDisposition.remove(toolCall.getId());
+            // Keep the resolved disposition only for a clean run; a failed command or a
+            // missing disposition is recorded as "error" so it is never mislabelled with
+            // a disposition that belongs to another command.
+            if (!result.isSuccess() || disposition == null) {
+                disposition = "error";
+            }
+            auditShell(toolName, commandArgument(toolCall.getArguments()),
+                    disposition, exitCodeFromResult(result.getContent()));
+        }
+
         String resultContent;
         if (result.isSuccess()) {
             resultContent = result.getContent();
