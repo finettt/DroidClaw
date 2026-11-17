@@ -39,6 +39,12 @@ android {
         buildConfig = true
     }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     signingConfigs {
         create("release") {
             val keystoreFile = System.getenv("RELEASE_KEYSTORE_PATH")
@@ -94,6 +100,17 @@ android {
         }
         
     }
+}
+
+val fetchProotBinaries = tasks.register<Exec>("fetchProotBinaries") {
+    val script = rootProject.file("scripts/fetch-proot-binaries.py")
+    inputs.file(script)
+    outputs.dir(file("src/main/jniLibs"))
+    commandLine("python3", script.absolutePath)
+}
+
+tasks.named("preBuild") {
+    dependsOn(fetchProotBinaries)
 }
 
 chaquopy {
