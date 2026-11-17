@@ -135,6 +135,11 @@ jobs:
             ./gradlew connectedAndroidTest -Pandroid.testInstrumentationRunnerArguments.numShards=${{ matrix.total-shards }} -Pandroid.testInstrumentationRunnerArguments.shardIndex=${{ matrix.shard-index }} -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g" --stacktrace --no-daemon
         timeout-minutes: 25
 
+      - name: Capture PRoot version from device logcat
+        if: always()
+        run: |
+          adb logcat -d -t 300 | grep -E "ProotRuntimeTest" || echo "ProotRuntimeTest line not found in logcat"
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
