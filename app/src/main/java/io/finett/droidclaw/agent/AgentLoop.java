@@ -87,8 +87,13 @@ public class AgentLoop {
     /** Append-only audit trail for shell commands across all approval modes. */
     private volatile ApprovalAuditLog auditLog;
 
-    /** Disposition recorded for the in-flight shell command, consumed by the audit on completion. */
-    private volatile String pendingDisposition;
+    /**
+     * Disposition recorded for the in-flight shell command, keyed by the tool call id and
+     * consumed by the audit on completion. Keying by id (not a single field) guarantees the
+     * line is never labelled with a disposition that belonged to a different command if
+     * execution is interrupted between the set and the consume.
+     */
+    private final java.util.Map<String, String> pendingDisposition = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** History of the in-flight run, used by cancellation to preserve partial output. */
     private volatile List<ChatMessage> activeHistory;
@@ -509,6 +514,7 @@ public class AgentLoop {
     private void detachActiveRun() {
         activeCallback = null;
         activeHistory = null;
+        pendingDisposition.clear();
         setApprovalOverrides(null);
         setModelOverride(null, null);
         this.effortOverride = null;
@@ -843,16 +849,19 @@ public class AgentLoop {
             needsApproval = false;
         }
 
-        // Record the disposition to audit if/when the command actually runs.
+        // Record the disposition to audit if/when the command actually runs, keyed by the
+        // tool call id so a later command can never pick up a stale or foreign disposition.
         if (tool instanceof ShellTool && !("run_workflow".equals(toolName))) {
+            String disposition;
             if (judgeResult != null) {
-                pendingDisposition = (judgeResult.verdict == CommandJudge.Verdict.ALLOW)
+                disposition = (judgeResult.verdict == CommandJudge.Verdict.ALLOW)
                         ? "allow" : "dialog-approved";
             } else if ("full_access".equals(currentShellApprovalMode())) {
-                pendingDisposition = "silent";
+                disposition = "silent";
             } else {
-                pendingDisposition = "dialog-approved";
+                disposition = "dialog-approved";
             }
+            pendingDisposition.put(toolCall.getId(), disposition);
         }
 
         if (needsApproval) {
@@ -901,6 +910,7 @@ public class AgentLoop {
                     // Add denial result to history and continue
                     String resultContent = "Tool execution denied by user";
                     Log.d(TAG, "Tool " + toolName + " denied by user");
+                    pendingDisposition.remove(toolCall.getId());
                     auditShell(toolName, commandArgument(arguments), "dialog-denied", null);
                     callback.onToolResult(toolName, resultContent);
 
@@ -1016,11 +1026,19 @@ public class AgentLoop {
                                         ToolResult result) {
         String toolName = toolCall.getName();
 
-        // Record the executed shell command (disposition resolved before execution) in the audit log.
-        if (result != null && result.isSuccess()) {
+        // Record the executed shell command (disposition resolved before execution) in the
+        // audit log, in every mode and regardless of outcome, including commands that fail
+        // to start or time out.
+        if (result != null) {
+            String disposition = pendingDisposition.remove(toolCall.getId());
+            // Keep the resolved disposition only for a clean run; a failed command or a
+            // missing disposition is recorded as "error" so it is never mislabelled with
+            // a disposition that belongs to another command.
+            if (!result.isSuccess() || disposition == null) {
+                disposition = "error";
+            }
             auditShell(toolName, commandArgument(toolCall.getArguments()),
-                    pendingDisposition, exitCodeFromResult(result.getContent()));
-            pendingDisposition = null;
+                    disposition, exitCodeFromResult(result.getContent()));
         }
 
         String resultContent;

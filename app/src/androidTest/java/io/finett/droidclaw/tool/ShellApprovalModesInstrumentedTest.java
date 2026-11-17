@@ -160,6 +160,11 @@ public class ShellApprovalModesInstrumentedTest {
     // ==================== helpers ====================
 
     private AgentLoop newLoop(String mode, String command, Predicate<String> denyWhen) {
+        return newLoop(mode, command, null, denyWhen);
+    }
+
+    private AgentLoop newLoop(String mode, String command, String workingDirectory,
+                              Predicate<String> denyWhen) {
         AgentConfig config = settings.getAgentConfig();
         config.setSandboxMode("relaxed");   // relaxed/full allow the shell tool to register
         config.setShellAccess(true);
@@ -168,11 +173,32 @@ public class ShellApprovalModesInstrumentedTest {
         config.setStreamResponses(false);   // force the non-streaming sendMessageWithTools path
         settings.setAgentConfig(config);
 
-        FakeLlm fakeLlm = new FakeLlm(settings, command, denyWhen);
+        FakeLlm fakeLlm = new FakeLlm(settings, command, workingDirectory, denyWhen);
         ToolRegistry registry = new ToolRegistry(context, settings);
         AgentLoop loop = new AgentLoop(fakeLlm, registry, settings, null, null, Runnable::run);
         loop.setMaxIterations(50);
         return loop;
+    }
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void auto_auditsFailedCommandWithErrorDisposition() {
+        // A command that fails to start (invalid working directory) must still land in the
+        // audit log, with disposition "error", even though it never produced a success result.
+        AgentLoop loop =
+                newLoop("auto", "echo hello", "/nonexistent/droidclaw_audit_dir_xyz", c -> false);
+
+        RecordingCallback callback = new RecordingCallback();
+        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
+
+        assertFalse("auto must not open a dialog for a benign command", callback.approvalRequested);
+        assertNotNull("the failed command must still return a tool result", callback.lastToolResult);
+        assertTrue("the failure must be surfaced as an error result",
+                callback.lastToolResult.contains("Error:"));
+        assertTrue("a failed command must still be audited",
+                auditContains("cmd=echo hello"));
+        assertTrue("a failed command must be audited with disposition error",
+                auditContains("disposition=error"));
     }
 
     private boolean auditContains(String needle) {
@@ -213,7 +239,7 @@ public class ShellApprovalModesInstrumentedTest {
                                                  AgentLoop.ApprovalCallback approvalCallback) {
             approvalRequested = true;
             approvalToolName = name;
-            approvalCallback = approvalCallback;
+            this.approvalCallback = approvalCallback;
         }
         @Override public void onStreamDelta(String delta) {}
         @Override public void onCancelled(List<ChatMessage> history) {}
@@ -227,12 +253,15 @@ public class ShellApprovalModesInstrumentedTest {
      */
     private static final class FakeLlm extends LlmApiService {
         private final String command;
+        private final String workingDirectory;
         private final Predicate<String> denyWhen;
         private final AtomicInteger mainLoopCalls = new AtomicInteger(0);
 
-        FakeLlm(SettingsManager settings, String command, Predicate<String> denyWhen) {
+        FakeLlm(SettingsManager settings, String command, String workingDirectory,
+                Predicate<String> denyWhen) {
             super(settings);
             this.command = command;
+            this.workingDirectory = workingDirectory;
             this.denyWhen = denyWhen;
         }
 
@@ -243,6 +272,9 @@ public class ShellApprovalModesInstrumentedTest {
             if (mainLoopCalls.getAndIncrement() == 0) {
                 JsonObject args = new JsonObject();
                 args.addProperty("command", command);
+                if (workingDirectory != null) {
+                    args.addProperty("working_directory", workingDirectory);
+                }
                 callback.onSuccess(new LlmApiService.LlmResponse(null,
                         Collections.singletonList(new LlmApiService.ToolCall("call_1", "execute_shell", args))));
             } else {
