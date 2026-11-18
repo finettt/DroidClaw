@@ -6,6 +6,8 @@ New here? - [First steps](user/first-steps.md)
 
 Want to setup? - [Settings](user/settings.md)
 
+How to install the Linux distro? - [Linux distro installation](installation.md)
+
 Searching references?
 
 - [User Profile (USER.md)](reference/user.md) — what the agent knows about you

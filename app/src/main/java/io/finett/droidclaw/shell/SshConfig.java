@@ -1,12 +1,13 @@
 package io.finett.droidclaw.shell;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Configuration for SSH shell backend.
  *
- * <p>Holds connection parameters and security settings for remote shell execution.
+ * <p>Holds connection parameters and the security policy for remote shell execution.
+ * The command allowlist was removed; the single gate is the {@link ExecPolicy} security
+ * level plus the shell-approval MODE, identical to the local contract.
  */
 public class SshConfig {
 
@@ -17,7 +18,6 @@ public class SshConfig {
     private final String privateKeyPath;  // null if using password auth
     private final boolean verifyHostKey;
     private final ExecPolicy policy;
-    private final List<AllowlistEntry> allowlist;
 
     private SshConfig(Builder builder) {
         this.host = builder.host;
@@ -27,7 +27,6 @@ public class SshConfig {
         this.privateKeyPath = builder.privateKeyPath;
         this.verifyHostKey = builder.verifyHostKey;
         this.policy = builder.policy;
-        this.allowlist = java.util.Collections.unmodifiableList(new ArrayList<>(builder.allowlist));
     }
 
     // ==================== Getters ====================
@@ -60,12 +59,11 @@ public class SshConfig {
         return policy;
     }
 
-    public List<AllowlistEntry> getAllowlist() {
-        return allowlist;
-    }
-
     /**
-     * Validate an {@link ExecPlan} against this SSH config's policy and allowlist.
+     * Validate an {@link ExecPlan} against this SSH config's policy.
+     *
+     * <p>Only the {@link ExecPolicy.SecurityLevel#DENY} level (shell disabled) is rejected;
+     * once shell access is enabled the approval flow is the single gate.
      *
      * @return {@code null} if allowed, or a denial reason string
      */
@@ -73,22 +71,7 @@ public class SshConfig {
         if (policy.getSecurity() == ExecPolicy.SecurityLevel.DENY) {
             return "SSH execution policy is DENY — enable shell access in settings";
         }
-
-        if (policy.getSecurity() == ExecPolicy.SecurityLevel.FULL) {
-            return null;
-        }
-
-        for (AllowlistEntry entry : allowlist) {
-            if (entry.matches(plan.getCanonicalExePath())) {
-                String argvDenial = entry.validateArgv(plan.getArgv());
-                if (argvDenial != null) {
-                    return "Command argument denied: " + argvDenial;
-                }
-                return null;
-            }
-        }
-
-        return "Command not in SSH allowlist: " + plan.getCanonicalExePath();
+        return null;
     }
 
     // ==================== Builder ====================
@@ -101,7 +84,6 @@ public class SshConfig {
         private String privateKeyPath = null;
         private boolean verifyHostKey = true;
         private ExecPolicy policy = ExecPolicy.deny();
-        private List<AllowlistEntry> allowlist = new ArrayList<>();
 
         public Builder host(String host) {
             this.host = host;
@@ -135,16 +117,6 @@ public class SshConfig {
 
         public Builder policy(ExecPolicy policy) {
             this.policy = policy;
-            return this;
-        }
-
-        public Builder allowlistEntry(AllowlistEntry entry) {
-            this.allowlist.add(entry);
-            return this;
-        }
-
-        public Builder allowlistEntries(List<AllowlistEntry> entries) {
-            this.allowlist.addAll(entries);
             return this;
         }
 

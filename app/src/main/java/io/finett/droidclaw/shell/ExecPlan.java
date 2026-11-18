@@ -30,9 +30,7 @@ public class ExecPlan {
          */
         DIRECT,
         /**
-         * Shell mode: execute via {@code sh -c "..."}. Requires explicit opt-in
-         * and is only permitted when {@link ExecPolicy.SecurityLevel} is ALLOWLIST
-         * or FULL with {@link ExecPolicy.AskMode#ALWAYS}.
+         * Shell mode: execute via {@code sh -c "..."}. Requires explicit opt-in.
          */
         SHELL
     }

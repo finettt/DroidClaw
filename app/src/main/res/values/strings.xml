@@ -113,8 +113,6 @@
     <string name="background_shell_access_description">Allow cron jobs and workers to run shell/Python commands</string>
     <string name="background_exec">Background Tool Execution</string>
     <string name="background_exec_description">Allow the agent to run any tool asynchronously with background=true</string>
-    <string name="custom_allowlist">Custom Command Allowlist</string>
-    <string name="custom_allowlist_description">Extra executable paths allowed in Relaxed mode (one per line)</string>
     <string name="screen_control">Screen Control</string>
     <string name="screen_control_description">Allow the agent to read the visible UI and control the phone via Accessibility</string>
     <string name="screen_control_trust_mode">Screen Control Trust Mode</string>

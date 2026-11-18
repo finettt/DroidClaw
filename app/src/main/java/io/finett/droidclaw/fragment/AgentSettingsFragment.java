@@ -52,7 +52,6 @@ public class AgentSettingsFragment extends Fragment {
     private TextInputEditText inputShellTimeout;
     private SwitchMaterial switchBackgroundShellAccess;
     private SwitchMaterial switchBackgroundExec;
-    private TextInputEditText inputCustomAllowlist;
     private TextInputEditText inputLlmConnectTimeout;
     private TextInputEditText inputLlmReadTimeout;
     private TextInputEditText inputLlmWriteTimeout;
@@ -172,7 +171,6 @@ public class AgentSettingsFragment extends Fragment {
         inputShellTimeout = view.findViewById(R.id.input_shell_timeout);
         switchBackgroundShellAccess = view.findViewById(R.id.switch_background_shell_access);
         switchBackgroundExec = view.findViewById(R.id.switch_background_exec);
-        inputCustomAllowlist = view.findViewById(R.id.input_custom_allowlist);
         inputLlmConnectTimeout = view.findViewById(R.id.input_llm_connect_timeout);
         inputLlmReadTimeout = view.findViewById(R.id.input_llm_read_timeout);
         inputLlmWriteTimeout = view.findViewById(R.id.input_llm_write_timeout);
@@ -323,13 +321,6 @@ public class AgentSettingsFragment extends Fragment {
             inputShellTimeout.setText(String.valueOf(agentConfig.getShellTimeout()));
             switchBackgroundShellAccess.setChecked(agentConfig.isBackgroundShellEnabled());
             switchBackgroundExec.setChecked(agentConfig.isBackgroundExecEnabled());
-
-            StringBuilder allowlistText = new StringBuilder();
-            for (String path : agentConfig.getCustomAllowlist()) {
-                if (allowlistText.length() > 0) allowlistText.append('\n');
-                allowlistText.append(path);
-            }
-            inputCustomAllowlist.setText(allowlistText.toString());
 
             inputLlmConnectTimeout.setText(String.valueOf(agentConfig.getLlmConnectTimeout()));
             inputLlmReadTimeout.setText(String.valueOf(agentConfig.getLlmReadTimeout()));
@@ -942,17 +933,6 @@ public class AgentSettingsFragment extends Fragment {
             agentConfig.setShellApprovalMode("auto");
         }
 
-        // Parse custom allowlist (one path per line)
-        List<String> customAllowlist = new ArrayList<>();
-        String allowlistRaw = inputCustomAllowlist.getText() != null
-                ? inputCustomAllowlist.getText().toString() : "";
-        for (String line : allowlistRaw.split("\\r?\\n")) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) {
-                customAllowlist.add(trimmed);
-            }
-        }
-
         // Validate network timeouts
         String llmConnectTimeoutStr = inputLlmConnectTimeout.getText().toString().trim();
         String llmReadTimeoutStr = inputLlmReadTimeout.getText().toString().trim();
@@ -975,7 +955,6 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setShellTimeout(shellTimeout);
         agentConfig.setBackgroundShellEnabled(switchBackgroundShellAccess.isChecked());
         agentConfig.setBackgroundExecEnabled(switchBackgroundExec.isChecked());
-        agentConfig.setCustomAllowlist(customAllowlist);
         agentConfig.setLlmConnectTimeout(llmConnectTimeout);
         agentConfig.setLlmReadTimeout(llmReadTimeout);
         agentConfig.setLlmWriteTimeout(llmWriteTimeout);
@@ -997,12 +976,12 @@ public class AgentSettingsFragment extends Fragment {
             consolidationScheduler.cancelConsolidation();
         }
 
-        // Terminal backend
+        // Terminal backend: "ssh" is remote; anything else is the distro backend (null default).
         String backendText = dropdownTerminalBackend.getText().toString();
         if (getString(R.string.terminal_backend_ssh).equals(backendText)) {
             agentConfig.setShellBackend("ssh");
         } else {
-            agentConfig.setShellBackend("local");
+            agentConfig.setShellBackend(null);
         }
 
         // SSH connection settings

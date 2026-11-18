@@ -295,7 +295,13 @@ public class SettingsManager {
         config.setWebToolsEnabled(json.optBoolean("webToolsEnabled", true));
         config.setSearxngUrl(json.optString("searxngUrl", ""));
         config.setGuidelinesLearningEnabled(json.optBoolean("guidelinesLearningEnabled", true));
-        config.setShellBackend(json.optString("shellBackend", "local"));
+        // Migrate a stored "local" value to the distro backend (the new default, null).
+        String storedBackend = json.optString("shellBackend", null);
+        if ("local".equals(storedBackend)) {
+            storedBackend = null;
+        }
+        config.setShellBackend(storedBackend);
+        config.setDistroNoSeccomp(json.optBoolean("distroNoSeccomp", true));
         config.setSshHost(json.optString("sshHost", ""));
         config.setSshPort(json.optInt("sshPort", 22));
         config.setSshUser(json.optString("sshUser", ""));
@@ -316,14 +322,6 @@ public class SettingsManager {
         }
         config.setToolApprovalOverrides(toolApprovalOverrides);
 
-        List<String> customAllowlist = new ArrayList<>();
-        if (json.has("customAllowlist")) {
-            JSONArray arr = json.getJSONArray("customAllowlist");
-            for (int i = 0; i < arr.length(); i++) {
-                customAllowlist.add(arr.getString(i));
-            }
-        }
-        config.setCustomAllowlist(customAllowlist);
         return config;
     }
 
@@ -417,6 +415,7 @@ public class SettingsManager {
         json.put("searxngUrl", config.getSearxngUrl());
         json.put("guidelinesLearningEnabled", config.isGuidelinesLearningEnabled());
         json.put("shellBackend", config.getShellBackend());
+        json.put("distroNoSeccomp", config.isDistroNoSeccomp());
         json.put("sshHost", config.getSshHost());
         json.put("sshPort", config.getSshPort());
         json.put("sshUser", config.getSshUser());
@@ -432,11 +431,6 @@ public class SettingsManager {
         }
         json.put("toolApprovalOverrides", overridesJson);
 
-        JSONArray allowlistArr = new JSONArray();
-        for (String path : config.getCustomAllowlist()) {
-            allowlistArr.put(path);
-        }
-        json.put("customAllowlist", allowlistArr);
         return json;
     }
 

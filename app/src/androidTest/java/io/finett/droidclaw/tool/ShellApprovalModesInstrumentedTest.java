@@ -15,12 +15,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.TimeUnit;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Collections;
@@ -36,6 +40,10 @@ import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.Flaky;
 import io.finett.droidclaw.util.FlakyTestRule;
+import io.finett.droidclaw.shell.distro.DistroManager;
+import io.finett.droidclaw.shell.distro.DistroException;
+import io.finett.droidclaw.shell.distro.DistroSpec;
+import io.finett.droidclaw.shell.distro.OkHttpDistroFetcher;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
@@ -64,6 +72,13 @@ public class ShellApprovalModesInstrumentedTest {
     @Rule
     public FlakyTestRule flakyTestRule = new FlakyTestRule(5);
 
+    /** Production disk limit (MB) reused for the one-time distro bootstrap below. */
+    private static final int DISK_LIMIT_MB = 2048;
+    /** Bootstrapped once for the whole class so the mode tests share a ready image. */
+    private static volatile boolean distroBootstrapped;
+    /** Bootstrap timeout, matching the other distro instrumented test. */
+    private static final long BOOTSTRAP_TIMEOUT_MINUTES = 5;
+
     @Before
     public void setUp() {
         context = ApplicationProvider.getApplicationContext();
@@ -72,6 +87,68 @@ public class ShellApprovalModesInstrumentedTest {
         auditLog = new File(context.getFilesDir(), "audit/shell.log");
         if (auditLog.exists()) {
             auditLog.delete();
+        }
+    }
+
+    /**
+     * Install the pinned Ubuntu image once, before any mode test runs, so the
+     * shell tool has a ready guest to execute through. The bootstrap test
+     * deletes the image in its own tearDown, so each class must bootstrap again.
+     * Retries a few times to absorb transient network and disk hiccups on the
+     * emulator.
+     */
+    @BeforeClass
+    public static void bootstrapDistro() throws Exception {
+        System.out.println("BEFORE_CLASS distroBootstrapped=" + distroBootstrapped);
+        if (distroBootstrapped) {
+            return;
+        }
+        Context ctx = ApplicationProvider.getApplicationContext();
+        File imageDir = new File(new File(ctx.getFilesDir(), "distro"), DistroSpec.IMAGE_DIR);
+        System.out.println("BEFORE_CLASS markerExists=" + new File(imageDir, DistroSpec.MARKER_FILE).isFile() + " imageDir=" + imageDir);
+        if (new File(imageDir, DistroSpec.MARKER_FILE).isFile()) {
+            distroBootstrapped = true;
+            return;
+        }
+        final DistroException[] lastHolder = new DistroException[1];
+        for (int attempt = 0; attempt < 3 && !distroBootstrapped; attempt++) {
+            try {
+                DistroManager manager =
+                        new DistroManager(ctx, new OkHttpDistroFetcher(), DISK_LIMIT_MB);
+                CountDownLatch done = new CountDownLatch(1);
+                manager.bootstrap(new DistroManager.Listener() {
+                    @Override
+                    public void onStateChange(DistroManager.State state) {
+                        if (state == DistroManager.State.READY
+                                || state == DistroManager.State.FAILED) {
+                            done.countDown();
+                        }
+                    }
+
+                    @Override
+                    public void onProgress(long bytesSoFar, long total) {}
+
+                    @Override
+                    public void onError(DistroException error) {
+                        lastHolder[0] = error;
+                    }
+                });
+                if (!done.await(BOOTSTRAP_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+                    throw new TimeoutException("bootstrap did not finish in time");
+                }
+                if (manager.getState() == DistroManager.State.READY) {
+                    distroBootstrapped = true;
+                } else {
+                    lastHolder[0] = new DistroException(manager.getError());
+                }
+            } catch (Exception error) {
+                lastHolder[0] = error instanceof DistroException
+                        ? (DistroException) error
+                        : new DistroException(error.getMessage());
+            }
+        }
+        if (!distroBootstrapped) {
+            throw new AssertionError("distro bootstrap failed: " + lastHolder[0]);
         }
     }
 
@@ -95,6 +172,7 @@ public class ShellApprovalModesInstrumentedTest {
         // Approve: the command should then run silently and surface its output.
         callback.approvalCallback.onApproved();
 
+        System.out.println("DEBUG_RESULT=[" + (callback.lastToolResult == null ? "NULL" : callback.lastToolResult) + "]");
         assertTrue("echoed text should be returned as the tool result",
                 callback.lastToolResult != null && callback.lastToolResult.contains("hello"));
         assertTrue("an approved run must be audited with its command", auditContains("cmd=echo hello"));
@@ -157,6 +235,78 @@ public class ShellApprovalModesInstrumentedTest {
         assertTrue("full_access runs must be audited as silent", auditContains("disposition=silent"));
     }
 
+    // ==================== distro execution through PRoot ====================
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void distro_runsOsReleaseInShellMode() {
+        // sh -c "cat /etc/os-release" exercises the guest-shell path through PRoot.
+        AgentLoop loop = newLoop("auto", "sh -c \"cat /etc/os-release\"", c -> false);
+        RecordingCallback callback = new RecordingCallback();
+        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
+
+        assertNotNull("os-release run must return a tool result", callback.lastToolResult);
+        assertFalse("a benign distro command must not open a dialog", callback.approvalRequested);
+        assertTrue("os-release must report the Ubuntu distro",
+                callback.lastToolResult.contains("Ubuntu"));
+    }
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void distro_runsAptVersion() {
+        // A real distro binary resolved inside the guest rootfs.
+        AgentLoop loop = newLoop("auto", "apt --version", c -> false);
+        RecordingCallback callback = new RecordingCallback();
+        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
+
+        assertNotNull("apt run must return a tool result", callback.lastToolResult);
+        assertTrue("apt must print its version string",
+                callback.lastToolResult.toLowerCase().contains("apt"));
+    }
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void distro_rejectsHostPathExec() {
+        // A host absolute path is not a valid guest executable and must be rejected.
+        Context ctx = ApplicationProvider.getApplicationContext();
+        String hostPath = ctx.getFilesDir().getAbsolutePath() + "/leak";
+        AgentLoop loop = newLoop("auto", hostPath, c -> false);
+        RecordingCallback callback = new RecordingCallback();
+        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
+
+        assertNotNull("host-path exec must return a tool result", callback.lastToolResult);
+        assertTrue("a host path must be rejected as not valid inside the Linux environment",
+                callback.lastToolResult
+                        .contains("Host path is not valid inside the Linux environment"));
+    }
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void distroMissingYieldsActionableError() throws Exception {
+        // With the ready marker absent, planning surfaces an actionable install error.
+        Context ctx = ApplicationProvider.getApplicationContext();
+        File imageDir = new File(new File(ctx.getFilesDir(), "distro"), DistroSpec.IMAGE_DIR);
+        File marker = new File(imageDir, DistroSpec.MARKER_FILE);
+        byte[] original = marker.exists() ? java.nio.file.Files.readAllBytes(marker.toPath()) : null;
+        if (marker.exists()) {
+            marker.delete();
+        }
+        try {
+            AgentLoop loop = newLoop("auto", "echo hello", c -> false);
+            RecordingCallback callback = new RecordingCallback();
+            loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)),
+                    callback);
+
+            assertNotNull("missing-distro run must return a tool result", callback.lastToolResult);
+            assertTrue("the error must tell the user to install the environment",
+                    callback.lastToolResult.contains("is not installed yet"));
+        } finally {
+            if (original != null && !marker.exists()) {
+                java.nio.file.Files.write(marker.toPath(), original);
+            }
+        }
+    }
+
     // ==================== helpers ====================
 
     private AgentLoop newLoop(String mode, String command, Predicate<String> denyWhen) {
@@ -199,6 +349,26 @@ public class ShellApprovalModesInstrumentedTest {
                 auditContains("cmd=echo hello"));
         assertTrue("a failed command must be audited with disposition error",
                 auditContains("disposition=error"));
+    }
+
+    @Test
+    public void temp_absoluteSymlinkFix() throws Exception {
+        String rootfs = "/data/user/0/io.finett.droidclaw/files/distro/ubuntu";
+        String interpReal = "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2";
+        String interpViaLib = rootfs + "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2";
+        String symlink = rootfs + "/lib64/ld-linux-x86-64.so.2";
+        System.out.println("DEBUG_REAL_INTERP_EXISTS=" + java.nio.file.Files.exists(java.nio.file.Paths.get(interpReal)));
+        System.out.println("DEBUG_LIB_IS_LINK=" + java.nio.file.Files.isSymbolicLink(java.nio.file.Paths.get(rootfs + "/lib")));
+        // Point the ELF interpreter at the real interpreter.
+        Process rm = Runtime.getRuntime().exec(new String[]{"rm", "-f", symlink});
+        rm.waitFor();
+        Process ln = Runtime.getRuntime().exec(new String[]{"ln", "-s", interpReal, symlink});
+        ln.waitFor();
+        System.out.println("DEBUG_NEW_TARGET=" + java.nio.file.Files.readSymbolicLink(java.nio.file.Paths.get(symlink)));
+        AgentLoop loop = newLoop("auto", "echo HELLO_AFTER_REAL_INTERP", c -> false);
+        RecordingCallback callback = new RecordingCallback();
+        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
+        System.out.println("DEBUG_ECHO_RESULT=[" + (callback.lastToolResult == null ? "NULL" : callback.lastToolResult) + "]");
     }
 
     private boolean auditContains(String needle) {

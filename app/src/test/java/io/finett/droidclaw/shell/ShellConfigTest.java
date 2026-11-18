@@ -48,23 +48,11 @@ public class ShellConfigTest {
         assertEquals(1024 * 1024, config.getMaxOutputSize());
         assertEquals(ExecPolicy.SecurityLevel.DENY, config.getPolicy().getSecurity());
         assertEquals(ExecPolicy.AskMode.OFF, config.getPolicy().getAsk());
-        assertTrue(config.getAllowlist().isEmpty());
         assertEquals(ExecPlan.ExecMode.DIRECT, config.getDefaultMode());
 
         String denial = config.validatePlan(plan("ls", "-l"));
         assertNotNull(denial);
         assertTrue(denial.contains("DENY"));
-    }
-
-    @Test
-    public void createAllowlistDefault_usesAllowlistPolicy() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
-
-        assertEquals(ExecPolicy.SecurityLevel.ALLOWLIST, config.getPolicy().getSecurity());
-        assertEquals(ExecPolicy.AskMode.ON_MISS, config.getPolicy().getAsk());
-        assertFalse(config.getAllowlist().isEmpty());
-        assertEquals(ExecPlan.ExecMode.DIRECT, config.getDefaultMode());
-        assertTrue(config.getTrustedDirs().contains("/system/bin"));
     }
 
     @Test
@@ -118,8 +106,8 @@ public class ShellConfigTest {
     }
 
     @Test
-    public void validatePlan_allowlistedCommand_returnsNull() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
+    public void validatePlan_fullPolicy_allowsAllCommands() {
+        ShellConfig config = ShellConfig.createFull();
 
         String denial = config.validatePlan(plan("ls", "-l"));
 
@@ -127,44 +115,13 @@ public class ShellConfigTest {
     }
 
     @Test
-    public void validatePlan_unlistedCommand_isDenied() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
+    public void validatePlan_deniedPolicy_isDenied() {
+        ShellConfig config = ShellConfig.createDefault();
 
         String denial = config.validatePlan(plan("rm", "-rf", "/"));
 
         assertNotNull(denial);
-        assertTrue(denial.contains("not in allowlist"));
-    }
-
-    @Test
-    public void validatePlan_deniedFlag_isRejected() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
-
-        String denial = config.validatePlan(plan("find", ".", "-exec", "rm", "{}", ";"));
-
-        assertNotNull(denial);
-        assertTrue(denial.contains("denied"));
-        assertTrue(denial.contains("-exec"));
-    }
-
-    @Test
-    public void validatePlan_unknownFlagOnRestrictedCommand_isRejected() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
-
-        String denial = config.validatePlan(plan("head", "-z", "file.txt"));
-
-        assertNotNull(denial);
-        assertTrue(denial.contains("allowlist"));
-    }
-
-    @Test
-    public void validatePlan_positionalArgLimit_isEnforced() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
-
-        String denial = config.validatePlan(plan("cat", "a.txt", "b.txt"));
-
-        assertNotNull(denial);
-        assertTrue(denial.contains("Too many positional arguments"));
+        assertTrue(denial.contains("DENY"));
     }
 
     @Test
@@ -179,7 +136,9 @@ public class ShellConfigTest {
 
     @Test
     public void requiresApproval_onMiss_returnsFalseWhenAllowed_trueWhenDenied() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
+        ShellConfig config = new ShellConfig.Builder()
+                .policy(ExecPolicy.allowlist())
+                .build();
 
         assertFalse(config.requiresApproval(true));
         assertTrue(config.requiresApproval(false));
@@ -187,23 +146,11 @@ public class ShellConfigTest {
 
     @Test
     public void trustedDirs_areImmutable() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
+        ShellConfig config = ShellConfig.createFull();
 
         try {
             config.getTrustedDirs().add("/tmp");
             fail("trustedDirs should be immutable");
-        } catch (UnsupportedOperationException expected) {
-            // expected
-        }
-    }
-
-    @Test
-    public void allowlist_isImmutable() {
-        ShellConfig config = ShellConfig.createAllowlistDefault();
-
-        try {
-            config.getAllowlist().clear();
-            fail("allowlist should be immutable");
         } catch (UnsupportedOperationException expected) {
             // expected
         }

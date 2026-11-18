@@ -24,7 +24,7 @@ public class ExecPlannerTest {
 
     @Before
     public void setUp() throws Exception {
-        config = ShellConfig.createAllowlistDefault();
+        config = ShellConfig.createDefault();
         workspace = new File(System.getProperty("java.io.tmpdir"));
         planner = new ExecPlanner(config, workspace);
 
