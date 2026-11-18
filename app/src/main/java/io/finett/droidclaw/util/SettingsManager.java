@@ -303,6 +303,7 @@ public class SettingsManager {
         config.setSshPassword(json.optString("sshPassword", ""));
         config.setSshPrivateKeyPath(json.optString("sshPrivateKeyPath", ""));
         config.setSshVerifyHostKey(json.optBoolean("sshVerifyHostKey", true));
+        config.setDistroDiskLimitMb(json.optInt("distroDiskLimitMb", 2048));
 
         Map<String, String> toolApprovalOverrides = new HashMap<>();
         if (json.has("toolApprovalOverrides")) {
@@ -423,6 +424,7 @@ public class SettingsManager {
         json.put("sshPassword", config.getSshPassword());
         json.put("sshPrivateKeyPath", config.getSshPrivateKeyPath());
         json.put("sshVerifyHostKey", config.isSshVerifyHostKey());
+        json.put("distroDiskLimitMb", config.getDistroDiskLimitMb());
 
         JSONObject overridesJson = new JSONObject();
         for (Map.Entry<String, String> entry : config.getToolApprovalOverrides().entrySet()) {

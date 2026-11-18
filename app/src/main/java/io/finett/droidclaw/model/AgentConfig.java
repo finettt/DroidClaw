@@ -37,6 +37,7 @@ public class AgentConfig {
     private String sshPassword;
     private String sshPrivateKeyPath;
     private boolean sshVerifyHostKey;
+    private int distroDiskLimitMb; // advisory host-side quota (MB) for the Linux image
 
     public AgentConfig() {
         this.customAllowlist = new ArrayList<>();
@@ -58,6 +59,7 @@ public class AgentConfig {
         this.shellApprovalMode = "auto";
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
+        this.distroDiskLimitMb = 2048;
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
@@ -87,6 +89,7 @@ public class AgentConfig {
         this.lessonConsolidationEnabled = true;
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
+        this.distroDiskLimitMb = 2048;
     }
 
     public static AgentConfig getDefaults() {
@@ -353,6 +356,15 @@ public class AgentConfig {
 
     public void setSshVerifyHostKey(boolean sshVerifyHostKey) {
         this.sshVerifyHostKey = sshVerifyHostKey;
+    }
+
+    /** Advisory host-side quota, in megabytes, for the installed Linux image. */
+    public int getDistroDiskLimitMb() {
+        return distroDiskLimitMb;
+    }
+
+    public void setDistroDiskLimitMb(int distroDiskLimitMb) {
+        this.distroDiskLimitMb = distroDiskLimitMb <= 0 ? 2048 : distroDiskLimitMb;
     }
 
     public String getDefaultProviderId() {

@@ -7,4 +7,5 @@
 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="droidclaw_settings.xml"/>
+    <exclude domain="file" path="distro/"/>
 </full-backup-content>

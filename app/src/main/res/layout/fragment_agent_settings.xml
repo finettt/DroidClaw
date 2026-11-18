@@ -829,6 +829,88 @@
             android:layout_marginBottom="8dp"
             android:background="?android:attr/listDivider" />
 
+        <!-- Linux Environment -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/distro_linux_environment"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/distro_linux_environment_description"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:textColor="?android:attr/textColorSecondary"
+            android:layout_marginBottom="16dp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:hint="@string/distro_disk_limit_mb"
+            app:helperText="@string/distro_disk_limit_description"
+            app:boxBackgroundMode="outline">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_distro_disk_limit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/text_distro_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/distro_status_not_installed"
+            android:textAppearance="?attr/textAppearanceSubtitle1"
+            android:layout_marginBottom="8dp" />
+
+        <ProgressBar
+            android:id="@+id/progress_distro"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:max="100"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_distro_install"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="@string/distro_install" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_distro_delete"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="@string/distro_delete"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="8dp"
+            android:background="?android:attr/listDivider" />
+
         <!-- Network Timeouts Header -->
         <TextView
             android:layout_width="wrap_content"

@@ -6,8 +6,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="droidclaw_settings.xml"/>
+        <exclude domain="file" path="distro/"/>
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="droidclaw_settings.xml"/>
+        <exclude domain="file" path="distro/"/>
     </device-transfer>
 </data-extraction-rules>

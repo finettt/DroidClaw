@@ -125,6 +125,26 @@ public class SettingsManagerTest {
         assertTrue(config.isRequireApproval());
         assertEquals(30, config.getShellTimeout());
         assertFalse(config.isBackgroundExecEnabled());
+        assertEquals(2048, config.getDistroDiskLimitMb());
+    }
+
+    @Test
+    public void distroDiskLimit_persistsAcrossInstances() {
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setDistroDiskLimitMb(4096);
+        settingsManager.setAgentConfig(config);
+
+        SettingsManager newInstance = new SettingsManager(context);
+        assertEquals(4096, newInstance.getAgentConfig().getDistroDiskLimitMb());
+    }
+
+    @Test
+    public void distroDiskLimit_nonPositiveValueUsesDefault() {
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setDistroDiskLimitMb(0);
+        assertEquals(2048, config.getDistroDiskLimitMb());
+        config.setDistroDiskLimitMb(-1);
+        assertEquals(2048, config.getDistroDiskLimitMb());
     }
 
     @Test
