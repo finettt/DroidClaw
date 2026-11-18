@@ -58,7 +58,7 @@ public class DistroSpecTest {
     }
 
     @Test
-    public void arm64_pinMatchesTaskcard() {
+    public void arm64_pinMatchesCanonicalSha256() {
         DistroSpec.Entry entry = DistroSpec.ARM64;
         assertEquals("ubuntu", DistroSpec.NAME);
         assertEquals("24.04.5", DistroSpec.VERSION);
@@ -72,7 +72,7 @@ public class DistroSpecTest {
     }
 
     @Test
-    public void amd64_pinMatchesTaskcard() {
+    public void amd64_pinMatchesCanonicalSha256() {
         DistroSpec.Entry entry = DistroSpec.AMD64;
         assertEquals(
                 "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/"
