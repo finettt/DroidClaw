@@ -20,6 +20,7 @@ markwon = "4.6.2"
 desugaring = "2.1.4"
 securityCrypto = "1.1.0-alpha06"
 jsoup = "1.18.1"
+commons-compress = "1.27.1"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -48,6 +49,7 @@ markwon-syntax-highlight = { group = "io.noties.markwon", name = "syntax-highlig
 desugaring = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugaring" }
 security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
+commons-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "commons-compress" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -144,6 +144,7 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.okhttp)
     implementation(libs.gson)
+    implementation(libs.commons.compress)
     implementation(libs.jsoup)
     implementation(libs.security.crypto)
 

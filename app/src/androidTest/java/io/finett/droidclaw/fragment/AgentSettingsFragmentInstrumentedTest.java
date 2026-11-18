@@ -66,6 +66,14 @@ public class AgentSettingsFragmentInstrumentedTest {
                         view.findViewById(R.id.input_shell_timeout));
                 assertNotNull("Guidelines learning switch should exist",
                         view.findViewById(R.id.switch_guidelines_learning));
+                assertNotNull("Distro disk limit should exist",
+                        view.findViewById(R.id.input_distro_disk_limit));
+                assertNotNull("Distro status should exist",
+                        view.findViewById(R.id.text_distro_status));
+                assertNotNull("Distro install button should exist",
+                        view.findViewById(R.id.button_distro_install));
+                assertNotNull("Distro delete button should exist",
+                        view.findViewById(R.id.button_distro_delete));
 
                 // SSH fields
                 assertNotNull("Terminal backend dropdown should exist",

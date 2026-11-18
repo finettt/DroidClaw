@@ -13,3 +13,4 @@ Searching references?
 - [Agent Tools: App & Screen Control](features/agent-tools.md) — how the agent operates your phone and runs shell commands
 - [Calendar Tools](features/calendar.md) — let the agent read and manage your device calendar
 - [Workflows](features/workflows.md) — multi-agent workflow files: format, security model, bundled templates ([по-русски](features/workflows.ru.md))
+- [Linux distro bootstrap](features/distro.md) — install and manage the pinned Ubuntu base image ([по-русски](features/distro.ru.md))

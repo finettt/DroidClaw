@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,6 +19,7 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -30,6 +32,9 @@ import io.finett.droidclaw.model.AgentConfig;
 import io.finett.droidclaw.model.Effort;
 import io.finett.droidclaw.shell.SshConfig;
 import io.finett.droidclaw.shell.SshShellBackend;
+import io.finett.droidclaw.shell.distro.DistroException;
+import io.finett.droidclaw.shell.distro.DistroManager;
+import io.finett.droidclaw.shell.distro.OkHttpDistroFetcher;
 import io.finett.droidclaw.util.CalendarPermissionHelper;
 import io.finett.droidclaw.util.SettingsManager;
 
@@ -51,6 +56,15 @@ public class AgentSettingsFragment extends Fragment {
     private TextInputEditText inputLlmConnectTimeout;
     private TextInputEditText inputLlmReadTimeout;
     private TextInputEditText inputLlmWriteTimeout;
+
+    // Linux distro bootstrap
+    private TextInputEditText inputDistroDiskLimit;
+    private TextView textDistroStatus;
+    private ProgressBar progressDistro;
+    private MaterialButton buttonDistroInstall;
+    private MaterialButton buttonDistroDelete;
+    private DistroManager distroManager;
+    private boolean distroDeleting;
 
     // SSH Terminal Backend
     private AutoCompleteTextView dropdownTerminalBackend;
@@ -113,6 +127,7 @@ public class AgentSettingsFragment extends Fragment {
         setupDropdowns();
         loadAgentSettings();
         setupListeners();
+        setupDistro();
     }
 
     @Override
@@ -121,6 +136,9 @@ public class AgentSettingsFragment extends Fragment {
         // Refresh accessibility status every time the fragment resumes (user may have
         // just come back from the system Accessibility Settings screen)
         updateAccessibilityStatus();
+        if (distroManager != null && !distroDeleting) {
+            updateDistroUi();
+        }
     }
 
     @Override
@@ -158,6 +176,12 @@ public class AgentSettingsFragment extends Fragment {
         inputLlmConnectTimeout = view.findViewById(R.id.input_llm_connect_timeout);
         inputLlmReadTimeout = view.findViewById(R.id.input_llm_read_timeout);
         inputLlmWriteTimeout = view.findViewById(R.id.input_llm_write_timeout);
+
+        inputDistroDiskLimit = view.findViewById(R.id.input_distro_disk_limit);
+        textDistroStatus = view.findViewById(R.id.text_distro_status);
+        progressDistro = view.findViewById(R.id.progress_distro);
+        buttonDistroInstall = view.findViewById(R.id.button_distro_install);
+        buttonDistroDelete = view.findViewById(R.id.button_distro_delete);
 
         // SSH Terminal Backend
         dropdownTerminalBackend = view.findViewById(R.id.dropdown_terminal_backend);
@@ -310,6 +334,7 @@ public class AgentSettingsFragment extends Fragment {
             inputLlmConnectTimeout.setText(String.valueOf(agentConfig.getLlmConnectTimeout()));
             inputLlmReadTimeout.setText(String.valueOf(agentConfig.getLlmReadTimeout()));
             inputLlmWriteTimeout.setText(String.valueOf(agentConfig.getLlmWriteTimeout()));
+            inputDistroDiskLimit.setText(String.valueOf(agentConfig.getDistroDiskLimitMb()));
 
             // Screen control
             switchScreenControl.setChecked(agentConfig.isScreenControlEnabled());
@@ -428,6 +453,9 @@ public class AgentSettingsFragment extends Fragment {
 
         // Test SSH connection button
         buttonTestSshConnection.setOnClickListener(v -> testSshConnection());
+
+        buttonDistroInstall.setOnClickListener(v -> startDistroBootstrap());
+        buttonDistroDelete.setOnClickListener(v -> confirmDistroDelete());
     }
 
     /**
@@ -686,6 +714,180 @@ public class AgentSettingsFragment extends Fragment {
         return null;
     }
 
+    private void setupDistro() {
+        // Create the manager once and reuse it across view recreations so the
+        // single-flight reservation coordinates every install attempt.
+        if (distroManager == null) {
+            try {
+                distroManager = new DistroManager(requireContext(), new OkHttpDistroFetcher(),
+                        agentConfig.getDistroDiskLimitMb());
+            } catch (IllegalStateException e) {
+                distroManager = null;
+            }
+        }
+        updateDistroUi();
+    }
+
+    private void startDistroBootstrap() {
+        Integer diskLimitMb = parseDistroDiskLimit();
+        if (diskLimitMb == null) {
+            return;
+        }
+        agentConfig.setDistroDiskLimitMb(diskLimitMb);
+        settingsManager.setAgentConfig(agentConfig);
+        if (distroManager == null) {
+            try {
+                distroManager = new DistroManager(requireContext(), new OkHttpDistroFetcher(),
+                        diskLimitMb);
+            } catch (IllegalStateException e) {
+                distroManager = null;
+                updateDistroUi();
+                return;
+            }
+        } else {
+            // Reuse the existing manager; apply the newly entered limit.
+            distroManager.setDiskLimitMb(diskLimitMb);
+        }
+        buttonDistroInstall.setEnabled(false);
+        buttonDistroDelete.setEnabled(false);
+        distroManager.bootstrap(new DistroManager.Listener() {
+            @Override
+            public void onStateChange(DistroManager.State state) {
+                postDistroUpdate(() -> updateDistroUi());
+            }
+
+            @Override
+            public void onProgress(long bytesSoFar, long total) {
+                postDistroUpdate(() -> {
+                    if (total > 0) {
+                        progressDistro.setIndeterminate(false);
+                        int percent = (int) Math.min(100L, bytesSoFar * 100L / total);
+                        progressDistro.setProgress(percent);
+                    } else {
+                        progressDistro.setIndeterminate(true);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(DistroException error) {
+                postDistroUpdate(() -> {
+                    String message = error.getMessage();
+                    if (message == null || message.isEmpty()) {
+                        textDistroStatus.setText(R.string.distro_status_failed);
+                    } else {
+                        textDistroStatus.setText(getString(
+                                R.string.distro_status_failed_with_reason, message));
+                    }
+                });
+            }
+        });
+    }
+
+    private void confirmDistroDelete() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.distro_delete_confirm_title)
+                .setMessage(R.string.distro_delete_confirm_message)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (dialog, which) -> deleteDistro())
+                .show();
+    }
+
+    private void deleteDistro() {
+        if (distroManager == null || distroDeleting) {
+            return;
+        }
+        distroDeleting = true;
+        updateDistroUi();
+        DistroManager manager = distroManager;
+        new Thread(() -> {
+            manager.deleteAll();
+            postDistroUpdate(() -> {
+                distroDeleting = false;
+                updateDistroUi();
+            });
+        }, "distro-delete").start();
+    }
+
+    private void updateDistroUi() {
+        if (textDistroStatus == null) {
+            return;
+        }
+        if (distroManager == null) {
+            textDistroStatus.setText(R.string.distro_status_unsupported);
+            buttonDistroInstall.setEnabled(false);
+            buttonDistroDelete.setVisibility(View.GONE);
+            progressDistro.setVisibility(View.GONE);
+            return;
+        }
+        boolean ready = distroManager.isInstalled();
+        DistroManager.State state = ready ? DistroManager.State.READY : distroManager.getState();
+        boolean busy = distroDeleting || isDistroBusy(state);
+        textDistroStatus.setText(distroDeleting
+                ? R.string.distro_status_deleting : distroStatusRes(state));
+        progressDistro.setVisibility(isDistroBusy(state) ? View.VISIBLE : View.GONE);
+        progressDistro.setIndeterminate(state != DistroManager.State.DOWNLOADING);
+        inputDistroDiskLimit.setEnabled(!busy);
+        buttonDistroInstall.setVisibility(ready ? View.GONE : View.VISIBLE);
+        buttonDistroInstall.setEnabled(!busy && !ready);
+        buttonDistroDelete.setVisibility(ready ? View.VISIBLE : View.GONE);
+        buttonDistroDelete.setEnabled(!busy);
+    }
+
+    private static boolean isDistroBusy(DistroManager.State state) {
+        return state == DistroManager.State.DOWNLOADING
+                || state == DistroManager.State.VERIFYING
+                || state == DistroManager.State.UNPACKING
+                || state == DistroManager.State.FINALIZING;
+    }
+
+    private static int distroStatusRes(DistroManager.State state) {
+        switch (state) {
+            case DOWNLOADING:
+                return R.string.distro_status_downloading;
+            case VERIFYING:
+                return R.string.distro_status_verifying;
+            case UNPACKING:
+                return R.string.distro_status_unpacking;
+            case FINALIZING:
+                return R.string.distro_status_finalizing;
+            case READY:
+                return R.string.distro_status_ready;
+            case FAILED:
+                return R.string.distro_status_failed;
+            case NOT_INSTALLED:
+            default:
+                return R.string.distro_status_not_installed;
+        }
+    }
+
+    private Integer parseDistroDiskLimit() {
+        String value = inputDistroDiskLimit.getText().toString().trim();
+        try {
+            int limit = Integer.parseInt(value);
+            if (limit < 1) {
+                throw new NumberFormatException();
+            }
+            inputDistroDiskLimit.setError(null);
+            return limit;
+        } catch (NumberFormatException e) {
+            inputDistroDiskLimit.setError(getString(R.string.distro_disk_limit_invalid));
+            return null;
+        }
+    }
+
+    private void postDistroUpdate(Runnable update) {
+        android.app.Activity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            if (getView() != null) {
+                update.run();
+            }
+        });
+    }
+
     private void saveAgentSettings() {
         Effort effort = resolveEffortFromLabel(dropdownEffort.getText().toString().trim());
         if (effort == null) {
@@ -704,6 +906,11 @@ public class AgentSettingsFragment extends Fragment {
             }
         } catch (NumberFormatException e) {
             inputShellTimeout.setError(getString(R.string.validation_invalid_number));
+            return;
+        }
+
+        Integer distroDiskLimitMb = parseDistroDiskLimit();
+        if (distroDiskLimitMb == null) {
             return;
         }
 
@@ -772,6 +979,7 @@ public class AgentSettingsFragment extends Fragment {
         agentConfig.setLlmConnectTimeout(llmConnectTimeout);
         agentConfig.setLlmReadTimeout(llmReadTimeout);
         agentConfig.setLlmWriteTimeout(llmWriteTimeout);
+        agentConfig.setDistroDiskLimitMb(distroDiskLimitMb);
         agentConfig.setScreenControlEnabled(switchScreenControl.isChecked());
         agentConfig.setScreenControlTrustMode(switchScreenControlTrustMode.isChecked());
         agentConfig.setCalendarEnabled(switchCalendarAccess.isChecked());
@@ -827,6 +1035,15 @@ public class AgentSettingsFragment extends Fragment {
         } catch (IllegalStateException e) {
             // Fragment is not attached to a NavController (e.g. in tests with launchInContainer).
             // The activity will handle navigation; ignore the error.
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // Release the bootstrap executor so a destroyed fragment leaks no threads.
+        if (distroManager != null) {
+            distroManager.shutdown();
         }
     }
 
