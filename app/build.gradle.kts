@@ -3,7 +3,6 @@ import java.io.InputStreamReader
 
 plugins {
     alias(libs.plugins.android.application)
-    id("com.chaquo.python")
 }
 
 configurations.all {
@@ -111,23 +110,6 @@ val fetchProotBinaries = tasks.register<Exec>("fetchProotBinaries") {
 
 tasks.named("preBuild") {
     dependsOn(fetchProotBinaries)
-}
-
-chaquopy {
-    defaultConfig {
-        version = "3.11"
-
-        pip {
-            // Common packages installed at build time
-            install("lxml==5.3.0")
-            install("requests")
-            install("beautifulsoup4")
-            install("python-dateutil")
-            install("openpyxl")
-            install("python-docx")
-            install("python-pptx")
-        }
-    }
 }
 
 dependencies {

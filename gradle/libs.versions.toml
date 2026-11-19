@@ -1,6 +1,5 @@
 [versions]
 agp = "8.13.2"
-chaquopy = "15.0.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
@@ -53,4 +52,3 @@ commons-compress = { group = "org.apache.commons", name = "commons-compress", ve
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-chaquopy = { id = "com.chaquo.python", version.ref = "chaquopy" }

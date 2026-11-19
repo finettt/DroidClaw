@@ -124,6 +124,26 @@ public class ToolRegistryTest {
     }
 
     @Test
+    public void testGetToolByName_Python_absentEvenWithShellEnabled() {
+        // execute_python was removed entirely: even with shell access on and a non-strict
+        // sandbox (the condition under which execute_shell is registered), it must be absent.
+        SettingsManager settingsManager = new SettingsManager(context);
+        AgentConfig config = settingsManager.getAgentConfig();
+        config.setShellAccess(true);
+        config.setSandboxMode("relaxed");
+        settingsManager.setAgentConfig(config);
+
+        ToolRegistry registry = new ToolRegistry(context, settingsManager);
+
+        assertTrue("execute_shell should still be registered when shell access is enabled",
+                registry.hasToolWithName("execute_shell"));
+        assertFalse("execute_python should be absent after removal",
+                registry.hasToolWithName("execute_python"));
+        assertNull("execute_python lookup should return null",
+                registry.getTool("execute_python"));
+    }
+
+    @Test
     public void testGetToolByName_NonExistent() {
         Tool tool = toolRegistry.getTool("non_existent_tool");
         assertNull("Non-existent tool should return null", tool);

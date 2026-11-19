@@ -4,11 +4,9 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://chaquo.com/maven") }
     }
     dependencies {
         classpath("com.android.tools.build:gradle:${libs.versions.agp.get()}")
-        classpath("com.chaquo.python:gradle:${libs.versions.chaquopy.get()}")
     }
 }
 
