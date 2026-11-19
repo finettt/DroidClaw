@@ -177,11 +177,12 @@ public class AgentLoop {
 
     private String currentBackendLabel() {
         try {
-            return settingsManager != null
+            String backend = settingsManager != null
                     ? settingsManager.getAgentConfig().getShellBackend()
-                    : "local";
+                    : null;
+            return backend != null ? backend : "distro";
         } catch (Exception e) {
-            return "local";
+            return "distro";
         }
     }
 
@@ -217,6 +218,33 @@ public class AgentLoop {
             return;
         }
         auditLog.log(currentShellApprovalMode(), command, disposition, exitCode);
+    }
+
+    /**
+     * Wrap a background task so a shell command's completion is recorded in the audit log.
+     * The disposition was resolved before dispatch and stored by tool call id; a failed or
+     * missing disposition is recorded as "error" so it is never mislabelled with another
+     * command's outcome. Non-shell background tools are returned unchanged.
+     */
+    private java.util.concurrent.Callable<ToolResult> auditOnCompletion(
+            LlmApiService.ToolCall toolCall, JsonObject arguments,
+            java.util.concurrent.Callable<ToolResult> delegate) {
+        if (!(toolRegistry.getTool(toolCall.getName()) instanceof ShellTool)) {
+            return delegate;
+        }
+        return () -> {
+            ToolResult result = delegate.call();
+            String disposition = pendingDisposition.remove(toolCall.getId());
+            if (disposition == null) {
+                disposition = "dialog-approved";
+            }
+            if (result == null || !result.isSuccess() || disposition == null) {
+                disposition = "error";
+            }
+            auditShell(toolCall.getName(), commandArgument(arguments), disposition,
+                    exitCodeFromResult(result == null ? null : result.getContent()));
+            return result;
+        };
     }
 
     /** Extract the numeric exit code from a shell tool result body, or null when absent. */
@@ -952,10 +980,25 @@ public class AgentLoop {
 
         final android.content.Context finalContext = context;
 
+        // Resolve the audit disposition the same way the sync path does (no judge runs for a
+        // background dispatch). Stored by tool call id so the completion handler audits it.
+        if (toolRegistry.getTool(toolCall.getName()) instanceof ShellTool) {
+            String disposition;
+            if ("full_access".equals(currentShellApprovalMode())) {
+                disposition = "silent";
+            } else {
+                disposition = "dialog-approved";
+            }
+            pendingDisposition.put(toolCall.getId(), disposition);
+        }
+
+        final java.util.concurrent.Callable<ToolResult> backgroundTask =
+                () -> toolRegistry.executeTool(toolName, cleanedArgs);
+
         String processId = BackgroundProcessManager.getInstance(finalContext).submit(
                 toolName,
                 cleanedArgs.toString(),
-                () -> toolRegistry.executeTool(toolName, cleanedArgs)
+                auditOnCompletion(toolCall, cleanedArgs, backgroundTask)
         );
 
         Log.d(TAG, "Tool " + toolName + " dispatched to background: process_id=" + processId);

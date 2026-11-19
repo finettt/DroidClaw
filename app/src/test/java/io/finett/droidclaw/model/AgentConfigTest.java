@@ -35,8 +35,7 @@ public class AgentConfigTest {
             "relaxed",
             false,
             60,
-            true,
-            java.util.Arrays.asList("/system/bin/curl")
+            true
         );
         
         assertEquals("openai/gpt-5.4", c.getDefaultModel());
@@ -46,8 +45,6 @@ public class AgentConfigTest {
         assertFalse(c.isRequireApproval());
         assertEquals(60, c.getShellTimeout());
         assertTrue(c.isBackgroundShellEnabled());
-        assertEquals(1, c.getCustomAllowlist().size());
-        assertEquals("/system/bin/curl", c.getCustomAllowlist().get(0));
     }
 
     @Test
@@ -63,7 +60,6 @@ public class AgentConfigTest {
         assertEquals(30, defaults.getShellTimeout());
         assertFalse(defaults.isBackgroundShellEnabled());
         assertFalse(defaults.isBackgroundExecEnabled());
-        assertTrue(defaults.getCustomAllowlist().isEmpty());
     }
 
     @Test
@@ -270,7 +266,6 @@ public class AgentConfigTest {
         config.setRequireApproval(false);
         config.setShellTimeout(60);
         config.setBackgroundShellEnabled(true);
-        config.setCustomAllowlist(java.util.Arrays.asList("/system/bin/tar", "/system/bin/curl"));
         
         assertEquals("openai/gpt-5.4", config.getDefaultModel());
         assertTrue(config.isShellAccess());
@@ -279,7 +274,6 @@ public class AgentConfigTest {
         assertFalse(config.isRequireApproval());
         assertEquals(60, config.getShellTimeout());
         assertTrue(config.isBackgroundShellEnabled());
-        assertEquals(2, config.getCustomAllowlist().size());
         
         config.setDefaultModel("anthropic/claude-sonnet-4-6");
         config.setShellAccess(false);
@@ -288,7 +282,6 @@ public class AgentConfigTest {
         config.setRequireApproval(true);
         config.setShellTimeout(30);
         config.setBackgroundShellEnabled(false);
-        config.setCustomAllowlist(java.util.Collections.emptyList());
         
         assertEquals("anthropic/claude-sonnet-4-6", config.getDefaultModel());
         assertFalse(config.isShellAccess());
@@ -297,7 +290,6 @@ public class AgentConfigTest {
         assertTrue(config.isRequireApproval());
         assertEquals(30, config.getShellTimeout());
         assertFalse(config.isBackgroundShellEnabled());
-        assertTrue(config.getCustomAllowlist().isEmpty());
     }
 
     @Test
@@ -320,21 +312,6 @@ public class AgentConfigTest {
     public void defaultConstructor_backgroundExecEnabled_isFalse() {
         AgentConfig c = new AgentConfig();
         assertFalse(c.isBackgroundExecEnabled());
-    }
-
-    @Test
-    public void setCustomAllowlist_updatesValue() {
-        config.setCustomAllowlist(java.util.Arrays.asList("/system/bin/curl", "/system/bin/wget"));
-        assertEquals(2, config.getCustomAllowlist().size());
-        assertEquals("/system/bin/curl", config.getCustomAllowlist().get(0));
-        assertEquals("/system/bin/wget", config.getCustomAllowlist().get(1));
-    }
-
-    @Test
-    public void setCustomAllowlist_nullBecomesEmptyList() {
-        config.setCustomAllowlist(null);
-        assertNotNull(config.getCustomAllowlist());
-        assertTrue(config.getCustomAllowlist().isEmpty());
     }
 
     @Test

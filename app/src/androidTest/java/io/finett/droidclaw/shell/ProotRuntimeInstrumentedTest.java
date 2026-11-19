@@ -27,7 +27,8 @@ public class ProotRuntimeInstrumentedTest {
         assertTrue("libproot.so must be inside nativeLibraryDir",
                 ProotRuntime.locate(context).getParent().equals(nativeLibraryDir));
         assertTrue("PRoot must be available and executable", runtime.isAvailable());
-        for (String name : new String[] {"libproot.so", "libtalloc.so", "libandroid-shmem.so"}) {
+        for (String name : new String[] {"libproot.so", "libproot-loader.so", "libproot-loader32.so",
+                "libtalloc.so", "libandroid-shmem.so"}) {
             assertTrue(name + " must be present in nativeLibraryDir",
                     new File(nativeLibraryDir, name).isFile());
         }

@@ -18,6 +18,9 @@ import io.finett.droidclaw.calendar.CalendarRepository;
 import io.finett.droidclaw.filesystem.VirtualFileSystem;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.python.PythonConfig;
+import io.finett.droidclaw.shell.ExecPlanner;
+import io.finett.droidclaw.shell.ShellBackendFactory;
+import io.finett.droidclaw.shell.ShellBackend;
 import io.finett.droidclaw.shell.ShellConfig;
 import io.finett.droidclaw.tool.impl.FileDeleteTool;
 import io.finett.droidclaw.tool.impl.WebSearchTool;
@@ -129,12 +132,25 @@ public class ToolRegistry {
         // (ask_all/auto/full_access), not by the sandbox mode, once the tools are available.
         if (shellEnabled && !"strict".equals(sandboxMode)) {
             ShellConfig shellConfig = buildShellConfig(sandboxMode);
-            registerTool(new ShellTool(workspaceManager.getPathValidator(), shellConfig));
+
+            // Select the backend: SSH when configured, otherwise the distro backend (default).
+            io.finett.droidclaw.model.AgentConfig agentConfig = currentAgentConfig();
+            boolean distroActive = settingsManager == null
+                    || !ShellBackendFactory.isSshBackend(agentConfig);
+            File distroRoot = distroActive
+                    ? ShellBackendFactory.distroRootFor(context) : null;
+            File workspaceRoot = workspaceManager.getWorkspaceRoot();
+
+            ExecPlanner planner = new ExecPlanner(shellConfig, workspaceRoot, distroRoot);
+            ShellBackend backend = ShellBackendFactory.create(
+                    agentConfig, shellConfig, context, distroRoot, workspaceRoot);
+            registerTool(new ShellTool(workspaceManager.getPathValidator(),
+                    shellConfig, backend, planner));
 
             PythonConfig pythonConfig = PythonConfig.builder()
                     .safeMode(!"full".equals(sandboxMode))
                     .build();
-            registerTool(new PythonTool(context, workspaceManager.getWorkspaceRoot(), pythonConfig));
+            registerTool(new PythonTool(context, workspaceRoot, pythonConfig));
         }
 
         registerTool(new HeartbeatOkTool());
@@ -242,6 +258,16 @@ public class ToolRegistry {
                     : "ask_all";
         } catch (Exception e) {
             return "ask_all";
+        }
+    }
+
+    private io.finett.droidclaw.model.AgentConfig currentAgentConfig() {
+        try {
+            return settingsManager != null
+                    ? settingsManager.getAgentConfig()
+                    : new io.finett.droidclaw.model.AgentConfig();
+        } catch (Exception e) {
+            return new io.finett.droidclaw.model.AgentConfig();
         }
     }
 

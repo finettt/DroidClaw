@@ -15,18 +15,23 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.TimeUnit;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import io.finett.droidclaw.agent.AgentLoop;
 import io.finett.droidclaw.api.LlmApiService;
@@ -36,6 +41,10 @@ import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.tool.ToolRegistry;
 import io.finett.droidclaw.util.Flaky;
 import io.finett.droidclaw.util.FlakyTestRule;
+import io.finett.droidclaw.shell.distro.DistroManager;
+import io.finett.droidclaw.shell.distro.DistroException;
+import io.finett.droidclaw.shell.distro.DistroSpec;
+import io.finett.droidclaw.shell.distro.OkHttpDistroFetcher;
 import io.finett.droidclaw.util.SettingsManager;
 
 /**
@@ -64,6 +73,13 @@ public class ShellApprovalModesInstrumentedTest {
     @Rule
     public FlakyTestRule flakyTestRule = new FlakyTestRule(5);
 
+    /** Production disk limit (MB) reused for the one-time distro bootstrap below. */
+    private static final int DISK_LIMIT_MB = 2048;
+    /** Bootstrapped once for the whole class so the mode tests share a ready image. */
+    private static volatile boolean distroBootstrapped;
+    /** Bootstrap timeout, matching the other distro instrumented test. */
+    private static final long BOOTSTRAP_TIMEOUT_MINUTES = 5;
+
     @Before
     public void setUp() {
         context = ApplicationProvider.getApplicationContext();
@@ -72,6 +88,68 @@ public class ShellApprovalModesInstrumentedTest {
         auditLog = new File(context.getFilesDir(), "audit/shell.log");
         if (auditLog.exists()) {
             auditLog.delete();
+        }
+    }
+
+    /**
+     * Install the pinned Ubuntu image once, before any mode test runs, so the
+     * shell tool has a ready guest to execute through. The bootstrap test
+     * deletes the image in its own tearDown, so each class must bootstrap again.
+     * Retries a few times to absorb transient network and disk hiccups on the
+     * emulator.
+     */
+    @BeforeClass
+    public static void bootstrapDistro() throws Exception {
+        System.out.println("BEFORE_CLASS distroBootstrapped=" + distroBootstrapped);
+        if (distroBootstrapped) {
+            return;
+        }
+        Context ctx = ApplicationProvider.getApplicationContext();
+        File imageDir = new File(new File(ctx.getFilesDir(), "distro"), DistroSpec.IMAGE_DIR);
+        System.out.println("BEFORE_CLASS markerExists=" + new File(imageDir, DistroSpec.MARKER_FILE).isFile() + " imageDir=" + imageDir);
+        if (new File(imageDir, DistroSpec.MARKER_FILE).isFile()) {
+            distroBootstrapped = true;
+            return;
+        }
+        final DistroException[] lastHolder = new DistroException[1];
+        for (int attempt = 0; attempt < 3 && !distroBootstrapped; attempt++) {
+            try {
+                DistroManager manager =
+                        new DistroManager(ctx, new OkHttpDistroFetcher(), DISK_LIMIT_MB);
+                CountDownLatch done = new CountDownLatch(1);
+                manager.bootstrap(new DistroManager.Listener() {
+                    @Override
+                    public void onStateChange(DistroManager.State state) {
+                        if (state == DistroManager.State.READY
+                                || state == DistroManager.State.FAILED) {
+                            done.countDown();
+                        }
+                    }
+
+                    @Override
+                    public void onProgress(long bytesSoFar, long total) {}
+
+                    @Override
+                    public void onError(DistroException error) {
+                        lastHolder[0] = error;
+                    }
+                });
+                if (!done.await(BOOTSTRAP_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+                    throw new TimeoutException("bootstrap did not finish in time");
+                }
+                if (manager.getState() == DistroManager.State.READY) {
+                    distroBootstrapped = true;
+                } else {
+                    lastHolder[0] = new DistroException(manager.getError());
+                }
+            } catch (Exception error) {
+                lastHolder[0] = error instanceof DistroException
+                        ? (DistroException) error
+                        : new DistroException(error.getMessage());
+            }
+        }
+        if (!distroBootstrapped) {
+            throw new AssertionError("distro bootstrap failed: " + lastHolder[0]);
         }
     }
 
@@ -95,6 +173,7 @@ public class ShellApprovalModesInstrumentedTest {
         // Approve: the command should then run silently and surface its output.
         callback.approvalCallback.onApproved();
 
+        System.out.println("DEBUG_RESULT=[" + (callback.lastToolResult == null ? "NULL" : callback.lastToolResult) + "]");
         assertTrue("echoed text should be returned as the tool result",
                 callback.lastToolResult != null && callback.lastToolResult.contains("hello"));
         assertTrue("an approved run must be audited with its command", auditContains("cmd=echo hello"));
@@ -155,6 +234,84 @@ public class ShellApprovalModesInstrumentedTest {
         assertTrue("echoed text should be returned", callback.lastToolResult.contains("hello"));
         assertTrue("full_access runs must still be audited", auditContains("cmd=echo hello"));
         assertTrue("full_access runs must be audited as silent", auditContains("disposition=silent"));
+    }
+
+    // ==================== distro execution through PRoot ====================
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void distro_runsOsReleaseInShellMode() {
+        // sh -c "cat /etc/os-release" exercises the guest-shell path through PRoot.
+        AgentLoop loop = newLoop("auto", "sh -c \"cat /etc/os-release\"", c -> false);
+        RecordingCallback callback = new RecordingCallback();
+        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
+
+        assertNotNull("os-release run must return a tool result", callback.lastToolResult);
+        assertFalse("a benign distro command must not open a dialog", callback.approvalRequested);
+        assertTrue("os-release must report the Ubuntu distro",
+                callback.lastToolResult.contains("Ubuntu"));
+    }
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void distro_runsAptVersion() {
+        // A real distro binary resolved inside the guest rootfs.
+        AgentLoop loop = newLoop("auto", "apt --version", c -> false);
+        RecordingCallback callback = new RecordingCallback();
+        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
+
+        assertNotNull("apt run must return a tool result", callback.lastToolResult);
+        String result = callback.lastToolResult;
+        // Assert on the real apt banner and a zero exit code: a bare contains("apt")
+        // also matches an ENOENT-class proot failure, which mentions the exe name.
+        assertFalse("apt must not fail: " + result, result.contains("Error:"));
+        assertTrue("apt must exit with code 0: " + result,
+                result.contains("\"exit_code\":0"));
+        assertTrue("apt must print a real version banner (apt X.Y.Z): " + result,
+                Pattern.compile("apt \\d+\\.\\d+(\\.\\d+)?").matcher(result).find());
+    }
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void distro_rejectsHostPathExec() {
+        // A host absolute path is not a valid guest executable and must be rejected.
+        Context ctx = ApplicationProvider.getApplicationContext();
+        String hostPath = ctx.getFilesDir().getAbsolutePath() + "/leak";
+        AgentLoop loop = newLoop("auto", hostPath, c -> false);
+        RecordingCallback callback = new RecordingCallback();
+        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
+
+        assertNotNull("host-path exec must return a tool result", callback.lastToolResult);
+        assertTrue("a host path must be rejected as not valid inside the Linux environment",
+                callback.lastToolResult
+                        .contains("Host path is not valid inside the Linux environment"));
+    }
+
+    @Test
+    @Flaky(maxAttempts = 5)
+    public void distroMissingYieldsActionableError() throws Exception {
+        // With the ready marker absent, planning surfaces an actionable install error.
+        Context ctx = ApplicationProvider.getApplicationContext();
+        File imageDir = new File(new File(ctx.getFilesDir(), "distro"), DistroSpec.IMAGE_DIR);
+        File marker = new File(imageDir, DistroSpec.MARKER_FILE);
+        byte[] original = marker.exists() ? java.nio.file.Files.readAllBytes(marker.toPath()) : null;
+        if (marker.exists()) {
+            marker.delete();
+        }
+        try {
+            AgentLoop loop = newLoop("auto", "echo hello", c -> false);
+            RecordingCallback callback = new RecordingCallback();
+            loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)),
+                    callback);
+
+            assertNotNull("missing-distro run must return a tool result", callback.lastToolResult);
+            assertTrue("the error must tell the user to install the environment",
+                    callback.lastToolResult.contains("is not installed yet"));
+        } finally {
+            if (original != null && !marker.exists()) {
+                java.nio.file.Files.write(marker.toPath(), original);
+            }
+        }
     }
 
     // ==================== helpers ====================

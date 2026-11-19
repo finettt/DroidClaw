@@ -35,23 +35,12 @@ public class ShellExecutor implements AutoCloseable {
     /**
      * Create a ShellExecutor with a specific backend.
      *
-     * @param backend            the execution backend (LocalShellBackend or SshShellBackend)
+     * @param backend            the execution backend (DistroShellBackend or SshShellBackend)
      * @param defaultTimeoutSec  default timeout in seconds when no explicit timeout is given
      */
     public ShellExecutor(ShellBackend backend, int defaultTimeoutSec) {
         this.backend = backend;
         this.defaultTimeoutSeconds = defaultTimeoutSec > 0 ? defaultTimeoutSec : 30;
-    }
-
-    /**
-     * Create a ShellExecutor with a local backend (default for backward compatibility).
-     *
-     * @param config the shell configuration
-     * @deprecated Use {@link ShellBackendFactory#create(AgentConfig, ShellConfig)} instead.
-     */
-    @Deprecated
-    public ShellExecutor(ShellConfig config) {
-        this(new LocalShellBackend(config), config.getTimeoutSeconds());
     }
 
     // ==================== Primary API ====================

@@ -108,8 +108,6 @@
     <string name="background_shell_access_description">Разрешить cron-задачам и воркерам выполнять shell/Python-команды</string>
     <string name="background_exec">Фоновое выполнение инструментов</string>
     <string name="background_exec_description">Разрешить агенту запускать инструменты асинхронно с background=true</string>
-    <string name="custom_allowlist">Свой список разрешённых команд</string>
-    <string name="custom_allowlist_description">Дополнительные исполняемые пути для ослабленного режима (по одному на строку)</string>
     <string name="screen_control">Управление экраном</string>
     <string name="screen_control_description">Разрешить агенту читать видимый интерфейс и управлять телефоном через специальные возможности</string>
     <string name="screen_control_trust_mode">Доверенный режим управления экраном</string>

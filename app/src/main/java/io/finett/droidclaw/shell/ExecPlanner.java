@@ -3,7 +3,11 @@ package io.finett.droidclaw.shell;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+
+import io.finett.droidclaw.shell.distro.DistroSpec;
 
 /**
  * Converts a raw command string (or pre-tokenised argv) into a normalised, immutable
@@ -37,10 +41,26 @@ public class ExecPlanner {
 
     private final ShellConfig config;
     private final File workspaceRoot;
+    /**
+     * Guest rootfs host path (e.g. {@code filesDir/distro/ubuntu}) when the distro backend is
+     * active, or {@code null} for the host (SSH) case. When non-null, executable resolution
+     * happens inside the rootfs and a missing image yields an actionable error rather than a
+     * host-path lookup.
+     */
+    private final File distroRoot;
 
     public ExecPlanner(ShellConfig config, File workspaceRoot) {
+        this(config, workspaceRoot, null);
+    }
+
+    /**
+     * Build a planner that resolves executables inside the guest rootfs when {@code distroRoot}
+     * is non-null, or against the host trusted dirs otherwise.
+     */
+    public ExecPlanner(ShellConfig config, File workspaceRoot, File distroRoot) {
         this.config = config;
         this.workspaceRoot = workspaceRoot;
+        this.distroRoot = distroRoot;
     }
 
     // ==================== Public API ====================
@@ -189,12 +209,115 @@ public class ExecPlanner {
      * exit code 1). Keeping the symlink path intact lets the OS kernel handle argv[0]
      * correctly, which is the same behaviour as invoking the binary from a shell.</p>
      *
+     * <p><b>Distro (guest rootfs) resolution differs:</b> executables resolved inside the
+     * guest rootfs are returned via {@link File#getCanonicalPath()} so their host path
+     * matches the canonical root that libproot applies. libproot canonicalises the chroot
+     * (for example {@code /data/user/0/app} to {@code /data/data/app}), so a non-canonical
+     * exe path would fall outside the chroot and be reported as "not found".</p>
+     *
      * <p>Path-traversal is still prevented: we verify the absolute path starts with one of
      * the trusted directories and the file exists and is executable.  Relative names are
      * looked up only in {@link ShellConfig#getTrustedDirs()}, ignoring the process
      * {@code PATH} to prevent PATH-hijacking attacks.</p>
      */
     private String resolveExe(String rawExe) throws SecurityException, IOException {
+        if (distroRoot != null) {
+            return resolveExeInDistro(rawExe);
+        }
+        return resolveExeOnHost(rawExe);
+    }
+
+    // ==================== Distro (guest rootfs) resolution ====================
+
+    /** Directories inside the guest rootfs searched, in order, for an unqualified exe. */
+    private static final List<String> DISTRO_BIN_DIRS = Collections.unmodifiableList(Arrays.asList(
+            "usr/local/bin", "usr/bin", "bin", "usr/sbin", "sbin"));
+
+    private String resolveExeInDistro(String rawExe) throws SecurityException, IOException {
+        if (!distroReady()) {
+            throw new SecurityException(
+                    "The Linux environment is not installed yet. Install it in "
+                    + "Settings > Agent Settings > Linux environment, then try again");
+        }
+
+        if (rawExe.startsWith("/")) {
+            return resolveDistroAbsolute(rawExe);
+        }
+        return resolveDistroName(rawExe);
+    }
+
+    /** Search the guest rootfs bin directories for a bare executable name. */
+    private String resolveDistroName(String rawExe) throws SecurityException, IOException {
+        for (String dir : DISTRO_BIN_DIRS) {
+            File candidate = new File(distroRoot, dir + File.separator + rawExe);
+            if (candidate.exists() && candidate.canExecute()) {
+                return candidate.getCanonicalFile().getAbsolutePath();
+            }
+        }
+        throw new SecurityException(
+                "Executable '" + rawExe + "' not found in the Linux environment");
+    }
+
+    /**
+     * Map a guest absolute path (e.g. {@code /usr/bin/x}) under the rootfs, rejecting host
+     * paths and any path that escapes the rootfs through {@code ..} traversal. Symlinks are
+     * NOT followed to their canonical target so multi-call binaries keep their argv[0] name.
+     */
+    private String resolveDistroAbsolute(String rawExe) throws SecurityException, IOException {
+        // A bare host absolute path (workspace or filesDir prefix) is not a guest path and
+        // must not leak into the guest rootfs. Compare canonical paths: Android exposes the
+        // same app directory through aliases such as /data/user/0/<pkg> and /data/data/<pkg>,
+        // so a non-canonical spelling would otherwise slip past the canonical prefixes.
+        String hostAbs = new File(rawExe).getCanonicalFile().getAbsolutePath();
+        for (String hostPrefix : hostPathPrefixes()) {
+            if (hostAbs.equals(hostPrefix) || hostAbs.startsWith(hostPrefix + File.separator)) {
+                throw new SecurityException(
+                        "Host path is not valid inside the Linux environment: " + rawExe);
+            }
+        }
+
+        File exeFile = new File(distroRoot, rawExe);
+        File canonicalRoot = distroRoot.getCanonicalFile();
+        String rootPath = canonicalRoot.getAbsolutePath();
+        String exePath = exeFile.getCanonicalFile().getAbsolutePath();
+        if (!exePath.equals(rootPath) && !exePath.startsWith(rootPath + File.separator)) {
+            throw new SecurityException(
+                    "Path escapes the Linux environment rootfs: " + rawExe);
+        }
+
+        if (!exeFile.exists()) {
+            throw new SecurityException("Executable not found in the Linux environment: " + rawExe);
+        }
+        if (!exeFile.canExecute()) {
+            throw new SecurityException("File is not executable in the Linux environment: " + exePath);
+        }
+        return exePath;
+    }
+
+    private boolean distroReady() {
+        return new File(distroRoot, DistroSpec.MARKER_FILE).isFile();
+    }
+
+    /**
+     * Host-only prefixes whose absolute paths are not valid guest paths. A guest uses
+     * {@code /workspace} (the mount point), so a raw path under the workspace or filesDir
+     * host directory is a leak and must be rejected. Excludes the filesystem root so a
+     * normal guest path such as {@code /usr/bin/echo} is not rejected.
+     */
+    private List<String> hostPathPrefixes() throws IOException {
+        List<String> prefixes = new ArrayList<>();
+        prefixes.add(workspaceRoot.getCanonicalFile().getAbsolutePath());
+        // distroRoot is <filesDir>/distro/ubuntu, so filesDir is two levels up.
+        File filesDir = distroRoot.getCanonicalFile().getParentFile().getParentFile();
+        if (filesDir != null) {
+            prefixes.add(filesDir.getCanonicalFile().getAbsolutePath());
+        }
+        return prefixes;
+    }
+
+    // ==================== Host (SSH) resolution ====================
+
+    private String resolveExeOnHost(String rawExe) throws SecurityException, IOException {
         if (rawExe.startsWith("/")) {
             // Absolute path — normalise ".." components but do NOT follow final symlinks,
             // so multi-call binaries (busybox, coreutils on Nix) keep their logical name.

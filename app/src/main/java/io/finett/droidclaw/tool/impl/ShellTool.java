@@ -8,6 +8,7 @@ import java.io.IOException;
 import io.finett.droidclaw.filesystem.PathValidator;
 import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.shell.ExecPlanner;
+import io.finett.droidclaw.shell.ShellBackend;
 import io.finett.droidclaw.shell.ShellConfig;
 import io.finett.droidclaw.shell.ShellExecutor;
 import io.finett.droidclaw.shell.ShellResult;
@@ -40,11 +41,12 @@ public class ShellTool implements Tool {
     private final ShellExecutor executor;
     private final ExecPlanner planner;
 
-    public ShellTool(PathValidator pathValidator, ShellConfig config) {
+    public ShellTool(PathValidator pathValidator, ShellConfig config,
+                     ShellBackend backend, ExecPlanner planner) {
         this.pathValidator = pathValidator;
         this.config = config;
-        this.executor = new ShellExecutor(config);
-        this.planner = new ExecPlanner(config, pathValidator.getWorkspaceRoot());
+        this.executor = new ShellExecutor(backend, config.getTimeoutSeconds());
+        this.planner = planner;
     }
 
     @Override

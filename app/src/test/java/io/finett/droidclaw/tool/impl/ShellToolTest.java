@@ -15,10 +15,11 @@ import java.util.List;
 import io.finett.droidclaw.shell.ExecPolicy;
 
 import io.finett.droidclaw.filesystem.PathValidator;
-import io.finett.droidclaw.shell.AllowlistEntry;
 import io.finett.droidclaw.shell.ExecPlan;
 import io.finett.droidclaw.shell.ExecPlanner;
 import io.finett.droidclaw.shell.ShellConfig;
+import io.finett.droidclaw.shell.ShellBackend;
+import io.finett.droidclaw.shell.ShellResult;
 import io.finett.droidclaw.tool.ToolDefinition;
 import io.finett.droidclaw.tool.ToolResult;
 
@@ -69,6 +70,79 @@ public class ShellToolTest {
         return dirs;
     }
 
+    /**
+     * Minimal host-execution backend for tests: re-verifies the plan hash, runs
+     * {@link ShellConfig#validatePlan}, then starts the command via ProcessBuilder.
+     * The distro backend (DistroShellBackend) covers proot execution; this keeps the
+     * shell-tool unit tests independent of a rootfs.
+     */
+    private static final class LocalTestBackend implements ShellBackend {
+        private final ShellConfig config;
+
+        LocalTestBackend(ShellConfig config) {
+            this.config = config;
+        }
+
+        @Override
+        public ShellResult execute(ExecPlan plan, int timeoutSeconds) throws SecurityException {
+            String denial = config.validatePlan(plan);
+            if (denial != null) {
+                throw new SecurityException(denial);
+            }
+            java.util.List<String> command = new java.util.ArrayList<>();
+            if (plan.getMode() == ExecPlan.ExecMode.DIRECT) {
+                command.add(plan.getCanonicalExePath());
+                command.addAll(plan.getArgv());
+            } else {
+                StringBuilder sb = new StringBuilder(plan.getCanonicalExePath());
+                for (String arg : plan.getArgv()) {
+                    sb.append(' ').append(arg);
+                }
+                command.add("sh");
+                command.add("-c");
+                command.add(sb.toString());
+            }
+            long start = System.currentTimeMillis();
+            try {
+                ProcessBuilder builder = new ProcessBuilder(command);
+                builder.directory(plan.getCwd());
+                Process process = builder.start();
+                java.io.InputStream in = process.getInputStream();
+                java.io.InputStream err = process.getErrorStream();
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+                java.io.ByteArrayOutputStream errOut = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[4096];
+                int n;
+                while ((n = in.read(buf)) != -1) {
+                    out.write(buf, 0, n);
+                }
+                while ((n = err.read(buf)) != -1) {
+                    errOut.write(buf, 0, n);
+                }
+                int exit = process.waitFor();
+                return new ShellResult(out.toString("UTF-8"), errOut.toString("UTF-8"), exit,
+                        false, System.currentTimeMillis() - start);
+            } catch (java.io.IOException e) {
+                return new ShellResult("", "Failed to start: " + e.getMessage(), -1, false,
+                        System.currentTimeMillis() - start);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return new ShellResult("", "Interrupted", -1, true,
+                        System.currentTimeMillis() - start);
+            }
+        }
+
+        @Override
+        public void close() {
+            // no-op
+        }
+    }
+
+    private ShellTool makeTool(ShellConfig config) {
+        return new ShellTool(pathValidator, config, new LocalTestBackend(config),
+                new ExecPlanner(config, workspaceRoot));
+    }
+
     private static String SH_PATH;
 
     @Before
@@ -86,7 +160,7 @@ public class ShellToolTest {
                 .trustedDirs(buildNixosTrustedDirs())
                 .defaultMode(ExecPlan.ExecMode.DIRECT)
                 .build();
-        tool = new ShellTool(pathValidator, fullConfig);
+        tool = makeTool(fullConfig);
 
         try {
             SH_PATH = findExe("sh", workspaceRoot);
@@ -217,7 +291,7 @@ public class ShellToolTest {
     @Test
     public void testExecuteWithDisabledShell() {
         ShellConfig disabledConfig = ShellConfig.createDefault(); // DENY
-        ShellTool disabledTool = new ShellTool(pathValidator, disabledConfig);
+        ShellTool disabledTool = makeTool(disabledConfig);
         
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo test");
@@ -237,7 +311,7 @@ public class ShellToolTest {
                 .trustedDirs(buildNixosTrustedDirs())
                 .defaultMode(ExecPlan.ExecMode.DIRECT)
                 .build();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        ShellTool fullTool = makeTool(fullConfig);
 
         JsonObject args = new JsonObject();
         // sh -c "exit 42" — sh is in the trusted dirs so ExecPlanner resolves it.
@@ -258,7 +332,7 @@ public class ShellToolTest {
                 .trustedDirs(buildNixosTrustedDirs())
                 .defaultMode(ExecPlan.ExecMode.DIRECT)
                 .build();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        ShellTool fullTool = makeTool(fullConfig);
 
         JsonObject args = new JsonObject();
         args.addProperty("command", "ls /nonexistent_dir_98765");
@@ -370,7 +444,7 @@ public class ShellToolTest {
                 .trustedDirs(buildNixosTrustedDirs())
                 .defaultMode(ExecPlan.ExecMode.DIRECT)
                 .build();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        ShellTool fullTool = makeTool(fullConfig);
         
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo test");
@@ -389,7 +463,7 @@ public class ShellToolTest {
                 .trustedDirs(buildNixosTrustedDirs())
                 .defaultMode(ExecPlan.ExecMode.DIRECT)
                 .build();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        ShellTool fullTool = makeTool(fullConfig);
         
         File nestedDir = new File(workspaceRoot, "level1/level2");
         nestedDir.mkdirs();
@@ -416,7 +490,7 @@ public class ShellToolTest {
                 .trustedDirs(buildNixosTrustedDirs())
                 .defaultMode(ExecPlan.ExecMode.DIRECT)
                 .build();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        ShellTool fullTool = makeTool(fullConfig);
         
         JsonObject args = new JsonObject();
         args.addProperty("command", "echo 'test output'");
@@ -436,7 +510,7 @@ public class ShellToolTest {
     
     @Test
     public void testConstructorWithPathValidator() {
-        ShellTool pathValidatorTool = new ShellTool(pathValidator, ShellConfig.createDefault());
+        ShellTool pathValidatorTool = makeTool(ShellConfig.createDefault());
         assertNotNull(pathValidatorTool);
         assertEquals("execute_shell", pathValidatorTool.getName());
     }
@@ -694,7 +768,7 @@ public class ShellToolTest {
                 .trustedDirs(buildNixosTrustedDirs())
                 .defaultMode(ExecPlan.ExecMode.DIRECT)
                 .build();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        ShellTool fullTool = makeTool(fullConfig);
 
         JsonObject args = new JsonObject();
         args.addProperty("command", "pwd");
@@ -711,7 +785,7 @@ public class ShellToolTest {
                 .trustedDirs(buildNixosTrustedDirs())
                 .defaultMode(ExecPlan.ExecMode.DIRECT)
                 .build();
-        ShellTool fullTool = new ShellTool(pathValidator, fullConfig);
+        ShellTool fullTool = makeTool(fullConfig);
 
         JsonObject args = new JsonObject();
         args.addProperty("command", "pwd");

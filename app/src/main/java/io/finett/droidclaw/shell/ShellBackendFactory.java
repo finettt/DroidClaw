@@ -1,16 +1,22 @@
 package io.finett.droidclaw.shell;
 
+import android.content.Context;
 import android.util.Log;
 
 import io.finett.droidclaw.model.AgentConfig;
+
+import java.io.File;
 
 /**
  * Factory for creating the appropriate {@link ShellBackend} based on agent configuration.
  *
  * <p>Supports:
  * <ul>
- *   <li>{@code "local"} — execute commands on the Android device via ProcessBuilder</li>
- *   <li>{@code "ssh"} — execute commands on a remote Linux server via SSH</li>
+ *   <li>the distro backend (default) — execute commands inside the installed Linux image
+ *       via {@link DistroShellBackend}. The values {@code null}, {@code "local"}, and
+ *       {@code "distro"} all select it; a stored {@code "local"} value is migrated to this
+ *       default.</li>
+ *   <li>{@code "ssh"} — execute commands on a remote Linux server via {@link SshShellBackend}.</li>
  * </ul>
  */
 public class ShellBackendFactory {
@@ -20,19 +26,47 @@ public class ShellBackendFactory {
     /**
      * Create a shell backend based on the agent configuration.
      *
-     * @param agentConfig the agent configuration containing backend selection and SSH settings
-     * @param shellConfig the shell execution policy/allowlist configuration
-     * @return the appropriate ShellBackend implementation
+     * @param agentConfig  the agent configuration containing backend selection and SSH settings
+     * @param shellConfig  the shell execution policy configuration
+     * @param context      application context (for the PRoot native library and temp dir)
+     * @param distroRoot   the guest rootfs host path when the distro backend is selected, or
+     *                     {@code null} for SSH
+     * @param workspaceRoot the workspace host root, mounted at {@code /workspace} in the guest
+     * @return the appropriate {@link ShellBackend} implementation
      */
-    public static ShellBackend create(AgentConfig agentConfig, ShellConfig shellConfig) {
+    public static ShellBackend create(AgentConfig agentConfig, ShellConfig shellConfig,
+                                      Context context, File distroRoot, File workspaceRoot) {
         String backend = agentConfig.getShellBackend();
 
         if ("ssh".equalsIgnoreCase(backend)) {
             return createSshBackend(agentConfig, shellConfig);
         }
 
-        // Default to local backend
-        return new LocalShellBackend(shellConfig);
+        // Default (null / "local" / "distro") — run inside the installed Linux image.
+        return createDistroBackend(agentConfig, shellConfig, context, distroRoot, workspaceRoot);
+    }
+
+    /**
+     * Resolve the guest rootfs host path for this application: {@code filesDir/distro/ubuntu}.
+     *
+     * <p>This path exists regardless of whether the image is installed; {@link DistroShellBackend}
+     * and {@link ExecPlanner} surface an actionable error when the ready marker is absent.
+     */
+    public static File distroRootFor(Context context) {
+        File filesDir = context.getApplicationContext().getFilesDir();
+        return new File(new File(filesDir, "distro"), io.finett.droidclaw.shell.distro.DistroSpec.IMAGE_DIR);
+    }
+
+    /**
+     * Create the distro shell backend.
+     */
+    private static DistroShellBackend createDistroBackend(AgentConfig agentConfig, ShellConfig shellConfig,
+                                                          Context context, File distroRoot, File workspaceRoot) {
+        Context applicationContext = context.getApplicationContext();
+        String nativeLibraryDir = applicationContext.getApplicationInfo().nativeLibraryDir;
+        boolean seccompDisabled = agentConfig.isDistroNoSeccomp();
+        return new DistroShellBackend(shellConfig, distroRoot, workspaceRoot,
+                nativeLibraryDir, applicationContext.getFilesDir(), seccompDisabled);
     }
 
     /**
@@ -60,9 +94,6 @@ public class ShellBackendFactory {
             }
         }
 
-        // Copy allowlist from shell config
-        builder.allowlistEntries(shellConfig.getAllowlist());
-
         SshConfig sshConfig = builder.build();
         Log.i(TAG, "Created SSH backend for " + agentConfig.getSshHost() + ":" + agentConfig.getSshPort());
 
@@ -70,7 +101,7 @@ public class ShellBackendFactory {
     }
 
     /**
-     * Check if the current agent configuration specifies SSH backend.
+     * Check if the current agent configuration specifies the SSH backend.
      */
     public static boolean isSshBackend(AgentConfig agentConfig) {
         return "ssh".equalsIgnoreCase(agentConfig.getShellBackend());

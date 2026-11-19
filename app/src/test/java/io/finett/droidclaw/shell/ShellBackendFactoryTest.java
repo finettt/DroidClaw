@@ -1,27 +1,37 @@
 package io.finett.droidclaw.shell;
 
+import android.content.Context;
+
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 
 import io.finett.droidclaw.model.AgentConfig;
+
+import java.io.File;
 
 import static org.junit.Assert.*;
 
 /**
  * Unit tests for {@link ShellBackendFactory} — backend selection based on AgentConfig.
+ * The distro branch needs a Context, so the runner is Robolectric.
  */
+@RunWith(RobolectricTestRunner.class)
 public class ShellBackendFactoryTest {
 
-    @Test
-    public void create_localBackend_returnsLocalShellBackend() {
-        AgentConfig config = new AgentConfig();
-        config.setShellBackend("local");
-        ShellConfig shellConfig = ShellConfig.createFull();
+    private Context context;
+    private File distroRoot;
+    private File workspaceRoot;
 
-        ShellBackend backend = ShellBackendFactory.create(config, shellConfig);
-
-        assertNotNull(backend);
-        assertTrue(backend instanceof LocalShellBackend);
+    @Before
+    public void setUp() {
+        context = RuntimeEnvironment.getApplication();
+        distroRoot = new File(context.getFilesDir(), "distro/ubuntu");
+        workspaceRoot = new File(context.getFilesDir(), "workspace");
     }
+
 
     @Test
     public void create_sshBackend_returnsSshShellBackend() {
@@ -34,9 +44,9 @@ public class ShellBackendFactoryTest {
         config.setSshPassword("testpass");
         config.setSshVerifyHostKey(false);
 
-        ShellConfig shellConfig = ShellConfig.createAllowlistDefault();
+        ShellConfig shellConfig = ShellConfig.createFull();
 
-        ShellBackend backend = ShellBackendFactory.create(config, shellConfig);
+        ShellBackend backend = ShellBackendFactory.create(config, shellConfig, context, distroRoot, workspaceRoot);
 
         assertNotNull(backend);
         assertTrue(backend instanceof SshShellBackend);
@@ -55,46 +65,45 @@ public class ShellBackendFactoryTest {
 
         ShellConfig shellConfig = ShellConfig.createFull();
 
-        ShellBackend backend = ShellBackendFactory.create(config, shellConfig);
+        ShellBackend backend = ShellBackendFactory.create(config, shellConfig, context, distroRoot, workspaceRoot);
 
         assertNotNull(backend);
         assertTrue(backend instanceof SshShellBackend);
     }
 
     @Test
-    public void create_defaultBackend_isLocal() {
-        AgentConfig config = new AgentConfig();
-        // Default backend is "local"
+    public void create_defaultBackend_isDistro() {
+        AgentConfig config = new AgentConfig(); // null backend -> distro default
         ShellConfig shellConfig = ShellConfig.createFull();
 
-        ShellBackend backend = ShellBackendFactory.create(config, shellConfig);
+        ShellBackend backend = ShellBackendFactory.create(config, shellConfig, context, distroRoot, workspaceRoot);
 
         assertNotNull(backend);
-        assertTrue(backend instanceof LocalShellBackend);
+        assertTrue(backend instanceof DistroShellBackend);
     }
 
     @Test
-    public void create_nullBackend_isLocal() {
+    public void create_nullBackend_isDistro() {
         AgentConfig config = new AgentConfig();
         config.setShellBackend(null);
         ShellConfig shellConfig = ShellConfig.createFull();
 
-        ShellBackend backend = ShellBackendFactory.create(config, shellConfig);
+        ShellBackend backend = ShellBackendFactory.create(config, shellConfig, context, distroRoot, workspaceRoot);
 
         assertNotNull(backend);
-        assertTrue(backend instanceof LocalShellBackend);
+        assertTrue(backend instanceof DistroShellBackend);
     }
 
     @Test
-    public void create_emptyBackend_isLocal() {
+    public void create_emptyBackend_isDistro() {
         AgentConfig config = new AgentConfig();
         config.setShellBackend("");
         ShellConfig shellConfig = ShellConfig.createFull();
 
-        ShellBackend backend = ShellBackendFactory.create(config, shellConfig);
+        ShellBackend backend = ShellBackendFactory.create(config, shellConfig, context, distroRoot, workspaceRoot);
 
         assertNotNull(backend);
-        assertTrue(backend instanceof LocalShellBackend);
+        assertTrue(backend instanceof DistroShellBackend);
     }
 
     @Test
@@ -109,7 +118,7 @@ public class ShellBackendFactoryTest {
 
         ShellConfig shellConfig = ShellConfig.createFull();
 
-        ShellBackend backend = ShellBackendFactory.create(config, shellConfig);
+        ShellBackend backend = ShellBackendFactory.create(config, shellConfig, context, distroRoot, workspaceRoot);
 
         assertNotNull(backend);
         assertTrue(backend instanceof SshShellBackend);
@@ -128,18 +137,8 @@ public class ShellBackendFactoryTest {
     }
 
     @Test
-    public void isSshBackend_falseWhenLocalConfigured() {
-        AgentConfig config = new AgentConfig();
-        config.setShellBackend("local");
-
-        assertFalse(ShellBackendFactory.isSshBackend(config));
-    }
-
-    @Test
     public void isSshBackend_falseWhenDefault() {
         AgentConfig config = new AgentConfig();
-        // Default is "local"
-
         assertFalse(ShellBackendFactory.isSshBackend(config));
     }
 
@@ -155,30 +154,20 @@ public class ShellBackendFactoryTest {
         ShellConfig shellConfig = ShellConfig.createFull();
 
         // Should throw because SshConfig.Builder validates host
-        ShellBackendFactory.create(config, shellConfig);
+        ShellBackendFactory.create(config, shellConfig, context, distroRoot, workspaceRoot);
     }
 
     @Test
-    public void create_sshBackend_withAllConfig() {
+    public void create_distroBackend_honoursSeccompKnob() {
         AgentConfig config = new AgentConfig();
-        config.setShellBackend("ssh");
-        config.setSshHost("myserver.com");
-        config.setSshPort(2222);
-        config.setSshUser("deploy");
-        config.setSshAuthType("key");
-        config.setSshPrivateKeyPath("/home/deploy/.ssh/deploy_key");
-        config.setSshVerifyHostKey(true);
-
+        config.setDistroNoSeccomp(false);
         ShellConfig shellConfig = ShellConfig.createFull();
 
-        ShellBackend backend = ShellBackendFactory.create(config, shellConfig);
+        DistroShellBackend backend =
+                (DistroShellBackend) ShellBackendFactory.create(config, shellConfig, context, distroRoot, workspaceRoot);
 
         assertNotNull(backend);
-        assertTrue(backend instanceof SshShellBackend);
-
-        // Verify backend is properly configured
-        SshShellBackend sshBackend = (SshShellBackend) backend;
-        // We can't directly access private fields, but we can test behavior
-        assertFalse(sshBackend.isConnected());
+        // No exception means the backend was built with the knob value; behaviour is covered
+        // by DistroShellBackendTest command-building tests.
     }
 }

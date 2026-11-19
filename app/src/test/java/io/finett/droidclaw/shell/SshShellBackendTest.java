@@ -171,8 +171,8 @@ public class SshShellBackendTest {
     }
 
     @Test
-    public void execute_planWithAllowlistPolicy_rejectsUnlistedCommand() {
-        ShellConfig shellConfig = ShellConfig.createAllowlistDefault();
+    public void execute_planWithDenyPolicy_rejectsAll() {
+        ShellConfig shellConfig = ShellConfig.createDefault(); // DENY
         SshConfig config = new SshConfig.Builder()
                 .host("localhost")
                 .port(22)
@@ -185,17 +185,17 @@ public class SshShellBackendTest {
 
         File tmpDir = new File(System.getProperty("java.io.tmpdir"));
         ExecPlan plan = new ExecPlan(
-                "/system/bin/rm",
-                Arrays.asList("-rf", "/"),
+                "/usr/bin/ls",
+                Arrays.asList("-l"),
                 tmpDir,
                 ExecPlan.ExecMode.DIRECT
         );
 
         try {
             backend.execute(plan, 30);
-            fail("Should have thrown SecurityException for unlisted command");
+            fail("Should have thrown SecurityException for DENY policy");
         } catch (SecurityException e) {
-            assertTrue(e.getMessage().contains("not in SSH allowlist"));
+            assertTrue(e.getMessage().contains("DENY"));
         }
     }
 

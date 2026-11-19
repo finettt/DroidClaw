@@ -14,7 +14,6 @@ public class AgentConfig {
     private int shellTimeout;
     private boolean backgroundShellEnabled; // allow shell/python in background workers
     private boolean backgroundExecEnabled; // allow agent to dispatch any tool with background=true
-    private List<String> customAllowlist; // extra executable paths for relaxed mode
     private boolean screenControlEnabled;  // allow agent to read UI and control screen via accessibility
     private boolean screenControlTrustMode; // skip per-action approval for screen control tools
     private boolean streamResponses;        // stream LLM text via SSE as it is generated
@@ -28,7 +27,7 @@ public class AgentConfig {
     private int llmReadTimeout;      // seconds
     private int llmWriteTimeout;     // seconds
     private Map<String, String> toolApprovalOverrides = new HashMap<>(); // toolName -> ToolApprovalMode.name()
-    private String shellBackend;     // "local" or "ssh"
+    private String shellBackend;     // null / "distro" = distro backend (default); "ssh" = remote
     private String shellApprovalMode; // "ask_all", "auto", or "full_access"
     private String sshHost;
     private int sshPort;
@@ -38,9 +37,9 @@ public class AgentConfig {
     private String sshPrivateKeyPath;
     private boolean sshVerifyHostKey;
     private int distroDiskLimitMb; // advisory host-side quota (MB) for the Linux image
+    private boolean distroNoSeccomp; // set PROOT_NO_SECCOMP=1 inside the guest (default on)
 
     public AgentConfig() {
-        this.customAllowlist = new ArrayList<>();
         this.streamResponses = true;
         this.effort = Effort.getDefault().persistedName();
         this.llmConnectTimeout = 30;
@@ -55,16 +54,17 @@ public class AgentConfig {
         this.lessonExtractionEnabled = true;
         this.lessonConsolidationEnabled = true;
         this.toolApprovalOverrides = new HashMap<>();
-        this.shellBackend = "local";
+        this.shellBackend = null; // distro backend is the default
         this.shellApprovalMode = "auto";
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
         this.distroDiskLimitMb = 2048;
+        this.distroNoSeccomp = true;
     }
 
     public AgentConfig(String defaultModel, boolean shellAccess, String sandboxMode,
                        boolean requireApproval, int shellTimeout,
-                       boolean backgroundShellEnabled, List<String> customAllowlist) {
+                       boolean backgroundShellEnabled) {
         this.defaultModel = defaultModel;
         this.shellAccess = shellAccess;
         this.sandboxMode = sandboxMode;
@@ -74,7 +74,6 @@ public class AgentConfig {
         this.backgroundShellEnabled = backgroundShellEnabled;
         this.backgroundExecEnabled = false;
         this.streamResponses = true;
-        this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
         this.shellApprovalMode = "auto";
         this.llmConnectTimeout = 30;
         this.llmReadTimeout = 120;
@@ -90,6 +89,7 @@ public class AgentConfig {
         this.sshPort = 22;
         this.sshVerifyHostKey = true;
         this.distroDiskLimitMb = 2048;
+        this.distroNoSeccomp = true;
     }
 
     public static AgentConfig getDefaults() {
@@ -99,8 +99,7 @@ public class AgentConfig {
                 "strict",
                 true,
                 30,
-                false,
-                new ArrayList<>()
+                false
         );
     }
 
@@ -193,14 +192,6 @@ public class AgentConfig {
         this.backgroundExecEnabled = backgroundExecEnabled;
     }
 
-    public List<String> getCustomAllowlist() {
-        return customAllowlist;
-    }
-
-    public void setCustomAllowlist(List<String> customAllowlist) {
-        this.customAllowlist = customAllowlist != null ? new ArrayList<>(customAllowlist) : new ArrayList<>();
-    }
-
     public boolean isScreenControlEnabled() {
         return screenControlEnabled;
     }
@@ -288,7 +279,8 @@ public class AgentConfig {
     }
 
     public void setShellBackend(String shellBackend) {
-        this.shellBackend = shellBackend != null ? shellBackend : "local";
+        // null (or "distro") selects the local distro backend; only "ssh" is remote.
+        this.shellBackend = shellBackend;
     }
 
     public String getShellApprovalMode() {
@@ -365,6 +357,15 @@ public class AgentConfig {
 
     public void setDistroDiskLimitMb(int distroDiskLimitMb) {
         this.distroDiskLimitMb = distroDiskLimitMb <= 0 ? 2048 : distroDiskLimitMb;
+    }
+
+    /** Whether {@code PROOT_NO_SECCOMP=1} is set inside the guest (default on). */
+    public boolean isDistroNoSeccomp() {
+        return distroNoSeccomp;
+    }
+
+    public void setDistroNoSeccomp(boolean distroNoSeccomp) {
+        this.distroNoSeccomp = distroNoSeccomp;
     }
 
     public String getDefaultProviderId() {
