@@ -126,8 +126,6 @@ public class ShellTool implements Tool {
                 "Execute a shell command on the Android device. Commands run in a sandboxed "
                 + "workspace environment with an allowlist-based security policy. "
                 + "Shell metacharacters are rejected in direct execution mode. "
-                + "The Linux environment also provides python3; if it is missing, install it "
-                + "with `apt install python3 python3-pip ca-certificates` using this same tool. "
                 + "Requires user approval before execution.",
                 parameters
         );
