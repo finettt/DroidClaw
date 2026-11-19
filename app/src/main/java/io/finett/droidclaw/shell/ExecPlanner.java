@@ -265,8 +265,10 @@ public class ExecPlanner {
      */
     private String resolveDistroAbsolute(String rawExe) throws SecurityException, IOException {
         // A bare host absolute path (workspace or filesDir prefix) is not a guest path and
-        // must not leak into the guest rootfs.
-        String hostAbs = new File(rawExe).getAbsoluteFile().getAbsolutePath();
+        // must not leak into the guest rootfs. Compare canonical paths: Android exposes the
+        // same app directory through aliases such as /data/user/0/<pkg> and /data/data/<pkg>,
+        // so a non-canonical spelling would otherwise slip past the canonical prefixes.
+        String hostAbs = new File(rawExe).getCanonicalFile().getAbsolutePath();
         for (String hostPrefix : hostPathPrefixes()) {
             if (hostAbs.equals(hostPrefix) || hostAbs.startsWith(hostPrefix + File.separator)) {
                 throw new SecurityException(

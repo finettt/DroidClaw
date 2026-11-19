@@ -77,6 +77,21 @@ public class DistroShellBackendTest {
     }
 
     @Test
+    public void environment_pointsProotAtPackagedLoaders() {
+        // Without PROOT_LOADER the packaged proot looks for its loader under the Termux
+        // installation and every execve fails with ENOENT.
+        ProcessBuilder builder = new ProcessBuilder("true");
+        backend.environment(builder);
+
+        String nativeLibDir = new File(filesDir, "native").getAbsolutePath();
+        assertEquals(new File(nativeLibDir, "libproot-loader.so").getAbsolutePath(),
+                builder.environment().get("PROOT_LOADER"));
+        assertEquals(new File(nativeLibDir, "libproot-loader32.so").getAbsolutePath(),
+                builder.environment().get("PROOT_LOADER_32"));
+        assertEquals(nativeLibDir, builder.environment().get("LD_LIBRARY_PATH"));
+    }
+
+    @Test
     public void guestCwd_isWorkspaceWhenInsideWorkspace() {
         ExecPlan p = plan("/usr/bin/echo", ExecPlan.ExecMode.DIRECT, workspace, "hi");
         assertEquals("/workspace", backend.guestCwdFor(p));

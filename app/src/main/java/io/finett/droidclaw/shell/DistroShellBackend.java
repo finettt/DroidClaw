@@ -31,6 +31,8 @@ public class DistroShellBackend implements ShellBackend {
 
     private static final String TAG = "DistroShellBackend";
     private static final String PROOT_BINARY = "libproot.so";
+    private static final String PROOT_LOADER = "libproot-loader.so";
+    private static final String PROOT_LOADER32 = "libproot-loader32.so";
     private static final String PROOT_TMP_DIR_NAME = "proot-tmp";
     private static final String SHELL_IN_GUEST = "bin/sh";
 
@@ -287,7 +289,7 @@ public class DistroShellBackend implements ShellBackend {
     }
 
     /** Inject the guest environment that PRoot and the commands inside it rely on. */
-    private void environment(ProcessBuilder builder) {
+    void environment(ProcessBuilder builder) {
         java.util.Map<String, String> env = builder.environment();
         env.put("LD_LIBRARY_PATH", nativeLibraryDir);
         env.put("HOME", "/root");
@@ -296,6 +298,11 @@ public class DistroShellBackend implements ShellBackend {
         env.put("TERM", "dumb");
         env.put("TMPDIR", "/tmp");
         env.put("PROOT_TMP_DIR", prootTmpDir.getAbsolutePath());
+        // PRoot cannot execve anything without its loader: the compiled-in default points
+        // at the Termux installation, which does not exist here. Both loaders are packaged
+        // next to libproot.so and extracted into nativeLibraryDir by Android.
+        env.put("PROOT_LOADER", new File(nativeLibraryDir, PROOT_LOADER).getAbsolutePath());
+        env.put("PROOT_LOADER_32", new File(nativeLibraryDir, PROOT_LOADER32).getAbsolutePath());
         if (seccompDisabled) {
             env.put("PROOT_NO_SECCOMP", "1");
         }

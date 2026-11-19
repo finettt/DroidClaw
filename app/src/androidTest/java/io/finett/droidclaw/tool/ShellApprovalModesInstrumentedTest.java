@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import io.finett.droidclaw.agent.AgentLoop;
 import io.finett.droidclaw.api.LlmApiService;
@@ -260,8 +261,14 @@ public class ShellApprovalModesInstrumentedTest {
         loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
 
         assertNotNull("apt run must return a tool result", callback.lastToolResult);
-        assertTrue("apt must print its version string",
-                callback.lastToolResult.toLowerCase().contains("apt"));
+        String result = callback.lastToolResult;
+        // Assert on the real apt banner and a zero exit code: a bare contains("apt")
+        // also matches an ENOENT-class proot failure, which mentions the exe name.
+        assertFalse("apt must not fail: " + result, result.contains("Error:"));
+        assertTrue("apt must exit with code 0: " + result,
+                result.contains("\"exit_code\":0"));
+        assertTrue("apt must print a real version banner (apt X.Y.Z): " + result,
+                Pattern.compile("apt \\d+\\.\\d+(\\.\\d+)?").matcher(result).find());
     }
 
     @Test

@@ -52,6 +52,30 @@ PINS = (
         TERMUX_PREFIX + "/bin/proot", "libproot.so",
     ),
     Pin(
+        "proot", "5.1.107.102", "aarch64",
+        "pool/main/p/proot/proot_5.1.107.102_aarch64.deb",
+        "10a394b585c2fc2b2c8502544f4e5f1be581dc8bfff79e8ba62f16207423e030",
+        TERMUX_PREFIX + "/libexec/proot/loader", "libproot-loader.so",
+    ),
+    Pin(
+        "proot", "5.1.107.102", "x86_64",
+        "pool/main/p/proot/proot_5.1.107.102_x86_64.deb",
+        "2497064226c15971be8131c7facead94a06c225347796326a383c832dca57758",
+        TERMUX_PREFIX + "/libexec/proot/loader", "libproot-loader.so",
+    ),
+    Pin(
+        "proot", "5.1.107.102", "aarch64",
+        "pool/main/p/proot/proot_5.1.107.102_aarch64.deb",
+        "10a394b585c2fc2b2c8502544f4e5f1be581dc8bfff79e8ba62f16207423e030",
+        TERMUX_PREFIX + "/libexec/proot/loader32", "libproot-loader32.so",
+    ),
+    Pin(
+        "proot", "5.1.107.102", "x86_64",
+        "pool/main/p/proot/proot_5.1.107.102_x86_64.deb",
+        "2497064226c15971be8131c7facead94a06c225347796326a383c832dca57758",
+        TERMUX_PREFIX + "/libexec/proot/loader32", "libproot-loader32.so",
+    ),
+    Pin(
         "libtalloc", "2.5.0", "aarch64",
         "pool/main/libt/libtalloc/libtalloc_2.5.0_aarch64.deb",
         "556591f43bb773ad8777e1a29522640866a55f95dab71914418b94a8c58ad5a7",
@@ -207,7 +231,7 @@ def extract_member(deb_data, pin):
 
 
 def use_packaged_library_names(data, pin):
-    if pin.package != "proot":
+    if pin.output != "libproot.so":
         return data
     # This pinned PRoot declares libtalloc.so.2, but Android extracts the packaged
     # unversioned jniLibs name. Keep the requested library name and update only the
