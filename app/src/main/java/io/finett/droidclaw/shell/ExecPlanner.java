@@ -61,7 +61,6 @@ public class ExecPlanner {
         this.config = config;
         this.workspaceRoot = workspaceRoot;
         this.distroRoot = distroRoot;
-        android.util.Log.d("ExecPlanner", "distroRoot=" + (distroRoot == null ? "null" : distroRoot.getAbsolutePath()));
     }
 
     // ==================== Public API ====================
@@ -344,7 +343,6 @@ public class ExecPlanner {
         for (String trustedDir : config.getTrustedDirs()) {
             File candidate = new File(trustedDir, rawExe);
             if (candidate.exists() && candidate.canExecute()) {
-                try { android.util.Log.d("ExecPlanner", "exe_abs=" + candidate.getAbsolutePath() + " exe_canon=" + candidate.getCanonicalFile().getAbsolutePath()); } catch (Exception e) {}
                 return candidate.getAbsolutePath();
             }
         }

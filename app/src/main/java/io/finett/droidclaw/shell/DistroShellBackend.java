@@ -56,8 +56,6 @@ public class DistroShellBackend implements ShellBackend {
         this.config = config;
         this.rootfsHost = rootfsHost;
         this.workspaceHost = workspaceHost;
-        android.util.Log.d("DistroShellBackend", "rootfsHost=" + rootfsHost.getAbsolutePath()
-                + " workspace=" + workspaceHost.getAbsolutePath());
         this.nativeLibraryDir = nativeLibraryDir;
         this.prootTmpDir = new File(filesDir, PROOT_TMP_DIR_NAME);
         this.seccompDisabled = seccompDisabled;

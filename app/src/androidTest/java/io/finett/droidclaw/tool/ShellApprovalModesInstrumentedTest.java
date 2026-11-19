@@ -351,26 +351,6 @@ public class ShellApprovalModesInstrumentedTest {
                 auditContains("disposition=error"));
     }
 
-    @Test
-    public void temp_absoluteSymlinkFix() throws Exception {
-        String rootfs = "/data/user/0/io.finett.droidclaw/files/distro/ubuntu";
-        String interpReal = "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2";
-        String interpViaLib = rootfs + "/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2";
-        String symlink = rootfs + "/lib64/ld-linux-x86-64.so.2";
-        System.out.println("DEBUG_REAL_INTERP_EXISTS=" + java.nio.file.Files.exists(java.nio.file.Paths.get(interpReal)));
-        System.out.println("DEBUG_LIB_IS_LINK=" + java.nio.file.Files.isSymbolicLink(java.nio.file.Paths.get(rootfs + "/lib")));
-        // Point the ELF interpreter at the real interpreter.
-        Process rm = Runtime.getRuntime().exec(new String[]{"rm", "-f", symlink});
-        rm.waitFor();
-        Process ln = Runtime.getRuntime().exec(new String[]{"ln", "-s", interpReal, symlink});
-        ln.waitFor();
-        System.out.println("DEBUG_NEW_TARGET=" + java.nio.file.Files.readSymbolicLink(java.nio.file.Paths.get(symlink)));
-        AgentLoop loop = newLoop("auto", "echo HELLO_AFTER_REAL_INTERP", c -> false);
-        RecordingCallback callback = new RecordingCallback();
-        loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
-        System.out.println("DEBUG_ECHO_RESULT=[" + (callback.lastToolResult == null ? "NULL" : callback.lastToolResult) + "]");
-    }
-
     private boolean auditContains(String needle) {
         try {
             if (!auditLog.exists()) {
