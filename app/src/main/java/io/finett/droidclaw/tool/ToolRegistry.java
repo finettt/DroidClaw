@@ -17,7 +17,6 @@ import java.util.Set;
 import io.finett.droidclaw.calendar.CalendarRepository;
 import io.finett.droidclaw.filesystem.VirtualFileSystem;
 import io.finett.droidclaw.filesystem.WorkspaceManager;
-import io.finett.droidclaw.python.PythonConfig;
 import io.finett.droidclaw.shell.ExecPlanner;
 import io.finett.droidclaw.shell.ShellBackendFactory;
 import io.finett.droidclaw.shell.ShellBackend;
@@ -31,7 +30,6 @@ import io.finett.droidclaw.tool.impl.FileReadTool;
 import io.finett.droidclaw.tool.impl.FileSearchTool;
 import io.finett.droidclaw.tool.impl.FileWriteTool;
 import io.finett.droidclaw.tool.impl.HeartbeatOkTool;
-import io.finett.droidclaw.tool.impl.PythonTool;
 import io.finett.droidclaw.tool.impl.ShellTool;
 import io.finett.droidclaw.tool.impl.CreateTaskTool;
 import io.finett.droidclaw.tool.impl.ListTasksTool;
@@ -127,7 +125,7 @@ public class ToolRegistry {
             registerTool(new FileDeleteTool(vfs));
         }
 
-        // Shell and Python execution — only when shell access is explicitly enabled
+        // Shell execution — only when shell access is explicitly enabled
         // AND sandbox mode is not strict. Approval is governed by the shell-approval mode
         // (ask_all/auto/full_access), not by the sandbox mode, once the tools are available.
         if (shellEnabled && !"strict".equals(sandboxMode)) {
@@ -146,11 +144,6 @@ public class ToolRegistry {
                     agentConfig, shellConfig, context, distroRoot, workspaceRoot);
             registerTool(new ShellTool(workspaceManager.getPathValidator(),
                     shellConfig, backend, planner));
-
-            PythonConfig pythonConfig = PythonConfig.builder()
-                    .safeMode(!"full".equals(sandboxMode))
-                    .build();
-            registerTool(new PythonTool(context, workspaceRoot, pythonConfig));
         }
 
         registerTool(new HeartbeatOkTool());
@@ -391,10 +384,7 @@ public class ToolRegistry {
      * Must be called when the registry is discarded (e.g. fragment onDestroy, worker completion).
      */
     public void shutdown() {
-        for (Tool tool : tools.values()) {
-            if (tool instanceof PythonTool) {
-                ((PythonTool) tool).shutdown();
-            }
-        }
+        // No tool holds a long-lived process pool anymore; the distro backend spawns a
+        // fresh killable process per command and closes it on completion.
     }
 }
