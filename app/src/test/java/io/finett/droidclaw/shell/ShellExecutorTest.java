@@ -31,8 +31,8 @@ public class ShellExecutorTest {
     }
 
     private static ExecPlan samplePlan() {
-        return new ExecPlan("/usr/bin/echo", Arrays.asList("hi"),
-                new File(System.getProperty("java.io.tmpdir")), ExecPlan.ExecMode.DIRECT);
+        return new ExecPlan("echo hi",
+                new File(System.getProperty("java.io.tmpdir")));
     }
 
     @Test

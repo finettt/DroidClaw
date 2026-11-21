@@ -23,8 +23,8 @@ public interface Tool {
      * {@link ExecPlan} from the LLM-provided arguments.
      *
      * <p>When non-null, the agent loop displays {@link ExecPlan#toApprovalDescription()} in
-     * the approval dialog — showing the user the <em>normalised</em> plan (canonical exe path,
-     * tokenised argv, resolved cwd, plan hash) rather than the raw LLM-provided string.
+     * the approval dialog — showing the user the raw command verbatim (plus the resolved cwd
+     * and plan hash) rather than some other rendering of the LLM-provided string.
      * This prevents prompt-injection attacks where the approval description differs from what
      * is actually executed.
      *

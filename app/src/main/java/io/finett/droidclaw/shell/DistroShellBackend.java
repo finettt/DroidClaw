@@ -5,23 +5,25 @@ import android.util.Log;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * Shell backend that runs commands inside the installed Linux image through PRoot.
  *
  * <p>The contract mirrors the removed local backend: re-verify the plan hash, run
- * {@link ShellConfig#validatePlan}, then start the process. Instead of running the
- * executable directly, it launches the packaged PRoot binary with the rootfs bound, the
- * workspace mounted at {@code /workspace}, and the resolved guest command as the trailing
- * {@code exe} ...argv.
+ * {@link ShellConfig#validatePlan}, then start the process. It launches the packaged
+ * PRoot binary with the rootfs bound, the workspace mounted at {@code /workspace}, and
+ * the raw command run through the guest shell as the trailing argv.
  *
  * <p>Proot invocation:
  * <pre>
  *   &lt;nativeLibraryDir&gt;/libproot.so -0 --kill-on-exit -R &lt;rootfs&gt;
- *       -b &lt;workspace&gt;:/workspace -w &lt;guestCwd&gt; &lt;exe&gt; ...argv
+ *       -b &lt;workspace&gt;:/workspace -w &lt;guestCwd&gt; /bin/sh -c &lt;rawCommand&gt;
  * </pre>
+ *
+ * <p>The raw command is passed verbatim to the guest {@code /bin/sh -c}, so full shell
+ * syntax (pipes, {@code &&}, redirects, {@code $()}) runs inside the rootfs. There is a
+ * single execution path &mdash; no DIRECT/SHELL branch.
  *
  * <p>{@code guestCwd} is {@code /workspace} when the plan cwd is inside the workspace, else
  * {@code /root}. If {@code -R} fails because a host bind path is missing, it falls back to
@@ -34,7 +36,6 @@ public class DistroShellBackend implements ShellBackend {
     private static final String PROOT_LOADER = "libproot-loader.so";
     private static final String PROOT_LOADER32 = "libproot-loader32.so";
     private static final String PROOT_TMP_DIR_NAME = "proot-tmp";
-    private static final String SHELL_IN_GUEST = "bin/sh";
 
     private static final String[] GUEST_BIND_FALLBACK = {"/dev", "/proc", "/sys"};
 
@@ -43,7 +44,6 @@ public class DistroShellBackend implements ShellBackend {
 
     private final ShellConfig config;
     private final File rootfsHost;
-    private final File canonicalRootfsHost;
     private final File workspaceHost;
     private final String nativeLibraryDir;
     private final File prootTmpDir;
@@ -61,33 +61,6 @@ public class DistroShellBackend implements ShellBackend {
         this.nativeLibraryDir = nativeLibraryDir;
         this.prootTmpDir = new File(filesDir, PROOT_TMP_DIR_NAME);
         this.seccompDisabled = seccompDisabled;
-        this.canonicalRootfsHost = canonicalHost(rootfsHost);
-    }
-
-    /** Canonicalise a host path, tolerating failures by returning the original. */
-    private static File canonicalHost(File file) {
-        try {
-            return file.getCanonicalFile();
-        } catch (java.io.IOException e) {
-            return file;
-        }
-    }
-
-    /**
-     * Map a host path inside the guest rootfs to its guest path relative to the chroot.
-     * libproot resolves the executable relative to the chroot, so the full host path
-     * (e.g. {@code /data/data/app/.../distro/ubuntu/usr/bin/echo}) must be stripped of the
-     * canonical rootfs prefix to become the guest path ({@code /usr/bin/echo}).
-     */
-    private String guestPath(String hostPath) {
-        String root = canonicalRootfsHost.getAbsolutePath();
-        if (hostPath.equals(root)) {
-            return "/";
-        }
-        if (hostPath.startsWith(root + java.io.File.separator)) {
-            return "/" + hostPath.substring(root.length() + 1);
-        }
-        return hostPath;
     }
 
     @Override
@@ -97,11 +70,7 @@ public class DistroShellBackend implements ShellBackend {
         }
 
         // 1. Re-verify plan hash (TOCTOU / substitution-attack prevention)
-        String recomputedHash = ExecPlan.computeHash(
-                plan.getCanonicalExePath(),
-                plan.getArgv(),
-                plan.getCwd(),
-                plan.getMode());
+        String recomputedHash = ExecPlan.computeHash(plan.getRawCommand(), plan.getCwd());
         if (!recomputedHash.equals(plan.getPlanHash())) {
             throw new SecurityException(
                 "ExecPlan hash mismatch — plan may have been tampered with. "
@@ -141,26 +110,11 @@ public class DistroShellBackend implements ShellBackend {
     /**
      * Assemble the PRoot command line for the given plan.
      *
-     * <p>DIRECT mode runs the resolved guest executable with its argv. SHELL mode runs the
-     * guest shell ({@code /bin/sh}) with {@code -c} and the plan reconstructed as a single
-     * command string, mirroring the removed local backend's shell handling.
+     * <p>The raw command is passed verbatim to the guest {@code /bin/sh -c}, so full shell
+     * syntax runs inside the rootfs. The guest shell is an absolute path, so PRoot stops
+     * option parsing on its own; the packaged Termux "proot" build rejects {@code --}.
      */
     List<String> buildProotCommand(ExecPlan plan, boolean chrootFallback) {
-        String exeForProot;
-        List<String> exeArgv;
-
-        if (plan.getMode() == ExecPlan.ExecMode.DIRECT) {
-            exeForProot = guestPath(plan.getCanonicalExePath());
-            exeArgv = new ArrayList<>(plan.getArgv());
-        } else {
-            exeForProot = guestPath(new File(rootfsHost, SHELL_IN_GUEST).getAbsolutePath());
-            StringBuilder sb = new StringBuilder(exeForProot);
-            for (String arg : plan.getArgv()) {
-                sb.append(' ').append(arg);
-            }
-            exeArgv = Arrays.asList("-c", sb.toString());
-        }
-
         List<String> command = new ArrayList<>();
         command.add(new File(nativeLibraryDir, PROOT_BINARY).getAbsolutePath());
         command.add("-0");
@@ -177,11 +131,12 @@ public class DistroShellBackend implements ShellBackend {
         }
         command.add("-w");
         command.add(guestCwdFor(plan));
-        // The executable is always an absolute guest path (DIRECT) or the guest
-        // shell (SHELL mode), so option parsing stops there on its own; no "--"
-        // separator is needed. The packaged Termux "proot" build rejects "--".
-        command.add(exeForProot);
-        command.addAll(exeArgv);
+        // The guest shell is an absolute path (/bin/sh), so PRoot's option parsing stops
+        // there on its own. The packaged Termux "proot" build rejects the "--" separator,
+        // so it must not be emitted.
+        command.add("/bin/sh");
+        command.add("-c");
+        command.add(plan.getRawCommand());
         android.util.Log.d("DistroShellBackend", "PROOT_CMD=" + command.toString());
         return command;
     }

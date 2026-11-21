@@ -4,58 +4,40 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
-import java.util.List;
+import java.util.Objects;
 
 /**
  * An immutable, normalised representation of what will actually be executed.
  *
- * <p>The approval UI shows <em>this</em> object (via {@link #toApprovalDescription()}),
- * not the raw LLM-provided string. The executor verifies {@link #getPlanHash()} before
+ * <p>The approval UI shows the raw command verbatim (via
+ * {@link #toApprovalDescription()}). The executor verifies {@link #getPlanHash()} before
  * running to close the substitution-attack vector: if any field changes between the
  * moment the user approves and the moment the process starts, the hash will not match
  * and execution is aborted.
  *
- * <p>Construction is done by {@link ExecPlanner}, which resolves the canonical exe path,
- * tokenises argv, and validates the working directory.
+ * <p>The single execution path is the guest/remote shell: the {@code rawCommand} is passed
+ * verbatim to {@code sh -c}, so full shell syntax (pipes, {@code &&}, redirects,
+ * {@code $()}) is honoured inside the Linux environment. Construction is done by
+ * {@link ExecPlanner}, which pins the working directory with a canonical-path guard
+ * (workspace boundary) and derives a hash of everything the user approved.
  */
 public class ExecPlan {
 
-    /** Whether to run directly via argv array (no shell) or via {@code sh -c}. */
-    public enum ExecMode {
-        /**
-         * Safe default: execute via {@code ProcessBuilder(argv[])} with no shell.
-         * Shell metacharacters (;, &, |, >, <, $, `, (, ), \n) in any token are
-         * rejected at plan-build time.
-         */
-        DIRECT,
-        /**
-         * Shell mode: execute via {@code sh -c "..."}. Requires explicit opt-in.
-         */
-        SHELL
-    }
-
-    private final String canonicalExePath;
-    private final List<String> argv;
+    private final String rawCommand;
     private final File cwd;
-    private final ExecMode mode;
     private final String planHash;
 
     /**
-     * Construct an ExecPlan. The {@code planHash} is computed immediately from the
-     * four fields and is stable for the lifetime of this object.
+     * Construct an ExecPlan. The {@code planHash} is computed immediately from the two
+     * fields and is stable for the lifetime of this object.
      *
-     * @param canonicalExePath canonical absolute path to the executable
-     * @param argv             argument list (not including the executable)
-     * @param cwd              working directory (must be an absolute, canonical path)
-     * @param mode             execution mode
+     * @param rawCommand the raw command string, passed verbatim to {@code sh -c}
+     * @param cwd        working directory (an absolute, canonical path)
      */
-    public ExecPlan(String canonicalExePath, List<String> argv, File cwd, ExecMode mode) {
-        this.canonicalExePath = canonicalExePath;
-        this.argv = Collections.unmodifiableList(argv);
+    public ExecPlan(String rawCommand, File cwd) {
+        this.rawCommand = rawCommand;
         this.cwd = cwd;
-        this.mode = mode;
-        this.planHash = computeHash(canonicalExePath, argv, cwd, mode);
+        this.planHash = computeHash(rawCommand, cwd);
     }
 
     // ==================== Hash ====================
@@ -64,15 +46,11 @@ public class ExecPlan {
      * Compute a stable SHA-256 hash of the plan's canonical representation.
      * NUL bytes (\0) are used as field separators to prevent argument-smuggling.
      */
-    static String computeHash(String exe, List<String> argv, File cwd, ExecMode mode) {
+    static String computeHash(String rawCommand, File cwd) {
         try {
-            // Build: MODE\0EXE\0ARG0\0ARG1\0...\0CWD
+            // Build: RAWCMD\0CWD
             StringBuilder repr = new StringBuilder();
-            repr.append(mode.name()).append('\0');
-            repr.append(exe).append('\0');
-            for (String arg : argv) {
-                repr.append(arg).append('\0');
-            }
+            repr.append(rawCommand == null ? "" : rawCommand).append('\0');
             repr.append(cwd.getAbsolutePath());
 
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -91,24 +69,14 @@ public class ExecPlan {
 
     // ==================== Accessors ====================
 
-    /** Canonical absolute path to the executable, e.g. {@code /system/bin/ls}. */
-    public String getCanonicalExePath() {
-        return canonicalExePath;
-    }
-
-    /** Argument list (not including the executable itself). Unmodifiable. */
-    public List<String> getArgv() {
-        return argv;
+    /** The raw command string, passed verbatim to {@code sh -c}. */
+    public String getRawCommand() {
+        return rawCommand;
     }
 
     /** Working directory for the process. */
     public File getCwd() {
         return cwd;
-    }
-
-    /** Execution mode (DIRECT or SHELL). */
-    public ExecMode getMode() {
-        return mode;
     }
 
     /**
@@ -124,31 +92,35 @@ public class ExecPlan {
 
     /**
      * Human-readable summary shown in the approval dialog.
-     * Deliberately shows the normalised plan, not the raw LLM-provided string,
-     * so the user sees exactly what will be executed.
+     * Shows the raw command verbatim and the resolved working directory, so the user sees
+     * exactly what will be executed inside the Linux environment.
      */
     public String toApprovalDescription() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Mode: ").append(mode.name()).append('\n');
-        sb.append("Executable: ").append(canonicalExePath).append('\n');
-        if (!argv.isEmpty()) {
-            sb.append("Arguments:");
-            for (String arg : argv) {
-                sb.append("\n  ").append(arg);
-            }
-            sb.append('\n');
-        }
+        sb.append("Command: ").append(rawCommand).append('\n');
         sb.append("Working dir: ").append(cwd.getAbsolutePath()).append('\n');
-        sb.append("Plan ID: ").append(planHash, 0, 16).append("…");
+        sb.append("Plan ID: ").append(planHash, 0, 16).append("\u2026");
         return sb.toString();
     }
 
     @Override
     public String toString() {
-        return "ExecPlan{mode=" + mode
-                + ", exe='" + canonicalExePath + '\''
-                + ", argv=" + argv
+        return "ExecPlan{rawCommand='" + rawCommand + '\''
                 + ", cwd=" + cwd
                 + ", hash='" + planHash.substring(0, 8) + "...'}";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ExecPlan)) return false;
+        ExecPlan that = (ExecPlan) o;
+        return Objects.equals(rawCommand, that.rawCommand)
+                && Objects.equals(cwd, that.cwd);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(rawCommand, cwd);
     }
 }

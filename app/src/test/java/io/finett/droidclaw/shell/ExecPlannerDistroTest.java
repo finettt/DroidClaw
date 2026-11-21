@@ -1,22 +1,19 @@
 package io.finett.droidclaw.shell;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.nio.file.Files;
-
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import io.finett.droidclaw.shell.distro.DistroSpec;
+import java.io.File;
+import java.nio.file.Files;
+
+import static org.junit.Assert.*;
 
 /**
- * Guest-path resolution tests for the distro planner. Host paths must be rejected even when
- * spelled through a symlink alias of the application directory: Android exposes the same
- * directory as both {@code /data/data/<pkg>} and {@code /data/user/0/<pkg>}.
+ * Working-directory guard tests that mirror Android exposing the app directory through two
+ * aliases (the production {@code /data/user/0/<pkg>} and {@code /data/data/<pkg>}). A cwd
+ * spelled through the alias must canonicalise to the same path as the canonical spelling.
  */
 public class ExecPlannerDistroTest {
 
@@ -25,44 +22,42 @@ public class ExecPlannerDistroTest {
 
     private File realHome;
     private File workspace;
-    private File distroRoot;
     private ExecPlanner planner;
 
     @Before
     public void setUp() throws Exception {
         realHome = temporaryFolder.newFolder("real");
-        distroRoot = new File(realHome, "files/distro/ubuntu");
-        assertTrue(distroRoot.mkdirs());
-        assertTrue(new File(distroRoot, DistroSpec.MARKER_FILE).createNewFile());
         workspace = new File(realHome, "files/workspace");
         assertTrue(workspace.mkdirs());
-        planner = new ExecPlanner(ShellConfig.createDefault(), workspace, distroRoot);
+        planner = new ExecPlanner(workspace);
     }
 
     @Test
-    public void rejectsHostPathInsideFilesDir() throws Exception {
-        assertHostPathRejected(new File(realHome, "files/leak"));
-    }
-
-    @Test
-    public void rejectsHostPathInsideWorkspace() throws Exception {
-        assertHostPathRejected(new File(workspace, "leak"));
-    }
-
-    @Test
-    public void rejectsHostPathSpelledThroughSymlinkAlias() throws Exception {
+    public void cwdSpelledThroughSymlinkAlias_canonicalisesInsideWorkspace() throws Exception {
         File alias = new File(temporaryFolder.getRoot(), "alias");
         Files.createSymbolicLink(alias.toPath(), realHome.toPath());
-        assertHostPathRejected(new File(alias, "files/leak"));
+        File cwdViaAlias = new File(alias, "files/workspace/sub");
+        cwdViaAlias.mkdirs();
+
+        ExecPlan p = planner.plan("ls", cwdViaAlias);
+
+        assertEquals(workspace.getCanonicalFile().getAbsolutePath() + File.separator + "sub",
+                p.getCwd().getCanonicalFile().getAbsolutePath());
     }
 
-    private void assertHostPathRejected(File path) throws Exception {
+    @Test
+    public void cwdSpelledThroughSymlinkAliasOutsideWorkspace_rejected() throws Exception {
+        File alias = new File(temporaryFolder.getRoot(), "alias");
+        Files.createSymbolicLink(alias.toPath(), realHome.toPath());
+        File cwdViaAlias = new File(alias, "files/elsewhere");
+        cwdViaAlias.mkdirs();
+
         try {
-            planner.plan(path.getAbsolutePath(), workspace, ExecPlan.ExecMode.DIRECT);
-            fail("Expected a host path to be rejected: " + path);
+            planner.plan("ls", cwdViaAlias);
+            fail("Expected the outside-workspace cwd to be rejected");
         } catch (SecurityException expected) {
             assertTrue("Unexpected message: " + expected.getMessage(),
-                    expected.getMessage().contains("Host path"));
+                    expected.getMessage().contains("outside workspace"));
         }
     }
 }

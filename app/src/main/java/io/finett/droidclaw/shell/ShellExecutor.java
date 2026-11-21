@@ -12,11 +12,9 @@ import io.finett.droidclaw.model.AgentConfig;
  *   <li>The primary API is {@link #execute(ExecPlan, int)} which accepts only a pre-validated,
  *       approved plan — never a raw string.</li>
  *   <li>Supports multiple backends: local (ProcessBuilder) and SSH (remote server).</li>
- *   <li>In {@link ExecPlan.ExecMode#DIRECT} mode, the process is started via
- *       {@code ProcessBuilder(argv[])} with no shell interpreter. Shell metacharacters
- *       (already rejected by {@link ExecPlanner}) cannot be interpreted.</li>
- *   <li>In {@link ExecPlan.ExecMode#SHELL} mode, {@code sh -c} is used. This mode
- *       requires explicit opt-in and the policy must mandate {@code ask=ALWAYS}.</li>
+ *   <li>The normalised {@link ExecPlan} carries the raw command, which every backend runs
+ *       through {@code sh -c} inside its environment (guest rootfs or remote host), so full
+ *       shell syntax is honoured.</li>
  *   <li>The plan's SHA-256 hash is re-verified immediately before the process starts.
  *       If any field was mutated between approval and execution, the hash will not match
  *       and execution is aborted (substitution-attack prevention).</li>

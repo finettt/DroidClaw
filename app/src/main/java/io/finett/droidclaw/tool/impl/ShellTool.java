@@ -22,12 +22,15 @@ import io.finett.droidclaw.tool.ToolResult;
  * <p>Security model:
  * <ul>
  *   <li>Commands are normalised into an {@link ExecPlan} by {@link ExecPlanner} before
- *       any execution happens — shell metacharacters are rejected at plan-build time
- *       in {@link ExecPlan.ExecMode#DIRECT} mode.</li>
- *   <li>The plan is shown verbatim to the user in the approval dialog (not the raw
- *       LLM-provided string) via {@link #buildExecPlan(JsonObject)}.</li>
+ *       any execution happens. The plan pins the raw command and the working directory
+ *       with a SHA-256 hash and a canonical-path workspace guard.</li>
+ *   <li>The raw command is shown verbatim to the user in the approval dialog via
+ *       {@link #buildExecPlan(JsonObject)} (the plan's description is the command itself).</li>
  *   <li>The plan's SHA-256 hash is verified by {@link ShellExecutor} immediately before
  *       the process starts — preventing substitution between approval and execution.</li>
+ *   <li>The full command runs through {@code sh -c} inside the Linux environment, so shell
+ *       syntax (pipes, {@code &&}, redirects, {@code $()}) is honoured; the approval modes
+ *       (not argv curation) are the security gate.</li>
  *   <li>The working directory is validated against the workspace root by both
  *       {@link ExecPlanner} and {@link PathValidator}.</li>
  * </ul>
@@ -76,7 +79,7 @@ public class ShellTool implements Tool {
      *
      * <p>This is called by {@link io.finett.droidclaw.agent.AgentLoop} <em>before</em>
      * showing the approval dialog. The dialog displays
-     * {@link ExecPlan#toApprovalDescription()} — the normalised plan, not the raw string.
+     * {@link ExecPlan#toApprovalDescription()} — the raw command verbatim.
      * The plan's hash is stored at approval time and re-verified when
      * {@link #execute(JsonObject)} runs.
      *
@@ -93,7 +96,7 @@ public class ShellTool implements Tool {
             File cwd = resolveWorkingDirectory(arguments);
             return planner.plan(command, cwd);
         } catch (Exception e) {
-            // Planning failed (e.g. metachar detected, exe not in trusted dirs).
+            // Planning failed (e.g. empty command or cwd outside the workspace).
             // Return null so the agent loop falls back to the string description;
             // execute() will throw SecurityException and return an error result.
             return null;
@@ -123,10 +126,10 @@ public class ShellTool implements Tool {
 
         return new ToolDefinition(
                 TOOL_NAME,
-                "Execute a shell command on the Android device. Commands run in a sandboxed "
-                + "workspace environment with an allowlist-based security policy. "
-                + "Shell metacharacters are rejected in direct execution mode. "
-                + "Requires user approval before execution.",
+                "Execute a shell command on the Android device. Commands run through the "
+                + "Linux environment via sh -c, so full shell syntax (pipes, &&, redirects, "
+                + "$()) is supported. Commands are governed by the approval modes and require "
+                + "user approval before execution.",
                 parameters
         );
     }
@@ -162,7 +165,7 @@ public class ShellTool implements Tool {
                 }
             }
 
-            // Build ExecPlan (tokenise, reject metachar, resolve exe, validate cwd)
+            // Build ExecPlan (canonical cwd guard + hash pinning)
             ExecPlan plan;
             try {
                 plan = planner.plan(command, cwd);

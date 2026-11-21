@@ -139,7 +139,7 @@ public class ToolRegistry {
                     ? ShellBackendFactory.distroRootFor(context) : null;
             File workspaceRoot = workspaceManager.getWorkspaceRoot();
 
-            ExecPlanner planner = new ExecPlanner(shellConfig, workspaceRoot, distroRoot);
+            ExecPlanner planner = new ExecPlanner(workspaceRoot);
             ShellBackend backend = ShellBackendFactory.create(
                     agentConfig, shellConfig, context, distroRoot, workspaceRoot);
             registerTool(new ShellTool(workspaceManager.getPathValidator(),
@@ -238,7 +238,6 @@ public class ToolRegistry {
         // OFF ask); ShellTool and AgentLoop enforce ask_all, auto, or full_access on top of it.
         return new ShellConfig.Builder()
                 .policy(io.finett.droidclaw.shell.ExecPolicy.blind())
-                .defaultMode(io.finett.droidclaw.shell.ExecPlan.ExecMode.DIRECT)
                 .timeoutSeconds(timeout)
                 .shellApprovalMode(currentShellApprovalMode())
                 .build();

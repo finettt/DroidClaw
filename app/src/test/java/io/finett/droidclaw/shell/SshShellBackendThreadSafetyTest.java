@@ -106,12 +106,7 @@ public class SshShellBackendThreadSafetyTest {
         AtomicInteger successCount = new AtomicInteger(0);
 
         File tmpDir = new File(System.getProperty("java.io.tmpdir"));
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/ls",
-                Arrays.asList("-l"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("ls -l", tmpDir);
 
         // Start all threads at once to maximize race condition chance
         for (int i = 0; i < threadCount; i++) {
@@ -158,12 +153,7 @@ public class SshShellBackendThreadSafetyTest {
         AtomicInteger errorCount = new AtomicInteger(0);
 
         File tmpDir = new File(System.getProperty("java.io.tmpdir"));
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/ls",
-                Arrays.asList("-l"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("ls -l", tmpDir);
 
         for (int i = 0; i < threadCount; i++) {
             executor.submit(() -> {
@@ -208,12 +198,7 @@ public class SshShellBackendThreadSafetyTest {
 
         // Trigger a connection first
         File tmpDir = new File(System.getProperty("java.io.tmpdir"));
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/ls",
-                Arrays.asList("-l"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("ls -l", tmpDir);
         backend.execute(plan, 30);
 
         // Now read isConnected() concurrently
@@ -277,12 +262,7 @@ public class SshShellBackendThreadSafetyTest {
         SshShellBackend backend = createBackend();
 
         File tmpDir = new File(System.getProperty("java.io.tmpdir"));
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/ls",
-                Arrays.asList("-l"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("ls -l", tmpDir);
 
         // Connect first
         backend.execute(plan, 30);
