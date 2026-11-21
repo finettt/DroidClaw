@@ -18,7 +18,7 @@ import java.util.List;
  * <p>Proot invocation:
  * <pre>
  *   &lt;nativeLibraryDir&gt;/libproot.so -0 --kill-on-exit -R &lt;rootfs&gt;
- *       -b &lt;workspace&gt;:/workspace -w &lt;guestCwd&gt; -- /bin/sh -c &lt;rawCommand&gt;
+ *       -b &lt;workspace&gt;:/workspace -w &lt;guestCwd&gt; /bin/sh -c &lt;rawCommand&gt;
  * </pre>
  *
  * <p>The raw command is passed verbatim to the guest {@code /bin/sh -c}, so full shell
@@ -111,8 +111,8 @@ public class DistroShellBackend implements ShellBackend {
      * Assemble the PRoot command line for the given plan.
      *
      * <p>The raw command is passed verbatim to the guest {@code /bin/sh -c}, so full shell
-     * syntax runs inside the rootfs. {@code --} ends PRoot option parsing and everything
-     * after it is the command.
+     * syntax runs inside the rootfs. The guest shell is an absolute path, so PRoot stops
+     * option parsing on its own; the packaged Termux "proot" build rejects {@code --}.
      */
     List<String> buildProotCommand(ExecPlan plan, boolean chrootFallback) {
         List<String> command = new ArrayList<>();
@@ -131,8 +131,9 @@ public class DistroShellBackend implements ShellBackend {
         }
         command.add("-w");
         command.add(guestCwdFor(plan));
-        // End PRoot option parsing, then run the raw command through the guest shell.
-        command.add("--");
+        // The guest shell is an absolute path (/bin/sh), so PRoot's option parsing stops
+        // there on its own. The packaged Termux "proot" build rejects the "--" separator,
+        // so it must not be emitted.
         command.add("/bin/sh");
         command.add("-c");
         command.add(plan.getRawCommand());

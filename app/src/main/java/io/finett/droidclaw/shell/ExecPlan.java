@@ -9,8 +9,8 @@ import java.util.Objects;
 /**
  * An immutable, normalised representation of what will actually be executed.
  *
- * <p>The approval UI shows <em>this</em> object (via {@link #toApprovalDescription()}),
- * not the raw LLM-provided string. The executor verifies {@link #getPlanHash()} before
+ * <p>The approval UI shows the raw command verbatim (via
+ * {@link #toApprovalDescription()}). The executor verifies {@link #getPlanHash()} before
  * running to close the substitution-attack vector: if any field changes between the
  * moment the user approves and the moment the process starts, the hash will not match
  * and execution is aborted.

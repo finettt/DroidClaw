@@ -179,6 +179,20 @@ public class SshShellBackendTest {
         assertTrue(command.contains("hello 'world'"));
     }
 
+    @Test
+    public void buildRemoteCommand_escapesDollarAndBacktick() {
+        SshShellBackend backend = createBackend();
+
+        // The review's exact case: the outer remote login shell must not expand $(id)
+        // before the inner sh -c sees it, so the $ is escaped.
+        ExecPlan plan = plan("echo $(id)");
+        assertEquals("sh -c \"echo \\$(id)\"", backend.buildRemoteCommand(plan));
+
+        // Backticks are escaped the same way so the inner sh -c performs the expansion.
+        ExecPlan tick = plan("`id`");
+        assertEquals("sh -c \"\\`id\\`\"", backend.buildRemoteCommand(tick));
+    }
+
     // ==================== Execution flow tests (with mocks) ====================
 
     @Test

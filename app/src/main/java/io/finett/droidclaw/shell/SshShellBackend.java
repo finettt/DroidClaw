@@ -107,16 +107,19 @@ public class SshShellBackend implements ShellBackend {
     }
 
     /**
-     * Wrap {@code s} in double quotes for the remote shell, escaping {@code \} and
-     * {@code "}. Other characters (including {@code $} and backticks) pass through so the
-     * inner {@code sh -c} performs its own expansion.
+     * Wrap {@code s} in double quotes for the remote shell, escaping {@code \}, {@code "},
+     * {@code $}, and backticks. The remote login shell runs the whole {@code sh -c "..."}
+     * string, so inside double quotes an unescaped {@code $()} or backtick is expanded by
+     * that outer shell before the inner {@code sh -c} ever sees the command (premature or
+     * double expansion, e.g. {@code awk "{print $1}"} losing {@code $1}). Escaping defers
+     * expansion to the inner shell.
      */
     private static String doubleQuote(String s) {
         StringBuilder sb = new StringBuilder(s.length() + 2);
         sb.append('"');
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
-            if (c == '\\' || c == '"') {
+            if (c == '\\' || c == '"' || c == '$' || c == '`') {
                 sb.append('\\');
             }
             sb.append(c);

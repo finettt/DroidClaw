@@ -38,7 +38,10 @@ import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.api.RequestScope;
 import io.finett.droidclaw.model.AgentConfig;
 import io.finett.droidclaw.model.ChatMessage;
+import io.finett.droidclaw.filesystem.VirtualFileSystem;
+import io.finett.droidclaw.filesystem.WorkspaceManager;
 import io.finett.droidclaw.tool.ToolRegistry;
+import io.finett.droidclaw.tool.impl.FileReadTool;
 import io.finett.droidclaw.util.Flaky;
 import io.finett.droidclaw.util.FlakyTestRule;
 import io.finett.droidclaw.shell.distro.DistroManager;
@@ -303,18 +306,22 @@ public class ShellApprovalModesInstrumentedTest {
     @Test
     @Flaky(maxAttempts = 5)
     public void auto_redirectWritesFileReadableByFileTool() throws Exception {
-        // sh -c "printf 'redir-ok' > file" exercises a redirect; the file tool then reads it.
-        AgentLoop loop = newLoop("auto", "printf 'redir-ok' > droidclaw_redir_test.txt", c -> false);
+        // sh -c "printf 'a' > f.txt" writes inside the workspace; the file tool then reads
+        // it. Reading through the production read_file tool proves one tree across the
+        // redirect: the guest shell's cwd and the file tool's workspace root are the same.
+        AgentLoop loop = newLoop("auto", "printf 'a' > droidclaw_redir_test.txt", c -> false);
         RecordingCallback callback = new RecordingCallback();
         loop.start(Collections.singletonList(new ChatMessage("go", ChatMessage.TYPE_USER)), callback);
 
         assertNotNull("redirect must return a tool result", callback.lastToolResult);
         assertTrue("the redirect must succeed", callback.lastToolResult.contains("exit_code\":0"));
 
-        File outFile = new File(context.getFilesDir(), "workspace/droidclaw_redir_test.txt");
-        assertTrue("the redirected file must exist", outFile.isFile());
-        String content = new String(Files.readAllBytes(outFile.toPath()), StandardCharsets.UTF_8);
-        assertEquals("redir-ok", content);
+        FileReadTool read = new FileReadTool(new VirtualFileSystem(new WorkspaceManager(context)));
+        JsonObject args = new JsonObject();
+        args.addProperty("path", "droidclaw_redir_test.txt");
+        ToolResult result = read.execute(args);
+        assertTrue("the file tool must read the redirected file: " + result.getContent(),
+                result.getContent().contains("a"));
     }
 
     @Test

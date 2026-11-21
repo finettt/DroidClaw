@@ -10,7 +10,7 @@ import static org.junit.Assert.*;
 
 /**
  * Unit tests for {@link DistroShellBackend} command construction: the single
- * {@code ... -w guestCwd -- /bin/sh -c <rawCommand>} proot argv (raw command verbatim, no
+ * {@code ... -w guestCwd /bin/sh -c <rawCommand>} proot argv (raw command verbatim, no
  * tokenisation artefacts), guest working-directory selection, the {@code -R} -> {@code -r}
  * fallback, and bind-failure detection. Real proot execution lives in the instrumented suite.
  */
@@ -52,12 +52,12 @@ public class DistroShellBackendTest {
         assertEquals(workspace.getAbsolutePath() + ":/workspace", cmd.get(6));
         assertEquals("-w", cmd.get(7));
         assertEquals("/workspace", cmd.get(8));
-        // PRoot option parsing ends at "--", then the raw command runs through the guest shell.
-        assertEquals("--", cmd.get(9));
-        assertEquals("/bin/sh", cmd.get(10));
-        assertEquals("-c", cmd.get(11));
-        assertEquals("echo a && echo b", cmd.get(12));
-        assertEquals(13, cmd.size());
+        // The guest shell is an absolute path, so PRoot stops option parsing on its own;
+        // the packaged Termux "proot" build rejects the "--" separator, so it is not emitted.
+        assertEquals("/bin/sh", cmd.get(9));
+        assertEquals("-c", cmd.get(10));
+        assertEquals("echo a && echo b", cmd.get(11));
+        assertEquals(12, cmd.size());
     }
 
     @Test
@@ -69,6 +69,25 @@ public class DistroShellBackendTest {
         // The whole command is a single -c argument, metacharacters intact.
         int i = cmd.indexOf("-c");
         assertEquals("printf 'x\ny' | grep y", cmd.get(i + 1));
+    }
+
+    @Test
+    public void execute_planWithHashMismatch_throwsSecurityException() {
+        // Symmetric to SshShellBackendTest.execute_planWithHashMismatch_throwsSecurityException:
+        // a tampered plan hash must be rejected before any process starts.
+        ExecPlan forged = new ExecPlan("ls -a", workspace) {
+            @Override
+            public String getPlanHash() {
+                return "wrong_hash_" + plan("ls -a", workspace).getPlanHash();
+            }
+        };
+
+        try {
+            backend.execute(forged, 30);
+            fail("Should have thrown SecurityException for hash mismatch");
+        } catch (SecurityException e) {
+            assertTrue(e.getMessage().contains("tampered"));
+        }
     }
 
     @Test
@@ -110,7 +129,9 @@ public class DistroShellBackendTest {
         assertTrue(cmd.contains("/proc"));
         assertTrue(cmd.contains("/sys"));
         int shIdx = cmd.indexOf("/bin/sh");
-        assertEquals("--", cmd.get(shIdx - 1));
+        // The guest cwd precedes the absolute shell path; PRoot stops parsing there, so
+        // no "--" separator sits between them (the Termux build rejects "--").
+        assertEquals("/workspace", cmd.get(shIdx - 1));
         assertEquals("-c", cmd.get(shIdx + 1));
     }
 
