@@ -3,12 +3,13 @@ package io.finett.droidclaw.shell;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.Arrays;
 
 import static org.junit.Assert.*;
 
 /**
- * Tests for SSH connection management, pooling, and lifecycle.
+ * Tests for SSH connection management, pooling, and lifecycle, plus the remote command
+ * shape produced by {@link SshShellBackend#buildRemoteCommand(ExecPlan)} (a single
+ * {@code sh -c <raw command>} path).
  */
 public class SshConnectionTest {
 
@@ -26,28 +27,19 @@ public class SshConnectionTest {
 
         SshShellBackend backend = new SshShellBackend(config);
 
-        // Execute multiple commands - should reuse connection
         for (int i = 0; i < 5; i++) {
-            ExecPlan plan = new ExecPlan(
-                    "/usr/bin/echo",
-                    Arrays.asList("test" + i),
-                    tmpDir,
-                    ExecPlan.ExecMode.DIRECT
-            );
-
+            ExecPlan plan = new ExecPlan("echo test" + i, tmpDir);
             try {
                 backend.execute(plan, 5);
                 fail("Should fail at connection");
             } catch (SecurityException e) {
-                // Expected - would reuse connection if server was available
+                // Expected - no SSH server on localhost:22
             }
         }
     }
 
     @Test
     public void connectionTimeout_handlesTimeout() throws Exception {
-        // Use FULL policy to bypass allowlist; use a real backend but expect
-        // a SecurityException from ensureConnected since there's no SSH server on localhost
         SshConfig config = new SshConfig.Builder()
                 .host("localhost")
                 .port(22)
@@ -57,21 +49,14 @@ public class SshConnectionTest {
                 .policy(ExecPolicy.full())
                 .build();
 
-        // No mock factory — let ensureConnected try and fail with SecurityException
         SshShellBackend backend = new SshShellBackend(config);
 
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/sleep",
-                Arrays.asList("10"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("sleep 10", tmpDir);
 
         try {
             backend.execute(plan, 1);
             fail("Should fail without SSH server");
         } catch (SecurityException e) {
-            // Expected - no SSH server running on localhost:22
             assertTrue("Should mention SSH connection failure",
                     e.getMessage().contains("Failed to connect to SSH server"));
         }
@@ -79,61 +64,47 @@ public class SshConnectionTest {
 
     @Test
     public void connectionAuth_failurePassword() throws Exception {
-        // Test DENY policy rejection since no SSH server is available
         SshConfig config = new SshConfig.Builder()
                 .host("localhost")
                 .port(22)
                 .username("testuser")
                 .password("wrongpassword")
                 .verifyHostKey(false)
-                .policy(ExecPolicy.deny()) // explicitly deny
+                .policy(ExecPolicy.deny())
                 .build();
 
         SshShellBackend backend = new SshShellBackend(config);
 
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/echo",
-                Arrays.asList("test"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("echo test", tmpDir);
 
         try {
             backend.execute(plan, 5);
             fail("Should fail with DENY policy");
         } catch (SecurityException e) {
-            assertTrue("Error should mention DENY policy",
-                      e.getMessage().contains("DENY"));
+            assertTrue("Error should mention DENY policy", e.getMessage().contains("DENY"));
         }
     }
 
     @Test
     public void connectionAuth_failureKey() throws Exception {
-        // Test DENY policy rejection since no SSH server is available
         SshConfig config = new SshConfig.Builder()
                 .host("localhost")
                 .port(22)
                 .username("testuser")
                 .privateKeyPath("/nonexistent/key/path")
                 .verifyHostKey(false)
-                .policy(ExecPolicy.deny()) // explicitly deny
+                .policy(ExecPolicy.deny())
                 .build();
 
         SshShellBackend backend = new SshShellBackend(config);
 
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/echo",
-                Arrays.asList("test"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("echo test", tmpDir);
 
         try {
             backend.execute(plan, 5);
             fail("Should fail with DENY policy");
         } catch (SecurityException e) {
-            assertTrue("Error should mention DENY policy",
-                      e.getMessage().contains("DENY"));
+            assertTrue("Error should mention DENY policy", e.getMessage().contains("DENY"));
         }
     }
 
@@ -146,7 +117,6 @@ public class SshConnectionTest {
                 .password("testpass")
                 .build();
 
-        // Should default to verifyHostKey = true
         assertTrue("Host key verification should be enabled by default",
                 config.isVerifyHostKey());
     }
@@ -161,8 +131,7 @@ public class SshConnectionTest {
                 .verifyHostKey(false)
                 .build();
 
-        assertFalse("Host key verification should be disabled",
-                config.isVerifyHostKey());
+        assertFalse("Host key verification should be disabled", config.isVerifyHostKey());
     }
 
     @Test
@@ -177,7 +146,6 @@ public class SshConnectionTest {
 
         SshShellBackend backend = new SshShellBackend(config);
 
-        // Close should not throw even if not connected
         backend.close();
         assertFalse("Should not be connected after close", backend.isConnected());
     }
@@ -194,11 +162,10 @@ public class SshConnectionTest {
 
         SshShellBackend backend = new SshShellBackend(config);
 
-        // Multiple closes should not throw
         backend.close();
         backend.close();
         backend.close();
-        assertFalse("Should not be connected", backend.isConnected());
+        assertFalse("Should not be connected after close", backend.isConnected());
     }
 
     @Test
@@ -216,191 +183,79 @@ public class SshConnectionTest {
         assertFalse("Should not be connected initially", backend.isConnected());
     }
 
+    // ==================== Remote command shape ====================
+
     @Test
-    public void commandExecution_directMode_wrapsArgs() throws Exception {
-        SshConfig config = new SshConfig.Builder()
-                .host("localhost")
-                .port(22)
-                .username("testuser")
-                .password("testpass")
-                .build();
+    public void commandExecution_wrapsRawCommandInShC() throws Exception {
+        SshShellBackend backend = connectedBackend();
+        ExecPlan plan = new ExecPlan("/usr/bin/ls -l /home", tmpDir);
 
-        SshShellBackend backend = new SshShellBackend(config);
-
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/ls",
-                Arrays.asList("-l", "/home"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
-
-        // In DIRECT mode, args should be wrapped in quotes
-        String command = buildRemoteCommand(backend, plan);
-        assertEquals("/usr/bin/ls '-l' '/home'", command);
+        assertEquals("sh -c \"/usr/bin/ls -l /home\"", buildRemoteCommand(backend, plan));
     }
 
     @Test
-    public void commandExecution_shellMode_passesAsIs() throws Exception {
-        SshConfig config = new SshConfig.Builder()
-                .host("localhost")
-                .port(22)
-                .username("testuser")
-                .password("testpass")
-                .build();
+    public void commandExecution_noArgs() throws Exception {
+        SshShellBackend backend = connectedBackend();
+        ExecPlan plan = new ExecPlan("/usr/bin/pwd", tmpDir);
 
-        SshShellBackend backend = new SshShellBackend(config);
-
-        ExecPlan plan = new ExecPlan(
-                "echo",
-                Arrays.asList("hello world"),
-                tmpDir,
-                ExecPlan.ExecMode.SHELL
-        );
-
-        // In SHELL mode, command should be passed as-is
-        String command = buildRemoteCommand(backend, plan);
-        assertEquals("echo hello world", command);
+        assertEquals("sh -c \"/usr/bin/pwd\"", buildRemoteCommand(backend, plan));
     }
 
     @Test
-    public void commandExecution_specialChars_escaped() throws Exception {
-        SshConfig config = new SshConfig.Builder()
-                .host("localhost")
-                .port(22)
-                .username("testuser")
-                .password("testpass")
-                .build();
+    public void commandExecution_multipleArgs() throws Exception {
+        SshShellBackend backend = connectedBackend();
+        ExecPlan plan = new ExecPlan("echo arg1 arg2 arg3", tmpDir);
 
-        SshShellBackend backend = new SshShellBackend(config);
-
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/echo",
-                Arrays.asList("hello 'world'"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
-
-        String command = buildRemoteCommand(backend, plan);
-        // Args should be quoted and internal quotes escaped
-        assertTrue(command.contains("/usr/bin/echo"));
-        assertTrue(command.contains("'hello"));
-        assertTrue(command.contains("world'"));
-    }
-
-    @Test
-    public void commandExecution_emptyArgs_noExtraSpaces() throws Exception {
-        SshConfig config = new SshConfig.Builder()
-                .host("localhost")
-                .port(22)
-                .username("testuser")
-                .password("testpass")
-                .build();
-
-        SshShellBackend backend = new SshShellBackend(config);
-
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/pwd",
-                Arrays.asList(),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
-
-        String command = buildRemoteCommand(backend, plan);
-        assertEquals("/usr/bin/pwd", command);
-    }
-
-    @Test
-    public void commandExecution_multipleArgs_allQuoted() throws Exception {
-        SshConfig config = new SshConfig.Builder()
-                .host("localhost")
-                .port(22)
-                .username("testuser")
-                .password("testpass")
-                .build();
-
-        SshShellBackend backend = new SshShellBackend(config);
-
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/echo",
-                Arrays.asList("arg1", "arg2", "arg3"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
-
-        String command = buildRemoteCommand(backend, plan);
-        assertEquals("/usr/bin/echo 'arg1' 'arg2' 'arg3'", command);
+        assertEquals("sh -c \"echo arg1 arg2 arg3\"", buildRemoteCommand(backend, plan));
     }
 
     @Test
     public void commandExecution_argsWithSpaces_quoted() throws Exception {
-        SshConfig config = new SshConfig.Builder()
-                .host("localhost")
-                .port(22)
-                .username("testuser")
-                .password("testpass")
-                .build();
-
-        SshShellBackend backend = new SshShellBackend(config);
-
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/echo",
-                Arrays.asList("hello world", "foo bar"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        SshShellBackend backend = connectedBackend();
+        ExecPlan plan = new ExecPlan("echo hello world foo bar", tmpDir);
 
         String command = buildRemoteCommand(backend, plan);
-        assertTrue(command.contains("'hello world'"));
-        assertTrue(command.contains("'foo bar'"));
+        System.out.println("DBG_CMD=[" + command + "]");
+        System.out.println("DBG_CONTAINS=[" + (command.contains("say \"hi\"")) + "]");
+        assertTrue(command.contains("sh -c \"echo hello world foo bar\""));
     }
 
     @Test
-    public void commandExecution_argsWithSpecialChars_properlyEscaped() throws Exception {
-        SshConfig config = new SshConfig.Builder()
-                .host("localhost")
-                .port(22)
-                .username("testuser")
-                .password("testpass")
-                .build();
-
-        SshShellBackend backend = new SshShellBackend(config);
-
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/echo",
-                Arrays.asList("it's a test"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+    public void commandExecution_singleQuotes_passThrough() throws Exception {
+        SshShellBackend backend = connectedBackend();
+        ExecPlan plan = new ExecPlan("/usr/bin/echo hello 'world'", tmpDir);
 
         String command = buildRemoteCommand(backend, plan);
-        // Single quotes should be escaped with backslash
-        assertTrue(command.contains("'it'\\''s a test'"));
+        System.out.println("DBG_CMD=[" + command + "]");
+        System.out.println("DBG_CONTAINS=[" + (command.contains("say \"hi\"")) + "]");
+        assertTrue(command.startsWith("sh -c \""));
+        assertTrue(command.contains("hello 'world'"));
+        assertTrue(command.endsWith("\""));
     }
 
     @Test
-    public void commandExecution_nullArgs_handled() throws Exception {
-        SshConfig config = new SshConfig.Builder()
-                .host("localhost")
-                .port(22)
-                .username("testuser")
-                .password("testpass")
-                .build();
+    public void commandExecution_doubleQuote_escaped() throws Exception {
+        SshShellBackend backend = connectedBackend();
+        ExecPlan plan = new ExecPlan("echo say \"hi\"", tmpDir);
 
-        SshShellBackend backend = new SshShellBackend(config);
-
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/ls",
-                java.util.Collections.emptyList(),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
-
-        // Should handle null args gracefully
         String command = buildRemoteCommand(backend, plan);
-        assertEquals("/usr/bin/ls", command);
+        // The embedded double quotes are escaped for the outer remote shell.
+        assertTrue("inner quotes must be escaped", command.contains("\\\""));
+        assertTrue("command wrapped in double quotes",
+                command.startsWith("sh -c \"") && command.endsWith("\""));
     }
 
     // ==================== Helper Methods ====================
+
+    private SshShellBackend connectedBackend() {
+        SshConfig config = new SshConfig.Builder()
+                .host("localhost")
+                .port(22)
+                .username("testuser")
+                .password("testpass")
+                .build();
+        return new SshShellBackend(config);
+    }
 
     private String buildRemoteCommand(SshShellBackend backend, ExecPlan plan) throws Exception {
         java.lang.reflect.Method method = SshShellBackend.class

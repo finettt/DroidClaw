@@ -894,8 +894,8 @@ public class AgentLoop {
 
         if (needsApproval) {
             // Build a normalised ExecPlan for exec-type tools (shell, etc.).
-            // The approval dialog shows the plan's description — the canonical exe path,
-            // tokenised argv, and plan hash — NOT the raw LLM-provided string.
+            // The approval dialog shows the plan's description — the raw command verbatim,
+            // its resolved cwd, and plan hash — NOT some other rendering of the LLM input.
             // This prevents prompt-injection where approval description differs from execution.
             final java.util.function.Supplier<ToolResult> approvedExecution;
             String description;

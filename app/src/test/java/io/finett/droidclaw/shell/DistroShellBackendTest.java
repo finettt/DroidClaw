@@ -4,15 +4,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for {@link DistroShellBackend} command construction — the proot argument
- * vector, guest working-directory selection, the -R -> -r fallback, and bind-failure
- * detection. Real proot execution is covered by the instrumented e2e suite.
+ * Unit tests for {@link DistroShellBackend} command construction: the single
+ * {@code ... -w guestCwd -- /bin/sh -c <rawCommand>} proot argv (raw command verbatim, no
+ * tokenisation artefacts), guest working-directory selection, the {@code -R} -> {@code -r}
+ * fallback, and bind-failure detection. Real proot execution lives in the instrumented suite.
  */
 public class DistroShellBackendTest {
 
@@ -33,19 +33,17 @@ public class DistroShellBackendTest {
                 new File(filesDir, "native").getAbsolutePath(), filesDir, true);
     }
 
-    private ExecPlan plan(String exe, ExecPlan.ExecMode mode, File cwd, String... argv) {
-        return new ExecPlan(exe, Arrays.asList(argv), cwd, mode);
+    private ExecPlan plan(String rawCommand, File cwd) {
+        return new ExecPlan(rawCommand, cwd);
     }
 
     @Test
-    public void directMode_buildsProotCommandWithResolvedExe() {
-        File exe = new File(rootfs, "usr/bin/echo");
-        String nativeLibDir = new File(filesDir, "native").getAbsolutePath();
-        ExecPlan p = plan(exe.getAbsolutePath(), ExecPlan.ExecMode.DIRECT, workspace, "hello");
+    public void prootCommand_runsShCWithRawCommandVerbatim() {
+        ExecPlan p = plan("echo a && echo b", workspace);
 
         List<String> cmd = backend.buildProotCommand(p, false);
 
-        assertEquals(new File(nativeLibDir, "libproot.so").getAbsolutePath(), cmd.get(0));
+        assertEquals(new File(filesDir, "native/libproot.so").getAbsolutePath(), cmd.get(0));
         assertEquals("-0", cmd.get(1));
         assertEquals("--kill-on-exit", cmd.get(2));
         assertEquals("-R", cmd.get(3));
@@ -54,32 +52,27 @@ public class DistroShellBackendTest {
         assertEquals(workspace.getAbsolutePath() + ":/workspace", cmd.get(6));
         assertEquals("-w", cmd.get(7));
         assertEquals("/workspace", cmd.get(8));
-        // The exe is the guest path (relative to the rootfs); libproot stops option
-        // parsing at it, so no "--" separator is used (the packaged proot rejects it).
-        assertEquals("/usr/bin/echo", cmd.get(9));
-        assertEquals("hello", cmd.get(10));
-        assertEquals(11, cmd.size());
+        // PRoot option parsing ends at "--", then the raw command runs through the guest shell.
+        assertEquals("--", cmd.get(9));
+        assertEquals("/bin/sh", cmd.get(10));
+        assertEquals("-c", cmd.get(11));
+        assertEquals("echo a && echo b", cmd.get(12));
+        assertEquals(13, cmd.size());
     }
 
     @Test
-    public void shellMode_runsGuestShWithJoinedCommand() {
-        File sh = new File(rootfs, "bin/sh");
-        ExecPlan p = plan(sh.getAbsolutePath(), ExecPlan.ExecMode.SHELL, workspace);
+    public void prootCommand_metacharsAreNotTokenised() {
+        ExecPlan p = plan("printf 'x\ny' | grep y", workspace);
 
         List<String> cmd = backend.buildProotCommand(p, false);
 
-        // -w /workspace /bin/sh -c "<joined guest shell + argv>" (no "--" separator)
-        assertEquals("-w", cmd.get(7));
-        assertEquals("/workspace", cmd.get(8));
-        assertEquals("/bin/sh", cmd.get(9));
-        assertEquals("-c", cmd.get(10));
-        assertTrue(cmd.get(11).startsWith("/bin/sh"));
+        // The whole command is a single -c argument, metacharacters intact.
+        int i = cmd.indexOf("-c");
+        assertEquals("printf 'x\ny' | grep y", cmd.get(i + 1));
     }
 
     @Test
     public void environment_pointsProotAtPackagedLoaders() {
-        // Without PROOT_LOADER the packaged proot looks for its loader under the Termux
-        // installation and every execve fails with ENOENT.
         ProcessBuilder builder = new ProcessBuilder("true");
         backend.environment(builder);
 
@@ -93,29 +86,32 @@ public class DistroShellBackendTest {
 
     @Test
     public void guestCwd_isWorkspaceWhenInsideWorkspace() {
-        ExecPlan p = plan("/usr/bin/echo", ExecPlan.ExecMode.DIRECT, workspace, "hi");
+        ExecPlan p = plan("echo hi", workspace);
         assertEquals("/workspace", backend.guestCwdFor(p));
     }
 
     @Test
     public void guestCwd_isRootWhenOutsideWorkspace() {
         File outside = new File(filesDir, "somewhere-else");
-        ExecPlan p = plan("/usr/bin/echo", ExecPlan.ExecMode.DIRECT, outside, "hi");
+        ExecPlan p = plan("echo hi", outside);
         assertEquals("/root", backend.guestCwdFor(p));
     }
 
     @Test
     public void chrootFallback_switchesTo_rFlagAndExplicitBinds() {
-        ExecPlan p = plan("/usr/bin/echo", ExecPlan.ExecMode.DIRECT, workspace, "hi");
+        ExecPlan p = plan("echo hi", workspace);
 
         List<String> cmd = backend.buildProotCommand(p, true);
 
         assertEquals("-r", cmd.get(3));
         assertEquals(rootfs.getAbsolutePath(), cmd.get(4));
-        // Explicit guest binds for the fallback.
+        // Explicit guest binds for the fallback, then the same sh -c tail.
         assertTrue(cmd.contains("/dev"));
         assertTrue(cmd.contains("/proc"));
         assertTrue(cmd.contains("/sys"));
+        int shIdx = cmd.indexOf("/bin/sh");
+        assertEquals("--", cmd.get(shIdx - 1));
+        assertEquals("-c", cmd.get(shIdx + 1));
     }
 
     @Test

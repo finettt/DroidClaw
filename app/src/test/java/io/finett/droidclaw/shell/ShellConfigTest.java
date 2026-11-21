@@ -4,40 +4,26 @@ import org.junit.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for {@link ShellConfig} after the allowlist/policy hardening rewrite.
+ * Unit tests for {@link ShellConfig} after the DIRECT/allowlist machinery was dropped:
+ * the single DENY gate in {@link #validatePlan(ExecPlan)} plus the shell-approval MODE.
  */
 public class ShellConfigTest {
 
-    private static String findExe(String name) {
-        for (String dir : ShellConfig.DEFAULT_TRUSTED_DIRS) {
-            File candidate = new File(dir, name);
-            if (candidate.exists() && candidate.canExecute()) {
-                return candidate.getAbsolutePath();
-            }
-        }
-        throw new IllegalStateException("Executable not found in trusted dirs: " + name);
+    /** Standard bin dirs searched at test time so the tests run on Android and Linux CI. */
+    private static final List<String> BIN_DIRS = Arrays.asList(
+            "/system/bin", "/system/xbin", "/usr/bin", "/bin", "/usr/sbin", "/sbin");
+
+    private static File tmpDir() {
+        return new File(System.getProperty("java.io.tmpdir"));
     }
 
-    private static ExecPlan plan(String exeName, String... argv) {
-        return new ExecPlan(
-                findExe(exeName),
-                Arrays.asList(argv),
-                new File("/tmp"),
-                ExecPlan.ExecMode.DIRECT
-        );
-    }
-
-    private static ExecPlan absolutePlan(String absoluteExePath, String... argv) {
-        return new ExecPlan(
-                absoluteExePath,
-                Arrays.asList(argv),
-                new File("/tmp"),
-                ExecPlan.ExecMode.DIRECT
-        );
+    private static ExecPlan plan(String rawCommand) {
+        return new ExecPlan(rawCommand, tmpDir());
     }
 
     @Test
@@ -48,9 +34,8 @@ public class ShellConfigTest {
         assertEquals(1024 * 1024, config.getMaxOutputSize());
         assertEquals(ExecPolicy.SecurityLevel.DENY, config.getPolicy().getSecurity());
         assertEquals(ExecPolicy.AskMode.OFF, config.getPolicy().getAsk());
-        assertEquals(ExecPlan.ExecMode.DIRECT, config.getDefaultMode());
 
-        String denial = config.validatePlan(plan("ls", "-l"));
+        String denial = config.validatePlan(plan("ls -l"));
         assertNotNull(denial);
         assertTrue(denial.contains("DENY"));
     }
@@ -62,31 +47,20 @@ public class ShellConfigTest {
         assertEquals(ExecPolicy.SecurityLevel.FULL, config.getPolicy().getSecurity());
         assertEquals(ExecPolicy.AskMode.ALWAYS, config.getPolicy().getAsk());
 
-        String rmPath;
-        try {
-            rmPath = findExe("rm");
-        } catch (IllegalStateException e) {
-            rmPath = "/system/bin/rm";
-        }
-        assertNull(config.validatePlan(absolutePlan(rmPath, "-rf", "/")));
-        assertTrue(config.requiresApproval(true));
+        // FULL policy allows everything; only DENY is rejected.
+        assertNull(config.validatePlan(plan("rm -rf /")));
     }
 
     @Test
     public void builder_timeoutSeconds_setsTimeout() {
-        ShellConfig config = new ShellConfig.Builder()
-                .timeoutSeconds(60)
-                .build();
-
+        ShellConfig config = new ShellConfig.Builder().timeoutSeconds(60).build();
         assertEquals(60, config.getTimeoutSeconds());
     }
 
     @Test
     public void builder_invalidTimeout_throws() {
         try {
-            new ShellConfig.Builder()
-                    .timeoutSeconds(0)
-                    .build();
+            new ShellConfig.Builder().timeoutSeconds(0).build();
             fail("Should have thrown IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("positive"));
@@ -96,9 +70,7 @@ public class ShellConfigTest {
     @Test
     public void builder_invalidMaxOutputSize_throws() {
         try {
-            new ShellConfig.Builder()
-                    .maxOutputSize(0)
-                    .build();
+            new ShellConfig.Builder().maxOutputSize(0).build();
             fail("Should have thrown IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("positive"));
@@ -108,52 +80,15 @@ public class ShellConfigTest {
     @Test
     public void validatePlan_fullPolicy_allowsAllCommands() {
         ShellConfig config = ShellConfig.createFull();
-
-        String denial = config.validatePlan(plan("ls", "-l"));
-
-        assertNull(denial);
+        assertNull(config.validatePlan(plan("ls -l")));
     }
 
     @Test
     public void validatePlan_deniedPolicy_isDenied() {
         ShellConfig config = ShellConfig.createDefault();
-
-        String denial = config.validatePlan(plan("rm", "-rf", "/"));
-
+        String denial = config.validatePlan(plan("rm -rf /"));
         assertNotNull(denial);
         assertTrue(denial.contains("DENY"));
-    }
-
-    @Test
-    public void requiresApproval_alwaysAskPolicy_returnsTrue() {
-        ShellConfig config = new ShellConfig.Builder()
-                .policy(ExecPolicy.allowlistAlwaysAsk())
-                .build();
-
-        assertTrue(config.requiresApproval(true));
-        assertTrue(config.requiresApproval(false));
-    }
-
-    @Test
-    public void requiresApproval_onMiss_returnsFalseWhenAllowed_trueWhenDenied() {
-        ShellConfig config = new ShellConfig.Builder()
-                .policy(ExecPolicy.allowlist())
-                .build();
-
-        assertFalse(config.requiresApproval(true));
-        assertTrue(config.requiresApproval(false));
-    }
-
-    @Test
-    public void trustedDirs_areImmutable() {
-        ShellConfig config = ShellConfig.createFull();
-
-        try {
-            config.getTrustedDirs().add("/tmp");
-            fail("trustedDirs should be immutable");
-        } catch (UnsupportedOperationException expected) {
-            // expected
-        }
     }
 
     @Test
@@ -165,7 +100,7 @@ public class ShellConfigTest {
     @Test
     public void shellApprovalMode_builderOverridesDefault() {
         ShellConfig config = new ShellConfig.Builder()
-                .policy(ExecPolicy.allowlist())
+                .policy(ExecPolicy.full())
                 .shellApprovalMode("full_access")
                 .build();
         assertEquals("full_access", config.getShellApprovalMode());

@@ -76,11 +76,7 @@ public class SshShellBackend implements ShellBackend {
         }
 
         // Re-verify plan hash
-        String recomputedHash = ExecPlan.computeHash(
-                plan.getCanonicalExePath(),
-                plan.getArgv(),
-                plan.getCwd(),
-                plan.getMode());
+        String recomputedHash = ExecPlan.computeHash(plan.getRawCommand(), plan.getCwd());
         if (!recomputedHash.equals(plan.getPlanHash())) {
             throw new SecurityException(
                 "ExecPlan hash mismatch — plan may have been tampered with.");
@@ -102,40 +98,31 @@ public class SshShellBackend implements ShellBackend {
     // ==================== Command building ====================
 
     /**
-     * Build the remote command string from an ExecPlan.
-     *
-     * @param plan the execution plan
-     * @return the command string to execute on the remote server
+     * Build the remote command string from an ExecPlan. The raw command is passed verbatim
+     * to the remote {@code sh -c} (transport-quoted so it survives the remote shell's own
+     * parsing), so full shell syntax runs on the remote host.
      */
     String buildRemoteCommand(ExecPlan plan) {
-        if (plan.getMode() == ExecPlan.ExecMode.DIRECT) {
-            // For DIRECT mode, wrap each argument in single quotes
-            StringBuilder sb = new StringBuilder();
-            sb.append(plan.getCanonicalExePath());
-            for (String arg : plan.getArgv()) {
-                sb.append(' ');
-                sb.append(escapeShellArg(arg));
-            }
-            return sb.toString();
-        } else {
-            // For SHELL mode, pass as-is to remote sh
-            StringBuilder sb = new StringBuilder(plan.getCanonicalExePath());
-            for (String arg : plan.getArgv()) {
-                sb.append(' ').append(arg);
-            }
-            return sb.toString();
-        }
+        return "sh -c " + doubleQuote(plan.getRawCommand());
     }
 
     /**
-     * Escape a single shell argument for use in a single-quoted bash command.
-     *
-     * @param arg the argument to escape
-     * @return the escaped argument wrapped in single quotes
+     * Wrap {@code s} in double quotes for the remote shell, escaping {@code \} and
+     * {@code "}. Other characters (including {@code $} and backticks) pass through so the
+     * inner {@code sh -c} performs its own expansion.
      */
-    String escapeShellArg(String arg) {
-        // Escape single quotes by ending the string, adding escaped quote, restarting
-        return "'" + arg.replace("'", "'\\''") + "'";
+    private static String doubleQuote(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 2);
+        sb.append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\\' || c == '"') {
+                sb.append('\\');
+            }
+            sb.append(c);
+        }
+        sb.append('"');
+        return sb.toString();
     }
 
     // ==================== Remote execution ====================
