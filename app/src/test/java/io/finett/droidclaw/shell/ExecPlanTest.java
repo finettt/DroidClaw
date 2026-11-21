@@ -3,114 +3,76 @@ package io.finett.droidclaw.shell;
 import org.junit.Test;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Collections;
 
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for {@link ExecPlan} — hash stability, approval description, immutability.
+ * Unit tests for {@link ExecPlan} — hash stability, the raw command, and the
+ * approval description. The plan pins everything the user approved: the raw command
+ * (passed verbatim to {@code sh -c}) and the resolved working directory.
  */
 public class ExecPlanTest {
 
     private static final File CWD = new File("/tmp");
 
-    private ExecPlan plan(String exe, String... argv) {
-        return new ExecPlan(exe, Arrays.asList(argv), CWD, ExecPlan.ExecMode.DIRECT);
+    private static ExecPlan plan(String rawCommand) {
+        return new ExecPlan(rawCommand, CWD);
     }
 
     @Test
     public void hash_isStableForIdenticalPlan() {
-        ExecPlan p1 = plan("/system/bin/ls", "-l");
-        ExecPlan p2 = plan("/system/bin/ls", "-l");
+        ExecPlan p1 = plan("echo hello");
+        ExecPlan p2 = plan("echo hello");
         assertEquals(p1.getPlanHash(), p2.getPlanHash());
     }
 
     @Test
-    public void hash_differsWhenExeChanges() {
-        ExecPlan p1 = plan("/system/bin/ls");
-        ExecPlan p2 = plan("/system/bin/cat");
-        assertNotEquals(p1.getPlanHash(), p2.getPlanHash());
-    }
-
-    @Test
-    public void hash_differsWhenArgvChanges() {
-        ExecPlan p1 = plan("/system/bin/ls", "-l");
-        ExecPlan p2 = plan("/system/bin/ls", "-a");
-        assertNotEquals(p1.getPlanHash(), p2.getPlanHash());
-    }
-
-    @Test
-    public void hash_differsWhenArgvOrderChanges() {
-        ExecPlan p1 = plan("/system/bin/ls", "-l", "-a");
-        ExecPlan p2 = plan("/system/bin/ls", "-a", "-l");
+    public void hash_differsWhenCommandChanges() {
+        ExecPlan p1 = plan("echo hello");
+        ExecPlan p2 = plan("echo world");
         assertNotEquals(p1.getPlanHash(), p2.getPlanHash());
     }
 
     @Test
     public void hash_differsWhenCwdChanges() {
-        ExecPlan p1 = new ExecPlan("/system/bin/ls", Collections.emptyList(),
-                new File("/tmp/a"), ExecPlan.ExecMode.DIRECT);
-        ExecPlan p2 = new ExecPlan("/system/bin/ls", Collections.emptyList(),
-                new File("/tmp/b"), ExecPlan.ExecMode.DIRECT);
-        assertNotEquals(p1.getPlanHash(), p2.getPlanHash());
-    }
-
-    @Test
-    public void hash_differsWhenModeChanges() {
-        ExecPlan p1 = new ExecPlan("/system/bin/ls", Collections.emptyList(),
-                CWD, ExecPlan.ExecMode.DIRECT);
-        ExecPlan p2 = new ExecPlan("/system/bin/ls", Collections.emptyList(),
-                CWD, ExecPlan.ExecMode.SHELL);
+        ExecPlan p1 = new ExecPlan("echo hello", new File("/tmp/a"));
+        ExecPlan p2 = new ExecPlan("echo hello", new File("/tmp/b"));
         assertNotEquals(p1.getPlanHash(), p2.getPlanHash());
     }
 
     @Test
     public void hash_isSha256Length() {
-        ExecPlan p = plan("/system/bin/ls");
+        ExecPlan p = plan("echo hello");
         assertEquals(64, p.getPlanHash().length());
     }
 
     @Test
-    public void argv_isUnmodifiable() {
-        ExecPlan p = plan("/system/bin/ls", "-l");
-        try {
-            p.getArgv().add("-a");
-            fail("argv should be unmodifiable");
-        } catch (UnsupportedOperationException expected) {
-            // expected
-        }
+    public void rawCommand_isExposedVerbatim() {
+        ExecPlan p = plan("echo a && echo b");
+        assertEquals("echo a && echo b", p.getRawCommand());
     }
 
     @Test
-    public void approvalDescription_containsExeAndArgvAndCwd() {
-        ExecPlan p = plan("/system/bin/ls", "-l", "/home");
+    public void approvalDescription_containsRawCommandAndCwdAndHashPrefix() {
+        ExecPlan p = plan("echo a && echo b");
         String desc = p.toApprovalDescription();
-
-        assertTrue(desc.contains("/system/bin/ls"));
-        assertTrue(desc.contains("-l"));
-        assertTrue(desc.contains("/home"));
+        assertTrue(desc.contains("echo a && echo b"));
         assertTrue(desc.contains(CWD.getAbsolutePath()));
-        assertTrue(desc.contains("DIRECT"));
-    }
-
-    @Test
-    public void approvalDescription_containsPlanHashPrefix() {
-        ExecPlan p = plan("/system/bin/ls");
-        String desc = p.toApprovalDescription();
-
         assertTrue(desc.contains(p.getPlanHash().substring(0, 8)));
     }
 
     @Test
     public void computeHash_static_matchesInstanceHash() {
-        ExecPlan p = plan("/system/bin/ls", "-l");
-        String recomputed = ExecPlan.computeHash(
-                p.getCanonicalExePath(),
-                p.getArgv(),
-                p.getCwd(),
-                p.getMode()
-        );
+        ExecPlan p = plan("echo hello");
+        String recomputed = ExecPlan.computeHash(p.getRawCommand(), p.getCwd());
         assertEquals(p.getPlanHash(), recomputed);
+    }
+
+    @Test
+    public void equalsAndHashCode_areConsistent() {
+        ExecPlan p1 = plan("echo hello");
+        ExecPlan p2 = new ExecPlan("echo hello", new File("/tmp"));
+        assertEquals(p1, p2);
+        assertEquals(p1.hashCode(), p2.hashCode());
     }
 }

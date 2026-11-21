@@ -165,12 +165,7 @@ public class SshConfigTest {
 
         // Create a simple ExecPlan for testing
         java.io.File tmpDir = new java.io.File(System.getProperty("java.io.tmpdir"));
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/ls",
-                Arrays.asList("-l"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("ls -l", tmpDir);
 
         // FULL policy should allow everything
         assertNull(config.validatePlan(plan));
@@ -186,12 +181,7 @@ public class SshConfigTest {
                 .build();
 
         java.io.File tmpDir = new java.io.File(System.getProperty("java.io.tmpdir"));
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/ls",
-                Arrays.asList("-l"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("ls -l", tmpDir);
 
         String denial = config.validatePlan(plan);
         assertNotNull(denial);
@@ -208,12 +198,7 @@ public class SshConfigTest {
                 .build();
 
         java.io.File tmpDir = new java.io.File(System.getProperty("java.io.tmpdir"));
-        ExecPlan plan = new ExecPlan(
-                "/usr/bin/rm",
-                Arrays.asList("-rf", "/"),
-                tmpDir,
-                ExecPlan.ExecMode.DIRECT
-        );
+        ExecPlan plan = new ExecPlan("rm -rf /", tmpDir);
 
         // FULL policy allows everything; only DENY is rejected now.
         assertNull(config.validatePlan(plan));
