@@ -29,12 +29,12 @@ public final class ApprovalAuditLog {
     private final File logFile;
     private final Object lock = new Object();
 
+    /**
+     * Resolve the audit log path without touching the filesystem; the directory is
+     * created on the first {@link #log} call so construction never does I/O.
+     */
     public ApprovalAuditLog(Context context) {
-        File auditDir = new File(context.getFilesDir(), DIR);
-        if (!auditDir.exists() && !auditDir.mkdirs()) {
-            Log.w(TAG, "Could not create audit directory: " + auditDir.getAbsolutePath());
-        }
-        this.logFile = new File(auditDir, FILE);
+        this.logFile = new File(new File(context.getFilesDir(), DIR), FILE);
     }
 
     /**
@@ -48,6 +48,10 @@ public final class ApprovalAuditLog {
      */
     public void log(String mode, String command, String disposition, Integer exitCode) {
         synchronized (lock) {
+            File auditDir = logFile.getParentFile();
+            if (auditDir != null && !auditDir.exists() && !auditDir.mkdirs()) {
+                Log.w(TAG, "Could not create audit directory: " + auditDir.getAbsolutePath());
+            }
             try (Writer w = new BufferedWriter(new FileWriter(logFile, true))) {
                 w.write(format(mode, command, disposition, exitCode));
                 w.write("\n");

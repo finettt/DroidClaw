@@ -1,5 +1,6 @@
 package io.finett.droidclaw.shell;
 
+import android.os.Looper;
 import android.util.Log;
 
 import io.finett.droidclaw.model.AgentConfig;
@@ -22,6 +23,10 @@ import io.finett.droidclaw.model.AgentConfig;
  *
  * <p>The old {@code execute(String command, ...)} API that accepted raw shell strings
  * is removed. Callers must use {@link ExecPlanner} to build an {@link ExecPlan} first.
+ *
+ * <p>Threading: {@link #execute} blocks for the full command duration (waitFor + stream
+ * pumping + timeout). It must be called from a background thread, never the main thread.
+ * The agent loop dispatches shell execution off main; direct callers must do the same.
  */
 public class ShellExecutor implements AutoCloseable {
 
@@ -51,6 +56,7 @@ public class ShellExecutor implements AutoCloseable {
      *                           or the working directory is outside the workspace
      */
     public ShellResult execute(ExecPlan plan) throws SecurityException {
+        warnIfOnMainThread();
         return backend.execute(plan, defaultTimeoutSeconds);
     }
 
@@ -63,7 +69,21 @@ public class ShellExecutor implements AutoCloseable {
      *                           or the working directory is outside the workspace
      */
     public ShellResult execute(ExecPlan plan, int timeoutSeconds) throws SecurityException {
+        warnIfOnMainThread();
         return backend.execute(plan, timeoutSeconds);
+    }
+
+    /** Log a warning when process execution is about to block the main thread. */
+    private static void warnIfOnMainThread() {
+        try {
+            Looper main = Looper.getMainLooper();
+            if (main != null && Looper.myLooper() == main) {
+                Log.w(TAG, "Shell execution on main thread — this blocks the UI and can ANR. "
+                        + "Dispatch to a background thread.");
+            }
+        } catch (Exception ignored) {
+            // No looper available (plain JVM tests): nothing to warn about.
+        }
     }
 
     // ==================== Lifecycle ====================

@@ -22,7 +22,6 @@ import com.google.gson.JsonObject;
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.SynchronousQueue;
 
 import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
@@ -49,7 +48,7 @@ import io.finett.droidclaw.util.SettingsManager;
  * <p>UI clients (ChatFragment) bind to this service, register a UICallback, and delegate
  * all agent interactions through it. When the UI unbinds, the loop keeps running and posts
  * a foreground notification. If a tool requires approval while the UI is detached, the
- * worker thread parks on a SynchronousQueue until the user returns and approves/denies.</p>
+ * loop pauses without blocking any thread until the user returns and approves/denies.</p>
  */
 public class AgentExecutionService extends Service {
 
@@ -81,9 +80,6 @@ public class AgentExecutionService extends Service {
         /** Set when cancellation is requested before the loop has started. */
         volatile boolean cancelRequested;
 
-        /** Worker thread parks here when approval is needed and UI is detached. */
-        final SynchronousQueue<Boolean> approvalQueue = new SynchronousQueue<>();
-
         /** Snapshot of conversation history after the loop completes. */
         volatile List<ChatMessage> finalHistory;
 
@@ -103,11 +99,15 @@ public class AgentExecutionService extends Service {
         public final String toolName;
         public final String description;
         public final JsonObject arguments;
+        /** Original decision callback from the agent loop; invoked when the UI returns. */
+        public final AgentLoop.ApprovalCallback approvalCallback;
 
-        PendingApproval(String toolName, String description, JsonObject arguments) {
+        PendingApproval(String toolName, String description, JsonObject arguments,
+                        AgentLoop.ApprovalCallback approvalCallback) {
             this.toolName = toolName;
             this.description = description;
             this.arguments = arguments;
+            this.approvalCallback = approvalCallback;
         }
     }
 
@@ -188,13 +188,11 @@ public class AgentExecutionService extends Service {
     public void onDestroy() {
         super.onDestroy();
         releaseWakeLock();
-        // Unblock any parked approval threads so they can terminate cleanly.
+        // Drop any paused approvals; the loop's cancellation finalization handles
+        // termination without a parked thread to wake.
         for (AgentSession session : sessions.values()) {
             if (session.state == AgentSession.State.PAUSED_APPROVAL) {
-                try {
-                    session.approvalQueue.offer(false);
-                } catch (Exception ignored) {
-                }
+                session.pendingApproval = null;
             }
         }
         Log.d(TAG, "AgentExecutionService destroyed");
@@ -255,7 +253,9 @@ public class AgentExecutionService extends Service {
             sessions.remove(sessionId);
         } else if (session.state == AgentSession.State.PAUSED_APPROVAL
                 && session.pendingApproval != null) {
-            // Resume approval dialog now that the UI is back.
+            // Resume approval dialog now that the UI is back. The decision is
+            // forwarded to the loop's original callback, which dispatches approved
+            // execution off the main thread.
             PendingApproval pa = session.pendingApproval;
             callback.onApprovalRequired(pa.toolName, pa.description, pa.arguments,
                     new AgentLoop.ApprovalCallback() {
@@ -263,16 +263,16 @@ public class AgentExecutionService extends Service {
                         public void onApproved() {
                             session.state = AgentSession.State.RUNNING;
                             session.pendingApproval = null;
-                            session.approvalQueue.offer(true);
                             updateNotification();
+                            pa.approvalCallback.onApproved();
                         }
 
                         @Override
                         public void onDenied() {
                             session.state = AgentSession.State.RUNNING;
                             session.pendingApproval = null;
-                            session.approvalQueue.offer(false);
                             updateNotification();
+                            pa.approvalCallback.onDenied();
                         }
                     });
         }
@@ -321,16 +321,15 @@ public class AgentExecutionService extends Service {
         Log.i(TAG, "Cancelling agent loop for session: " + sessionId);
         session.cancelRequested = true;
 
-        // Wake a thread parked waiting for approval so the loop can observe
-        // the cancellation instead of blocking on the dialog outcome.
-        if (session.state == AgentSession.State.PAUSED_APPROVAL) {
-            session.pendingApproval = null;
-            session.approvalQueue.offer(false);
-        }
-
         AgentLoop loop = session.agentLoop;
         if (loop != null) {
             loop.cancel();
+        }
+
+        // Drop any paused approval; the loop's cancellation finalization (posted to
+        // main) terminates the run without waiting for a dialog decision.
+        if (session.state == AgentSession.State.PAUSED_APPROVAL) {
+            session.pendingApproval = null;
         }
     }
 
@@ -572,29 +571,17 @@ public class AgentExecutionService extends Service {
                                 cb.onApprovalRequired(toolName, description, arguments,
                                         approvalCallback));
                     } else {
-                        // UI is detached — park the worker thread and show notification.
+                        // UI is detached — pause without blocking. The caller (LLM
+                        // callback on main) returns immediately; the loop resumes when
+                        // the UI returns and forwards the decision via
+                        // registerUICallback. Blocking here would park the main thread.
                         session.state = AgentSession.State.PAUSED_APPROVAL;
                         session.pendingApproval = new PendingApproval(
-                                toolName, description, arguments);
+                                toolName, description, arguments, approvalCallback);
                         mainHandler.post(AgentExecutionService.this::updateNotification);
 
-                        Log.d(TAG, "Approval required while UI detached — parking thread for: "
+                        Log.d(TAG, "Approval required while UI detached — paused for: "
                                 + toolName);
-
-                        // Block until the user returns and approves/denies.
-                        Boolean approved;
-                        try {
-                            approved = session.approvalQueue.take();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            approved = false;
-                        }
-
-                        if (Boolean.TRUE.equals(approved)) {
-                            approvalCallback.onApproved();
-                        } else {
-                            approvalCallback.onDenied();
-                        }
                     }
                 }
 
