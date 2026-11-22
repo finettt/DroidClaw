@@ -87,10 +87,27 @@ public class AgentLoopWorkflowDispatchTest {
     }
 
     private AgentLoop.ApprovalCallback approval() {
+        pumpApprovalPlan();
         ArgumentCaptor<AgentLoop.ApprovalCallback> approval =
                 ArgumentCaptor.forClass(AgentLoop.ApprovalCallback.class);
         verify(callback).onApprovalRequired(eq("run_workflow"), anyString(), any(), approval.capture());
         return approval.getValue();
+    }
+
+    /**
+     * Approval-plan building is dispatched off the main thread. Run the queued plan
+     * task on a worker thread and deliver the approval request on main.
+     */
+    private void pumpApprovalPlan() {
+        if (pending.isEmpty()) {
+            return;
+        }
+        try {
+            runQueuedWork().get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            fail("approval-plan work failed: " + e);
+        }
+        shadowOf(Looper.getMainLooper()).idle();
     }
 
     private FutureTask<Void> runQueuedWork() {
@@ -136,7 +153,8 @@ public class AgentLoopWorkflowDispatchTest {
         }).when(callback).onToolResult(anyString(), anyString());
 
         startWithTools("run_workflow", "ordinary");
-        assertTrue("No work before approval", pending.isEmpty());
+        pumpApprovalPlan();
+        assertTrue("No execution queued before approval", pending.isEmpty());
         verify(tools, never()).executeTool(anyString(), any());
         approval().onApproved();
         assertEquals(1, pending.size());
@@ -186,6 +204,7 @@ public class AgentLoopWorkflowDispatchTest {
 
     @Test public void deniedWorkflowNeverReachesExecutor() {
         startWithTools("run_workflow");
+        pumpApprovalPlan();
         approval().onDenied();
         assertTrue(pending.isEmpty());
         verify(tools, never()).executeTool(anyString(), any());
@@ -203,6 +222,7 @@ public class AgentLoopWorkflowDispatchTest {
     @Test public void workflowFailureIsDeliveredOnMainBeforeContinuation() throws Exception {
         when(tools.executeTool(eq("run_workflow"), any())).thenReturn(ToolResult.error("failed"));
         startWithTools("run_workflow");
+        pumpApprovalPlan();
         approval().onApproved();
         FutureTask<Void> worker = runQueuedWork();
         worker.get(5, TimeUnit.SECONDS);
@@ -219,6 +239,7 @@ public class AgentLoopWorkflowDispatchTest {
     @Test public void workerExceptionBecomesToolErrorOnMain() throws Exception {
         when(tools.executeTool(eq("run_workflow"), any())).thenThrow(new IllegalStateException("broken"));
         startWithTools("run_workflow");
+        pumpApprovalPlan();
         approval().onApproved();
         runQueuedWork().get(5, TimeUnit.SECONDS);
         verify(callback, never()).onToolResult(anyString(), anyString());
@@ -242,6 +263,7 @@ public class AgentLoopWorkflowDispatchTest {
 
     @Test public void cancelledQueuedWorkflowDoesNotStart() throws Exception {
         startWithTools("run_workflow");
+        pumpApprovalPlan();
         approval().onApproved();
         loop.cancel();
         runQueuedWork().get(5, TimeUnit.SECONDS);
@@ -270,6 +292,7 @@ public class AgentLoopWorkflowDispatchTest {
         when(tools.getTool("run_workflow")).thenReturn(workflow);
         when(tools.getAllTools()).thenReturn(Collections.singletonList(workflow));
         startWithTools("run_workflow");
+        pumpApprovalPlan();
         assertTrue(pending.isEmpty());
         approval().onApproved();
         assertEquals(1, pending.size());

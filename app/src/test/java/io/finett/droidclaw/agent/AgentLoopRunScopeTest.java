@@ -18,7 +18,12 @@ import org.robolectric.Shadows;
 import org.robolectric.annotation.LooperMode;
 
 import java.lang.reflect.Field;
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Queue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.model.ChatMessage;
@@ -39,6 +44,8 @@ public class AgentLoopRunScopeTest {
     private AgentLoop.AgentCallback callback;
     private Provider provider;
     private Model model;
+    private final Queue<Runnable> pendingWork = new ArrayDeque<>();
+    private final Executor testExecutor = pendingWork::add;
 
     @Before
     public void setUp() {
@@ -50,7 +57,7 @@ public class AgentLoopRunScopeTest {
         when(write.requiresApproval()).thenReturn(true);
         when(write.getApprovalDescription(any())).thenReturn("Write file");
         when(tools.getTool("write_file")).thenReturn(write);
-        loop = new AgentLoop(api, tools, null);
+        loop = new AgentLoop(api, tools, null, null, null, testExecutor);
         provider = new Provider();
         provider.setId("workflow-provider");
         model = new Model();
@@ -130,6 +137,25 @@ public class AgentLoopRunScopeTest {
                 same(provider), same(model), any(), captor.capture());
         return captor.getValue();
     }
+
+    /**
+     * Approval-plan building runs on the background executor. Run every queued task
+     * on a worker thread, then drain the main looper so the posted approval request
+     * is delivered before verification.
+     */
+    private void pumpApprovalPlan() {
+        while (!pendingWork.isEmpty()) {
+            try {
+                FutureTask<Void> worker = new FutureTask<>(pendingWork.remove(), null);
+                new Thread(worker, "run-scope-plan-worker").start();
+                worker.get(5, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                fail("approval-plan work failed: " + e);
+            }
+        }
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+    }
+
     private void assertEffortOverrideCleared() throws Exception {
         Field field = AgentLoop.class.getDeclaredField("effortOverride");
         field.setAccessible(true);
@@ -210,6 +236,7 @@ public class AgentLoopRunScopeTest {
                 any(LlmApiService.ChatCallbackWithTools.class));
         verify(api, never()).sendMessageWithTools(anyList(), any(), anyList(),
                 any(Provider.class), any(Model.class), any(), any(LlmApiService.ChatCallbackWithTools.class));
+        pumpApprovalPlan();
         verify(nextCallback).onApprovalRequired(eq("write_file"), eq("Write file"),
                 any(), any(AgentLoop.ApprovalCallback.class));
         verify(tools, never()).executeTool(anyString(), any());
