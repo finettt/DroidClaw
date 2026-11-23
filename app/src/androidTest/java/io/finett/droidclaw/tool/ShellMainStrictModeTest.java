@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.Instrumentation;
 import android.content.Context;
+import android.os.Looper;
 import android.os.StrictMode;
 import android.util.Log;
 
@@ -178,6 +179,15 @@ public class ShellMainStrictModeTest {
                     .detectAll()
                     .detectUnbufferedIo()
                     .penaltyListener(Runnable::run, violation -> {
+                        // penaltyListener runs the callback on the violating thread.
+                        // StrictMode.setThreadPolicy() is global (all threads), so a
+                        // legitimate background disk write here trips the listener too.
+                        // This guard asserts MAIN-THREAD freedom, not the absence of
+                        // background I/O — background-thread violations must NOT fail
+                        // this test by design.
+                        if (Looper.myLooper() != Looper.getMainLooper()) {
+                            return;
+                        }
                         String trace = Log.getStackTraceString(violation);
                         violations.add(trace);
                         Log.w(TAG, "main-thread StrictMode violation", violation);
