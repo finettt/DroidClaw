@@ -95,6 +95,15 @@ public class AgentLoop {
     private volatile ApprovalAuditLog auditLog;
 
     /**
+     * Set while the judge + audit-log construction is dispatched off the main thread.
+     * The dispatched task posts the re-entry back on the main Handler once construction
+     * finishes; this flag stops a re-entrant {@link #ensureJudgeAndAudit()} (which the
+     * post-back triggers) from dispatching a second time while the construction is still
+     * pending on the background executor.
+     */
+    private volatile boolean auditBuiltOffMain;
+
+    /**
      * Disposition recorded for the in-flight shell command, keyed by the tool call id and
      * consumed by the audit on completion. Keying by id (not a single field) guarantees the
      * line is never labelled with a disposition that belonged to a different command if
@@ -155,11 +164,45 @@ public class AgentLoop {
      * Called only on the first shell-command approval pass, never during construction,
      * so context-less unit paths keep the legacy behaviour and never call getContext().
      * Idempotent and safe under the concurrent tool-approval paths.
+     *
+     * <p>The audit-log constructor calls {@code context.getFilesDir()}, which performs a
+     * disk read on the calling thread (a strict-mode {@code DiskReadViolation} on the main
+     * thread). When the caller is on the main thread, construction is dispatched to the
+     * background executor and re-entered on the main Handler once it completes, so the main
+     * thread never reads disk here; off the main thread the build stays inline.
      */
     private synchronized void ensureJudgeAndAudit() {
         if (judge != null && auditLog != null) {
             return;
         }
+        if (isOnMainThread() && !auditBuiltOffMain) {
+            auditBuiltOffMain = true;
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+            try {
+                workflowExecutor.execute(() -> {
+                    // Runs off the main thread: getFilesDir() disk read happens here, not on main.
+                    buildJudgeAndAuditLocked();
+                    final Handler postBack = mainHandler;
+                    postBack.post(this::ensureJudgeAndAudit);
+                });
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                // Executor unavailable: build inline so the audit trail still exists.
+                auditBuiltOffMain = false;
+                buildJudgeAndAuditLocked();
+            }
+            return;
+        }
+        if (auditBuiltOffMain) {
+            // Construction is already dispatched off main; the post-back re-enters and
+            // finishes building here. Wait for it rather than building on this thread.
+            return;
+        }
+        // Off the main thread (or a context-less unit path): build inline, no main I/O.
+        buildJudgeAndAuditLocked();
+    }
+
+    /** Build the judge and audit log under the method's lock; safe to call off the main thread. */
+    private synchronized void buildJudgeAndAuditLocked() {
         android.content.Context hostContext = resolveContext();
         if (hostContext == null) {
             return;
