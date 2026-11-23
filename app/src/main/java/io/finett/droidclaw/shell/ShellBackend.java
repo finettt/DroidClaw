@@ -9,6 +9,9 @@ package io.finett.droidclaw.shell;
  *
  * <p>Implementations are expected to be thread-safe (or used from a single thread) and
  * must close any connections/resources they hold when {@link #close()} is called.
+ *
+ * <p>Threading: {@link #execute} blocks for the full command duration. It must be
+ * called from a background thread, never the main thread.
  */
 public interface ShellBackend {
 

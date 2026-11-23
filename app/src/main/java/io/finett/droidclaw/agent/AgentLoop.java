@@ -48,6 +48,13 @@ public class AgentLoop {
     private final SettingsManager settingsManager;
     private final ConversationSummarizer summarizer;
     private final MemoryContextBuilder memoryContext;
+    /**
+     * Background dispatcher for blocking work (shell process execution, the auto-mode
+     * judge, approval-plan building). Must run off the main looper. Process execution
+     * (waitFor + stream pumping + output limiting + timeout) is only ever invoked
+     * through this executor when the caller is on the main thread; the main thread
+     * only renders results delivered via Handler/main executor.
+     */
     private final Executor workflowExecutor;
     private int iterationCount;
     /** Explicit per-node turn cap (workflow max_turns); 0 means unset. */
@@ -86,6 +93,15 @@ public class AgentLoop {
 
     /** Append-only audit trail for shell commands across all approval modes. */
     private volatile ApprovalAuditLog auditLog;
+
+    /**
+     * Set while the judge + audit-log construction is dispatched off the main thread.
+     * The dispatched task posts the re-entry back on the main Handler once construction
+     * finishes; this flag stops a re-entrant {@link #ensureJudgeAndAudit()} (which the
+     * post-back triggers) from dispatching a second time while the construction is still
+     * pending on the background executor.
+     */
+    private volatile boolean auditBuiltOffMain;
 
     /**
      * Disposition recorded for the in-flight shell command, keyed by the tool call id and
@@ -148,11 +164,45 @@ public class AgentLoop {
      * Called only on the first shell-command approval pass, never during construction,
      * so context-less unit paths keep the legacy behaviour and never call getContext().
      * Idempotent and safe under the concurrent tool-approval paths.
+     *
+     * <p>The audit-log constructor calls {@code context.getFilesDir()}, which performs a
+     * disk read on the calling thread (a strict-mode {@code DiskReadViolation} on the main
+     * thread). When the caller is on the main thread, construction is dispatched to the
+     * background executor and re-entered on the main Handler once it completes, so the main
+     * thread never reads disk here; off the main thread the build stays inline.
      */
     private synchronized void ensureJudgeAndAudit() {
         if (judge != null && auditLog != null) {
             return;
         }
+        if (isOnMainThread() && !auditBuiltOffMain) {
+            auditBuiltOffMain = true;
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+            try {
+                workflowExecutor.execute(() -> {
+                    // Runs off the main thread: getFilesDir() disk read happens here, not on main.
+                    buildJudgeAndAuditLocked();
+                    final Handler postBack = mainHandler;
+                    postBack.post(this::ensureJudgeAndAudit);
+                });
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                // Executor unavailable: build inline so the audit trail still exists.
+                auditBuiltOffMain = false;
+                buildJudgeAndAuditLocked();
+            }
+            return;
+        }
+        if (auditBuiltOffMain) {
+            // Construction is already dispatched off main; the post-back re-enters and
+            // finishes building here. Wait for it rather than building on this thread.
+            return;
+        }
+        // Off the main thread (or a context-less unit path): build inline, no main I/O.
+        buildJudgeAndAuditLocked();
+    }
+
+    /** Build the judge and audit log under the method's lock; safe to call off the main thread. */
+    private synchronized void buildJudgeAndAuditLocked() {
         android.content.Context hostContext = resolveContext();
         if (hostContext == null) {
             return;
@@ -211,13 +261,26 @@ public class AgentLoop {
 
     /**
      * Audit a single shell command. Writes one line per command with the disposition and
-     * exit code; never includes tool output bodies. Guarded to shell tools only.
+     * exit code; never includes tool output bodies. Guarded to shell tools only. The file
+     * append runs on the background dispatcher when the caller is on the main thread, so
+     * the UI thread never writes to disk; off the main thread the write stays inline.
      */
     private void auditShell(String toolName, String command, String disposition, Integer exitCode) {
         if (auditLog == null || !"execute_shell".equals(toolName)) {
             return;
         }
-        auditLog.log(currentShellApprovalMode(), command, disposition, exitCode);
+        String mode = currentShellApprovalMode();
+        if (isOnMainThread()) {
+            try {
+                workflowExecutor.execute(() -> auditLog.log(mode, command, disposition, exitCode));
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                // Executor unavailable: never lose the audit line, even for a rare
+                // main-thread write in this degraded path.
+                auditLog.log(mode, command, disposition, exitCode);
+            }
+            return;
+        }
+        auditLog.log(mode, command, disposition, exitCode);
     }
 
     /**
@@ -347,7 +410,11 @@ public class AgentLoop {
                 io.finett.droidclaw.workflow.WorkflowDispatch.executor());
     }
 
-    /** The supplied executor must run workflow work off the main looper. */
+    /**
+     * The supplied executor must run blocking work off the main looper. It dispatches
+     * shell process execution, the auto-mode judge, and approval-plan building when
+     * the caller is on the main thread.
+     */
     public AgentLoop(LlmApiService apiService, ToolRegistry toolRegistry, SettingsManager settingsManager,
                      ConversationSummarizer summarizer, MemoryContextBuilder memoryContext,
                      Executor workflowExecutor) {
@@ -782,6 +849,35 @@ public class AgentLoop {
     }
 
     /**
+     * Whether the calling thread is the Android main thread. Returns false when no
+     * main looper is available (plain JVM unit tests), so those paths keep the
+     * legacy inline behaviour.
+     */
+    private static boolean isOnMainThread() {
+        try {
+            Looper main = Looper.getMainLooper();
+            return main != null && Looper.myLooper() == main;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Whether the given tool call is process execution that blocks (waitFor + stream
+     * pumping). Shell commands and workflow runs must never run on the main thread;
+     * other tools keep the legacy inline behaviour.
+     */
+    private boolean isBlockingProcessTool(LlmApiService.ToolCall toolCall, Tool tool) {
+        if ("run_workflow".equals(toolCall.getName())) {
+            return true;
+        }
+        if (tool instanceof ShellTool) {
+            return true;
+        }
+        return "execute_shell".equals(toolCall.getName());
+    }
+
+    /**
      * Process tool calls sequentially, requesting approval when needed.
      */
     private void processToolCallsWithApproval(List<LlmApiService.ToolCall> toolCalls, int index,
@@ -853,22 +949,78 @@ public class AgentLoop {
         // Auto-mode judge: for shell commands, decide before any dialog so a benign command
         // can run silently, a dangerous one be refused with a reason, and the rest fall back
         // to the dialog. The judge sees only the command + context, never chat or web content.
-        CommandJudge.VerdictResult judgeResult = null;
-        if (judge != null && "auto".equals(currentShellApprovalMode())
-                && tool instanceof ShellTool && !("run_workflow".equals(toolName))) {
-            String command = commandArgument(arguments);
-            judgeResult = judge.evaluate(
-                    command, cwdArgument(arguments), currentBackendLabel(), workspaceRootPath());
-            if (judgeResult.verdict == CommandJudge.Verdict.DENY) {
-                String refused = "Tool execution denied by command judge: " + judgeResult.reason;
-                Log.d(TAG, "Shell command refused by judge: " + refused);
-                auditShell(toolName, command, "deny", null);
-                callback.onToolResult(toolName, refused);
-                conversationHistory.add(ChatMessage.createToolResultMessage(
-                        toolCall.getId(), toolName, refused));
-                processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
-                return;
+        // The judge blocks on a network round-trip (up to 15s), so on the main thread it is
+        // dispatched to the background executor and the verdict is delivered back on main.
+        boolean needsJudge = judge != null && "auto".equals(currentShellApprovalMode())
+                && tool instanceof ShellTool && !("run_workflow".equals(toolName));
+        if (needsJudge && isOnMainThread()) {
+            String judgeCommand = commandArgument(arguments);
+            String judgeCwd = cwdArgument(arguments);
+            String judgeBackend = currentBackendLabel();
+            String judgeRoot = workspaceRootPath();
+            Handler judgeMainHandler = new Handler(Looper.getMainLooper());
+            try {
+                workflowExecutor.execute(() -> {
+                    CommandJudge.VerdictResult verdict;
+                    try {
+                        verdict = judge.evaluate(judgeCommand, judgeCwd, judgeBackend, judgeRoot);
+                    } catch (RuntimeException e) {
+                        verdict = new CommandJudge.VerdictResult(CommandJudge.Verdict.ASK,
+                                "judge unavailable: " + e.getMessage());
+                    }
+                    final CommandJudge.VerdictResult delivered = verdict;
+                    judgeMainHandler.post(() -> {
+                        if (!cancelled.get()) {
+                            continueAfterJudge(toolCall, toolCalls, index, conversationHistory, callback,
+                                    tool, mode, needsApproval, delivered);
+                        }
+                    });
+                });
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                continueAfterJudge(toolCall, toolCalls, index, conversationHistory, callback,
+                        tool, mode, needsApproval,
+                        new CommandJudge.VerdictResult(CommandJudge.Verdict.ASK,
+                                "judge unavailable: " + e.getMessage()));
             }
+            return;
+        }
+        CommandJudge.VerdictResult judgeResult = null;
+        if (needsJudge) {
+            judgeResult = judge.evaluate(
+                    commandArgument(arguments), cwdArgument(arguments),
+                    currentBackendLabel(), workspaceRootPath());
+        }
+        continueAfterJudge(toolCall, toolCalls, index, conversationHistory, callback,
+                tool, mode, needsApproval, judgeResult);
+    }
+
+    /**
+     * Continue tool-call processing after the auto-mode judge has decided (or when no
+     * judge was needed). Runs on the main thread when the judge was dispatched off it,
+     * otherwise on the caller's thread. Approval-plan building and process execution
+     * are dispatched off the main thread from here.
+     */
+    private void continueAfterJudge(LlmApiService.ToolCall toolCall,
+                                    List<LlmApiService.ToolCall> toolCalls, int index,
+                                    List<ChatMessage> conversationHistory, AgentCallback callback,
+                                    Tool tool, ToolApprovalMode mode, boolean needsApproval,
+                                    CommandJudge.VerdictResult judgeResult) {
+        if (cancelled.get()) {
+            return;
+        }
+        String toolName = toolCall.getName();
+        JsonObject arguments = toolCall.getArguments();
+
+        if (judgeResult != null && judgeResult.verdict == CommandJudge.Verdict.DENY) {
+            String command = commandArgument(arguments);
+            String refused = "Tool execution denied by command judge: " + judgeResult.reason;
+            Log.d(TAG, "Shell command refused by judge: " + refused);
+            auditShell(toolName, command, "deny", null);
+            callback.onToolResult(toolName, refused);
+            conversationHistory.add(ChatMessage.createToolResultMessage(
+                    toolCall.getId(), toolName, refused));
+            processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
+            return;
         }
 
         // In auto mode, a silent "allow" verdict removes the need for a dialog; ask and the
@@ -897,6 +1049,86 @@ public class AgentLoop {
             // The approval dialog shows the plan's description — the raw command verbatim,
             // its resolved cwd, and plan hash — NOT some other rendering of the LLM input.
             // This prevents prompt-injection where approval description differs from execution.
+            // Plan building canonicalises paths and reads the workflow file, so on the main
+            // thread it is dispatched to the background executor first.
+            if (isOnMainThread()) {
+                Handler planMainHandler = new Handler(Looper.getMainLooper());
+                try {
+                    workflowExecutor.execute(() -> {
+                        String planDescription;
+                        java.util.function.Supplier<ToolResult> planExecution;
+                        try {
+                            if (tool instanceof RunWorkflowTool) {
+                                RunWorkflowTool.ApprovalReview review =
+                                        ((RunWorkflowTool) tool).prepareApproval(arguments);
+                                planDescription = review.getDescription();
+                                planExecution = review::execute;
+                            } else {
+                                ExecPlan execPlan = tool.buildExecPlan(arguments);
+                                planDescription = execPlan != null ? execPlan.toApprovalDescription()
+                                        : tool.getApprovalDescription(arguments);
+                                if (judgeResult != null
+                                        && judgeResult.verdict == CommandJudge.Verdict.ASK
+                                        && !judgeResult.reason.isEmpty()) {
+                                    planDescription += "\n\n[Command judge: "
+                                            + judgeResult.reason + "]";
+                                }
+                                planExecution = () -> toolRegistry.executeTool(toolName, arguments);
+                            }
+                        } catch (Exception e) {
+                            String errorMessage = "Cannot safely review workflow: " + e.getMessage();
+                            planMainHandler.post(() -> {
+                                if (!cancelled.get()) {
+                                    executeToolAndContinue(toolCall, toolCalls, index,
+                                            conversationHistory, callback,
+                                            () -> ToolResult.error(errorMessage));
+                                }
+                            });
+                            return;
+                        }
+                        final String deliveredDescription = planDescription;
+                        final java.util.function.Supplier<ToolResult> deliveredExecution = planExecution;
+                        planMainHandler.post(() -> {
+                            if (!cancelled.get()) {
+                                requestApproval(toolCall, toolCalls, index, conversationHistory, callback,
+                                        deliveredDescription, deliveredExecution);
+                            }
+                        });
+                    });
+                } catch (java.util.concurrent.RejectedExecutionException e) {
+                    // Executor unavailable: fall back to inline plan building. Execution
+                    // itself still dispatches off the main thread below.
+                    String fallbackDescription;
+                    java.util.function.Supplier<ToolResult> fallbackExecution;
+                    try {
+                        if (tool instanceof RunWorkflowTool) {
+                            RunWorkflowTool.ApprovalReview review =
+                                    ((RunWorkflowTool) tool).prepareApproval(arguments);
+                            fallbackDescription = review.getDescription();
+                            fallbackExecution = review::execute;
+                        } else {
+                            ExecPlan execPlan = tool.buildExecPlan(arguments);
+                            fallbackDescription = execPlan != null ? execPlan.toApprovalDescription()
+                                    : tool.getApprovalDescription(arguments);
+                            if (judgeResult != null
+                                    && judgeResult.verdict == CommandJudge.Verdict.ASK
+                                    && !judgeResult.reason.isEmpty()) {
+                                fallbackDescription += "\n\n[Command judge: "
+                                        + judgeResult.reason + "]";
+                            }
+                            fallbackExecution = () -> toolRegistry.executeTool(toolName, arguments);
+                        }
+                    } catch (Exception ex) {
+                        executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback,
+                                () -> ToolResult.error("Cannot safely review workflow: "
+                                        + ex.getMessage()));
+                        return;
+                    }
+                    requestApproval(toolCall, toolCalls, index, conversationHistory, callback,
+                            fallbackDescription, fallbackExecution);
+                }
+                return;
+            }
             final java.util.function.Supplier<ToolResult> approvedExecution;
             String description;
             if (tool instanceof RunWorkflowTool) {
@@ -919,44 +1151,60 @@ public class AgentLoop {
                 }
                 approvedExecution = () -> toolRegistry.executeTool(toolName, arguments);
             }
-            AtomicBoolean decided = new AtomicBoolean();
-            callback.onApprovalRequired(toolName, description, arguments, new ApprovalCallback() {
-                @Override
-                public void onApproved() {
-                    if (cancelled.get() || !decided.compareAndSet(false, true)) {
-                        return;
-                    }
-                    executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback,
-                            approvedExecution);
-                }
-
-                @Override
-                public void onDenied() {
-                    if (cancelled.get() || !decided.compareAndSet(false, true)) {
-                        return;
-                    }
-                    // Add denial result to history and continue
-                    String resultContent = "Tool execution denied by user";
-                    Log.d(TAG, "Tool " + toolName + " denied by user");
-                    pendingDisposition.remove(toolCall.getId());
-                    auditShell(toolName, commandArgument(arguments), "dialog-denied", null);
-                    callback.onToolResult(toolName, resultContent);
-
-                    ChatMessage toolResultMessage = ChatMessage.createToolResultMessage(
-                        toolCall.getId(),
-                        toolName,
-                        resultContent
-                    );
-                    conversationHistory.add(toolResultMessage);
-
-                    // Process next tool call
-                    processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
-                }
-            });
+            requestApproval(toolCall, toolCalls, index, conversationHistory, callback,
+                    description, approvedExecution);
         } else {
             // Execute without approval
             executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback);
         }
+    }
+
+    /**
+     * Ask the user to approve a tool execution. The decision arrives later via the
+     * {@link ApprovalCallback}; approved execution is dispatched off the main thread
+     * by {@link #executeToolAndContinue}.
+     */
+    private void requestApproval(LlmApiService.ToolCall toolCall,
+                                 List<LlmApiService.ToolCall> toolCalls, int index,
+                                 List<ChatMessage> conversationHistory, AgentCallback callback,
+                                 String description,
+                                 java.util.function.Supplier<ToolResult> approvedExecution) {
+        String toolName = toolCall.getName();
+        JsonObject arguments = toolCall.getArguments();
+        AtomicBoolean decided = new AtomicBoolean();
+        callback.onApprovalRequired(toolName, description, arguments, new ApprovalCallback() {
+            @Override
+            public void onApproved() {
+                if (cancelled.get() || !decided.compareAndSet(false, true)) {
+                    return;
+                }
+                executeToolAndContinue(toolCall, toolCalls, index, conversationHistory, callback,
+                        approvedExecution);
+            }
+
+            @Override
+            public void onDenied() {
+                if (cancelled.get() || !decided.compareAndSet(false, true)) {
+                    return;
+                }
+                // Add denial result to history and continue
+                String resultContent = "Tool execution denied by user";
+                Log.d(TAG, "Tool " + toolName + " denied by user");
+                pendingDisposition.remove(toolCall.getId());
+                auditShell(toolName, commandArgument(arguments), "dialog-denied", null);
+                callback.onToolResult(toolName, resultContent);
+
+                ChatMessage toolResultMessage = ChatMessage.createToolResultMessage(
+                    toolCall.getId(),
+                    toolName,
+                    resultContent
+                );
+                conversationHistory.add(toolResultMessage);
+
+                // Process next tool call
+                processToolCallsWithApproval(toolCalls, index + 1, conversationHistory, callback);
+            }
+        });
     }
 
     /**
@@ -1036,7 +1284,18 @@ public class AgentLoop {
         if (cancelled.get()) {
             return;
         }
-        if ("run_workflow".equals(toolCall.getName())) {
+        // Process execution (shell waitFor + stream pumping + output limiting + timeout,
+        // and workflow runs) blocks for the full command duration. It must never run on
+        // the main thread: LLM callbacks and approval-dialog decisions arrive on main, so
+        // dispatch to the background executor and deliver the result back on main. When
+        // already off main (worker threads), run inline to avoid an extra hop.
+        Tool tool = null;
+        try {
+            tool = toolRegistry.getTool(toolCall.getName());
+        } catch (Exception ignored) {
+            tool = null;
+        }
+        if (isBlockingProcessTool(toolCall, tool) && isOnMainThread()) {
             Handler mainHandler = new Handler(Looper.getMainLooper());
             java.util.function.Consumer<ToolResult> deliver = result -> mainHandler.post(() -> {
                 if (!cancelled.get()) {
@@ -1057,7 +1316,10 @@ public class AgentLoop {
                     deliver.accept(result);
                 });
             } catch (java.util.concurrent.RejectedExecutionException e) {
-                deliver.accept(ToolResult.error("Workflow execution unavailable: " + e.getMessage()));
+                String unavailable = "run_workflow".equals(toolCall.getName())
+                        ? "Workflow execution unavailable: "
+                        : "Tool execution unavailable: ";
+                deliver.accept(ToolResult.error(unavailable + e.getMessage()));
             }
             return;
         }
