@@ -38,8 +38,8 @@ public class ChatAdapterStreamingTextTest {
         List<List<Object>> deliveredPayloads = new ArrayList<>();
         adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
-            public void onItemChanged(int position, Object payload) {
-                changedPositions.add(position);
+            public void onItemRangeChanged(int positionStart, int itemCount, Object payload) {
+                changedPositions.add(positionStart);
                 deliveredPayloads.add(Collections.singletonList(payload));
             }
         });
@@ -64,8 +64,8 @@ public class ChatAdapterStreamingTextTest {
         List<Integer> changedPositions = new ArrayList<>();
         adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
-            public void onItemChanged(int position, Object payload) {
-                changedPositions.add(position);
+            public void onItemRangeChanged(int positionStart, int itemCount, Object payload) {
+                changedPositions.add(positionStart);
             }
         });
 
