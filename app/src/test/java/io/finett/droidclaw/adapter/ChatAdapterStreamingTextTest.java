@@ -3,27 +3,20 @@ package io.finett.droidclaw.adapter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
-import android.content.Context;
-import android.widget.TextView;
+import android.view.View;
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import io.finett.droidclaw.R;
 import io.finett.droidclaw.model.ChatMessage;
 
-@RunWith(RobolectricTestRunner.class)
 public class ChatAdapterStreamingTextTest {
 
     @Test
@@ -76,45 +69,37 @@ public class ChatAdapterStreamingTextTest {
     }
 
     @Test
-    public void onBindViewHolder_withStreamingPayload_updatesOnlyMessageText() {
-        CountingBindAdapter adapter = new CountingBindAdapter();
+    public void onBindViewHolder_withStreamingPayload_skipsFullBind() {
+        ChatAdapter adapter = new ChatAdapter();
         ChatMessage bubble = ChatMessage.createStreamingAssistantMessage();
         adapter.addMessage(bubble);
         adapter.updateStreamingMessage(bubble.getStreamingId(), "Live text");
-
-        Context context = ApplicationProvider.getApplicationContext();
-        RecyclerView recyclerView = new RecyclerView(context);
-        recyclerView.setLayoutManager(new LinearLayoutManager(context));
-        ChatAdapter.MessageViewHolder holder =
-                adapter.onCreateViewHolder(recyclerView, ChatMessage.TYPE_ASSISTANT);
-        TextView messageText = holder.itemView.findViewById(R.id.messageText);
-        messageText.setText("stale");
+        FakeViewHolder holder = new FakeViewHolder();
 
         adapter.onBindViewHolder(holder, 0,
                 Collections.<Object>singletonList(ChatAdapter.PAYLOAD_STREAMING_TEXT));
 
-        assertEquals("Live text", messageText.getText().toString());
-        assertEquals(0, adapter.fullBindCount);
-        assertEquals(1, adapter.streamingBindCount);
+        assertEquals(1, holder.streamingBinds);
+        assertEquals("Live text", holder.lastStreamingText);
     }
 
-    private static final class CountingBindAdapter extends ChatAdapter {
-        private int fullBindCount;
-        private int streamingBindCount;
+    private static final class FakeViewHolder extends ChatAdapter.MessageViewHolder {
+        private int streamingBinds;
+        private String lastStreamingText;
 
-        @Override
-        public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
-            fullBindCount++;
-            super.onBindViewHolder(holder, position);
+        FakeViewHolder() {
+            super(mock(View.class));
         }
 
         @Override
-        public void onBindViewHolder(@NonNull MessageViewHolder holder, int position,
-                                     @NonNull List<Object> payloads) {
-            if (payloads.contains(PAYLOAD_STREAMING_TEXT)) {
-                streamingBindCount++;
-            }
-            super.onBindViewHolder(holder, position, payloads);
+        void bind(ChatMessage message, ChatAdapter adapter) {
+            throw new AssertionError("Full bind must not run for a streaming payload");
+        }
+
+        @Override
+        void bindStreamingText(ChatMessage message) {
+            streamingBinds++;
+            lastStreamingText = message.getContent();
         }
     }
 }
