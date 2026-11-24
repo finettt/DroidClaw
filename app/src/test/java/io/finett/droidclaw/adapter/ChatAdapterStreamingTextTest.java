@@ -10,6 +10,8 @@ import android.view.View;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +19,7 @@ import java.util.List;
 
 import io.finett.droidclaw.model.ChatMessage;
 
+@RunWith(RobolectricTestRunner.class)
 public class ChatAdapterStreamingTextTest {
 
     @Test
