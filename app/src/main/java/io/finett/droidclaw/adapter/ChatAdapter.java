@@ -34,6 +34,9 @@ import io.finett.droidclaw.model.FileAttachment;
 import io.finett.droidclaw.util.MarkdownRenderer;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHolder> {
+    /** Signals a text-only rebind so streaming deltas do not trigger change animations. */
+    public static final String PAYLOAD_STREAMING_TEXT = "streaming_text";
+
     private static final int VIEW_TYPE_USER = 0;
     private static final int VIEW_TYPE_ASSISTANT = 1;
     private static final int VIEW_TYPE_TOOL_CALL = 2;
@@ -102,6 +105,16 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     }
 
     @Override
+    public void onBindViewHolder(@NonNull MessageViewHolder holder, int position,
+                                 @NonNull List<Object> payloads) {
+        if (payloads.contains(PAYLOAD_STREAMING_TEXT)) {
+            holder.bindStreamingText(messages.get(position));
+            return;
+        }
+        onBindViewHolder(holder, position);
+    }
+
+    @Override
     public int getItemCount() {
         return messages.size();
     }
@@ -148,16 +161,26 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     }
 
     /**
-     * Update the content of the message at a specific position — used for SSE
-     * streaming live-rendering of the temporary assistant bubble. No-op when the
-     * position is out of range (e.g. the list was replaced concurrently).
+     * Update the temporary streaming bubble identified by its streaming id. The
+     * index is resolved on every call so insertions before the bubble cannot
+     * redirect text into another message.
+     *
+     * @return false when the bubble is no longer present, so the caller can stop
+     *         streaming updates for that segment.
      */
-    public void updateStreamingMessage(int position, String content) {
-        if (position < 0 || position >= messages.size()) {
-            return;
+    public boolean updateStreamingMessage(String streamingId, String content) {
+        if (streamingId == null) {
+            return false;
         }
-        messages.get(position).setContent(content);
-        notifyItemChanged(position);
+        for (int i = 0; i < messages.size(); i++) {
+            ChatMessage message = messages.get(i);
+            if (streamingId.equals(message.getStreamingId())) {
+                message.setContent(content);
+                notifyItemChanged(i, PAYLOAD_STREAMING_TEXT);
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -193,6 +216,10 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
 
         abstract void bind(ChatMessage message, ChatAdapter adapter);
+
+        void bindStreamingText(ChatMessage message) {
+            // Non-text bubbles are never updated by a streaming flush.
+        }
     }
 
     static class UserMessageViewHolder extends MessageViewHolder {
@@ -306,6 +333,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             } else {
                 messageText.setText("");
             }
+        }
+
+        @Override
+        void bindStreamingText(ChatMessage message) {
+            String content = message.getContent();
+            messageText.setText(content != null ? content : "");
         }
     }
 

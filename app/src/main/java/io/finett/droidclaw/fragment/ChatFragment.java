@@ -33,6 +33,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -124,8 +125,11 @@ public class ChatFragment extends Fragment {
     /** True while a temporary streaming bubble is present in the adapter. */
     private boolean streamingBubbleActive = false;
 
-    /** Adapter position of the temporary streaming bubble. */
-    private int streamingBubblePosition = -1;
+    /** The temporary bubble itself, so its current index can be resolved at flush time. */
+    private ChatMessage streamingBubble;
+
+    /** Whether the user was at the bottom of the chat before a background flush. */
+    private boolean atBottom = true;
 
     /** Throttled flush runnable (posted to the RecyclerView). */
     private final Runnable streamFlushRunnable = this::flushStreamingBubble;
@@ -148,9 +152,9 @@ public class ChatFragment extends Fragment {
             if (!streamingBubbleActive) {
                 // New streamed assistant segment — add a temporary bubble that is
                 // replaced by the canonical history in onComplete().
-                ChatMessage streamingMessage = new ChatMessage("", ChatMessage.TYPE_ASSISTANT);
+                ChatMessage streamingMessage = ChatMessage.createStreamingAssistantMessage();
                 chatAdapter.addMessage(streamingMessage);
-                streamingBubblePosition = chatAdapter.getItemCount() - 1;
+                streamingBubble = streamingMessage;
                 streamingBuffer.setLength(0);
                 streamingBubbleActive = true;
                 scrollToBottom();
@@ -164,9 +168,11 @@ public class ChatFragment extends Fragment {
             if (!isAdded()) {
                 return;
             }
-            // The current streamed text segment is finished; the next text delta
-            // belongs to a new assistant message and starts a fresh bubble.
-            streamingBubbleActive = false;
+            // The current streamed text segment is finished; render its last deltas
+            // now, then cancel the throttled flush so it cannot touch this segment
+            // (or the next one) after the tool boundary.
+            flushStreamingBubble();
+            resetStreamingState();
             Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
 
             boolean isBackground = arguments.contains("\"background\":true")
@@ -571,6 +577,16 @@ public class ChatFragment extends Fragment {
         layoutManager.setStackFromEnd(true);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(chatAdapter);
+
+        DefaultItemAnimator itemAnimator = new DefaultItemAnimator();
+        itemAnimator.setSupportsChangeAnimations(false);
+        recyclerView.setItemAnimator(itemAnimator);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                atBottom = isLastItemVisible();
+            }
+        });
 
         loadChatHistory();
     }
@@ -1253,9 +1269,20 @@ public class ChatFragment extends Fragment {
     }
 
     private void scrollToBottom() {
+        atBottom = true;
         if (chatAdapter.getItemCount() > 0) {
             recyclerView.scrollToPosition(chatAdapter.getItemCount() - 1);
         }
+    }
+
+    private boolean isLastItemVisible() {
+        if (chatAdapter == null || chatAdapter.getItemCount() == 0) {
+            return true;
+        }
+        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        return layoutManager instanceof LinearLayoutManager
+                && ((LinearLayoutManager) layoutManager).findLastVisibleItemPosition()
+                        >= chatAdapter.getItemCount() - 1;
     }
 
     // ==================== SSE streaming live-render helpers ====================
@@ -1273,22 +1300,34 @@ public class ChatFragment extends Fragment {
         recyclerView.postDelayed(streamFlushRunnable, STREAM_FLUSH_INTERVAL_MS);
     }
 
+    /**
+     * Apply buffered text to the current bubble by identity, and auto-scroll only
+     * if the user was already at the bottom before the flush.
+     */
     private void flushStreamingBubble() {
         streamFlushScheduled = false;
-        if (!streamingBubbleActive || !isAdded()) {
+        if (!streamingBubbleActive || streamingBubble == null || !isAdded()) {
             return;
         }
-        chatAdapter.updateStreamingMessage(streamingBubblePosition, streamingBuffer.toString());
-        scrollToBottom();
+        boolean updated = chatAdapter.updateStreamingMessage(
+                streamingBubble.getStreamingId(), streamingBuffer.toString());
+        if (!updated) {
+            resetStreamingState();
+            return;
+        }
+        if (atBottom) {
+            scrollToBottom();
+        }
     }
 
     /**
-     * Clear all streaming state and cancel any pending flush. Called when the
-     * agent completes or errors; the final history render replaces the bubble.
+     * Clear all streaming state and cancel any pending flush. Called at tool
+     * boundaries and when the agent completes or errors; the final history
+     * render replaces the bubble.
      */
     private void resetStreamingState() {
         streamingBubbleActive = false;
-        streamingBubblePosition = -1;
+        streamingBubble = null;
         streamingBuffer.setLength(0);
         if (recyclerView != null) {
             recyclerView.removeCallbacks(streamFlushRunnable);
