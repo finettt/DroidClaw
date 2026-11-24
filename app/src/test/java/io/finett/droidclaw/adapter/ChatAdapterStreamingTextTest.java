@@ -3,11 +3,11 @@ package io.finett.droidclaw.adapter;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
 
 import android.view.View;
 
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -91,7 +91,7 @@ public class ChatAdapterStreamingTextTest {
         private String lastStreamingText;
 
         FakeViewHolder() {
-            super(mock(View.class));
+            super(new View(ApplicationProvider.getApplicationContext()));
         }
 
         @Override
