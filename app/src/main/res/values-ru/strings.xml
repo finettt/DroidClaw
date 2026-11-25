@@ -202,6 +202,7 @@
     <string name="file_browser_parent_directory">Родительская папка</string>
 
     <!-- File Viewer -->
+    <string name="file_viewer_title">Файл</string>
     <string name="file_viewer_open_title">Открыть %1$s</string>
     <string name="file_viewer_view_internal">Просмотр в приложении</string>
     <string name="file_viewer_open_external">Открыть во внешнем приложении</string>
