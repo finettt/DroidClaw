@@ -338,7 +338,11 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         @Override
         void bindStreamingText(ChatMessage message) {
             String content = message.getContent();
-            messageText.setText(content != null ? content : "");
+            if (content != null && !content.isEmpty()) {
+                MarkdownRenderer.render(context, messageText, content);
+            } else {
+                messageText.setText("");
+            }
         }
     }
 
