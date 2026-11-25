@@ -5,6 +5,7 @@ import static androidx.test.core.app.ApplicationProvider.getApplicationContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import android.view.View;
 import android.widget.ImageView;
@@ -446,26 +447,13 @@ public class FileBrowserFragmentTest {
                 attachNavController(fragment, R.id.fileBrowserFragment);
             });
 
-            waitForAdapterItems(scenario, 1);
+            // Root shows parent_dir as the only entry; enter it by label.
+            clickListItemByLabel(scenario, "parent_dir", "/parent_dir");
 
-            scenario.onFragment(fragment -> {
-                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
-                View firstItem = fileList.getLayoutManager().findViewByPosition(0);
-                if (firstItem != null) {
-                    firstItem.performClick();
-                }
-            });
-
-            // Wait for navigation to parent_dir and verify
             waitForPathChange(scenario, "/parent_dir");
 
-            scenario.onFragment(fragment -> {
-                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
-                View secondItem = fileList.getLayoutManager().findViewByPosition(1);
-                if (secondItem != null) {
-                    secondItem.performClick();
-                }
-            });
+            // In /parent_dir the list is ["..", "child_dir"]; enter child_dir by label.
+            clickListItemByLabel(scenario, "child_dir", "/parent_dir/child_dir");
 
             waitForPathChange(scenario, "/parent_dir/child_dir");
 
@@ -475,15 +463,8 @@ public class FileBrowserFragmentTest {
                         pathText.getText().toString().contains("child_dir"));
             });
 
-            scenario.onFragment(fragment -> {
-                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
-                View firstItem = fileList.getLayoutManager().findViewByPosition(0);
-                if (firstItem != null) {
-                    TextView fileName = firstItem.findViewById(R.id.fileName);
-                    assertEquals("First item should be parent directory", "..", fileName.getText().toString());
-                    firstItem.performClick();
-                }
-            });
+            // From child_dir the first entry is ".."; return to parent_dir by label.
+            clickListItemByLabel(scenario, "..", "/parent_dir");
 
             waitForPathChange(scenario, "/parent_dir");
 
@@ -551,6 +532,58 @@ public class FileBrowserFragmentTest {
                 Thread.currentThread().interrupt();
                 break;
             }
+        }
+    }
+
+    /**
+     * Waits until a list item whose label matches {@code label} is laid out, then clicks it.
+     *
+     * <p>Relies on explicit synchronization: the target view must be bound and attached before
+     * clicking. This replaces {@link RecyclerView.LayoutManager#findViewByPosition(int)}, which
+     * returns {@code null} for items that are not currently laid out and would silently skip the
+     * click. Navigation in {@link FileBrowserFragment#loadDirectory} sets the path text synchronously
+     * on a background-thread result, so the adapter may still hold stale content when a path change
+     * is observed; polling here waits for the destination to actually be present.
+     *
+     * @throws AssertionError if the labeled item is never laid out within {@link #WAIT_TIMEOUT_MS}.
+     */
+    private void clickListItemByLabel(FragmentScenario<FileBrowserFragment> scenario,
+                                      String label, String contextPath) {
+        final long startTime = System.currentTimeMillis();
+        final boolean[] clicked = {false};
+        while (!clicked[0] && System.currentTimeMillis() - startTime < WAIT_TIMEOUT_MS) {
+            // Find and click the labeled item inside onFragment so performClick runs on the main
+            // thread (FragmentScenario hops the callback onto it). Clicking outside the callback
+            // would run on the instrumentation thread and throw CalledFromWrongThreadException.
+            scenario.onFragment(fragment -> {
+                RecyclerView fileList = fragment.requireView().findViewById(R.id.fileList);
+                if (fileList.getAdapter() == null) {
+                    return;
+                }
+                int count = fileList.getAdapter().getItemCount();
+                for (int i = 0; i < count; i++) {
+                    View item = fileList.getLayoutManager().findViewByPosition(i);
+                    if (item != null) {
+                        TextView fileName = item.findViewById(R.id.fileName);
+                        if (fileName != null && label.equals(fileName.getText().toString())) {
+                            item.performClick();
+                            clicked[0] = true;
+                            break;
+                        }
+                    }
+                }
+            });
+            if (!clicked[0]) {
+                try {
+                    Thread.sleep(POLL_INTERVAL_MS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        if (!clicked[0]) {
+            fail("List item '" + label + "' for '" + contextPath + "' must be laid out before clicking");
         }
     }
 
