@@ -15,6 +15,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.FileProvider;
+import androidx.navigation.Navigation;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -200,11 +201,13 @@ public class FileBrowserFragment extends Fragment {
     }
 
     /**
-     * Opens file in the internal viewer dialog.
+     * Opens file in the full-screen internal viewer.
      */
     private void openFileInternal(String filePath) {
-        FileViewerDialog dialog = FileViewerDialog.newInstance(filePath);
-        dialog.show(getChildFragmentManager(), "FileViewerDialog");
+        Bundle args = new Bundle();
+        args.putString("file_path", filePath);
+        Navigation.findNavController(requireView())
+                .navigate(R.id.action_fileBrowserFragment_to_fileViewerFragment, args);
     }
 
     /**

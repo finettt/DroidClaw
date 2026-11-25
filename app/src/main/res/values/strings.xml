@@ -208,6 +208,7 @@
     <string name="file_browser_parent_directory">Parent directory</string>
 
     <!-- File Viewer -->
+    <string name="file_viewer_title">File</string>
     <string name="file_viewer_open_title">Open %1$s</string>
     <string name="file_viewer_view_internal">View in app</string>
     <string name="file_viewer_open_external">Open with external app</string>
