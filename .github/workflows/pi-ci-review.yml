@@ -2,7 +2,8 @@ name: Pi CI Review
 
 on:
   workflow_run:
-    workflow: "Android CI"
+    workflows:
+      - "Android CI"
     types: [completed]
 
 jobs:
