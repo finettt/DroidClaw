@@ -5,6 +5,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -45,10 +48,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import io.finett.droidclaw.MainActivity;
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.adapter.ChatAdapter;
+import io.finett.droidclaw.chat.SlashCommand;
 import io.finett.droidclaw.agent.AgentLoop;
 import io.finett.droidclaw.api.LlmApiService;
 import io.finett.droidclaw.filesystem.FileUploadManager;
@@ -81,6 +86,10 @@ public class ChatFragment extends Fragment {
     private View statusContainer;
     private HorizontalScrollView attachmentBarContainer;
     private LinearLayout attachmentBar;
+    private View commandHintsBar;
+    private LinearLayout commandHintsRow;
+    /** Last slash-command echo bubble; transient — never saved or sent to the LLM. */
+    private ChatMessage pendingCommandEcho;
     private ProgressBar progressBar;
     private TextView statusText;
     private TextView statusSubText;
@@ -490,6 +499,8 @@ public class ChatFragment extends Fragment {
         messageInput           = view.findViewById(R.id.messageInput);
         sendButton             = view.findViewById(R.id.sendButton);
         attachButton           = view.findViewById(R.id.attachButton);
+        commandHintsBar        = view.findViewById(R.id.commandHintsBar);
+        commandHintsRow        = view.findViewById(R.id.commandHintsRow);
         statusContainer        = view.findViewById(R.id.statusContainer);
         attachmentBarContainer = view.findViewById(R.id.attachmentBarContainer);
         attachmentBar          = view.findViewById(R.id.attachmentBar);
@@ -960,6 +971,65 @@ public class ChatFragment extends Fragment {
             sendMessage();
             return true;
         });
+        messageInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                updateCommandHints(s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+            }
+        });
+    }
+
+    /** Show matching slash command chips above the input while typing a "/" prefix. */
+    private void updateCommandHints(String text) {
+        if (commandHintsBar == null || commandHintsRow == null) {
+            return;
+        }
+        String trimmed = text.trim();
+        List<SlashCommand.Command> matches = null;
+        if (trimmed.startsWith("/") && !trimmed.contains("\n")
+                && trimmed.indexOf(' ', 1) < 0) {
+            matches = new ArrayList<>();
+            for (SlashCommand.Command command : SlashCommand.all()) {
+                if (command.displayName().toLowerCase(Locale.ROOT)
+                        .startsWith(trimmed.toLowerCase(Locale.ROOT))) {
+                    matches.add(command);
+                }
+            }
+        }
+        if (matches == null || matches.isEmpty()) {
+            commandHintsBar.setVisibility(View.GONE);
+            return;
+        }
+        commandHintsRow.removeAllViews();
+        for (SlashCommand.Command command : matches) {
+            TextView chip = new TextView(requireContext());
+            chip.setText(command.displayName() + "  \u2014  " + command.usage);
+            int pad = (int) (12 * requireContext().getResources().getDisplayMetrics().density);
+            chip.setPadding(pad, pad / 2, pad, pad / 2);
+            chip.setTextSize(13f);
+            chip.setTextColor(chip.getCurrentTextColor());
+            chip.setBackground(new RippleDrawable(
+                    ColorStateList.valueOf(Color.TRANSPARENT), null, null));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            int margin = (int) (2 * requireContext().getResources().getDisplayMetrics().density);
+            lp.setMargins(0, margin, 0, margin);
+            chip.setLayoutParams(lp);
+            chip.setOnClickListener(v -> {
+                messageInput.setText(command.displayName() + " ");
+                messageInput.setSelection(command.displayName().length() + 1);
+            });
+            commandHintsRow.addView(chip);
+        }
+        commandHintsBar.setVisibility(View.VISIBLE);
     }
 
     /**
@@ -1085,6 +1155,17 @@ public class ChatFragment extends Fragment {
             return;
         }
 
+        dropPendingCommandEcho();
+        if (messageText.startsWith("/")) {
+            String reply = SlashCommand.tryHandle(messageText, settingsManager);
+            if (reply != null) {
+                showSlashCommandResult(reply);
+                messageInput.setText("");
+                return;
+            }
+            // Unknown "/..." input is a regular message.
+        }
+
         if (!settingsManager.isConfigured()) {
             Toast.makeText(requireContext(), "Please configure API settings first",
                     Toast.LENGTH_LONG).show();
@@ -1109,11 +1190,35 @@ public class ChatFragment extends Fragment {
                 + chatAdapter.getItemCount());
 
         messageInput.setText("");
+        dropPendingCommandEcho();
         setLoading(true);
 
         List<ChatMessage> conversationHistory = new ArrayList<>(chatAdapter.getMessages());
 
         dispatchAgentRequest(conversationHistory);
+    }
+
+    /**
+     * Show a slash command result as a temporary assistant bubble: visible in the
+     * UI but removed before persistence and before any agent request, so command
+     * output never enters the saved session or the LLM conversation.
+     */
+    private void showSlashCommandResult(String text) {
+        pendingCommandEcho = new ChatMessage(text, ChatMessage.TYPE_ASSISTANT);
+        chatAdapter.addMessage(pendingCommandEcho);
+        scrollToBottom();
+    }
+
+    /** Drop a pending command echo if one is still showing (e.g. user sent nothing after). */
+    private void dropPendingCommandEcho() {
+        if (pendingCommandEcho == null) {
+            return;
+        }
+        List<ChatMessage> messages = chatAdapter.getMessages();
+        if (!messages.isEmpty() && messages.get(messages.size() - 1) == pendingCommandEcho) {
+            chatAdapter.removeLastMessage();
+        }
+        pendingCommandEcho = null;
     }
 
     /**
