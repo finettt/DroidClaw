@@ -43,6 +43,14 @@ public class SettingsManager {
     private String userName;
     private Map<String, String> envVars;
 
+    /**
+     * Set when a state change happens during load (currently only the legacy
+     * maxIterations→effort migration). The single deferred save is emitted once
+     * {@link #loadFromJson} has fully populated the in-memory state, never
+     * mid-load, so a migration never persists a half-loaded file.
+     */
+    private boolean needsPersist;
+
     public SettingsManager(Context context) {
         this.context = context;
         this.prefs = getOrCreateEncryptedPrefs(context);
@@ -112,9 +120,16 @@ public class SettingsManager {
     // ==================== JSON Serialization ====================
 
     private void loadFromJson() {
+        // Initialize every collection up front so that any branch below — the
+        // deferred migration save, the JSON-parse catch, and the empty/partial
+        // inputs — always observes non-null state. This is what makes the
+        // migration save below safe: envVars (and the other collections) can
+        // never be null when saveToJson() runs.
+        needsPersist = false;
+        initializeDefaults();
+
         String json = prefs.getString(KEY_SETTINGS_JSON, null);
         if (json == null) {
-            initializeDefaults();
             return;
         }
 
@@ -146,7 +161,10 @@ public class SettingsManager {
                 if (effortAbsent && legacyMaxPresent) {
                     Log.d(TAG, "Migrated legacy maxIterations to effort level "
                             + agentConfig.getEffort());
-                    saveToJson();
+                    // Defer persistence until loadFromJson() has fully populated
+                    // the in-memory state, so the migration is written out once,
+                    // in the new format, with the rest of the state intact.
+                    needsPersist = true;
                 }
             } else {
                 agentConfig = AgentConfig.getDefaults();
@@ -183,6 +201,13 @@ public class SettingsManager {
         } catch (JSONException e) {
             Log.e(TAG, "Failed to parse settings JSON", e);
             initializeDefaults();
+        }
+
+        // Persist once, after load is complete. The flag is cleared before the
+        // save so a re-entrant load can never re-trigger it.
+        if (needsPersist) {
+            needsPersist = false;
+            saveToJson();
         }
     }
 
