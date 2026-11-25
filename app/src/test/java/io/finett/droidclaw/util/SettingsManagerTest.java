@@ -599,4 +599,171 @@ public class SettingsManagerTest {
         assertNotNull(manager.getAgentConfig().getEffort());
         assertEquals("low", manager.getAgentConfig().getEffort());
     }
+
+    // ==================== Mid-load migration save (upgrade-path regression) ====
+    //
+    // These cover the fix for the launch crash on upgrade: a legacy settings
+    // file (maxIterations, no effort, no envVars) used to crash with an NPE at
+    // saveToJson() and, even if it had not, would have persisted a half-loaded
+    // file. Persistence now happens once, after load completes, with full state.
+
+    /** Name of the throwaway SharedPreferences used by the helpers below. */
+    private static final String LOAD_TEST_PREFS = "settings_load_test";
+
+    /**
+     * Seeds a plain SharedPreferences with {@code json} under the settings key,
+     * injects it into a fresh manager, and runs loadFromJson() against it.
+     * Uses a temp prefs file (never the real encrypted store) so tests never
+     * write real device prefs.
+     */
+    private SettingsManager loadWithJson(String json) throws Exception {
+        SettingsManager manager = new SettingsManager(context);
+        SharedPreferences prefs = context.getSharedPreferences(
+                LOAD_TEST_PREFS, Context.MODE_PRIVATE);
+        prefs.edit().clear().putString("settings_json", json).apply();
+        Field prefsField = SettingsManager.class.getDeclaredField("prefs");
+        prefsField.setAccessible(true);
+        prefsField.set(manager, prefs);
+        Method load = SettingsManager.class.getDeclaredMethod("loadFromJson");
+        load.setAccessible(true);
+        load.invoke(manager);
+        return manager;
+    }
+
+    /** Reads the raw persisted settings string back from the temp prefs file. */
+    private String readPersisted() throws Exception {
+        SharedPreferences prefs = context.getSharedPreferences(
+                LOAD_TEST_PREFS, Context.MODE_PRIVATE);
+        return prefs.getString("settings_json", null);
+    }
+
+    @Test
+    public void upgradePath_legacyMaxIterations_noCrash_persistsNewFormatWithFullState() throws Exception {
+        // Legacy file: agents.defaults carries maxIterations, no effort, no envVars.
+        String input = new JSONObject()
+                .put("agents", new JSONObject().put("defaults",
+                        new JSONObject().put("maxIterations", 35)))
+                .toString();
+
+        SettingsManager manager = loadWithJson(input);
+
+        // Effort is derived from the legacy value.
+        assertEquals("high", manager.getAgentConfig().getEffort());
+
+        // The persisted file is valid JSON in the NEW format and holds the FULL
+        // state — onboarding present proves it was saved after load, not mid-load.
+        String persisted = readPersisted();
+        assertNotNull(persisted);
+        JSONObject root = new JSONObject(persisted);
+        JSONObject defaults = root.getJSONObject("agents").getJSONObject("defaults");
+        assertFalse("legacy maxIterations must be gone", defaults.has("maxIterations"));
+        assertTrue("new effort key must be present", defaults.has("effort"));
+        assertTrue("full state: providers section present", root.has("providers"));
+        assertTrue("full state: onboarding section present", root.has("onboarding"));
+        assertTrue("full state: lessonConsolidation section present",
+                root.has("lessonConsolidation"));
+        assertTrue("full state: envVars section present", root.has("envVars"));
+    }
+
+    @Test
+    public void noMaxIterations_noMigration_noSaveTriggered() throws Exception {
+        // agents.defaults but no maxIterations: migration must not fire, so the
+        // persisted file is left byte-identical to the input (no re-serialization).
+        String input = new JSONObject()
+                .put("agents", new JSONObject().put("defaults",
+                        new JSONObject().put("model", "some-model")))
+                .toString();
+
+        SettingsManager manager = loadWithJson(input);
+
+        assertEquals("med", manager.getAgentConfig().getEffort());
+        assertEquals("no save should be triggered", input, readPersisted());
+    }
+
+    @Test
+    public void missingEnvVarsKey_emptyMapAfterLoad_saveWorks() throws Exception {
+        // Valid JSON, no envVars key: envVars must be a non-null empty map and
+        // saveToJson() (which iterates envVars.entrySet()) must not NPE.
+        String input = new JSONObject()
+                .put("agents", new JSONObject().put("defaults",
+                        new JSONObject().put("effort", "low")))
+                .toString();
+
+        SettingsManager manager = loadWithJson(input);
+
+        assertNotNull(manager.getAllEnvVars());
+        assertTrue(manager.getAllEnvVars().isEmpty());
+
+        // Exercise the save path that previously NPE'd on a null envVars map.
+        manager.setEnvVar("FOO", "bar");
+        assertEquals("bar", manager.getEnvVar("FOO"));
+        JSONObject root = new JSONObject(readPersisted());
+        assertEquals("bar",
+                root.getJSONObject("envVars").getString("FOO"));
+    }
+
+    @Test
+    public void malformedJson_initializeDefaults_path_saveWorks() throws Exception {
+        // Unparseable JSON: falls through to initializeDefaults(), and every
+        // collection must remain non-null so a subsequent save works.
+        String input = "{ this is not valid json ";
+
+        SettingsManager manager = loadWithJson(input);
+
+        assertNotNull(manager.getAgentConfig());
+        assertTrue(manager.getProviders().isEmpty());
+        assertNotNull(manager.getAllEnvVars());
+        assertTrue(manager.getAllEnvVars().isEmpty());
+
+        // Save path must work after the initializeDefaults branch.
+        manager.setUserName("Alice");
+        assertEquals("Alice", manager.getUserName());
+    }
+
+    @Test
+    public void upgradePath_migrationPersistsExactlyOnce() throws Exception {
+        // The migration must be persisted exactly once — not mid-load, not
+        // repeatedly — even though loadFromJson() runs against the empty store
+        // in the constructor and again against the legacy input here.
+        CountingSettingsManager manager = new CountingSettingsManager(context);
+        manager.resetSaves(); // ignore any save from the constructor's load
+
+        SharedPreferences prefs = context.getSharedPreferences(
+                LOAD_TEST_PREFS, Context.MODE_PRIVATE);
+        prefs.edit().clear().putString("settings_json",
+                new JSONObject().put("agents", new JSONObject().put("defaults",
+                        new JSONObject().put("maxIterations", 35))).toString()).apply();
+        Field prefsField = SettingsManager.class.getDeclaredField("prefs");
+        prefsField.setAccessible(true);
+        prefsField.set(manager, prefs);
+        Method load = SettingsManager.class.getDeclaredMethod("loadFromJson");
+        load.setAccessible(true);
+        load.invoke(manager);
+
+        assertEquals(1, manager.saveCount());
+        assertEquals("high", manager.getAgentConfig().getEffort());
+    }
+
+    /** SettingsManager subclass that counts saveToJson() invocations. */
+    private static final class CountingSettingsManager extends SettingsManager {
+        private final java.util.concurrent.atomic.AtomicInteger saves =
+                new java.util.concurrent.atomic.AtomicInteger();
+
+        CountingSettingsManager(Context ctx) {
+            super(ctx);
+        }
+
+        @Override
+        public void saveToJson() {
+            saves.incrementAndGet();
+        }
+
+        void resetSaves() {
+            saves.set(0);
+        }
+
+        int saveCount() {
+            return saves.get();
+        }
+    }
 }
