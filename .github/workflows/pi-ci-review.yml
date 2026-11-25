@@ -1,0 +1,67 @@
+name: Pi CI Review
+
+on:
+  workflow_run:
+    workflows:
+      - "Android CI"
+    types: [completed]
+
+jobs:
+  ci-review:
+    # Only for PRs whose CI run ended in failure
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.pull_request != null
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read # Required for the agent to read workflow run logs
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.pull_request.head.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Register custom model
+        run: |
+          mkdir -p ~/.pi/agent
+          cat > ~/.pi/agent/models.json << 'EOF'
+          {
+            "providers": {
+              "llama-cpp": {
+                "baseUrl": "${{ secrets.OPENAI_URL }}",
+                "api": "openai-completions",
+                "apiKey": "${{ secrets.LLAMA_CPP_API_KEY }}",
+                "models": [
+                  { "id": "ornith-1p5" }
+                ]
+              }
+            }
+          }
+          EOF
+
+      - name: Run Pi agent
+        id: pi
+        uses: shaftoe/pi-coding-agent-action@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          provider: llama-cpp
+          model: ornith-1p5
+          token: ${{ secrets.LLAMA_CPP_API_KEY }}
+          base_url: ${{ secrets.OPENAI_URL }}
+          # Targets the PR: the action fetches the PR context and posts the
+          # agent's final answer as a comment on the pull request.
+          pr_number: ${{ github.event.workflow_run.pull_request.number }}
+          prompt: |
+            The "Android CI" workflow failed on this pull request.
+            Diagnose the CI failure:
+            1. Use get_ci_status to check the check runs and workflow runs for this PR and identify the failed jobs.
+            2. Use get_workflow_run_logs with the failed run's run_id to fetch the job logs. If logs are long, use summarize_text to condense them.
+            3. Identify the root cause of the failure and suggest a concrete fix.
+            Your final message will be posted as a comment on the pull request, so write it as a concise CI failure report.
