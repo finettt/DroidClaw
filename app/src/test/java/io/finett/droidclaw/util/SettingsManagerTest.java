@@ -719,4 +719,51 @@ public class SettingsManagerTest {
         manager.setUserName("Alice");
         assertEquals("Alice", manager.getUserName());
     }
+
+    @Test
+    public void upgradePath_migrationPersistsExactlyOnce() throws Exception {
+        // The migration must be persisted exactly once — not mid-load, not
+        // repeatedly — even though loadFromJson() runs against the empty store
+        // in the constructor and again against the legacy input here.
+        CountingSettingsManager manager = new CountingSettingsManager(context);
+        manager.resetSaves(); // ignore any save from the constructor's load
+
+        SharedPreferences prefs = context.getSharedPreferences(
+                LOAD_TEST_PREFS, Context.MODE_PRIVATE);
+        prefs.edit().clear().putString("settings_json",
+                new JSONObject().put("agents", new JSONObject().put("defaults",
+                        new JSONObject().put("maxIterations", 35))).toString()).apply();
+        Field prefsField = SettingsManager.class.getDeclaredField("prefs");
+        prefsField.setAccessible(true);
+        prefsField.set(manager, prefs);
+        Method load = SettingsManager.class.getDeclaredMethod("loadFromJson");
+        load.setAccessible(true);
+        load.invoke(manager);
+
+        assertEquals(1, manager.saveCount());
+        assertEquals("high", manager.getAgentConfig().getEffort());
+    }
+
+    /** SettingsManager subclass that counts saveToJson() invocations. */
+    private static final class CountingSettingsManager extends SettingsManager {
+        private final java.util.concurrent.atomic.AtomicInteger saves =
+                new java.util.concurrent.atomic.AtomicInteger();
+
+        CountingSettingsManager(Context ctx) {
+            super(ctx);
+        }
+
+        @Override
+        public void saveToJson() {
+            saves.incrementAndGet();
+        }
+
+        void resetSaves() {
+            saves.set(0);
+        }
+
+        int saveCount() {
+            return saves.get();
+        }
+    }
 }
