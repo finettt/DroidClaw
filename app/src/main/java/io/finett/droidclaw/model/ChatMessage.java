@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import io.finett.droidclaw.api.LlmApiService;
 
@@ -20,6 +21,9 @@ public class ChatMessage {
     private String content;
     private int type;
     private long timestamp;
+
+    // Transient identity of a streaming placeholder; it is never persisted or sent to the model.
+    private String streamingId;
 
     private List<LlmApiService.ToolCall> toolCalls;
     private String toolCallId;
@@ -38,6 +42,12 @@ public class ChatMessage {
         this.content = content;
         this.type = type;
         this.timestamp = System.currentTimeMillis();
+    }
+
+    public static ChatMessage createStreamingAssistantMessage() {
+        ChatMessage message = new ChatMessage("", TYPE_ASSISTANT);
+        message.streamingId = UUID.randomUUID().toString();
+        return message;
     }
 
     public static ChatMessage createToolCallMessage(List<LlmApiService.ToolCall> toolCalls) {
@@ -67,6 +77,10 @@ public class ChatMessage {
 
     public void setType(int type) {
         this.type = type;
+    }
+
+    public String getStreamingId() {
+        return streamingId;
     }
 
     public long getTimestamp() {

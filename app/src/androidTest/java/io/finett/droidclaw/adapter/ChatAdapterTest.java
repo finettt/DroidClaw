@@ -276,6 +276,25 @@ public class ChatAdapterTest {
     }
 
     @Test
+    public void onBindViewHolder_withStreamingPayload_updatesOnlyAssistantText() {
+        ChatMessage bubble = ChatMessage.createStreamingAssistantMessage();
+        adapter.addMessage(bubble);
+        adapter.updateStreamingMessage(bubble.getStreamingId(), "Live text");
+
+        Context context = TestThemeHelper.getThemedContext();
+        RecyclerView recyclerView = new RecyclerView(context);
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
+                recyclerView, ChatMessage.TYPE_ASSISTANT);
+
+        adapter.onBindViewHolder(viewHolder, 0,
+                java.util.Collections.<Object>singletonList(ChatAdapter.PAYLOAD_STREAMING_TEXT));
+
+        TextView messageText = viewHolder.itemView.findViewById(R.id.messageText);
+        assertEquals("Live text", messageText.getText().toString());
+    }
+
+    @Test
     public void addMessage_withLongText_handlesCorrectly() {
         String longMessage = "This is a very long message that contains many words and " +
                 "should test whether the adapter can handle long text content properly " +
