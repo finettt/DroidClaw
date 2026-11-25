@@ -14,5 +14,6 @@ Searching references?
 - [Agent Identity (SOUL.md)](reference/soul.md) — the agent's values, capabilities, and working style
 - [Agent Tools: App & Screen Control](features/agent-tools.md) — how the agent operates your phone and runs shell commands
 - [Calendar Tools](features/calendar.md) — let the agent read and manage your device calendar
+- [Slash Commands](features/slash-commands.md) — run `/effort` and other local commands from the chat input ([по-русски](features/slash-commands.ru.md))
 - [Workflows](features/workflows.md) — multi-agent workflow files: format, security model, bundled templates ([по-русски](features/workflows.ru.md))
 - [Linux distro bootstrap](features/distro.md) — install and manage the pinned Ubuntu base image ([по-русски](features/distro.ru.md))
