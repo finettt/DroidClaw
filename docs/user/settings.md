@@ -35,7 +35,6 @@ Adjust how the agent interacts and processes tasks:
 
 - **Turn budget**: the loop stops after this many iterations and reports a "Maximum iterations" message. **Max** never imposes a cap and runs without a limit.
 - **API parameter**: for reasoning-capable models the effort is sent to the provider (OpenAI `reasoning_effort`, Anthropic `output_config.effort`). It is only sent when the selected model actually flags reasoning; the turn budget always applies regardless of the model.
-- **Quick switch**: the effort chip row above the message box switches effort for the current chat. The change applies to the next run of the session and never writes to global settings — it is a per-session override. Change it there without opening Settings.
 
 Pick a higher level for tasks that need more planning or deeper reasoning, and a lower one to save tokens on quick questions.
 - **Context Window**: Configure how much conversation history is sent to the model.
