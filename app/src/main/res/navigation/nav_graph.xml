@@ -229,7 +229,24 @@
     <fragment
         android:id="@+id/fileBrowserFragment"
         android:name="io.finett.droidclaw.fragment.FileBrowserFragment"
-        android:label="@string/file_browser_title" />
+        android:label="@string/file_browser_title">
+        <action
+            android:id="@+id/action_fileBrowserFragment_to_fileViewerFragment"
+            app:destination="@id/fileViewerFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/fileViewerFragment"
+        android:name="io.finett.droidclaw.fragment.FileViewerFragment"
+        android:label="@string/file_viewer_title">
+        <argument
+            android:name="file_path"
+            app:argType="string" />
+    </fragment>
 
     <fragment
         android:id="@+id/memoryBrowserFragment"
