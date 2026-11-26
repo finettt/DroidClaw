@@ -4,10 +4,14 @@ import static androidx.test.core.app.ApplicationProvider.getApplicationContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AutoCompleteTextView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.fragment.app.testing.FragmentScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -422,6 +426,37 @@ public class AgentSettingsFragmentInstrumentedTest {
                 assertNotNull("Guidelines learning switch should exist", guidelinesSwitch);
                 assertTrue("Guidelines learning should be enabled by default",
                         guidelinesSwitch.isChecked());
+            });
+        }
+    }
+
+    @Test
+    public void accessibilityStatus_textSitsAboveButtonInVerticalContainer() {
+        try (FragmentScenario<AgentSettingsFragment> scenario =
+                     FragmentScenario.launchInContainer(AgentSettingsFragment.class, null, R.style.Theme_DroidClaw)) {
+            scenario.onFragment(fragment -> {
+                View view = fragment.requireView();
+
+                TextView status = view.findViewById(R.id.text_accessibility_status);
+                MaterialButton button = view.findViewById(R.id.button_open_accessibility_settings);
+                assertNotNull("Accessibility status text should exist", status);
+                assertNotNull("Open accessibility settings button should exist", button);
+
+                // Both views live in the same vertical container
+                ViewGroup parent = (ViewGroup) status.getParent();
+                assertSame("Status and button must share a parent container",
+                        parent, button.getParent());
+                assertTrue("Container must be a LinearLayout",
+                        parent instanceof LinearLayout);
+                assertEquals("Container must lay out vertically",
+                        LinearLayout.VERTICAL, ((LinearLayout) parent).getOrientation());
+
+                // Status is full-width and sits above the button
+                assertEquals("Status text must span the full row width",
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        status.getLayoutParams().width);
+                assertTrue("Status text must come before the button in the container",
+                        parent.indexOfChild(status) < parent.indexOfChild(button));
             });
         }
     }
