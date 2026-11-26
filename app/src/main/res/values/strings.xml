@@ -126,7 +126,6 @@
     <string name="web_tools_enabled_description">Let the agent fetch public web pages and return their readable content (fetch_page). Enabled by default; fetches run from your device\'s own network.</string>
     <string name="searxng_url">SearXNG instance URL</string>
     <string name="searxng_url_description">URL of your own SearXNG instance. web_search becomes available when web tools are enabled and this is set.</string>
-    <string name="searxng_url_hint">https://your-instance.example.com</string>
     <string name="guidelines_learning">Self-Improvement (GUIDELINES.md)</string>
     <string name="guidelines_learning_description">After each response, analyze the chat and update .agent/GUIDELINES.md with durable workflow lessons. The file is injected into every new conversation.</string>
     <string name="lesson_extraction">Lesson Extraction</string>
