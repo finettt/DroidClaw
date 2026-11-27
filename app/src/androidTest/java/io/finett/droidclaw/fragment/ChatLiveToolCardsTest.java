@@ -135,12 +135,14 @@ public class ChatLiveToolCardsTest {
                 ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
                 AgentExecutionService.UICallback callback = uiCallback(fragment);
 
-                // A live run in flight: typing indicator + running tool card.
+                // A live run in flight: the typing placeholder was replaced by the
+                // running tool card when the first call arrived.
                 showTypingIndicator(fragment);
                 JsonObject toolArgs = new JsonObject();
                 toolArgs.addProperty("path", "test.txt");
                 callback.onToolCall("read_file", toolArgs.toString());
-                assertEquals(2, adapter.getItemCount());
+                assertEquals(1, adapter.getItemCount());
+                assertFalse(containsPlaceholder(adapter));
 
                 // The service persists the partial history and delivers it on cancel;
                 // reconciliation must replace every ephemeral item with exactly that list.
@@ -178,13 +180,19 @@ public class ChatLiveToolCardsTest {
                         .findViewById(R.id.recyclerView);
                 ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
 
-                // Simulate a live run: typing indicator + a running tool card.
+                // Simulate a live run: the typing placeholder is replaced by the
+                // running tool card when the first call arrives.
                 showTypingIndicator(fragment);
                 AgentExecutionService.UICallback callback = uiCallback(fragment);
                 JsonObject toolArgs = new JsonObject();
                 toolArgs.addProperty("path", "test.txt");
                 callback.onToolCall("read_file", toolArgs.toString());
-                assertEquals(2, adapter.getItemCount());
+                assertEquals(1, adapter.getItemCount());
+                assertFalse(containsPlaceholder(adapter));
+                ChatMessage card = adapter.getMessages().get(0);
+
+                // The stop button only acts while a run is in flight.
+                setField(fragment, "loading", true);
 
                 // No service/session bound in this test: the stop path resets the UI
                 // directly and must drop every ephemeral item.
@@ -238,6 +246,16 @@ public class ChatLiveToolCardsTest {
             }
         }
         return false;
+    }
+
+    private static void setField(io.finett.droidclaw.fragment.ChatFragment fragment, String name, Object value) {
+        try {
+            java.lang.reflect.Field f = ChatFragment.class.getDeclaredField(name);
+            f.setAccessible(true);
+            f.set(fragment, value);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
     }
 
     private static void showTypingIndicator(io.finett.droidclaw.fragment.ChatFragment fragment) {

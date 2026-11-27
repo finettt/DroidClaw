@@ -256,8 +256,9 @@ public class ChatFragment extends Fragment {
                 Log.w(TAG, "onError: Fragment not attached, ignoring error: " + error);
                 return;
             }
-            // Flip any still-running tool cards to a failed state before dropping them:
-            // the canonical history has no entry for calls that never produced a result.
+            // Keep the live tool cards: they are the only record of what the run
+            // attempted before it died, and the canonical history has no entry for
+            // calls that never produced a result. Flip running ones to a failed state.
             for (ChatMessage card : liveToolCallCards) {
                 if (card.isRunning()) {
                     card.setRunning(false);
@@ -274,6 +275,7 @@ public class ChatFragment extends Fragment {
             if (hadPartialBubble) {
                 chatAdapter.removeLastMessage();
             }
+            removeTypingIndicator();
             dismissApprovalDialog();
             setLoading(false);
             Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
@@ -1470,7 +1472,11 @@ public class ChatFragment extends Fragment {
      */
     private void clearLiveEphemera() {
         removeTypingIndicator();
-        if (chatAdapter != null && !liveToolCallCards.isEmpty()) {
+        if (chatAdapter != null) {
+            // A result card is only ever produced by a live onToolResult callback, so
+            // any TYPE_TOOL_RESULT in the adapter right now is ephemeral — even when
+            // the tool call that produced it came in without a live card (e.g. a test
+            // that drives the callbacks directly).
             List<ChatMessage> messages = chatAdapter.getMessages();
             // Remove from the end so earlier indices stay valid.
             for (int i = messages.size() - 1; i >= 0; i--) {

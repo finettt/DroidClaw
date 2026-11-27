@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.finett.droidclaw.R;
+import io.finett.droidclaw.adapter.ChatAdapter;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.service.AgentExecutionService;
 
@@ -50,7 +51,7 @@ public class ChatStreamingRenderTest {
 
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
-                RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recyclerView);
+                RecyclerView recyclerView = (RecyclerView) fragment.requireView().findViewById(R.id.recyclerView);
                 ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
                 AgentExecutionService.UICallback callback = uiCallback(fragment);
 
