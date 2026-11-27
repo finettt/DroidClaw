@@ -10,8 +10,10 @@ import android.text.style.BackgroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.animation.ObjectAnimator;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,8 +43,19 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     private static final int VIEW_TYPE_ASSISTANT = 1;
     private static final int VIEW_TYPE_TOOL_CALL = 2;
     private static final int VIEW_TYPE_TOOL_RESULT = 3;
+    private static final int VIEW_TYPE_SYSTEM = 4;
     private static final int VIEW_TYPE_CONTEXT_CARD = 5;
     private static final int VIEW_TYPE_ATTACHMENT = 6;
+
+    /**
+     * Transient view type for the typing indicator. It deliberately does not match any
+     * {@link ChatMessage} type so a placeholder can never be mistaken for a real message.
+     */
+    public static final int VIEW_TYPE_TYPING = 100;
+
+    /** Transient typing-indicator item; never persisted or sent to the model. */
+    public static final ChatMessage TYPING_PLACEHOLDER =
+            new ChatMessage(null, -VIEW_TYPE_TYPING);
 
     private final List<ChatMessage> messages = new ArrayList<>();
 
@@ -53,7 +66,11 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
     @Override
     public int getItemViewType(int position) {
-        return messages.get(position).getType();
+        ChatMessage message = messages.get(position);
+        if (message == TYPING_PLACEHOLDER) {
+            return VIEW_TYPE_TYPING;
+        }
+        return message.getType();
     }
 
     @NonNull
@@ -81,6 +98,16 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                         .inflate(R.layout.item_message_tool_result, parent, false);
                 return new ToolResultMessageViewHolder(view);
 
+            case VIEW_TYPE_SYSTEM:
+                view = LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.item_message_system, parent, false);
+                return new SystemMessageViewHolder(view);
+
+            case VIEW_TYPE_TYPING:
+                view = LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.item_message_typing, parent, false);
+                return new TypingMessageViewHolder(view);
+
             case VIEW_TYPE_CONTEXT_CARD:
                 view = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.item_message_context_card, parent, false);
@@ -101,6 +128,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     @Override
     public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
         ChatMessage message = messages.get(position);
+        if (holder instanceof TypingMessageViewHolder) {
+            ((TypingMessageViewHolder) holder).unbind();
+        }
         holder.bind(message, this);
     }
 
@@ -192,6 +222,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             int lastIndex = messages.size() - 1;
             messages.remove(lastIndex);
             notifyItemRemoved(lastIndex);
+        }
+    }
+
+    /** Remove the message at an exact index (live-ephemera cleanup before reconciliation). */
+    public void removeAt(int index) {
+        if (index >= 0 && index < messages.size()) {
+            messages.remove(index);
+            notifyItemRemoved(index);
         }
     }
 
@@ -348,12 +386,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
     static class ToolCallMessageViewHolder extends MessageViewHolder {
         private final ImageView toolCallIcon;
+        private final ProgressBar toolCallSpinner;
         private final TextView toolCallText;
         private final TextView toolCallArgs;
 
         ToolCallMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             toolCallIcon = itemView.findViewById(R.id.toolCallIcon);
+            toolCallSpinner = itemView.findViewById(R.id.toolCallSpinner);
             toolCallText = itemView.findViewById(R.id.toolCallText);
             toolCallArgs = itemView.findViewById(R.id.toolCallArgs);
         }
@@ -364,10 +404,21 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 LlmApiService.ToolCall firstToolCall = message.getToolCalls().get(0);
                 String toolName = firstToolCall.getName();
 
-                int iconRes = getToolIcon(toolName);
-                toolCallIcon.setImageResource(iconRes);
+                boolean failed = "interrupted".equals(message.getContent());
+                if (message.isRunning()) {
+                    toolCallIcon.setVisibility(View.GONE);
+                    toolCallSpinner.setVisibility(View.VISIBLE);
+                    toolCallSpinner.setIndeterminate(true);
+                    startSpinner(toolCallSpinner);
+                } else {
+                    stopSpinner(toolCallSpinner);
+                    toolCallSpinner.setVisibility(View.GONE);
+                    toolCallIcon.setVisibility(View.VISIBLE);
+                    toolCallIcon.setImageResource(failed ? R.drawable.ic_status_error : getToolIcon(toolName));
+                }
 
-                toolCallText.setText(formatToolName(toolName));
+                toolCallText.setText(formatToolName(toolName)
+                        + (message.isRunning() ? "..." : failed ? " — interrupted" : ""));
 
                 StringBuilder argsBuilder = new StringBuilder();
                 for (LlmApiService.ToolCall toolCall : message.getToolCalls()) {
@@ -381,6 +432,21 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 toolCallArgs.setText(adapter.searchQuery != null
                         ? adapter.highlight(argsText) : argsText);
             }
+        }
+
+        /** Indeterminate spin for the live RUNNING state (ProgressBar has no start/stop). */
+        private static void startSpinner(ProgressBar spinner) {
+            ObjectAnimator spin = ObjectAnimator.ofFloat(spinner, View.ROTATION, 0f, 360f);
+            spin.setDuration(800);
+            spin.setRepeatCount(ObjectAnimator.INFINITE);
+            spin.start();
+        }
+
+        private static void stopSpinner(ProgressBar spinner) {
+            if (spinner.getAnimation() != null) {
+                spinner.getAnimation().cancel();
+            }
+            spinner.setRotation(0f);
         }
 
         private int getToolIcon(String toolName) {
@@ -630,6 +696,80 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                         itemView.getContext().getString(R.string.file_viewer_open_error, displayName),
                         Toast.LENGTH_LONG).show();
             }
+        }
+    }
+
+    /**
+     * ViewHolder for inline system notices (context-limit warnings, summary saved).
+     * A single dim, non-interactive line.
+     */
+    static class SystemMessageViewHolder extends MessageViewHolder {
+        private final TextView systemText;
+
+        SystemMessageViewHolder(@NonNull View itemView) {
+            super(itemView);
+            systemText = (TextView) itemView;
+        }
+
+        @Override
+        void bind(ChatMessage message, ChatAdapter adapter) {
+            String content = message.getContent();
+            if (adapter.searchQuery != null && content != null) {
+                systemText.setText(adapter.highlight(content));
+            } else {
+                systemText.setText(content != null ? content : "");
+            }
+        }
+    }
+
+    /**
+     * Transient typing indicator: three pulsing dots in an assistant-styled row.
+     * Shown while the first LLM response segment is in flight; replaced by the
+     * first text delta or tool card.
+     */
+    static class TypingMessageViewHolder extends MessageViewHolder {
+        private final View dot1;
+        private final View dot2;
+        private final View dot3;
+        private ObjectAnimator pulse1;
+        private ObjectAnimator pulse2;
+        private ObjectAnimator pulse3;
+
+        TypingMessageViewHolder(@NonNull View itemView) {
+            super(itemView);
+            dot1 = itemView.findViewById(R.id.typingDot1);
+            dot2 = itemView.findViewById(R.id.typingDot2);
+            dot3 = itemView.findViewById(R.id.typingDot3);
+        }
+
+        @Override
+        void bind(ChatMessage message, ChatAdapter adapter) {
+            unbind();
+            pulse1 = startPulse(dot1, 0);
+            pulse2 = startPulse(dot2, 160);
+            pulse3 = startPulse(dot3, 320);
+        }
+
+        /** Stop the pulse animations before the view is recycled or rebound. */
+        void unbind() {
+            for (ObjectAnimator animator : new ObjectAnimator[]{pulse1, pulse2, pulse3}) {
+                if (animator != null) {
+                    animator.cancel();
+                }
+            }
+            pulse1 = null;
+            pulse2 = null;
+            pulse3 = null;
+        }
+
+        private static ObjectAnimator startPulse(View dot, long delayMs) {
+            ObjectAnimator pulse = ObjectAnimator.ofFloat(dot, View.ALPHA, 0.25f, 1f);
+            pulse.setDuration(400);
+            pulse.setStartDelay(delayMs);
+            pulse.setRepeatMode(ObjectAnimator.REVERSE);
+            pulse.setRepeatCount(ObjectAnimator.INFINITE);
+            pulse.start();
+            return pulse;
         }
     }
 
