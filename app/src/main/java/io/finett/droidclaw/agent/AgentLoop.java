@@ -7,15 +7,12 @@ import android.util.Log;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import com.google.gson.JsonParser;
 
@@ -39,10 +36,6 @@ import io.finett.droidclaw.repository.MemoryRepository;
 
 public class AgentLoop {
     private static final String TAG = "AgentLoop";
-
-    private static final Pattern FILE_PATH_PATTERN = Pattern.compile(
-        "(?:`([^`]+)`|(/data/data/[^\\s]+|uploads/[^\\s]+|home/[^\\s]+|tmp/[^\\s]+))"
-    );
 
     /** Display bound for tool args in persisted history — same truncation the adapter applies. */
     private static final int TOOL_ARGS_HISTORY_LIMIT = 200;
@@ -1406,90 +1399,7 @@ public class AgentLoop {
         ChatMessage assistantMessage = new ChatMessage(content, ChatMessage.TYPE_ASSISTANT);
         conversationHistory.add(assistantMessage);
 
-        detectAndAddFileReferences(content, conversationHistory);
-
         callback.onComplete(content, conversationHistory);
-    }
-
-    private void detectAndAddFileReferences(String content, List<ChatMessage> conversationHistory) {
-        if (content == null) return;
-
-        Matcher matcher = FILE_PATH_PATTERN.matcher(content);
-        while (matcher.find()) {
-            String rawPath = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
-            if (rawPath == null || rawPath.isEmpty()) continue;
-
-            // Skip if it looks like a code example (has common code markers)
-            if (rawPath.contains("```") || rawPath.contains("\n")) continue;
-
-            String displayName = rawPath;
-            String filePath = rawPath;
-            String mimeType = null;
-
-            // Resolve relative paths to absolute
-            if (!rawPath.startsWith("/")) {
-                // Try to find the file in workspace
-                File workspaceFile = findFileInWorkspace(rawPath);
-                if (workspaceFile != null && workspaceFile.exists()) {
-                    filePath = workspaceFile.getAbsolutePath();
-                    displayName = workspaceFile.getName();
-                    mimeType = io.finett.droidclaw.filesystem.FileUploadManager.resolveMimeType(displayName);
-                }
-            } else if (rawPath.startsWith("/data/data/")) {
-                // Absolute workspace path
-                File file = new File(rawPath);
-                if (file.exists()) {
-                    displayName = file.getName();
-                    mimeType = io.finett.droidclaw.filesystem.FileUploadManager.resolveMimeType(displayName);
-                }
-            }
-
-            // Only create attachment message if file exists
-            File file = new File(filePath);
-            if (file.exists()) {
-                ChatMessage attachmentMsg = ChatMessage.createAttachmentMessage(
-                    filePath, displayName, mimeType);
-                conversationHistory.add(attachmentMsg);
-                Log.d(TAG, "Detected file reference: " + displayName);
-            }
-        }
-    }
-
-    private File findFileInWorkspace(String relativePath) {
-        String[] searchDirs = {
-            "uploads",
-            "home",
-            "home/documents",
-            "home/scripts",
-            "home/notes",
-            "tmp"
-        };
-
-        File workspaceRoot = getWorkspaceRoot();
-        if (workspaceRoot != null) {
-            File directFile = new File(workspaceRoot, relativePath);
-            if (directFile.exists()) {
-                return directFile;
-            }
-
-            // Search in standard directories
-            for (String dir : searchDirs) {
-                File file = new File(workspaceRoot, dir + "/" + relativePath);
-                if (file.exists()) {
-                    return file;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private File getWorkspaceRoot() {
-        try {
-            return toolRegistry.getWorkspaceRoot();
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     private void handleStructuredLlmResponse(LlmApiService.StructuredResponse response,
@@ -1514,8 +1424,6 @@ public class AgentLoop {
 
             ChatMessage assistantMessage = new ChatMessage(content, ChatMessage.TYPE_ASSISTANT);
             conversationHistory.add(assistantMessage);
-
-            detectAndAddFileReferences(content, conversationHistory);
 
             callback.onComplete(content, conversationHistory);
         }
