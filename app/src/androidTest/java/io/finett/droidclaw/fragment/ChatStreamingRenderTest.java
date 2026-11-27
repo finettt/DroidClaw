@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.finett.droidclaw.R;
-import io.finett.droidclaw.adapter.ChatAdapter;
 import io.finett.droidclaw.model.ChatMessage;
 import io.finett.droidclaw.service.AgentExecutionService;
 
@@ -75,42 +74,31 @@ public class ChatStreamingRenderTest {
                 callback.onToolCall("shell", "{}");
                 flush(fragment);
 
-                // After onToolCall: the streaming bubble is flushed and reset, a
-                // typing placeholder is shown (LLM is busy with the tool call),
-                // and a live RUNNING tool card is appended.
+                // After onToolCall: the streaming bubble is flushed and reset, and a
+                // live RUNNING tool card is appended. No typing placeholder — the
+                // first tool card replaces it.
                 messages = adapter.getMessages();
-                assertEquals(5, messages.size());
+                assertEquals(4, messages.size());
                 assertEquals("Earlier note", messages.get(0).getContent());
                 assertEquals("Hello world", messages.get(1).getContent());
                 assertEquals("Trailing note", messages.get(2).getContent());
+                assertEquals(ChatMessage.TYPE_TOOL_CALL, messages.get(3).getType());
                 String firstBubbleId = messages.get(1).getStreamingId();
-                // The typing placeholder and live tool card are the last two items.
-                assertEquals(ChatAdapter.TYPING_PLACEHOLDER, messages.get(3));
-                assertEquals(ChatMessage.TYPE_TOOL_CALL, messages.get(4).getType());
 
                 callback.onStreamDelta("Second segment");
                 flush(fragment);
 
-                // The next delta removes the typing placeholder and starts a new
-                // streaming bubble; the live tool card stays.
+                // The next delta starts a new streaming bubble after the tool card.
                 messages = adapter.getMessages();
                 assertEquals(5, messages.size());
                 assertEquals("Earlier note", messages.get(0).getContent());
                 assertEquals("Hello world", messages.get(1).getContent());
                 assertEquals("Trailing note", messages.get(2).getContent());
-                // The tool card and the new bubble are at positions 3 and 4 in some order;
-                // the new bubble has a different streaming id from the first.
-                ChatMessage newBubble = null;
-                for (ChatMessage m : messages) {
-                    if ("Second segment".equals(m.getContent())) {
-                        newBubble = m;
-                        break;
-                    }
-                }
-                assertNotNull("the second-segment bubble must be present", newBubble);
+                assertEquals(ChatMessage.TYPE_TOOL_CALL, messages.get(3).getType());
+                assertEquals("Second segment", messages.get(4).getContent());
                 assertNotNull(firstBubbleId);
-                assertNotNull(newBubble.getStreamingId());
-                assertNotEquals(firstBubbleId, newBubble.getStreamingId());
+                assertNotNull(messages.get(4).getStreamingId());
+                assertNotEquals(firstBubbleId, messages.get(4).getStreamingId());
             });
         }
     }
