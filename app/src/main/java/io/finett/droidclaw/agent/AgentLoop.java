@@ -9,6 +9,7 @@ import com.google.gson.JsonObject;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,6 +43,9 @@ public class AgentLoop {
     private static final Pattern FILE_PATH_PATTERN = Pattern.compile(
         "(?:`([^`]+)`|(/data/data/[^\\s]+|uploads/[^\\s]+|home/[^\\s]+|tmp/[^\\s]+))"
     );
+
+    /** Display bound for tool args in persisted history — same truncation the adapter applies. */
+    private static final int TOOL_ARGS_HISTORY_LIMIT = 200;
 
     private final LlmApiService apiService;
     private final ToolRegistry toolRegistry;
@@ -537,7 +541,6 @@ public class AgentLoop {
         this.activeHistory = workingHistory;
         this.activeCallback = callback;
 
-        callback.onProgress("Sending message to LLM...");
         executeIteration(workingHistory, callback);
     }
 
@@ -636,14 +639,17 @@ public class AgentLoop {
         // Check if summarization needed using "Last Usage" algorithm (if summarizer available)
         // Use actual current context tokens instead of estimated tokens
         if (summarizer != null && summarizer.needsSummarization(currentContextTokens)) {
-            callback.onProgress("Context limit approaching (" + currentContextTokens + " tokens), summarizing conversation...");
+            Log.d(TAG, "Context limit approaching (" + currentContextTokens + " tokens), summarizing conversation...");
+            conversationHistory.add(ChatMessage.createSystemMessage(
+                    "Context limit approaching — summarizing..."));
 
             final RequestScope summaryScope = runScope;
             summarizer.summarizeAndSave(conversationHistory, summaryScope, new ConversationSummarizer.SummarizeCallback() {
                 @Override
                 public void onResult(List<ChatMessage> compressedHistory) {
                     if (summaryScope.isCancelled()) return;
-                    callback.onProgress("Summary saved, continuing conversation...");
+                    Log.d(TAG, "Summary saved, continuing conversation...");
+                    conversationHistory.add(ChatMessage.createSystemMessage("Summary saved"));
 
                     // Replace conversation history with compressed version
                     conversationHistory.clear();
@@ -838,10 +844,6 @@ public class AgentLoop {
         List<LlmApiService.ToolCall> toolCalls = response.getToolCalls();
 
         Log.d(TAG, "LLM requested " + toolCalls.size() + " tool call(s)");
-        callback.onProgress("Executing " + toolCalls.size() + " tool(s)...");
-
-        ChatMessage toolCallMessage = ChatMessage.createToolCallMessage(toolCalls);
-        conversationHistory.add(toolCallMessage);
 
         totalToolCalls += toolCalls.size();
 
@@ -849,7 +851,25 @@ public class AgentLoop {
     }
 
     /**
-     * Whether the calling thread is the Android main thread. Returns false when no
+     * Copy of a tool call whose argument JSON is truncated to the display bound, so
+     * persisted history never stores more than the UI can show.
+     */
+    private static LlmApiService.ToolCall truncateArgsForHistory(LlmApiService.ToolCall toolCall) {
+        String args = toolCall.getArguments().toString();
+        if (args.length() <= TOOL_ARGS_HISTORY_LIMIT) {
+            return toolCall;
+        }
+        try {
+            JsonObject truncated = JsonParser.parseString(args.substring(0, TOOL_ARGS_HISTORY_LIMIT - 3) + "...")
+                    .getAsJsonObject();
+            return new LlmApiService.ToolCall(toolCall.getId(), toolCall.getName(), truncated);
+        } catch (Exception e) {
+            // Truncated text is not valid JSON; keep the original rather than lose the call.
+            return toolCall;
+        }
+    }
+
+    /** Whether the calling thread is the Android main thread. Returns false when no
      * main looper is available (plain JVM unit tests), so those paths keep the
      * legacy inline behaviour.
      */
@@ -887,7 +907,6 @@ public class AgentLoop {
         }
         if (index >= toolCalls.size()) {
             // All tool calls processed, continue the loop
-            callback.onProgress("Sending tool results to LLM...");
             executeIteration(conversationHistory, callback);
             return;
         }
@@ -897,6 +916,13 @@ public class AgentLoop {
         JsonObject arguments = toolCall.getArguments();
 
         Log.d(TAG, "Processing tool: " + toolName + " with args: " + arguments.toString());
+
+        // Canonical history entry for this executed call: one card per tool so the
+        // transcript shows exactly what ran. Args are truncated before persistence,
+        // same bound the adapter applies when rendering.
+        conversationHistory.add(ChatMessage.createToolCallMessage(
+                Collections.singletonList(truncateArgsForHistory(toolCall))));
+
         callback.onToolCall(toolName, arguments.toString());
 
         boolean wantsBackground = arguments.has("background")

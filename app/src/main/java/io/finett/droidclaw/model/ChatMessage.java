@@ -25,6 +25,13 @@ public class ChatMessage {
     // Transient identity of a streaming placeholder; it is never persisted or sent to the model.
     private String streamingId;
 
+    /**
+     * Transient live-render state for tool-call cards: true while the call is executing,
+     * false once its result arrives (or the run ends). Never persisted or sent to the
+     * model — history loaded from disk always renders as done.
+     */
+    private boolean running;
+
     private List<LlmApiService.ToolCall> toolCalls;
     private String toolCallId;
     private String toolName;
@@ -63,6 +70,11 @@ public class ChatMessage {
         return message;
     }
 
+    /** Inline, non-interactive notice rendered between chat segments (e.g. context-limit warning). */
+    public static ChatMessage createSystemMessage(String content) {
+        return new ChatMessage(content, TYPE_SYSTEM);
+    }
+
     public String getContent() {
         return content;
     }
@@ -81,6 +93,14 @@ public class ChatMessage {
 
     public String getStreamingId() {
         return streamingId;
+    }
+
+    public boolean isRunning() {
+        return running;
+    }
+
+    public void setRunning(boolean running) {
+        this.running = running;
     }
 
     public long getTimestamp() {
