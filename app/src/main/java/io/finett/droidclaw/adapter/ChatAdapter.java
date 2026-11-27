@@ -400,38 +400,48 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
         @Override
         void bind(ChatMessage message, ChatAdapter adapter) {
-            if (message.getToolCalls() != null && !message.getToolCalls().isEmpty()) {
-                LlmApiService.ToolCall firstToolCall = message.getToolCalls().get(0);
-                String toolName = firstToolCall.getName();
-
-                boolean failed = "interrupted".equals(message.getContent());
-                if (message.isRunning()) {
-                    toolCallIcon.setVisibility(View.GONE);
-                    toolCallSpinner.setVisibility(View.VISIBLE);
-                    toolCallSpinner.setIndeterminate(true);
-                    startSpinner(toolCallSpinner);
-                } else {
-                    stopSpinner(toolCallSpinner);
-                    toolCallSpinner.setVisibility(View.GONE);
-                    toolCallIcon.setVisibility(View.VISIBLE);
-                    toolCallIcon.setImageResource(failed ? R.drawable.ic_status_error : getToolIcon(toolName));
-                }
-
-                toolCallText.setText(formatToolName(toolName)
-                        + (message.isRunning() ? "..." : failed ? " — interrupted" : ""));
-
-                StringBuilder argsBuilder = new StringBuilder();
-                for (LlmApiService.ToolCall toolCall : message.getToolCalls()) {
-                    if (message.getToolCalls().size() > 1) {
-                        argsBuilder.append("• ").append(toolCall.getName()).append("\n");
-                    }
-                    argsBuilder.append(formatArguments(toolCall.getArguments().toString()))
-                            .append("\n");
-                }
-                String argsText = argsBuilder.toString().trim();
-                toolCallArgs.setText(adapter.searchQuery != null
-                        ? adapter.highlight(argsText) : argsText);
+            List<LlmApiService.ToolCall> toolCalls = message.getToolCalls();
+            if (toolCalls == null || toolCalls.isEmpty()) {
+                // Malformed tool-call message: render a blank row and make sure no
+                // spinner left over from a previous binding keeps spinning.
+                stopSpinner(toolCallSpinner);
+                toolCallSpinner.setVisibility(View.GONE);
+                toolCallIcon.setVisibility(View.GONE);
+                toolCallText.setText("");
+                toolCallArgs.setText("");
+                return;
             }
+
+            LlmApiService.ToolCall firstToolCall = toolCalls.get(0);
+            String toolName = firstToolCall.getName();
+
+            boolean failed = "interrupted".equals(message.getContent());
+            if (message.isRunning()) {
+                toolCallIcon.setVisibility(View.GONE);
+                toolCallSpinner.setVisibility(View.VISIBLE);
+                toolCallSpinner.setIndeterminate(true);
+                startSpinner(toolCallSpinner);
+            } else {
+                stopSpinner(toolCallSpinner);
+                toolCallSpinner.setVisibility(View.GONE);
+                toolCallIcon.setVisibility(View.VISIBLE);
+                toolCallIcon.setImageResource(failed ? R.drawable.ic_status_error : getToolIcon(toolName));
+            }
+
+            toolCallText.setText(formatToolName(toolName)
+                    + (message.isRunning() ? "..." : failed ? " — interrupted" : ""));
+
+            StringBuilder argsBuilder = new StringBuilder();
+            for (LlmApiService.ToolCall toolCall : toolCalls) {
+                if (toolCalls.size() > 1) {
+                    argsBuilder.append("• ").append(toolCall.getName()).append("\n");
+                }
+                argsBuilder.append(formatArguments(toolCall.getArguments().toString()))
+                        .append("\n");
+            }
+            String argsText = argsBuilder.toString().trim();
+            toolCallArgs.setText(adapter.searchQuery != null
+                    ? adapter.highlight(argsText) : argsText);
         }
 
         /** Indeterminate spin for the live RUNNING state (ProgressBar has no start/stop). */
