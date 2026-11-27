@@ -114,7 +114,13 @@ public class AgentExecutionService extends Service {
     // ==================== UI callback ====================
 
     public interface UICallback {
-        void onProgress(String status);
+        /**
+         * Legacy progress strings ("Sending message to LLM...", "Executing N
+         * tool(s)...") were dropped with the status pill: tool activity now renders as
+         * live chat cards and waiting as the typing indicator. No-op by default.
+         */
+        default void onProgress(String status) {}
+
         void onToolCall(String toolName, String arguments);
         void onToolResult(String toolName, String result);
         void onComplete(String response, List<ChatMessage> history);

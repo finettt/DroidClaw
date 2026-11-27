@@ -26,7 +26,6 @@ import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -83,16 +82,12 @@ public class ChatFragment extends Fragment {
     /** Currently visible tool-approval dialog, if any. */
     private AlertDialog approvalDialog;
     private ImageButton attachButton;
-    private View statusContainer;
     private HorizontalScrollView attachmentBarContainer;
     private LinearLayout attachmentBar;
     private View commandHintsBar;
     private LinearLayout commandHintsRow;
     /** Last slash-command echo bubble; transient — never saved or sent to the LLM. */
     private ChatMessage pendingCommandEcho;
-    private ProgressBar progressBar;
-    private TextView statusText;
-    private TextView statusSubText;
 
     // Search bar views (from included layout)
     private View searchBar;
@@ -135,24 +130,29 @@ public class ChatFragment extends Fragment {
     /** Whether the user was at the bottom of the chat before a background flush. */
     private boolean atBottom = true;
 
+    // ==================== Live tool-card / typing-indicator state ====================
+
+    /**
+     * Tool-call cards inserted during a live run, in insertion order. Reconciled by
+     * {@code setMessages(updatedHistory)} at onComplete/onCancelled — the canonical
+     * history now carries one tool-call message per executed call.
+     */
+    private final List<ChatMessage> liveToolCallCards = new ArrayList<>();
+
+    /** Transient typing placeholder present in the adapter while an LLM phase is in flight. */
+    private boolean typingIndicatorActive = false;
+
     /** Throttled flush runnable (posted to the RecyclerView). */
     private final Runnable streamFlushRunnable = this::flushStreamingBubble;
     private boolean streamFlushScheduled = false;
 
     private final AgentExecutionService.UICallback agentUiCallback = new AgentExecutionService.UICallback() {
         @Override
-        public void onProgress(String status) {
-            if (!isAdded()) {
-                return;
-            }
-            updateStatus(status, null);
-        }
-
-        @Override
         public void onStreamDelta(String delta) {
             if (!isAdded() || delta == null || delta.isEmpty()) {
                 return;
             }
+            removeTypingIndicator();
             if (!streamingBubbleActive) {
                 // New streamed assistant segment — add a temporary bubble that is
                 // replaced by the canonical history in onComplete().
@@ -177,14 +177,24 @@ public class ChatFragment extends Fragment {
             // (or the next one) after the tool boundary.
             flushStreamingBubble();
             resetStreamingState();
+            removeTypingIndicator();
             Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
 
-            boolean isBackground = arguments.contains("\"background\":true")
-                    || arguments.contains("\"background\": true");
-            String statusMessage = isBackground
-                    ? "Dispatching " + formatToolName(toolName) + " to background..."
-                    : getToolStatusMessage(toolName, arguments);
-            updateStatus(statusMessage, null);
+            // Live tool card in RUNNING state; replaced by the canonical history at
+            // onComplete. Args are truncated the same way the holder renders them.
+            JsonObject parsedArgs;
+            try {
+                parsedArgs = com.google.gson.JsonParser.parseString(arguments).getAsJsonObject();
+            } catch (Exception e) {
+                parsedArgs = new JsonObject();
+            }
+            ChatMessage liveCard = ChatMessage.createToolCallMessage(
+                    java.util.Collections.singletonList(
+                            new LlmApiService.ToolCall(null, toolName, truncateArgs(parsedArgs))));
+            liveCard.setRunning(true);
+            liveToolCallCards.add(liveCard);
+            chatAdapter.addMessage(liveCard);
+            scrollToBottom();
         }
 
         @Override
@@ -194,7 +204,27 @@ public class ChatFragment extends Fragment {
             }
             Log.d(TAG, "Tool result: " + toolName + " -> "
                     + result.substring(0, Math.min(100, result.length())));
-            updateStatus("✓ " + formatToolName(toolName) + " completed", null);
+
+            // Pair FIFO within the current segment: the oldest running card for this
+            // tool name is the one that just finished (execution is serial in practice).
+            ChatMessage matched = null;
+            for (ChatMessage card : liveToolCallCards) {
+                if (card.isRunning() && toolName.equals(toolNameOf(card))) {
+                    matched = card;
+                    break;
+                }
+            }
+            if (matched != null) {
+                matched.setRunning(false);
+                int index = indexOfMessage(matched);
+                if (index >= 0) {
+                    chatAdapter.notifyItemChanged(index);
+                }
+            }
+
+            ChatMessage resultCard = ChatMessage.createToolResultMessage(null, toolName, result);
+            chatAdapter.addMessage(resultCard);
+            scrollToBottom();
         }
 
         @Override
@@ -203,6 +233,7 @@ public class ChatFragment extends Fragment {
                 return;
             }
 
+            clearLiveEphemera();
             resetStreamingState();
             setLoading(false);
             chatAdapter.setMessages(updatedHistory);
@@ -223,6 +254,18 @@ public class ChatFragment extends Fragment {
                 Log.w(TAG, "onError: Fragment not attached, ignoring error: " + error);
                 return;
             }
+            // Flip any still-running tool cards to a failed state before dropping them:
+            // the canonical history has no entry for calls that never produced a result.
+            for (ChatMessage card : liveToolCallCards) {
+                if (card.isRunning()) {
+                    card.setRunning(false);
+                    card.setContent("interrupted");
+                    int index = indexOfMessage(card);
+                    if (index >= 0) {
+                        chatAdapter.notifyItemChanged(index);
+                    }
+                }
+            }
             // Drop the partial streaming bubble — its text never made it into history.
             boolean hadPartialBubble = streamingBubbleActive;
             resetStreamingState();
@@ -240,7 +283,8 @@ public class ChatFragment extends Fragment {
                 return;
             }
             // The service already persisted `history` (including any partial streamed
-            // text); just re-render it in place of the temporary streaming bubble.
+            // text); just re-render it in place of the temporary ephemeral items.
+            clearLiveEphemera();
             resetStreamingState();
             dismissApprovalDialog();
             setLoading(false);
@@ -501,12 +545,8 @@ public class ChatFragment extends Fragment {
         attachButton           = view.findViewById(R.id.attachButton);
         commandHintsBar        = view.findViewById(R.id.commandHintsBar);
         commandHintsRow        = view.findViewById(R.id.commandHintsRow);
-        statusContainer        = view.findViewById(R.id.statusContainer);
         attachmentBarContainer = view.findViewById(R.id.attachmentBarContainer);
         attachmentBar          = view.findViewById(R.id.attachmentBar);
-        progressBar            = view.findViewById(R.id.progressBar);
-        statusText             = view.findViewById(R.id.statusText);
-        statusSubText          = view.findViewById(R.id.statusSubText);
 
         // Search bar (included layout)
         searchBar         = view.findViewById(R.id.searchBar);
@@ -1193,7 +1233,16 @@ public class ChatFragment extends Fragment {
         dropPendingCommandEcho();
         setLoading(true);
 
-        List<ChatMessage> conversationHistory = new ArrayList<>(chatAdapter.getMessages());
+        // Three-dot placeholder while the first LLM response segment is in flight;
+        // replaced by the first text delta or tool card, dropped at any terminal state.
+        showTypingIndicator();
+
+        List<ChatMessage> conversationHistory = new ArrayList<>();
+        for (ChatMessage message : chatAdapter.getMessages()) {
+            if (message != ChatAdapter.TYPING_PLACEHOLDER) {
+                conversationHistory.add(message);
+            }
+        }
 
         dispatchAgentRequest(conversationHistory);
     }
@@ -1253,9 +1302,6 @@ public class ChatFragment extends Fragment {
 
     private void setLoading(boolean loading) {
         this.loading = loading;
-        if (statusContainer != null) {
-            statusContainer.setVisibility(loading ? View.VISIBLE : View.GONE);
-        }
         updateSendButton();
         messageInput.setEnabled(!loading);
     }
@@ -1287,25 +1333,9 @@ public class ChatFragment extends Fragment {
             agentExecutionService.cancelAgentLoop(currentSessionId);
         } else {
             // No active service/session — reset the UI directly.
+            clearLiveEphemera();
             resetStreamingState();
             setLoading(false);
-        }
-    }
-
-    private void updateStatus(String status, String subStatus) {
-        if (statusText != null) {
-            statusText.setText(status);
-        }
-        if (statusSubText != null) {
-            if (subStatus != null) {
-                statusSubText.setText(subStatus);
-                statusSubText.setVisibility(View.VISIBLE);
-            } else {
-                statusSubText.setVisibility(View.GONE);
-            }
-        }
-        if (statusContainer != null) {
-            statusContainer.setVisibility(View.VISIBLE);
         }
     }
 
@@ -1377,32 +1407,80 @@ public class ChatFragment extends Fragment {
     }
 
     /**
-     * Get a user-friendly status message for tool execution.
+     * Show the three-dot typing placeholder while the first LLM response segment is
+     * in flight. Replaced by the first text delta or the first tool card.
      */
-    private String getToolStatusMessage(String toolName, String arguments) {
-        if (toolName.equals("list_files") && arguments.contains(".agent/skills")) {
-            return "Discovering available skills...";
-        } else if (toolName.equals("read_file") && arguments.contains(".agent/skills")) {
-            return "Loading skill definition...";
-        } else if (toolName.equals("read_file") && arguments.contains("SKILL.md")) {
-            return "Reading skill instructions...";
+    private void showTypingIndicator() {
+        if (typingIndicatorActive || chatAdapter == null) {
+            return;
         }
+        chatAdapter.addMessage(ChatAdapter.TYPING_PLACEHOLDER);
+        typingIndicatorActive = true;
+        scrollToBottom();
+    }
 
-        switch (toolName) {
-            case "execute_shell":     return "Running shell command...";
-            case "execute_python":    return "Executing Python script...";
-            case "pip_install":       return "Installing Python package...";
-            case "read_file":         return "Reading file...";
-            case "write_file":        return "Writing file...";
-            case "edit_file":         return "Editing file...";
-            case "list_files":        return "Listing directory...";
-            case "search_files":      return "Searching files...";
-            case "delete_file":       return "Deleting file...";
-            case "file_info":         return "Getting file info...";
-            case "kill_background_process":  return "Killing background process...";
-            case "list_background_processes": return "Listing background processes...";
-            default:                  return "Executing: " + formatToolName(toolName);
+    /** Remove the typing placeholder if it is still present. */
+    private void removeTypingIndicator() {
+        if (!typingIndicatorActive || chatAdapter == null) {
+            return;
         }
+        int index = indexOfMessage(ChatAdapter.TYPING_PLACEHOLDER);
+        if (index >= 0) {
+            chatAdapter.removeAt(index);
+        }
+        typingIndicatorActive = false;
+    }
+
+    /** Tool name of a live tool-call card, for FIFO result pairing. */
+    private static String toolNameOf(ChatMessage card) {
+        List<LlmApiService.ToolCall> calls = card.getToolCalls();
+        return calls != null && !calls.isEmpty() ? calls.get(0).getName() : null;
+    }
+
+    /** Index of a message object in the adapter, or -1 when absent. */
+    private int indexOfMessage(ChatMessage message) {
+        List<ChatMessage> messages = chatAdapter.getMessages();
+        for (int i = 0; i < messages.size(); i++) {
+            if (messages.get(i) == message) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Truncate tool args to the display bound before they enter any rendered card. */
+    private static JsonObject truncateArgs(JsonObject arguments) {
+        String args = arguments.toString();
+        if (args.length() <= 200) {
+            return arguments;
+        }
+        try {
+            return com.google.gson.JsonParser.parseString(args.substring(0, 197) + "...").getAsJsonObject();
+        } catch (Exception e) {
+            return arguments;
+        }
+    }
+
+    /**
+     * Drop all ephemeral live-run items (typing indicator, live tool cards, live
+     * result cards) before re-rendering the canonical history. Must run before
+     * {@code setMessages} so reconciliation never leaves duplicates.
+     */
+    private void clearLiveEphemera() {
+        removeTypingIndicator();
+        if (chatAdapter != null && !liveToolCallCards.isEmpty()) {
+            List<ChatMessage> messages = chatAdapter.getMessages();
+            // Remove from the end so earlier indices stay valid.
+            for (int i = messages.size() - 1; i >= 0; i--) {
+                ChatMessage message = messages.get(i);
+                if (message == ChatAdapter.TYPING_PLACEHOLDER
+                        || liveToolCallCards.contains(message)
+                        || message.isToolResult()) {
+                    chatAdapter.removeAt(i);
+                }
+            }
+        }
+        liveToolCallCards.clear();
     }
 
     /**
