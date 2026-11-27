@@ -90,10 +90,7 @@ public class ChatFragmentTest {
                 attachNavController(fragment, R.id.chatFragment);
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
-                RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recyclerView);
-
-                // The status pill was removed from the layout: no view with its old id exists.
-                assertNull(fragment.requireView().findViewById(R.id.statusContainer));
+                RecyclerView recyclerView = (RecyclerView) fragment.requireView().findViewById(R.id.recyclerView);
 
                 messageInput.setText("Need configuration");
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
@@ -197,10 +194,6 @@ public class ChatFragmentTest {
                     e.printStackTrace();
                 }
 
-                // The status pill is gone; loading state surfaces through the typing
-                // indicator in the chat stream and the stop button below.
-                assertNull("status pill must not exist in the layout",
-                        fragment.requireView().findViewById(R.id.statusContainer));
                 // The button stays enabled while loading — it morphs into a stop
                 // button so the user can cancel the response.
                 assertTrue("Send button should stay enabled (acts as stop while loading)",
@@ -246,8 +239,6 @@ public class ChatFragmentTest {
 
                 assertTrue("Message input should be enabled", messageInput.isEnabled());
                 assertTrue("Send button should be enabled", sendButton.isEnabled());
-                assertNull("Status pill must not exist in the layout",
-                        fragment.requireView().findViewById(R.id.statusContainer));
             });
         }
     }

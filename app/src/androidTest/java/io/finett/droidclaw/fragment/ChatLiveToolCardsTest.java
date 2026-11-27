@@ -62,13 +62,9 @@ public class ChatLiveToolCardsTest {
 
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
-                RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recyclerView);
+                RecyclerView recyclerView = (RecyclerView) fragment.requireView().findViewById(R.id.recyclerView);
                 ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
                 AgentExecutionService.UICallback callback = uiCallback(fragment);
-
-                // The status pill must not exist anywhere in the layout.
-                assertNull("status pill must be absent from the hierarchy",
-                        fragment.requireView().findViewById(R.id.statusContainer));
 
                 // Typing indicator appears on send, before any delta or tool card.
                 showTypingIndicator(fragment);
@@ -134,8 +130,9 @@ public class ChatLiveToolCardsTest {
 
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
-                ChatAdapter adapter = (ChatAdapter) fragment.requireView()
-                        .findViewById(R.id.recyclerView).getAdapter();
+                RecyclerView recyclerView = (RecyclerView) fragment.requireView()
+                        .findViewById(R.id.recyclerView);
+                ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
                 AgentExecutionService.UICallback callback = uiCallback(fragment);
 
                 // A live run in flight: typing indicator + running tool card.
@@ -177,8 +174,9 @@ public class ChatLiveToolCardsTest {
 
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
-                ChatAdapter adapter = (ChatAdapter) fragment.requireView()
-                        .findViewById(R.id.recyclerView).getAdapter();
+                RecyclerView recyclerView = (RecyclerView) fragment.requireView()
+                        .findViewById(R.id.recyclerView);
+                ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
 
                 // Simulate a live run: typing indicator + a running tool card.
                 showTypingIndicator(fragment);
@@ -208,8 +206,9 @@ public class ChatLiveToolCardsTest {
 
             scenario.onFragment(fragment -> {
                 attachNavController(fragment, R.id.chatFragment);
-                ChatAdapter adapter = (ChatAdapter) fragment.requireView()
-                        .findViewById(R.id.recyclerView).getAdapter();
+                RecyclerView recyclerView = (RecyclerView) fragment.requireView()
+                        .findViewById(R.id.recyclerView);
+                ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
                 AgentExecutionService.UICallback callback = uiCallback(fragment);
 
                 JsonObject toolArgs = new JsonObject();
