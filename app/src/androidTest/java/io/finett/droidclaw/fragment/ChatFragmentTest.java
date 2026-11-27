@@ -5,6 +5,7 @@ import static androidx.test.core.app.ApplicationProvider.getApplicationContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -89,14 +90,15 @@ public class ChatFragmentTest {
                 attachNavController(fragment, R.id.chatFragment);
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
-                View statusContainer = fragment.requireView().findViewById(R.id.statusContainer);
                 RecyclerView recyclerView = fragment.requireView().findViewById(R.id.recyclerView);
+
+                // The status pill was removed from the layout: no view with its old id exists.
+                assertNull(fragment.requireView().findViewById(R.id.statusContainer));
 
                 messageInput.setText("Need configuration");
                 fragment.requireView().findViewById(R.id.sendButton).performClick();
 
                 assertEquals("Need configuration", messageInput.getText().toString());
-                assertEquals(android.view.View.GONE, statusContainer.getVisibility());
                 assertEquals(0, recyclerView.getAdapter().getItemCount());
             });
         }
@@ -185,7 +187,6 @@ public class ChatFragmentTest {
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
                 ImageButton sendButton = fragment.requireView().findViewById(R.id.sendButton);
-                View statusContainer = fragment.requireView().findViewById(R.id.statusContainer);
 
                 messageInput.setText("Test");
                 sendButton.performClick();
@@ -196,16 +197,17 @@ public class ChatFragmentTest {
                     e.printStackTrace();
                 }
 
-                assertNotNull(statusContainer);
+                // The status pill is gone; loading state surfaces through the typing
+                // indicator in the chat stream and the stop button below.
+                assertNull("status pill must not exist in the layout",
+                        fragment.requireView().findViewById(R.id.statusContainer));
                 // The button stays enabled while loading — it morphs into a stop
                 // button so the user can cancel the response.
                 assertTrue("Send button should stay enabled (acts as stop while loading)",
                         sendButton.isEnabled());
-                if (statusContainer.getVisibility() == android.view.View.VISIBLE) {
-                    assertEquals("While loading the button should be a stop button",
-                            fragment.getString(R.string.stop_response),
-                            String.valueOf(sendButton.getContentDescription()));
-                }
+                assertEquals("While loading the button should be a stop button",
+                        fragment.getString(R.string.stop_response),
+                        String.valueOf(sendButton.getContentDescription()));
             });
         }
     }
@@ -241,12 +243,11 @@ public class ChatFragmentTest {
 
                 EditText messageInput = fragment.requireView().findViewById(R.id.messageInput);
                 ImageButton sendButton = fragment.requireView().findViewById(R.id.sendButton);
-                View statusContainer = fragment.requireView().findViewById(R.id.statusContainer);
 
                 assertTrue("Message input should be enabled", messageInput.isEnabled());
                 assertTrue("Send button should be enabled", sendButton.isEnabled());
-                assertEquals("Status container should be hidden",
-                        android.view.View.GONE, statusContainer.getVisibility());
+                assertNull("Status pill must not exist in the layout",
+                        fragment.requireView().findViewById(R.id.statusContainer));
             });
         }
     }
