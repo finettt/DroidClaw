@@ -177,7 +177,13 @@ public class ChatFragment extends Fragment {
             // (or the next one) after the tool boundary.
             flushStreamingBubble();
             resetStreamingState();
-            removeTypingIndicator();
+            // The typing indicator is the "waiting for LLM" state; a tool call arriving
+            // means the LLM is busy, so keep the placeholder alive across the tool
+            // boundary. removeTypingIndicator runs only when a real text delta or a
+            // terminal state arrives.
+            if (!typingIndicatorActive && chatAdapter != null) {
+                showTypingIndicator();
+            }
             Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
 
             // Live tool card in RUNNING state; replaced by the canonical history at

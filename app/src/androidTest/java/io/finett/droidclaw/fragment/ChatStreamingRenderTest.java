@@ -75,25 +75,42 @@ public class ChatStreamingRenderTest {
                 callback.onToolCall("shell", "{}");
                 flush(fragment);
 
+                // After onToolCall: the streaming bubble is flushed and reset, a
+                // typing placeholder is shown (LLM is busy with the tool call),
+                // and a live RUNNING tool card is appended.
                 messages = adapter.getMessages();
-                assertEquals(3, messages.size());
+                assertEquals(5, messages.size());
                 assertEquals("Earlier note", messages.get(0).getContent());
                 assertEquals("Hello world", messages.get(1).getContent());
                 assertEquals("Trailing note", messages.get(2).getContent());
                 String firstBubbleId = messages.get(1).getStreamingId();
+                // The typing placeholder and live tool card are the last two items.
+                assertEquals(ChatAdapter.TYPING_PLACEHOLDER, messages.get(3));
+                assertEquals(ChatMessage.TYPE_TOOL_CALL, messages.get(4).getType());
 
                 callback.onStreamDelta("Second segment");
                 flush(fragment);
 
+                // The next delta removes the typing placeholder and starts a new
+                // streaming bubble; the live tool card stays.
                 messages = adapter.getMessages();
-                assertEquals(4, messages.size());
+                assertEquals(5, messages.size());
                 assertEquals("Earlier note", messages.get(0).getContent());
                 assertEquals("Hello world", messages.get(1).getContent());
                 assertEquals("Trailing note", messages.get(2).getContent());
-                assertEquals("Second segment", messages.get(3).getContent());
+                // The tool card and the new bubble are at positions 3 and 4 in some order;
+                // the new bubble has a different streaming id from the first.
+                ChatMessage newBubble = null;
+                for (ChatMessage m : messages) {
+                    if ("Second segment".equals(m.getContent())) {
+                        newBubble = m;
+                        break;
+                    }
+                }
+                assertNotNull("the second-segment bubble must be present", newBubble);
                 assertNotNull(firstBubbleId);
-                assertNotNull(messages.get(3).getStreamingId());
-                assertNotEquals(firstBubbleId, messages.get(3).getStreamingId());
+                assertNotNull(newBubble.getStreamingId());
+                assertNotEquals(firstBubbleId, newBubble.getStreamingId());
             });
         }
     }
