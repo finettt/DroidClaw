@@ -194,6 +194,7 @@ public class ChatFragment extends Fragment {
                     java.util.Collections.singletonList(
                             new LlmApiService.ToolCall(null, toolName, truncateArgs(parsedArgs))));
             liveCard.setRunning(true);
+            liveCard.setEphemeral(true);
             liveToolCallCards.add(liveCard);
             chatAdapter.addMessage(liveCard);
             scrollToBottom();
@@ -225,6 +226,7 @@ public class ChatFragment extends Fragment {
             }
 
             ChatMessage resultCard = ChatMessage.createToolResultMessage(null, toolName, result);
+            resultCard.setEphemeral(true);
             chatAdapter.addMessage(resultCard);
             scrollToBottom();
         }
@@ -1241,12 +1243,9 @@ public class ChatFragment extends Fragment {
         // replaced by the first text delta or tool card, dropped at any terminal state.
         showTypingIndicator();
 
-        List<ChatMessage> conversationHistory = new ArrayList<>();
-        for (ChatMessage message : chatAdapter.getMessages()) {
-            if (message != ChatAdapter.TYPING_PLACEHOLDER) {
-                conversationHistory.add(message);
-            }
-        }
+        // getMessages() already excludes ephemeral live-run items (typing indicator
+        // included), so this is the exact history to send to the agent.
+        List<ChatMessage> conversationHistory = new ArrayList<>(chatAdapter.getMessages());
 
         dispatchAgentRequest(conversationHistory);
     }
@@ -1267,8 +1266,10 @@ public class ChatFragment extends Fragment {
         if (pendingCommandEcho == null) {
             return;
         }
-        List<ChatMessage> messages = chatAdapter.getMessages();
-        if (!messages.isEmpty() && messages.get(messages.size() - 1) == pendingCommandEcho) {
+        // Raw list: the echo itself is not ephemeral, so the filtered view would still
+        // include it — but removal must target the adapter's internal index.
+        List<ChatMessage> rawMessages = chatAdapter.getMessagesRaw();
+        if (!rawMessages.isEmpty() && rawMessages.get(rawMessages.size() - 1) == pendingCommandEcho) {
             chatAdapter.removeLastMessage();
         }
         pendingCommandEcho = null;
@@ -1418,7 +1419,7 @@ public class ChatFragment extends Fragment {
         if (typingIndicatorActive || chatAdapter == null) {
             return;
         }
-        chatAdapter.addMessage(ChatAdapter.TYPING_PLACEHOLDER);
+        chatAdapter.addMessage(ChatMessage.createTypingPlaceholder());
         typingIndicatorActive = true;
         scrollToBottom();
     }
@@ -1428,9 +1429,11 @@ public class ChatFragment extends Fragment {
         if (!typingIndicatorActive || chatAdapter == null) {
             return;
         }
-        int index = indexOfMessage(ChatAdapter.TYPING_PLACEHOLDER);
-        if (index >= 0) {
-            chatAdapter.removeAt(index);
+        for (int i = chatAdapter.getItemCount() - 1; i >= 0; i--) {
+            if (chatAdapter.getMessagesRaw().get(i).getType() == ChatMessage.TYPE_TYPING) {
+                chatAdapter.removeAt(i);
+                break;
+            }
         }
         typingIndicatorActive = false;
     }
@@ -1441,27 +1444,32 @@ public class ChatFragment extends Fragment {
         return calls != null && !calls.isEmpty() ? calls.get(0).getName() : null;
     }
 
-    /** Index of a message object in the adapter, or -1 when absent. */
+    /**
+     * Index of a message object in the adapter's INTERNAL list (ephemera included), or
+     * -1 when absent. Callers use this with notifyItemChanged/removeAt, which address
+     * internal positions — never the filtered getMessages() view.
+     */
     private int indexOfMessage(ChatMessage message) {
-        List<ChatMessage> messages = chatAdapter.getMessages();
-        for (int i = 0; i < messages.size(); i++) {
-            if (messages.get(i) == message) {
+        List<ChatMessage> rawMessages = chatAdapter.getMessagesRaw();
+        for (int i = 0; i < rawMessages.size(); i++) {
+            if (rawMessages.get(i) == message) {
                 return i;
             }
         }
         return -1;
     }
 
-    /** Truncate tool args to the display bound before they enter any rendered card. */
+    /** Truncate tool args to the shared display bound before they enter any rendered card. */
     private static JsonObject truncateArgs(JsonObject arguments) {
-        String args = arguments.toString();
-        if (args.length() <= 200) {
-            return arguments;
-        }
+        String truncated = ChatMessage.truncateToolArgs(arguments.toString());
         try {
-            return com.google.gson.JsonParser.parseString(args.substring(0, 197) + "...").getAsJsonObject();
+            return com.google.gson.JsonParser.parseString(truncated).getAsJsonObject();
         } catch (Exception e) {
-            return arguments;
+            // Truncation can break JSON validity; fall back to a plain-text args object
+            // so the card still renders something bounded.
+            JsonObject fallback = new JsonObject();
+            fallback.addProperty("args", truncated);
+            return fallback;
         }
     }
 
@@ -1477,13 +1485,15 @@ public class ChatFragment extends Fragment {
             // any TYPE_TOOL_RESULT in the adapter right now is ephemeral — even when
             // the tool call that produced it came in without a live card (e.g. a test
             // that drives the callbacks directly).
-            List<ChatMessage> messages = chatAdapter.getMessages();
-            // Remove from the end so earlier indices stay valid.
-            for (int i = messages.size() - 1; i >= 0; i--) {
-                ChatMessage message = messages.get(i);
-                if (message == ChatAdapter.TYPING_PLACEHOLDER
+            // Remove from the end so earlier indices stay valid. Ephemeral items are
+            // exactly: the typing placeholder (named type) plus everything this live
+            // run added that is flagged ephemeral.
+            List<ChatMessage> rawMessages = chatAdapter.getMessagesRaw();
+            for (int i = rawMessages.size() - 1; i >= 0; i--) {
+                ChatMessage message = rawMessages.get(i);
+                if (message.getType() == ChatMessage.TYPE_TYPING
                         || liveToolCallCards.contains(message)
-                        || message.isToolResult()) {
+                        || (message.isToolResult() && message.isEphemeral())) {
                     chatAdapter.removeAt(i);
                 }
             }

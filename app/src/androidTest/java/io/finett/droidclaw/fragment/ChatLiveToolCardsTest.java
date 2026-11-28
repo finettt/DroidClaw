@@ -3,6 +3,7 @@ package io.finett.droidclaw.fragment;
 import static androidx.navigation.Navigation.setViewNavController;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -81,19 +82,22 @@ public class ChatLiveToolCardsTest {
                 toolArgs.addProperty("path", "test.txt");
                 callback.onToolCall("read_file", toolArgs.toString());
 
-                List<ChatMessage> messages = adapter.getMessages();
+                // Raw list: live cards are ephemeral and filtered out of getMessages().
+                List<ChatMessage> messages = adapter.getMessagesRaw();
                 assertEquals("flushed segment + running tool card", 2, messages.size());
                 ChatMessage runningCard = messages.get(1);
                 assertEquals(ChatMessage.TYPE_TOOL_CALL, runningCard.getType());
                 assertTrue("live card starts in RUNNING state", runningCard.isRunning());
+                assertTrue("live card is ephemeral", runningCard.isEphemeral());
 
                 // Tool result: the running card flips to done and a result card is appended.
                 callback.onToolResult("read_file", "{\"content\":\"hello\"}");
-                messages = adapter.getMessages();
+                messages = adapter.getMessagesRaw();
                 assertEquals("segment + done card + result card", 3, messages.size());
                 assertFalse("running flag cleared on result",
                         messages.get(1).isRunning());
                 assertEquals(ChatMessage.TYPE_TOOL_RESULT, messages.get(2).getType());
+                assertTrue("live result card is ephemeral", messages.get(2).isEphemeral());
 
                 // Reconciliation: the canonical history carries exactly one tool-call
                 // and one tool-result message; live ephemera are dropped without duplicates.
@@ -152,7 +156,7 @@ public class ChatLiveToolCardsTest {
                         new LlmApiService.ToolCall("call_1", "read_file", toolArgs))));
                 callback.onCancelled(persisted);
 
-                List<ChatMessage> messages = adapter.getMessages();
+                List<ChatMessage> messages = adapter.getMessagesRaw();
                 assertEquals("reconciled to exactly the persisted history",
                         persisted.size(), messages.size());
                 assertFalse("no live placeholder survives cancellation",
@@ -189,7 +193,9 @@ public class ChatLiveToolCardsTest {
                 callback.onToolCall("read_file", toolArgs.toString());
                 assertEquals(1, adapter.getItemCount());
                 assertFalse(containsPlaceholder(adapter));
-                ChatMessage card = adapter.getMessages().get(0);
+                ChatMessage card = adapter.getMessagesRaw().get(0);
+                assertTrue("live card is ephemeral and filtered from getMessages()",
+                        card.isEphemeral() && adapter.getMessages().isEmpty());
 
                 // The stop button only acts while a run is in flight.
                 setField(fragment, "loading", true);
@@ -223,13 +229,14 @@ public class ChatLiveToolCardsTest {
                 toolArgs.addProperty("command", "ls");
                 callback.onToolCall("execute_shell", toolArgs.toString());
 
-                List<ChatMessage> messages = adapter.getMessages();
+                List<ChatMessage> messages = adapter.getMessagesRaw();
                 assertEquals(1, messages.size());
                 assertTrue(messages.get(0).isRunning());
+                assertTrue("running live card is ephemeral", messages.get(0).isEphemeral());
 
                 callback.onError("boom");
 
-                messages = adapter.getMessages();
+                messages = adapter.getMessagesRaw();
                 assertEquals("the failed card stays visible as an interrupted entry",
                         1, messages.size());
                 assertFalse("spinner must not spin forever after error",
@@ -239,9 +246,72 @@ public class ChatLiveToolCardsTest {
         }
     }
 
+    @Test
+    public void midRunSave_persistsNoEphemeralAndNoNullToolCallIds() {
+        Bundle args = new Bundle();
+        args.putString(ChatFragment.ARG_SESSION_ID, "session-live-tool-midrun-save");
+
+        try (FragmentScenario<ChatFragment> scenario = FragmentScenario.launchInContainer(
+                ChatFragment.class, args, R.style.Theme_DroidClaw)) {
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+            scenario.onFragment(fragment -> {
+                attachNavController(fragment, R.id.chatFragment);
+                RecyclerView recyclerView = (RecyclerView) fragment.requireView()
+                        .findViewById(R.id.recyclerView);
+                ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
+                AgentExecutionService.UICallback callback = uiCallback(fragment);
+
+                // A live run in flight: typing placeholder, one RUNNING tool card,
+                // one ephemeral result card, and a streaming bubble.
+                showTypingIndicator(fragment);
+                JsonObject toolArgs = new JsonObject();
+                toolArgs.addProperty("path", "test.txt");
+                callback.onToolCall("read_file", toolArgs.toString());
+                callback.onToolResult("read_file", "{\"content\":\"hello\"}");
+                callback.onStreamDelta("partial answer");
+                try {
+                    java.lang.reflect.Method flush = ChatFragment.class
+                            .getDeclaredMethod("flushStreamingBubble");
+                    flush.setAccessible(true);
+                    flush.invoke(fragment);
+                } catch (ReflectiveOperationException e) {
+                    throw new AssertionError(e);
+                }
+                assertEquals("all four ephemeral kinds present internally",
+                        4, adapter.getItemCount());
+
+                // Mid-run save (the task-context-add path ends in saveMessages()):
+                // whatever getMessages() yields here is what hits disk.
+                List<ChatMessage> persisted = adapter.getMessages();
+                for (ChatMessage message : persisted) {
+                    assertFalse("no ephemeral item may reach persistence",
+                            message.isEphemeral());
+                    assertFalse("no typing row may reach persistence",
+                            message.getType() == ChatMessage.TYPE_TYPING);
+                    if (message.isToolResult()) {
+                        assertNotNull("persisted tool_result must carry a real tool_call_id",
+                                message.getToolCallId());
+                    }
+                }
+                assertEquals("adapter view for persistence is empty mid-run",
+                        0, persisted.size());
+
+                // The repository round-trip must agree: load what a save of this
+                // view would have written — nothing to corrupt with null ids.
+                io.finett.droidclaw.repository.ChatRepository repository =
+                        new io.finett.droidclaw.repository.ChatRepository(
+                                fragment.requireContext());
+                repository.saveMessages("session-live-tool-midrun-save", persisted);
+                List<ChatMessage> loaded = repository.loadMessages("session-live-tool-midrun-save");
+                assertEquals(0, loaded.size());
+            });
+        }
+    }
+
     private static boolean containsPlaceholder(ChatAdapter adapter) {
-        for (ChatMessage message : adapter.getMessages()) {
-            if (message == ChatAdapter.TYPING_PLACEHOLDER) {
+        for (ChatMessage message : adapter.getMessagesRaw()) {
+            if (message.getType() == ChatMessage.TYPE_TYPING) {
                 return true;
             }
         }

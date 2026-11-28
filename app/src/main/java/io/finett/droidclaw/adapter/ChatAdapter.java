@@ -47,15 +47,8 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     private static final int VIEW_TYPE_CONTEXT_CARD = 5;
     private static final int VIEW_TYPE_ATTACHMENT = 6;
 
-    /**
-     * Transient view type for the typing indicator. It deliberately does not match any
-     * {@link ChatMessage} type so a placeholder can never be mistaken for a real message.
-     */
-    public static final int VIEW_TYPE_TYPING = 100;
-
-    /** Transient typing-indicator item; never persisted or sent to the model. */
-    public static final ChatMessage TYPING_PLACEHOLDER =
-            new ChatMessage(null, -VIEW_TYPE_TYPING);
+    /** View type for the typing indicator; matches {@link ChatMessage#TYPE_TYPING}. */
+    public static final int VIEW_TYPE_TYPING = ChatMessage.TYPE_TYPING;
 
     private final List<ChatMessage> messages = new ArrayList<>();
 
@@ -66,11 +59,8 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
     @Override
     public int getItemViewType(int position) {
-        ChatMessage message = messages.get(position);
-        if (message == TYPING_PLACEHOLDER) {
-            return VIEW_TYPE_TYPING;
-        }
-        return message.getType();
+        // Every ChatMessage type maps 1:1 to its view type, including TYPE_TYPING.
+        return messages.get(position).getType();
     }
 
     @NonNull
@@ -244,8 +234,29 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         notifyDataSetChanged();
     }
 
+    /**
+     * The adapter's INTERNAL list, ephemeral items included. Only for render-index
+     * arithmetic (notifyItemChanged/removeAt addressing) — persistence and API paths
+     * must use {@link #getMessages()}.
+     */
+    public List<ChatMessage> getMessagesRaw() {
+        return messages;
+    }
+
+    /**
+     * Non-ephemeral messages only. Ephemeral live-run items (typing indicator, running
+     * tool card, live result card, streaming bubble) stay in the internal list for
+     * rendering but never reach consumers such as saveMessages(), search, or export —
+     * so mid-run saves can never persist null-tool_call_id rows or partial bubbles.
+     */
     public List<ChatMessage> getMessages() {
-        return new ArrayList<>(messages);
+        List<ChatMessage> result = new ArrayList<>();
+        for (ChatMessage message : messages) {
+            if (!message.isEphemeral()) {
+                result.add(message);
+            }
+        }
+        return result;
     }
 
     abstract static class MessageViewHolder extends RecyclerView.ViewHolder {
@@ -488,11 +499,9 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             return formatted.toString();
         }
 
+        /** Display bound shared with persistence and live cards via the model helper. */
         private String formatArguments(String args) {
-            if (args.length() > 200) {
-                return args.substring(0, 197) + "...";
-            }
-            return args;
+            return ChatMessage.truncateToolArgs(args);
         }
     }
 

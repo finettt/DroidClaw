@@ -37,9 +37,6 @@ import io.finett.droidclaw.repository.MemoryRepository;
 public class AgentLoop {
     private static final String TAG = "AgentLoop";
 
-    /** Display bound for tool args in persisted history — same truncation the adapter applies. */
-    private static final int TOOL_ARGS_HISTORY_LIMIT = 200;
-
     private final LlmApiService apiService;
     private final ToolRegistry toolRegistry;
     private final SettingsManager settingsManager;
@@ -844,20 +841,18 @@ public class AgentLoop {
     }
 
     /**
-     * Copy of a tool call whose argument JSON is truncated to the display bound, so
-     * persisted history never stores more than the UI can show.
+     * Copy of a tool call whose argument JSON is truncated to the shared display bound
+     * ({@link ChatMessage#truncateToolArgs}), so persisted history never stores more
+     * than the UI can show.
      */
     private static LlmApiService.ToolCall truncateArgsForHistory(LlmApiService.ToolCall toolCall) {
-        String args = toolCall.getArguments().toString();
-        if (args.length() <= TOOL_ARGS_HISTORY_LIMIT) {
-            return toolCall;
-        }
+        String truncated = ChatMessage.truncateToolArgs(toolCall.getArguments().toString());
         try {
-            JsonObject truncated = JsonParser.parseString(args.substring(0, TOOL_ARGS_HISTORY_LIMIT - 3) + "...")
-                    .getAsJsonObject();
-            return new LlmApiService.ToolCall(toolCall.getId(), toolCall.getName(), truncated);
+            JsonObject truncatedArgs = JsonParser.parseString(truncated).getAsJsonObject();
+            return new LlmApiService.ToolCall(toolCall.getId(), toolCall.getName(), truncatedArgs);
         } catch (Exception e) {
-            // Truncated text is not valid JSON; keep the original rather than lose the call.
+            // Truncation breaks JSON validity at the bound; keep the original rather
+            // than lose the call. The model already received the full args.
             return toolCall;
         }
     }

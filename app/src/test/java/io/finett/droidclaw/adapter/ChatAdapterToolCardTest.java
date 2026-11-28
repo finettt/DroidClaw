@@ -19,6 +19,7 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
 import java.util.Collections;
+import java.util.List;
 
 import io.finett.droidclaw.R;
 import io.finett.droidclaw.api.LlmApiService;
@@ -66,15 +67,14 @@ public class ChatAdapterToolCardTest {
     }
 
     @Test
-    public void viewTypes_systemMatchesMessageTypeTypingDoesNotCollide() {
+    public void viewTypes_systemAndTypingMatchNamedMessageTypes() {
         ChatAdapter adapter = new ChatAdapter();
         adapter.addMessage(ChatMessage.createSystemMessage("notice"));
         assertEquals("system view type must render as the message type",
                 ChatMessage.TYPE_SYSTEM, adapter.getItemViewType(0));
-        adapter.addMessage(ChatAdapter.TYPING_PLACEHOLDER);
-        assertEquals(ChatAdapter.VIEW_TYPE_TYPING, adapter.getItemViewType(1));
-        assertTrue("the typing view type must not match any message type",
-                ChatAdapter.VIEW_TYPE_TYPING > ChatMessage.TYPE_CONTEXT_CARD);
+        adapter.addMessage(ChatMessage.createTypingPlaceholder());
+        assertEquals("typing view type must equal the named message type",
+                ChatMessage.TYPE_TYPING, adapter.getItemViewType(1));
     }
 
     @Test
@@ -172,10 +172,43 @@ public class ChatAdapterToolCardTest {
     }
 
     @Test
-    public void typingPlaceholder_mapsToTypingViewType() {
+    public void typingPlaceholder_namedTypeEphemeralAndFreshInstance() {
+        ChatMessage a = ChatMessage.createTypingPlaceholder();
+        ChatMessage b = ChatMessage.createTypingPlaceholder();
+        assertEquals(ChatMessage.TYPE_TYPING, a.getType());
+        assertTrue(a.isEphemeral());
+        assertTrue("factory returns a fresh instance per use", a != b);
+    }
+
+    @Test
+    public void getMessages_filtersAllEphemeralKinds() {
         ChatAdapter adapter = new ChatAdapter();
-        adapter.addMessage(ChatAdapter.TYPING_PLACEHOLDER);
-        assertEquals(ChatAdapter.VIEW_TYPE_TYPING, adapter.getItemViewType(0));
-        assertEquals(ChatMessage.TYPE_ASSISTANT, new ChatMessage("x", ChatMessage.TYPE_ASSISTANT).getType());
+        adapter.addMessage(new ChatMessage("hi", ChatMessage.TYPE_USER));
+        adapter.addMessage(ChatMessage.createTypingPlaceholder());
+        ChatMessage runningCard = ChatMessage.createToolCallMessage(
+                Collections.singletonList(call("call_1", "read_file", "a.txt")));
+        runningCard.setRunning(true);
+        runningCard.setEphemeral(true);
+        adapter.addMessage(runningCard);
+        ChatMessage liveResult = ChatMessage.createToolResultMessage(null, "read_file", "done");
+        liveResult.setEphemeral(true);
+        adapter.addMessage(liveResult);
+        ChatMessage bubble = ChatMessage.createStreamingAssistantMessage();
+        adapter.addMessage(bubble);
+        adapter.addMessage(new ChatMessage("done", ChatMessage.TYPE_ASSISTANT));
+
+        List<ChatMessage> visible = adapter.getMessages();
+        assertEquals("ephemera excluded, real messages kept", 2, visible.size());
+        assertEquals(ChatMessage.TYPE_USER, visible.get(0).getType());
+        assertEquals(ChatMessage.TYPE_ASSISTANT, visible.get(1).getType());
+        assertEquals("internal list still renders ephemera", 6, adapter.getItemCount());
+
+        for (ChatMessage message : adapter.getMessagesRaw()) {
+            if (message.getType() == ChatMessage.TYPE_TYPING
+                    || (message.isToolCall() && message.isRunning())
+                    || message.getStreamingId() != null) {
+                assertTrue(message.isEphemeral());
+            }
+        }
     }
 }

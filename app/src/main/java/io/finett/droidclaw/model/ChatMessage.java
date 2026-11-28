@@ -17,6 +17,10 @@ public class ChatMessage {
     public static final int TYPE_SYSTEM = 4;
     public static final int TYPE_CONTEXT_CARD = 5;
     public static final int TYPE_ATTACHMENT = 6;
+    public static final int TYPE_TYPING = 7;
+
+    /** Display bound for tool args — one value shared by persistence, live cards, and rendering. */
+    public static final int TOOL_ARGS_DISPLAY_LIMIT = 200;
 
     private String content;
     private int type;
@@ -31,6 +35,14 @@ public class ChatMessage {
      * model — history loaded from disk always renders as done.
      */
     private boolean running;
+
+    /**
+     * True for UI-only items shown during a live run (typing indicator, running tool
+     * card, live result card, streaming bubble). Ephemeral messages stay in the adapter
+     * for rendering but are excluded from {@code ChatAdapter.getMessages()}, so nothing
+     * can persist or send them. Never persisted; never restored.
+     */
+    private boolean ephemeral;
 
     private List<LlmApiService.ToolCall> toolCalls;
     private String toolCallId;
@@ -51,10 +63,39 @@ public class ChatMessage {
         this.timestamp = System.currentTimeMillis();
     }
 
+    private ChatMessage(String content, int type, boolean ephemeral) {
+        this(content, type);
+        this.ephemeral = ephemeral;
+    }
+
     public static ChatMessage createStreamingAssistantMessage() {
-        ChatMessage message = new ChatMessage("", TYPE_ASSISTANT);
+        ChatMessage message = new ChatMessage("", TYPE_ASSISTANT, true);
         message.streamingId = UUID.randomUUID().toString();
         return message;
+    }
+
+    /**
+     * Typing-indicator row shown while the first LLM response segment is in flight.
+     * Returns a FRESH ephemeral instance per use — never a shared singleton, so a
+     * removed placeholder can never be confused with a later one.
+     */
+    public static ChatMessage createTypingPlaceholder() {
+        return new ChatMessage(null, TYPE_TYPING, true);
+    }
+
+    /**
+     * Truncate tool-argument JSON to the display bound. Returns the original string
+     * when short enough; when long enough that the result is no longer parseable JSON
+     * (the "..." suffix always breaks object validity), returns the truncated string
+     * anyway — callers render args as text, so a slightly broken object at the bound
+     * is acceptable over storing the full payload. Shared by persistence (AgentLoop),
+     * live cards (ChatFragment), and holder display truncation.
+     */
+    public static String truncateToolArgs(String args) {
+        if (args == null || args.length() <= TOOL_ARGS_DISPLAY_LIMIT) {
+            return args;
+        }
+        return args.substring(0, TOOL_ARGS_DISPLAY_LIMIT - 3) + "...";
     }
 
     public static ChatMessage createToolCallMessage(List<LlmApiService.ToolCall> toolCalls) {
@@ -101,6 +142,15 @@ public class ChatMessage {
 
     public void setRunning(boolean running) {
         this.running = running;
+    }
+
+    public boolean isEphemeral() {
+        return ephemeral;
+    }
+
+    /** Mark this message as a live-only item excluded from persistence and API requests. */
+    public void setEphemeral(boolean ephemeral) {
+        this.ephemeral = ephemeral;
     }
 
     public long getTimestamp() {

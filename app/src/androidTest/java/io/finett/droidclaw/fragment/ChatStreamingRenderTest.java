@@ -57,7 +57,9 @@ public class ChatStreamingRenderTest {
 
                 callback.onStreamDelta("Hel");
 
-                List<ChatMessage> withInsertion = new ArrayList<>(adapter.getMessages());
+                // Raw list: the streaming bubble is ephemeral and invisible to
+                // getMessages(); setMessages must see it to preserve it.
+                List<ChatMessage> withInsertion = new ArrayList<>(adapter.getMessagesRaw());
                 withInsertion.add(0, new ChatMessage("Earlier note", ChatMessage.TYPE_USER));
                 withInsertion.add(new ChatMessage("Trailing note", ChatMessage.TYPE_TOOL_RESULT));
                 adapter.setMessages(withInsertion);
@@ -65,7 +67,9 @@ public class ChatStreamingRenderTest {
                 callback.onStreamDelta("lo ");
                 flush(fragment);
 
-                List<ChatMessage> messages = adapter.getMessages();
+                // Raw list: the streaming bubble and live tool card are ephemeral
+                // (filtered out of getMessages()), so assertions use the internal list.
+                List<ChatMessage> messages = adapter.getMessagesRaw();
                 assertEquals(3, messages.size());
                 assertEquals("Earlier note", messages.get(0).getContent());
                 assertEquals("Hello ", messages.get(1).getContent());
@@ -78,7 +82,7 @@ public class ChatStreamingRenderTest {
                 // After onToolCall: the streaming bubble is flushed and reset, and a
                 // live RUNNING tool card is appended. No typing placeholder — the
                 // first tool card replaces it.
-                messages = adapter.getMessages();
+                messages = adapter.getMessagesRaw();
                 assertEquals(4, messages.size());
                 assertEquals("Earlier note", messages.get(0).getContent());
                 assertEquals("Hello world", messages.get(1).getContent());
@@ -90,7 +94,7 @@ public class ChatStreamingRenderTest {
                 flush(fragment);
 
                 // The next delta starts a new streaming bubble after the tool card.
-                messages = adapter.getMessages();
+                messages = adapter.getMessagesRaw();
                 assertEquals(5, messages.size());
                 assertEquals("Earlier note", messages.get(0).getContent());
                 assertEquals("Hello world", messages.get(1).getContent());

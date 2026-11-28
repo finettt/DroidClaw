@@ -45,8 +45,12 @@ public class ChatAdapterStreamingTextTest {
         assertEquals(Collections.singletonList(1), changedPositions);
         assertEquals(Collections.singletonList(Collections.singletonList(
                 ChatAdapter.PAYLOAD_STREAMING_TEXT)), deliveredPayloads);
-        assertEquals("Hello ", adapter.getMessages().get(1).getContent());
-        assertEquals("Older message", adapter.getMessages().get(0).getContent());
+        // The bubble is ephemeral, so the filtered view holds only the user message;
+        // the raw list is the render-truth this test asserts on.
+        List<ChatMessage> raw = adapter.getMessagesRaw();
+        assertEquals("Hello ", raw.get(1).getContent());
+        assertEquals("Older message", raw.get(0).getContent());
+        assertEquals(1, adapter.getMessages().size());
     }
 
     @Test
