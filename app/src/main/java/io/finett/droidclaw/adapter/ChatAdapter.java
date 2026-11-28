@@ -195,6 +195,21 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         }
     }
 
+    /**
+     * Remove a single message by identity. Used to drop the transient live-render
+     * bubbles (streaming text, tool calls, tool results) when the run they belong
+     * to fails; a no-op when the message is no longer present.
+     */
+    public void removeMessage(ChatMessage message) {
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) == message) {
+                messages.remove(i);
+                notifyItemRemoved(i);
+                return;
+            }
+        }
+    }
+
     public void clearMessages() {
         messages.clear();
         notifyDataSetChanged();
