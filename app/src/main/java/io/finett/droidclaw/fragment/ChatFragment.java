@@ -42,11 +42,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.chip.Chip;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -139,6 +141,14 @@ public class ChatFragment extends Fragment {
     private final Runnable streamFlushRunnable = this::flushStreamingBubble;
     private boolean streamFlushScheduled = false;
 
+    /**
+     * Transient bubbles this instance added for live rendering during the in-flight
+     * run (streaming text, tool calls, tool results). They are replaced by the
+     * canonical history when the run ends normally, and removed individually if it
+     * fails, so a failed run never leaves model-incompatible messages in the list.
+     */
+    private final List<ChatMessage> liveRunMessages = new ArrayList<>();
+
     private final AgentExecutionService.UICallback agentUiCallback = new AgentExecutionService.UICallback() {
         @Override
         public void onProgress(String status) {
@@ -158,6 +168,7 @@ public class ChatFragment extends Fragment {
                 // replaced by the canonical history in onComplete().
                 ChatMessage streamingMessage = ChatMessage.createStreamingAssistantMessage();
                 chatAdapter.addMessage(streamingMessage);
+                liveRunMessages.add(streamingMessage);
                 streamingBubble = streamingMessage;
                 streamingBuffer.setLength(0);
                 streamingBubbleActive = true;
@@ -179,6 +190,21 @@ public class ChatFragment extends Fragment {
             resetStreamingState();
             Log.d(TAG, "Tool call: " + toolName + " with args: " + arguments);
 
+            // Render the tool call as a live bubble so it appears in the transcript
+            // the moment the model requests it; onComplete() replaces it with the
+            // persisted message. Guarded by loading so a callback that arrives after
+            // the run ended (a slow tool finishing after the user pressed stop) does
+            // not append an orphan bubble.
+            if (loading) {
+                ChatMessage toolCallBubble = ChatMessage.createToolCallMessage(
+                        Collections.singletonList(buildLiveToolCall(toolName, arguments)));
+                chatAdapter.addMessage(toolCallBubble);
+                liveRunMessages.add(toolCallBubble);
+                if (atBottom) {
+                    scrollToBottom();
+                }
+            }
+
             boolean isBackground = arguments.contains("\"background\":true")
                     || arguments.contains("\"background\": true");
             String statusMessage = isBackground
@@ -194,6 +220,19 @@ public class ChatFragment extends Fragment {
             }
             Log.d(TAG, "Tool result: " + toolName + " -> "
                     + result.substring(0, Math.min(100, result.length())));
+
+            // Render the result as a live bubble right below its tool call;
+            // onComplete() replaces it with the persisted message. Guarded by
+            // loading for the same reason as onToolCall.
+            if (loading) {
+                ChatMessage toolResultBubble =
+                        ChatMessage.createToolResultMessage(null, toolName, result);
+                chatAdapter.addMessage(toolResultBubble);
+                liveRunMessages.add(toolResultBubble);
+                if (atBottom) {
+                    scrollToBottom();
+                }
+            }
             updateStatus("✓ " + formatToolName(toolName) + " completed", null);
         }
 
@@ -204,6 +243,8 @@ public class ChatFragment extends Fragment {
             }
 
             resetStreamingState();
+            // The canonical history replaces every transient live bubble.
+            liveRunMessages.clear();
             setLoading(false);
             chatAdapter.setMessages(updatedHistory);
             scrollToBottom();
@@ -223,12 +264,14 @@ public class ChatFragment extends Fragment {
                 Log.w(TAG, "onError: Fragment not attached, ignoring error: " + error);
                 return;
             }
-            // Drop the partial streaming bubble — its text never made it into history.
-            boolean hadPartialBubble = streamingBubbleActive;
+            // Drop everything this run rendered live (partial streaming bubble and
+            // tool bubbles) — none of it made it into history, and an unpaired
+            // tool call would break the next request to the model.
             resetStreamingState();
-            if (hadPartialBubble) {
-                chatAdapter.removeLastMessage();
+            for (ChatMessage liveMessage : liveRunMessages) {
+                chatAdapter.removeMessage(liveMessage);
             }
+            liveRunMessages.clear();
             dismissApprovalDialog();
             setLoading(false);
             Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
@@ -240,8 +283,10 @@ public class ChatFragment extends Fragment {
                 return;
             }
             // The service already persisted `history` (including any partial streamed
-            // text); just re-render it in place of the temporary streaming bubble.
+            // text); just re-render it in place of the temporary streaming bubble
+            // and the transient tool bubbles.
             resetStreamingState();
+            liveRunMessages.clear();
             dismissApprovalDialog();
             setLoading(false);
             chatAdapter.setMessages(history);
@@ -1374,6 +1419,23 @@ public class ChatFragment extends Fragment {
             recyclerView.removeCallbacks(streamFlushRunnable);
         }
         streamFlushScheduled = false;
+    }
+
+    /**
+     * Build the tool call descriptor for a live-render bubble. The id is a
+     * placeholder: live bubbles are replaced by the persisted messages when the
+     * run ends and are never sent to the model, so the real tool call id is not
+     * needed for rendering.
+     */
+    private LlmApiService.ToolCall buildLiveToolCall(String toolName, String arguments) {
+        JsonObject args;
+        try {
+            args = JsonParser.parseString(arguments).getAsJsonObject();
+        } catch (Exception e) {
+            args = new JsonObject();
+            args.addProperty("raw", arguments);
+        }
+        return new LlmApiService.ToolCall("live-" + System.nanoTime(), toolName, args);
     }
 
     /**
