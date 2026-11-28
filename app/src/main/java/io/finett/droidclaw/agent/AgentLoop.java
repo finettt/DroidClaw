@@ -358,7 +358,6 @@ public class AgentLoop {
     private int totalToolCalls = 0;
 
     public interface AgentCallback {
-        void onProgress(String status);
         void onToolCall(String toolName, String arguments);
         void onToolResult(String toolName, String result);
         void onComplete(String finalResponse, List<ChatMessage> conversationHistory);

@@ -341,9 +341,6 @@ public final class WorkflowRunner {
         freshHistory.add(new ChatMessage(goalPrefix + resolvedPrompt, ChatMessage.TYPE_USER));
 
         nodeLoop.start(freshHistory, new AgentLoop.AgentCallback() {
-            @Override public void onProgress(String status) {
-                if (callback != null) callback.onProgress("[" + key + "] " + status);
-            }
             @Override public void onToolCall(String toolName, String arguments) {
                 if (callback != null) callback.onProgress("[" + key + "] Tool: " + toolName);
             }

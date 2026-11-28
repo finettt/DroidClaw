@@ -173,11 +173,6 @@ public abstract class BaseTaskWorker extends Worker {
 
             agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
                 @Override
-                public void onProgress(String status) {
-                    Log.d(TAG, "Progress: " + status);
-                }
-
-                @Override
                 public void onToolCall(String toolName, String arguments) {
                     Log.d(TAG, "Tool call: " + toolName);
                 }

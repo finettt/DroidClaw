@@ -93,9 +93,6 @@ public class AgentLoopTest {
         List<ChatMessage> conversation = createSimpleConversation();
         agentLoop.start(conversation, mockCallback);
         
-        // The status pill is gone: progress strings are no longer emitted; the run
-        // surfaces only through tool callbacks and the final history.
-        verify(mockCallback, never()).onProgress(anyString());
         verify(mockCallback).onComplete(eq("Hello! How can I help you?"), anyList());
         verify(mockCallback, never()).onError(anyString());
         assertEquals("Should complete in 1 iteration", 1, agentLoop.getIterationCount());
@@ -644,7 +641,6 @@ public class AgentLoopTest {
         agentLoop.start(conversation, mockCallback);
 
         verify(mockCallback).onComplete(eq("Hello!"), anyList());
-        verify(mockCallback, never()).onProgress(anyString());
     }
 
     @Test

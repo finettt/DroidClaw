@@ -425,7 +425,6 @@ public class ShellApprovalModesInstrumentedTest {
         String error;
         String approvalDescription;
 
-        @Override public void onProgress(String status) {}
         @Override public void onToolCall(String name, String arguments) {}
         @Override public void onToolResult(String name, String result) {
             lastToolName = name;

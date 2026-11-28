@@ -114,13 +114,6 @@ public class AgentExecutionService extends Service {
     // ==================== UI callback ====================
 
     public interface UICallback {
-        /**
-         * Legacy progress strings ("Sending message to LLM...", "Executing N
-         * tool(s)...") were dropped with the status pill: tool activity now renders as
-         * live chat cards and waiting as the typing indicator. No-op by default.
-         */
-        default void onProgress(String status) {}
-
         void onToolCall(String toolName, String arguments);
         void onToolResult(String toolName, String result);
         void onComplete(String response, List<ChatMessage> history);
@@ -485,14 +478,6 @@ public class AgentExecutionService extends Service {
             }
 
             agentLoop.start(conversationHistory, new AgentLoop.AgentCallback() {
-                @Override
-                public void onProgress(String status) {
-                    mainHandler.post(() -> {
-                        UICallback cb = uiCallbacks.get(session.sessionId);
-                        if (cb != null) cb.onProgress(status);
-                    });
-                }
-
                 @Override
                 public void onStreamDelta(String delta) {
                     mainHandler.post(() -> {

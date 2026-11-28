@@ -253,7 +253,6 @@ public class ShellMainStrictModeTest {
         volatile String lastToolResult;
         volatile String error;
 
-        @Override public void onProgress(String status) {}
         @Override public void onToolCall(String name, String arguments) {}
         @Override public void onToolResult(String name, String result) {
             lastToolResult = result;

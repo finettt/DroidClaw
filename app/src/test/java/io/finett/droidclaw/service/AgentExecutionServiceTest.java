@@ -49,7 +49,6 @@ public class AgentExecutionServiceTest {
         List<ChatMessage> completeHistory;
         String error;
 
-        @Override public void onProgress(String status) {}
         @Override public void onToolCall(String toolName, String arguments) {}
         @Override public void onToolResult(String toolName, String result) {}
 
