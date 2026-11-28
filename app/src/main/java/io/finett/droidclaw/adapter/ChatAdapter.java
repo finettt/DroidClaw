@@ -238,6 +238,10 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
      * The adapter's INTERNAL list, ephemeral items included. Only for render-index
      * arithmetic (notifyItemChanged/removeAt addressing) — persistence and API paths
      * must use {@link #getMessages()}.
+     *
+     * <p><b>Android only.</b> This method has a no-op default in the JVM test
+     * stubs, so plain-JVM code must not rely on it. Instrumented tests and the
+     * app run on real Android and get the real implementation.
      */
     public List<ChatMessage> getMessagesRaw() {
         return messages;
