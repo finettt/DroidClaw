@@ -953,26 +953,6 @@ public class ChatAdapterTest {
     }
 
     @Test
-    public void onBindViewHolder_toolResultMessage_hasFilesContainer() {
-        ChatMessage toolResult = ChatMessage.createToolResultMessage("call-123", "write_file",
-                "File created: `report.txt`");
-        adapter.addMessage(toolResult);
-
-        Context context = TestThemeHelper.getThemedContext();
-        RecyclerView recyclerView = new RecyclerView(context);
-        recyclerView.setLayoutManager(new LinearLayoutManager(context));
-        ChatAdapter.MessageViewHolder viewHolder = adapter.onCreateViewHolder(
-                recyclerView,
-                ChatMessage.TYPE_TOOL_RESULT
-        );
-
-        adapter.onBindViewHolder(viewHolder, 0);
-
-        android.widget.LinearLayout filesContainer = viewHolder.itemView.findViewById(R.id.toolResultFilesContainer);
-        assertNotNull(filesContainer);
-    }
-
-    @Test
     public void allMessageTypes_includingAttachment_viewHolderCreation() {
         Context context = TestThemeHelper.getThemedContext();
         RecyclerView recyclerView = new RecyclerView(context);

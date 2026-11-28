@@ -441,13 +441,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         private final TextView toolResultLabel;
         private final TextView toolResultToggle;
         private final TextView toolResultContent;
-        private final LinearLayout filesContainer;
         private boolean isExpanded = false;
-
-        // Pattern to detect file paths in tool results
-        private static final Pattern FILE_REF_PATTERN = Pattern.compile(
-            "`([^`]+)`|(/data/data/[^\\s]+|uploads/[^\\s]+)"
-        );
 
         ToolResultMessageViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -456,7 +450,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             toolResultLabel = itemView.findViewById(R.id.toolResultLabel);
             toolResultToggle = itemView.findViewById(R.id.toolResultToggle);
             toolResultContent = itemView.findViewById(R.id.toolResultContent);
-            filesContainer = itemView.findViewById(R.id.toolResultFilesContainer);
             toolResultHeader.setOnClickListener(v -> toggleExpanded());
         }
 
@@ -497,8 +490,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
                 toolResultToggle.setVisibility(View.GONE);
                 toolResultContent.setMaxLines(Integer.MAX_VALUE);
             }
-
-            renderFileReferences(content);
         }
 
         private void toggleExpanded() {
@@ -529,123 +520,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
             return formatted.toString();
         }
 
-        /**
-         * Detects file references in tool result content and displays them as clickable chips.
-         */
-        private void renderFileReferences(String content) {
-            filesContainer.removeAllViews();
-
-            if (content == null) {
-                filesContainer.setVisibility(View.GONE);
-                return;
-            }
-
-            java.util.Set<String> foundFiles = new java.util.HashSet<>();
-            Matcher matcher = FILE_REF_PATTERN.matcher(content);
-            while (matcher.find()) {
-                String rawPath = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
-                if (rawPath == null || rawPath.isEmpty()) continue;
-
-                if (rawPath.contains("```") || rawPath.contains("\n") ||
-                    rawPath.startsWith("[") || rawPath.startsWith("(")) continue;
-
-                foundFiles.add(rawPath);
-            }
-
-            if (foundFiles.isEmpty()) {
-                filesContainer.setVisibility(View.GONE);
-                return;
-            }
-
-            filesContainer.setVisibility(View.VISIBLE);
-
-            for (String rawPath : foundFiles) {
-                File file = resolveFile(rawPath);
-                if (file == null || !file.exists()) continue;
-
-                String displayName = file.getName();
-                String mimeType = io.finett.droidclaw.filesystem.FileUploadManager.resolveMimeType(displayName);
-
-                Chip chip = (Chip) LayoutInflater.from(itemView.getContext())
-                        .inflate(R.layout.item_attachment_chip, filesContainer, false);
-
-                int iconRes = R.drawable.ic_attachment;
-                if (mimeType != null) {
-                    if (mimeType.startsWith("image/")) iconRes = R.drawable.ic_file_image;
-                    else if (mimeType.startsWith("text/")) iconRes = R.drawable.ic_file_text;
-                    else if (mimeType.contains("pdf")) iconRes = R.drawable.ic_file_text;
-                    else if (mimeType.contains("spreadsheet")) iconRes = R.drawable.ic_file_spreadsheet;
-                }
-
-                chip.setText(displayName);
-                chip.setChipIconResource(iconRes);
-                chip.setOnClickListener(v -> openFile(file, displayName, mimeType));
-
-                filesContainer.addView(chip);
-            }
-        }
-
-        /**
-         * Resolves a file reference path to an actual File object.
-         */
-        private File resolveFile(String rawPath) {
-            if (rawPath.startsWith("/")) {
-                return new File(rawPath);
-            }
-
-            // Try workspace directories
-            String[] searchDirs = {"uploads", "home", "home/documents", "home/scripts", "home/notes", "tmp"};
-            File filesDir = itemView.getContext().getFilesDir();
-            File workspaceRoot = new File(filesDir, "workspace");
-
-            // Direct path under workspace
-            File directFile = new File(workspaceRoot, rawPath);
-            if (directFile.exists()) return directFile;
-
-            // Search in subdirectories
-            for (String dir : searchDirs) {
-                File file = new File(workspaceRoot, dir + "/" + rawPath);
-                if (file.exists()) return file;
-            }
-
-            // Just the filename - search uploads first
-            File uploadFile = new File(new File(workspaceRoot, "uploads"), rawPath);
-            if (uploadFile.exists()) return uploadFile;
-
-            return null;
-        }
-
-        /**
-         * Opens a file with an external app.
-         */
-        private void openFile(File file, String displayName, String mimeType) {
-            try {
-                Uri fileUri = FileProvider.getUriForFile(itemView.getContext(),
-                        itemView.getContext().getPackageName() + ".fileprovider", file);
-
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setDataAndType(fileUri, mimeType != null ? mimeType : "*/*");
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                if (intent.resolveActivity(itemView.getContext().getPackageManager()) != null) {
-                    itemView.getContext().startActivity(intent);
-                } else {
-                    Intent chooser = Intent.createChooser(intent,
-                            itemView.getContext().getString(R.string.file_viewer_open_with));
-                    if (chooser.resolveActivity(itemView.getContext().getPackageManager()) != null) {
-                        itemView.getContext().startActivity(chooser);
-                    } else {
-                        Toast.makeText(itemView.getContext(),
-                                itemView.getContext().getString(R.string.file_viewer_no_app_found, displayName),
-                                Toast.LENGTH_LONG).show();
-                    }
-                }
-            } catch (Exception e) {
-                Toast.makeText(itemView.getContext(),
-                        itemView.getContext().getString(R.string.file_viewer_open_error, displayName),
-                        Toast.LENGTH_LONG).show();
-            }
-        }
     }
 
     static class ContextCardMessageViewHolder extends MessageViewHolder {
