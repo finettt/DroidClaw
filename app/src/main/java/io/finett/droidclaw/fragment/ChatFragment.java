@@ -1485,15 +1485,12 @@ public class ChatFragment extends Fragment {
             // any TYPE_TOOL_RESULT in the adapter right now is ephemeral — even when
             // the tool call that produced it came in without a live card (e.g. a test
             // that drives the callbacks directly).
-            // Remove from the end so earlier indices stay valid. Ephemeral items are
-            // exactly: the typing placeholder (named type) plus everything this live
-            // run added that is flagged ephemeral.
+            // Remove from the end so earlier indices stay valid. Ephemeral is the
+            // invariant: it marks exactly the live-run items this run added, so the
+            // adapter's own flag is the single source of truth.
             List<ChatMessage> rawMessages = chatAdapter.getMessagesRaw();
             for (int i = rawMessages.size() - 1; i >= 0; i--) {
-                ChatMessage message = rawMessages.get(i);
-                if (message.getType() == ChatMessage.TYPE_TYPING
-                        || liveToolCallCards.contains(message)
-                        || (message.isToolResult() && message.isEphemeral())) {
+                if (rawMessages.get(i).isEphemeral()) {
                     chatAdapter.removeAt(i);
                 }
             }

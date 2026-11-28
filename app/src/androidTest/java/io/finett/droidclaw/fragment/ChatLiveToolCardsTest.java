@@ -262,35 +262,34 @@ public class ChatLiveToolCardsTest {
                 ChatAdapter adapter = (ChatAdapter) recyclerView.getAdapter();
                 AgentExecutionService.UICallback callback = uiCallback(fragment);
 
-                // A live run in flight: the typing placeholder is replaced by the
-                // RUNNING tool card (the first tool card removes it), then a live
-                // result card and a streaming bubble are appended — three ephemeral
-                // items at this point; the typing kind is covered by the assertion
-                // below that no TYPE_TYPING row reaches persistence.
+                // A live run in flight: all four ephemeral kinds present — the
+                // streaming bubble stays in the list across the tool boundary (it is
+                // replaced by canonical history only at terminal states), plus the
+                // typing placeholder, the running tool card, and the live result card.
+                callback.onStreamDelta("partial answer");
                 showTypingIndicator(fragment);
-                assertTrue("typing indicator present before the first tool call",
-                        containsPlaceholder(adapter));
                 JsonObject toolArgs = new JsonObject();
                 toolArgs.addProperty("path", "test.txt");
                 callback.onToolCall("read_file", toolArgs.toString());
-                assertFalse("typing placeholder replaced by the first live card",
-                        containsPlaceholder(adapter));
                 callback.onToolResult("read_file", "{\"content\":\"hello\"}");
-                callback.onStreamDelta("partial answer");
-                try {
-                    java.lang.reflect.Method flush = ChatFragment.class
-                            .getDeclaredMethod("flushStreamingBubble");
-                    flush.setAccessible(true);
-                    flush.invoke(fragment);
-                } catch (ReflectiveOperationException e) {
-                    throw new AssertionError(e);
-                }
+
                 List<ChatMessage> raw = adapter.getMessagesRaw();
-                assertEquals("running card, live result card, streaming bubble",
-                        3, raw.size());
-                assertTrue(raw.get(0).isRunning());
-                assertTrue(raw.get(1).isEphemeral() && raw.get(1).isToolResult());
-                assertTrue(raw.get(2).isEphemeral() && raw.get(2).getStreamingId() != null);
+                int ephemeralCount = 0;
+                boolean sawTyping = false, sawRunningCard = false,
+                        sawLiveResult = false, sawBubble = false;
+                for (ChatMessage message : raw) {
+                    if (!message.isEphemeral()) continue;
+                    ephemeralCount++;
+                    if (message.getType() == ChatMessage.TYPE_TYPING) sawTyping = true;
+                    if (message.isToolCall() && message.isRunning()) sawRunningCard = true;
+                    if (message.isToolResult()) sawLiveResult = true;
+                    if (message.getStreamingId() != null) sawBubble = true;
+                }
+                assertEquals("one of each ephemeral kind", 4, ephemeralCount);
+                assertTrue("typing placeholder present", sawTyping);
+                assertTrue("running tool card present", sawRunningCard);
+                assertTrue("live result card present", sawLiveResult);
+                assertTrue("streaming bubble present", sawBubble);
 
                 // Mid-run save (the task-context-add path ends in saveMessages()):
                 // whatever getMessages() yields here is what hits disk.
